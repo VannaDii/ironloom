@@ -21,14 +21,15 @@ RUN npm ci --ignore-scripts \
     && npm run build:workspace \
     && npm prune --omit=dev --ignore-scripts
 
-FROM node-base AS runtime
+FROM node:${NODE_VERSION}-alpine${ALPINE_VERSION} AS runtime
 
 ENV NODE_ENV=production
 ENV OPENCLAW_HOME=/var/lib/devplat/openclaw
 
 WORKDIR /app
 
-RUN addgroup -S devplat && adduser -S -G devplat devplat \
+RUN apk add --no-cache ca-certificates libstdc++ \
+    && addgroup -S devplat && adduser -S -G devplat devplat \
     && mkdir -p /var/lib/devplat /config \
     && chown -R devplat:devplat /var/lib/devplat /config /app
 

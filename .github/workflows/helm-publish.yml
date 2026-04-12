@@ -38,7 +38,10 @@ jobs:
         id: publish_meta
         shell: bash
         env:
+          PR_BODY: ${{ github.event.pull_request.body || '' }}
           PR_HEAD_REF: ${{ github.event.pull_request.head.ref || '' }}
+          PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+          PR_TITLE: ${{ github.event.pull_request.title || '' }}
         run: |
           owner="${GITHUB_REPOSITORY_OWNER,,}"
           package_version="$(
@@ -49,14 +52,45 @@ jobs:
           if [[ -n "$PR_HEAD_REF" && "$PR_HEAD_REF" == changeset-release/* ]]; then
             chart_version="$package_version"
             image_tag="$package_version"
+            prerelease='false'
           else
             chart_version="${package_version}-dev.${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}"
             image_tag="${package_version}-dev.${GITHUB_RUN_NUMBER}.${short_sha}"
+            prerelease='true'
+          fi
+
+          if [[ -n "$PR_NUMBER" && -n "$PR_TITLE" ]]; then
+            artifacthub_change_description="PR #${PR_NUMBER}: ${PR_TITLE}"
+          elif [[ -n "$PR_TITLE" ]]; then
+            artifacthub_change_description="${PR_TITLE}"
+          else
+            artifacthub_change_description="Manual publish from ${short_sha}"
+          fi
+
+          combined_change_context="${PR_TITLE}"$'\n'"${PR_BODY}"
+          if grep -Eiq 'security|vulnerab|cve' <<< "$combined_change_context"; then
+            artifacthub_change_kind='security'
+            contains_security_updates='true'
+          elif grep -Eiq 'fix|bug|regression|patch' <<< "$combined_change_context"; then
+            artifacthub_change_kind='fixed'
+            contains_security_updates='false'
+          else
+            artifacthub_change_kind='changed'
+            contains_security_updates='false'
           fi
 
           echo "owner=${owner}" >> "$GITHUB_OUTPUT"
           echo "chart_version=${chart_version}" >> "$GITHUB_OUTPUT"
           echo "image_tag=${image_tag}" >> "$GITHUB_OUTPUT"
+          echo "prerelease=${prerelease}" >> "$GITHUB_OUTPUT"
+          echo "artifacthub_change_kind=${artifacthub_change_kind}" >> "$GITHUB_OUTPUT"
+          echo "contains_security_updates=${contains_security_updates}" >> "$GITHUB_OUTPUT"
+          echo "artifacthub_image=ghcr.io/${owner}/devplat-openclaw-runtime:${image_tag}" >> "$GITHUB_OUTPUT"
+          {
+            echo "artifacthub_change_description<<EOF"
+            printf '%s\n' "$artifacthub_change_description"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
           echo "chart_repository_url=oci://ghcr.io/${owner}/charts/devplat" >> "$GITHUB_OUTPUT"
 
       - name: Stage chart payload
@@ -67,6 +101,11 @@ jobs:
             --chart-version "${{ steps.publish_meta.outputs.chart_version }}" \
             --app-version "${{ steps.publish_meta.outputs.image_tag }}" \
             --image-tag "${{ steps.publish_meta.outputs.image_tag }}" \
+            --artifacthub-image "${{ steps.publish_meta.outputs.artifacthub_image }}" \
+            --artifacthub-prerelease "${{ steps.publish_meta.outputs.prerelease }}" \
+            --artifacthub-contains-security-updates "${{ steps.publish_meta.outputs.contains_security_updates }}" \
+            --artifacthub-change-kind "${{ steps.publish_meta.outputs.artifacthub_change_kind }}" \
+            --artifacthub-change-description "${{ steps.publish_meta.outputs.artifacthub_change_description }}" \
             > "${RUNNER_TEMP}/helm-chart-manifest.json"
           echo "chart_dir=${RUNNER_TEMP}/helm-chart" >> "$GITHUB_OUTPUT"
 
@@ -78,6 +117,11 @@ jobs:
 
       - name: Lint chart
         run: helm lint "${{ steps.stage.outputs.chart_dir }}"
+
+      - name: Verify Artifact Hub chart files
+        run: |
+          test -f "${{ steps.stage.outputs.chart_dir }}/README.md"
+          test -f "${{ steps.stage.outputs.chart_dir }}/LICENSE"
 
       - name: Package chart
         run: |
@@ -198,9 +242,18 @@ jobs:
         shell: bash
         run: |
           metadata_path=".artifacts/helm/artifacthub-repo.yml"
-          sed \
-            "s/__ARTIFACTHUB_REPOSITORY_ID__/${{ steps.artifacthub_repository.outputs.repository_id }}/" \
-            deploy/helm/devplat/artifacthub-repo.yml > "$metadata_path"
+          node --input-type=module -e "
+            import { readFileSync, writeFileSync } from 'node:fs';
+            const template = readFileSync(process.argv[1], 'utf8');
+            const rendered = template.replace(
+              '__ARTIFACTHUB_REPOSITORY_ID__',
+              process.argv[3],
+            );
+            writeFileSync(process.argv[2], rendered);
+          " \
+            deploy/artifacthub/devplat/artifacthub-repo.yml \
+            "$metadata_path" \
+            "${{ steps.artifacthub_repository.outputs.repository_id }}"
           echo "metadata_path=${metadata_path}" >> "$GITHUB_OUTPUT"
 
       - name: Log in to GHCR for ORAS
