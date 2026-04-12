@@ -66,6 +66,7 @@ jobs:
           echo "owner=${owner}" >> "$GITHUB_OUTPUT"
           echo "chart_version=${chart_version}" >> "$GITHUB_OUTPUT"
           echo "image_tag=${image_tag}" >> "$GITHUB_OUTPUT"
+          echo "chart_repository_url=oci://ghcr.io/${owner}/charts/devplat" >> "$GITHUB_OUTPUT"
 
       - name: Stage chart payload
         id: stage
@@ -80,6 +81,9 @@ jobs:
 
       - name: Set up Helm
         uses: azure/setup-helm@v5.0.0
+
+      - name: Set up ORAS
+        uses: oras-project/setup-oras@v2.0.0
 
       - name: Lint chart
         run: helm lint "${{ steps.stage.outputs.chart_dir }}"
@@ -97,3 +101,92 @@ jobs:
           chart_archive="$(find .artifacts/helm -maxdepth 1 -name 'devplat-*.tgz' | head -n 1)"
           test -n "$chart_archive"
           helm push "$chart_archive" "oci://ghcr.io/${{ steps.publish_meta.outputs.owner }}/charts"
+
+      - name: Register chart repository in Artifact Hub
+        id: artifacthub_repository
+        shell: bash
+        env:
+          ARTIFACTHUB_API_BASE: https://artifacthub.io/api/v1
+          ARTIFACTHUB_REPOSITORY_NAME: devplat
+          ARTIFACTHUB_REPOSITORY_DISPLAY_NAME: DevPlat
+          ARTIFACTHUB_REPOSITORY_URL: ${{ steps.publish_meta.outputs.chart_repository_url }}
+          HELM_KEY_ID: ${{ secrets.HELM_KEY_ID }}
+          HELM_KEY_SECRET: ${{ secrets.HELM_KEY_SECRET }}
+        run: |
+          tmp_dir="$(mktemp -d)"
+          trap 'rm -rf "$tmp_dir"' EXIT
+
+          payload="$(
+            jq -cn \
+              --arg name "$ARTIFACTHUB_REPOSITORY_NAME" \
+              --arg display_name "$ARTIFACTHUB_REPOSITORY_DISPLAY_NAME" \
+              --arg url "$ARTIFACTHUB_REPOSITORY_URL" \
+              '{kind: 0, name: $name, display_name: $display_name, url: $url}'
+          )"
+
+          update_status="$(
+            curl -sS \
+              -o "$tmp_dir/update-response.json" \
+              -w '%{http_code}' \
+              -X PUT \
+              -H "X-API-KEY-ID: ${HELM_KEY_ID}" \
+              -H "X-API-KEY-SECRET: ${HELM_KEY_SECRET}" \
+              -H 'Content-Type: application/json' \
+              --data "$payload" \
+              "${ARTIFACTHUB_API_BASE}/repositories/user/${ARTIFACTHUB_REPOSITORY_NAME}"
+          )"
+
+          if [[ "$update_status" != '204' ]]; then
+            create_status="$(
+              curl -sS \
+                -o "$tmp_dir/create-response.json" \
+                -w '%{http_code}' \
+                -X POST \
+                -H "X-API-KEY-ID: ${HELM_KEY_ID}" \
+                -H "X-API-KEY-SECRET: ${HELM_KEY_SECRET}" \
+                -H 'Content-Type: application/json' \
+                --data "$payload" \
+                "${ARTIFACTHUB_API_BASE}/repositories/user"
+            )"
+
+            if [[ "$create_status" != '201' && "$create_status" != '400' && "$create_status" != '409' ]]; then
+              cat "$tmp_dir/create-response.json" >&2
+              echo "Artifact Hub repository creation failed with status ${create_status}." >&2
+              exit 1
+            fi
+          fi
+
+          encoded_repository_url="$(jq -rn --arg value "$ARTIFACTHUB_REPOSITORY_URL" '$value | @uri')"
+          search_response="$(
+            curl -fsS \
+              -H "X-API-KEY-ID: ${HELM_KEY_ID}" \
+              -H "X-API-KEY-SECRET: ${HELM_KEY_SECRET}" \
+              "${ARTIFACTHUB_API_BASE}/repositories/search?kind=0&url=${encoded_repository_url}"
+          )"
+          repository_id="$(
+            printf '%s' "$search_response" \
+              | jq -r --arg url "$ARTIFACTHUB_REPOSITORY_URL" '.[] | select(.url == $url) | .repository_id' \
+              | head -n 1
+          )"
+          test -n "$repository_id"
+          echo "repository_id=${repository_id}" >> "$GITHUB_OUTPUT"
+
+      - name: Create Artifact Hub repository metadata
+        id: artifacthub_metadata
+        shell: bash
+        run: |
+          metadata_path="${RUNNER_TEMP}/artifacthub-repo.yml"
+          cat <<EOF > "$metadata_path"
+          repositoryID: ${{ steps.artifacthub_repository.outputs.repository_id }}
+          EOF
+          echo "metadata_path=${metadata_path}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR for ORAS
+        run: echo "${{ steps.devplat_bot_token.outputs.token }}" | oras login ghcr.io -u "${{ steps.devplat_bot_token.outputs.app-slug }}[bot]" --password-stdin
+
+      - name: Publish Artifact Hub metadata
+        run: |
+          oras push \
+            "ghcr.io/${{ steps.publish_meta.outputs.owner }}/charts/devplat:artifacthub.io" \
+            --config /dev/null:application/vnd.cncf.artifacthub.config.v1+yaml \
+            "${{ steps.artifacthub_metadata.outputs.metadata_path }}:application/vnd.cncf.artifacthub.repository-metadata.layer.v1.yaml"
