@@ -42,15 +42,6 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.merge_commit_sha }}
 
-      - name: Create DevPlat bot token
-        id: devplat_bot_token
-        uses: actions/create-github-app-token@v3
-        with:
-          client-id: ${{ secrets.BOT_CLIENT_ID }}
-          permission-packages: write
-          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
-          repositories: ${{ github.event.repository.name }}
-
       - name: Setup Node
         uses: actions/setup-node@v6.3.0
         with:
@@ -93,13 +84,13 @@ jobs:
       - name: Publish stable packages to GitHub Packages
         run: npm run release
         env:
-          NODE_AUTH_TOKEN: ${{ steps.devplat_bot_token.outputs.token }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_REGISTRY: https://npm.pkg.github.com
 
       - name: Publish missing stable packages to GitHub Packages
         run: node scripts/publish-unpublished-packages.mjs
         env:
-          NODE_AUTH_TOKEN: ${{ steps.devplat_bot_token.outputs.token }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_REGISTRY: https://npm.pkg.github.com
 
       - name: Upload stable coverage artifacts
@@ -146,15 +137,6 @@ jobs:
         with:
           ref: ${{ steps.resolved.outputs.ref }}
           fetch-depth: 0
-
-      - name: Create DevPlat bot token
-        id: devplat_bot_token
-        uses: actions/create-github-app-token@v3
-        with:
-          client-id: ${{ secrets.BOT_CLIENT_ID }}
-          permission-packages: write
-          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
-          repositories: ${{ github.event.repository.name }}
 
       - name: Derive artifact metadata
         id: artifact_meta
@@ -220,7 +202,7 @@ jobs:
       - name: Publish dev packages to GitHub Packages
         shell: bash
         env:
-          NODE_AUTH_TOKEN: ${{ steps.devplat_bot_token.outputs.token }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_REGISTRY: https://npm.pkg.github.com
         run: |
           jq -r '.packages[].dir' "${{ steps.prepare.outputs.manifest }}" | while read -r dir; do

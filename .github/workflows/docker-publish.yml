@@ -21,15 +21,6 @@ jobs:
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && github.ref || github.event.pull_request.merge_commit_sha }}
 
-      - name: Create DevPlat bot token
-        id: devplat_bot_token
-        uses: actions/create-github-app-token@v3
-        with:
-          client-id: ${{ secrets.BOT_CLIENT_ID }}
-          permission-packages: write
-          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
-          repositories: ${{ github.event.repository.name }}
-
       - name: Setup Node
         uses: actions/setup-node@v6.3.0
         with:
@@ -94,8 +85,8 @@ jobs:
         uses: docker/login-action@v4.1.0
         with:
           registry: ghcr.io
-          username: ${{ steps.devplat_bot_token.outputs.app-slug }}[bot]
-          password: ${{ steps.devplat_bot_token.outputs.token }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and publish image
         uses: docker/build-push-action@v7.0.0
@@ -105,4 +96,6 @@ jobs:
           push: true
           build-args: |
             NODE_VERSION=${{ steps.meta_vars.outputs.node_version }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
           tags: ${{ steps.meta_vars.outputs.image_tags }}
