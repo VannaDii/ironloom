@@ -11,4 +11,6 @@ attempting organization-scoped package writes that the installation is not
 allowed to perform. It also updates the package-versioning workflow to create
 release pull requests with the DevPlat GitHub App token so downstream
 automation sees the bot as the PR actor consistently, and skips the SonarCloud
-CI job for Dependabot pull requests that cannot access `SONAR_TOKEN`.
+CI job for Dependabot pull requests that cannot access `SONAR_TOKEN`. The
+Docker publish workflow now also applies the standard `org.opencontainers.*`
+labels so GHCR can associate the runtime image cleanly with the repository.
