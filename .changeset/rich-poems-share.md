@@ -10,4 +10,5 @@ repo-associated package artifacts only. It prevents the release automation from
 attempting organization-scoped package writes that the installation is not
 allowed to perform. It also updates the package-versioning workflow to create
 release pull requests with the DevPlat GitHub App token so downstream
-automation sees the bot as the PR actor consistently.
+automation sees the bot as the PR actor consistently, and skips the SonarCloud
+CI job for Dependabot pull requests that cannot access `SONAR_TOKEN`.
