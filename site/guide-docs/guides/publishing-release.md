@@ -31,9 +31,8 @@ DevPlat publishes through four primary surfaces:
 - sign the packaged chart in `helm-publish.yml` with `helm package --sign`
 - publish the `.prov` provenance file alongside the chart archive so OCI pushes include the Helm provenance layer automatically
 - keep the Helm signing secrets available to Actions:
-  - `HELM_SIGNING_KEY_NAME`
-  - `HELM_SIGNING_PRIVATE_KEY`
-  - `HELM_SIGNING_PASSPHRASE`
+  - `HELM_GPG_PRIVATE`
+  - `HELM_GPG_PUBLIC`
 
 ## Required Validation
 

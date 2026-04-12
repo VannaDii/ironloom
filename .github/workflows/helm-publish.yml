@@ -129,12 +129,11 @@ jobs:
         id: signing
         shell: bash
         env:
-          HELM_SIGNING_KEY_NAME: ${{ secrets.HELM_SIGNING_KEY_NAME }}
-          HELM_SIGNING_PRIVATE_KEY: ${{ secrets.HELM_SIGNING_PRIVATE_KEY }}
-          HELM_SIGNING_PASSPHRASE: ${{ secrets.HELM_SIGNING_PASSPHRASE }}
+          HELM_GPG_PRIVATE: ${{ secrets.HELM_GPG_PRIVATE }}
+          HELM_GPG_PUBLIC: ${{ secrets.HELM_GPG_PUBLIC }}
         run: |
-          if [[ -z "$HELM_SIGNING_KEY_NAME" || -z "$HELM_SIGNING_PRIVATE_KEY" || -z "$HELM_SIGNING_PASSPHRASE" ]]; then
-            echo 'Helm signing credentials are missing. Ensure HELM_SIGNING_KEY_NAME, HELM_SIGNING_PRIVATE_KEY, and HELM_SIGNING_PASSPHRASE are set.' >&2
+          if [[ -z "$HELM_GPG_PRIVATE" || -z "$HELM_GPG_PUBLIC" ]]; then
+            echo 'Helm signing credentials are missing. Ensure HELM_GPG_PRIVATE and HELM_GPG_PUBLIC are set.' >&2
             exit 1
           fi
 
@@ -143,22 +142,32 @@ jobs:
           chmod 700 "$GNUPGHOME"
 
           private_key_path="${RUNNER_TEMP}/helm-signing-private-key.asc"
+          public_key_path="${RUNNER_TEMP}/helm-signing-public-key.asc"
           secret_keyring_path="${RUNNER_TEMP}/helm-signing-secring.gpg"
           public_keyring_path="${RUNNER_TEMP}/helm-signing-pubring.gpg"
-          passphrase_path="${RUNNER_TEMP}/helm-signing-passphrase.txt"
 
-          printf '%s\n' "$HELM_SIGNING_PRIVATE_KEY" > "$private_key_path"
-          printf '%s' "$HELM_SIGNING_PASSPHRASE" > "$passphrase_path"
-          chmod 600 "$private_key_path" "$passphrase_path"
+          printf '%s\n' "$HELM_GPG_PRIVATE" > "$private_key_path"
+          printf '%s\n' "$HELM_GPG_PUBLIC" > "$public_key_path"
+          chmod 600 "$private_key_path" "$public_key_path"
 
           gpg --batch --import "$private_key_path"
-          gpg --batch --pinentry-mode loopback --passphrase-file "$passphrase_path" --export-secret-keys "$HELM_SIGNING_KEY_NAME" > "$secret_keyring_path"
-          gpg --batch --export "$HELM_SIGNING_KEY_NAME" > "$public_keyring_path"
+          gpg --batch --import "$public_key_path"
 
-          echo "key_name=${HELM_SIGNING_KEY_NAME}" >> "$GITHUB_OUTPUT"
+          key_name="$(
+            gpg --batch --list-secret-keys --with-colons \
+              | awk -F: '$1 == "uid" { print $10; exit }'
+          )"
+          if [[ -z "$key_name" ]]; then
+            echo 'Unable to resolve a signing key UID from HELM_GPG_PRIVATE.' >&2
+            exit 1
+          fi
+
+          gpg --batch --export-secret-keys "$key_name" > "$secret_keyring_path"
+          gpg --batch --export "$key_name" > "$public_keyring_path"
+
+          echo "key_name=${key_name}" >> "$GITHUB_OUTPUT"
           echo "secret_keyring=${secret_keyring_path}" >> "$GITHUB_OUTPUT"
           echo "public_keyring=${public_keyring_path}" >> "$GITHUB_OUTPUT"
-          echo "passphrase_file=${passphrase_path}" >> "$GITHUB_OUTPUT"
 
       - name: Package chart
         id: package_chart
@@ -168,7 +177,6 @@ jobs:
             --sign \
             --key "${{ steps.signing.outputs.key_name }}" \
             --keyring "${{ steps.signing.outputs.secret_keyring }}" \
-            --passphrase-file "${{ steps.signing.outputs.passphrase_file }}" \
             --destination .artifacts/helm
           chart_archive="$(find .artifacts/helm -maxdepth 1 -name 'devplat-*.tgz' | head -n 1)"
           test -n "$chart_archive"
