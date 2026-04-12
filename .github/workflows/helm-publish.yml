@@ -210,5 +210,6 @@ jobs:
         run: |
           oras push \
             "ghcr.io/${{ steps.publish_meta.outputs.owner }}/charts/devplat:artifacthub.io" \
+            --disable-path-validation \
             --config /dev/null:application/vnd.cncf.artifacthub.config.v1+yaml \
             "${{ steps.artifacthub_metadata.outputs.metadata_path }}:application/vnd.cncf.artifacthub.repository-metadata.layer.v1.yaml"
