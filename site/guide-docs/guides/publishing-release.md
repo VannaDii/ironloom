@@ -25,6 +25,16 @@ DevPlat publishes through four primary surfaces:
 - `helm-publish.yml`: packages and pushes the Helm chart to GHCR OCI with release-aligned chart and image tags for release merges and prerelease tags for non-release merges to `main`
 - `docs-deploy.yml`: builds and deploys the VitePress site through the Pages artifact flow
 
+## Helm Publication Requirements
+
+- keep `deploy/helm/devplat/values.schema.json` aligned with the chart values surface so `helm lint` and install-time validation fail fast on invalid inputs
+- sign the packaged chart in `helm-publish.yml` with `helm package --sign`
+- publish the `.prov` provenance file alongside the chart archive so OCI pushes include the Helm provenance layer automatically
+- keep the Helm signing secrets available to Actions:
+  - `HELM_SIGNING_KEY_NAME`
+  - `HELM_SIGNING_PRIVATE_KEY`
+  - `HELM_SIGNING_PASSPHRASE`
+
 ## Required Validation
 
 Before a release-facing change is considered ready:

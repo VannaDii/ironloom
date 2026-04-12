@@ -52,6 +52,6 @@ jobs:
         with:
           title: 'chore(release): version packages'
           commit: 'chore(release): version packages'
-          version: npm run version-packages && npm run prepare:generated
+          version: npm run version-packages
         env:
           GITHUB_TOKEN: ${{ steps.devplat_bot_token.outputs.token }}
