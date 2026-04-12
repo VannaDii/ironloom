@@ -8,4 +8,6 @@ This change switches the Docker, Helm, and GitHub Packages release workflows to
 the repository `GITHUB_TOKEN` publish path so jobs create or update
 repo-associated package artifacts only. It prevents the release automation from
 attempting organization-scoped package writes that the installation is not
-allowed to perform.
+allowed to perform. It also updates the package-versioning workflow to create
+release pull requests with the DevPlat GitHub App token so downstream
+automation sees the bot as the PR actor consistently.
