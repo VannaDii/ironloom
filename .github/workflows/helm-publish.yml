@@ -149,7 +149,13 @@ jobs:
                 "${ARTIFACTHUB_API_BASE}/repositories/user"
             )"
 
-            if [[ "$create_status" != '201' && "$create_status" != '400' && "$create_status" != '409' ]]; then
+            if [[ "$create_status" == '400' ]]; then
+              if ! grep -Eiq 'already exists|already been taken|duplicate' "$tmp_dir/create-response.json"; then
+                cat "$tmp_dir/create-response.json" >&2
+                echo 'Artifact Hub repository creation returned HTTP 400 without an expected duplicate-repository error.' >&2
+                exit 1
+              fi
+            elif [[ "$create_status" != '201' && "$create_status" != '409' ]]; then
               cat "$tmp_dir/create-response.json" >&2
               echo "Artifact Hub repository creation failed with status ${create_status}." >&2
               exit 1
@@ -168,7 +174,12 @@ jobs:
               | jq -r --arg url "$ARTIFACTHUB_REPOSITORY_URL" '.[] | select(.url == $url) | .repository_id' \
               | head -n 1
           )"
-          test -n "$repository_id"
+          if [[ -z "$repository_id" ]]; then
+            echo "Artifact Hub repository lookup did not return a repository_id for URL: ${ARTIFACTHUB_REPOSITORY_URL}" >&2
+            echo 'Artifact Hub search response:' >&2
+            printf '%s\n' "$search_response" >&2
+            exit 1
+          fi
           echo "repository_id=${repository_id}" >> "$GITHUB_OUTPUT"
 
       - name: Create Artifact Hub repository metadata
