@@ -15,7 +15,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Create DevPlat bot token
+        id: devplat_bot_token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.BOT_CLIENT_ID }}
+          permission-contents: write
+          permission-pull-requests: write
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          repositories: ${{ github.event.repository.name }}
+
       - uses: actions/checkout@v6.0.2
+        with:
+          token: ${{ steps.devplat_bot_token.outputs.token }}
 
       - name: Setup Node
         uses: actions/setup-node@v6.3.0
@@ -30,11 +42,16 @@ jobs:
       - name: Verify Node alignment
         run: npm run verify:node
 
+      - name: Configure git identity
+        run: |
+          git config user.name "${{ steps.devplat_bot_token.outputs.app-slug }}[bot]"
+          git config user.email "${{ steps.devplat_bot_token.outputs.app-slug }}[bot]@users.noreply.github.com"
+
       - name: Create or update release PR
         uses: changesets/action@v1.7.0
         with:
-          title: "chore(release): version packages"
-          commit: "chore(release): version packages"
+          title: 'chore(release): version packages'
+          commit: 'chore(release): version packages'
           version: npm run version-packages
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.devplat_bot_token.outputs.token }}

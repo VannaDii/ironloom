@@ -4,8 +4,13 @@
 Keep the publish workflows scoped to the repository package surfaces instead of
 requesting organization-wide package write access.
 
-This change narrows the GitHub App token used by the Docker, Helm, and GitHub
-Packages release workflows to the current repository so publish jobs create or
-update repo-linked package artifacts only. It prevents the release automation
-from attempting organization-scoped package writes that the installation is not
-allowed to perform.
+This change switches the Docker, Helm, and GitHub Packages release workflows to
+the repository `GITHUB_TOKEN` publish path so jobs create or update
+repo-associated package artifacts only. It prevents the release automation from
+attempting organization-scoped package writes that the installation is not
+allowed to perform. It also updates the package-versioning workflow to create
+release pull requests with the DevPlat GitHub App token so downstream
+automation sees the bot as the PR actor consistently, and skips the SonarCloud
+CI job for Dependabot pull requests that cannot access `SONAR_TOKEN`. The
+Docker publish workflow now also applies the standard `org.opencontainers.*`
+labels so GHCR can associate the runtime image cleanly with the repository.

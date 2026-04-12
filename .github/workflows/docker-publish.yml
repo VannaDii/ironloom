@@ -21,15 +21,6 @@ jobs:
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && github.ref || github.event.pull_request.merge_commit_sha }}
 
-      - name: Create DevPlat bot token
-        id: devplat_bot_token
-        uses: actions/create-github-app-token@v3
-        with:
-          client-id: ${{ secrets.BOT_CLIENT_ID }}
-          permission-packages: write
-          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
-          repositories: ${{ github.event.repository.name }}
-
       - name: Setup Node
         uses: actions/setup-node@v6.3.0
         with:
@@ -49,13 +40,17 @@ jobs:
         env:
           PR_HEAD_REF: ${{ github.event.pull_request.head.ref || '' }}
         run: |
+          repository_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
           echo "node_version=$(tr -d 'v' < .nvmrc)" >> "$GITHUB_OUTPUT"
           registry_owner="${GITHUB_REPOSITORY_OWNER,,}"
           echo "registry_owner=${registry_owner}" >> "$GITHUB_OUTPUT"
+          echo "repository_url=${repository_url}" >> "$GITHUB_OUTPUT"
           package_version="$(
             node --input-type=module -e "import { readFileSync } from 'node:fs'; console.log(JSON.parse(readFileSync('packages/openclaw/package.json', 'utf8')).version);"
           )"
           echo "package_version=$package_version" >> "$GITHUB_OUTPUT"
+          full_sha="$(git rev-parse HEAD)"
+          echo "full_sha=${full_sha}" >> "$GITHUB_OUTPUT"
           short_sha="$(git rev-parse --short=12 HEAD)"
           echo "short_sha=${short_sha}" >> "$GITHUB_OUTPUT"
 
@@ -94,8 +89,8 @@ jobs:
         uses: docker/login-action@v4.1.0
         with:
           registry: ghcr.io
-          username: ${{ steps.devplat_bot_token.outputs.app-slug }}[bot]
-          password: ${{ steps.devplat_bot_token.outputs.token }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and publish image
         uses: docker/build-push-action@v7.0.0
@@ -105,4 +100,12 @@ jobs:
           push: true
           build-args: |
             NODE_VERSION=${{ steps.meta_vars.outputs.node_version }}
+          labels: |
+            org.opencontainers.image.title=devplat-openclaw-runtime
+            org.opencontainers.image.description=OpenClaw adapter runtime image for DevPlat.
+            org.opencontainers.image.url=${{ steps.meta_vars.outputs.repository_url }}
+            org.opencontainers.image.source=${{ steps.meta_vars.outputs.repository_url }}
+            org.opencontainers.image.revision=${{ steps.meta_vars.outputs.full_sha }}
+            org.opencontainers.image.version=${{ steps.meta_vars.outputs.image_version }}
+            org.opencontainers.image.licenses=MIT
           tags: ${{ steps.meta_vars.outputs.image_tags }}
