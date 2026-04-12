@@ -76,42 +76,46 @@ const valuesYamlPath = resolve(outputDirectory, 'values.yaml');
 const chartYaml = await readFile(chartYamlPath, 'utf8');
 const valuesYaml = await readFile(valuesYamlPath, 'utf8');
 
-const updatedChartYaml = replaceOne(
-  replaceOne(
-    replaceOne(
-      replaceOne(
-        replaceOne(
-          replaceOne(
-            replaceOne(
-              chartYaml,
-              /^version:\s.*$/mu,
-              `version: ${JSON.stringify(chartVersion)}`,
-              'chart version',
-            ),
-            /^appVersion:\s.*$/mu,
-            `appVersion: ${JSON.stringify(appVersion)}`,
-            'chart appVersion',
-          ),
-          /^ {2}artifacthub\.io\/prerelease:\s.*$/mu,
-          `  artifacthub.io/prerelease: ${JSON.stringify(artifacthubPrerelease)}`,
-          'Artifact Hub prerelease flag',
-        ),
-        /^ {2}artifacthub\.io\/containsSecurityUpdates:\s.*$/mu,
-        `  artifacthub.io/containsSecurityUpdates: ${JSON.stringify(artifacthubContainsSecurityUpdates)}`,
-        'Artifact Hub security update flag',
-      ),
-      /^ {4}- kind:\s.*$/mu,
-      `    - kind: ${artifacthubChangeKind}`,
-      'Artifact Hub change kind',
-    ),
+let updatedChartYaml = chartYaml;
+for (const [pattern, replacement, label] of [
+  [
+    /^version:\s.*$/mu,
+    `version: ${JSON.stringify(chartVersion)}`,
+    'chart version',
+  ],
+  [
+    /^appVersion:\s.*$/mu,
+    `appVersion: ${JSON.stringify(appVersion)}`,
+    'chart appVersion',
+  ],
+  [
+    /^ {2}artifacthub\.io\/prerelease:\s.*$/mu,
+    `  artifacthub.io/prerelease: ${JSON.stringify(artifacthubPrerelease)}`,
+    'Artifact Hub prerelease flag',
+  ],
+  [
+    /^ {2}artifacthub\.io\/containsSecurityUpdates:\s.*$/mu,
+    `  artifacthub.io/containsSecurityUpdates: ${JSON.stringify(artifacthubContainsSecurityUpdates)}`,
+    'Artifact Hub security update flag',
+  ],
+  [
+    /^ {4}- kind:\s.*$/mu,
+    `    - kind: ${artifacthubChangeKind}`,
+    'Artifact Hub change kind',
+  ],
+  [
     /^ {6}description:\s.*$/mu,
     `      description: ${JSON.stringify(artifacthubChangeDescription)}`,
     'Artifact Hub change description',
-  ),
-  /^ {6}image:\s.*$/mu,
-  `      image: ${JSON.stringify(artifacthubImage)}`,
-  'Artifact Hub image reference',
-);
+  ],
+  [
+    /^ {6}image:\s.*$/mu,
+    `      image: ${JSON.stringify(artifacthubImage)}`,
+    'Artifact Hub image reference',
+  ],
+]) {
+  updatedChartYaml = replaceOne(updatedChartYaml, pattern, replacement, label);
+}
 const updatedValuesYaml = replaceOne(
   valuesYaml,
   /^ {2}tag:\s.*$/mu,

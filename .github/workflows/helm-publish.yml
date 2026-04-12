@@ -88,7 +88,8 @@ jobs:
           echo "artifacthub_image=ghcr.io/${owner}/devplat-openclaw-runtime:${image_tag}" >> "$GITHUB_OUTPUT"
           {
             echo "artifacthub_change_description<<EOF"
-            printf '%s\n' "$artifacthub_change_description"
+            printf '%s' "$artifacthub_change_description"
+            echo
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
           echo "chart_repository_url=oci://ghcr.io/${owner}/charts/devplat" >> "$GITHUB_OUTPUT"
