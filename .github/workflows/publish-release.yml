@@ -47,9 +47,9 @@ jobs:
         uses: actions/create-github-app-token@v3
         with:
           client-id: ${{ secrets.BOT_CLIENT_ID }}
-          owner: ${{ github.repository_owner }}
           permission-packages: write
           private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          repositories: ${{ github.event.repository.name }}
 
       - name: Setup Node
         uses: actions/setup-node@v6.3.0
@@ -152,9 +152,9 @@ jobs:
         uses: actions/create-github-app-token@v3
         with:
           client-id: ${{ secrets.BOT_CLIENT_ID }}
-          owner: ${{ github.repository_owner }}
           permission-packages: write
           private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          repositories: ${{ github.event.repository.name }}
 
       - name: Derive artifact metadata
         id: artifact_meta
