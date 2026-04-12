@@ -116,6 +116,11 @@ jobs:
           tmp_dir="$(mktemp -d)"
           trap 'rm -rf "$tmp_dir"' EXIT
 
+          if [[ -z "$HELM_KEY_ID" || -z "$HELM_KEY_SECRET" ]]; then
+            echo 'Artifact Hub credentials are missing. Ensure HELM_KEY_ID and HELM_KEY_SECRET are set.' >&2
+            exit 1
+          fi
+
           payload="$(
             jq -cn \
               --arg name "$ARTIFACTHUB_REPOSITORY_NAME" \
@@ -124,7 +129,7 @@ jobs:
               '{kind: 0, name: $name, display_name: $display_name, url: $url}'
           )"
 
-          update_status="$(
+          if ! update_status="$(
             curl -sS \
               -o "$tmp_dir/update-response.json" \
               -w '%{http_code}' \
@@ -134,10 +139,14 @@ jobs:
               -H 'Content-Type: application/json' \
               --data "$payload" \
               "${ARTIFACTHUB_API_BASE}/repositories/user/${ARTIFACTHUB_REPOSITORY_NAME}"
-          )"
+          )"; then
+            echo 'Artifact Hub repository update request failed.' >&2
+            cat "$tmp_dir/update-response.json" >&2
+            exit 1
+          fi
 
-          if [[ "$update_status" != '204' ]]; then
-            create_status="$(
+          if [[ "$update_status" == '404' ]]; then
+            if ! create_status="$(
               curl -sS \
                 -o "$tmp_dir/create-response.json" \
                 -w '%{http_code}' \
@@ -147,7 +156,11 @@ jobs:
                 -H 'Content-Type: application/json' \
                 --data "$payload" \
                 "${ARTIFACTHUB_API_BASE}/repositories/user"
-            )"
+            )"; then
+              echo 'Artifact Hub repository creation request failed.' >&2
+              cat "$tmp_dir/create-response.json" >&2
+              exit 1
+            fi
 
             if [[ "$create_status" == '400' ]]; then
               if ! grep -Eiq 'already exists|already been taken|duplicate' "$tmp_dir/create-response.json"; then
@@ -160,15 +173,22 @@ jobs:
               echo "Artifact Hub repository creation failed with status ${create_status}." >&2
               exit 1
             fi
+          elif [[ "$update_status" != '204' ]]; then
+            cat "$tmp_dir/update-response.json" >&2
+            echo "Artifact Hub repository update failed with status ${update_status}." >&2
+            exit 1
           fi
 
           encoded_repository_url="$(jq -rn --arg value "$ARTIFACTHUB_REPOSITORY_URL" '$value | @uri')"
-          search_response="$(
+          if ! search_response="$(
             curl -fsS \
               -H "X-API-KEY-ID: ${HELM_KEY_ID}" \
               -H "X-API-KEY-SECRET: ${HELM_KEY_SECRET}" \
               "${ARTIFACTHUB_API_BASE}/repositories/search?kind=0&url=${encoded_repository_url}"
-          )"
+          )"; then
+            echo 'Artifact Hub repository lookup request failed.' >&2
+            exit 1
+          fi
           repository_id="$(
             printf '%s' "$search_response" \
               | jq -r --arg url "$ARTIFACTHUB_REPOSITORY_URL" '.[] | select(.url == $url) | .repository_id' \
