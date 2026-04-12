@@ -11,7 +11,7 @@ on:
         required: false
         type: string
       dist-tag:
-        description: npm dist-tag for the dev build.
+        description: GitHub Packages dist-tag for the dev build.
         required: false
         default: dev
         type: string
@@ -33,7 +33,7 @@ permissions:
 
 jobs:
   publish:
-    name: Publish Release
+    name: Publish GitHub Packages Release
     if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && startsWith(github.event.pull_request.head.ref, 'changeset-release/')
     runs-on: ubuntu-latest
 
@@ -90,15 +90,17 @@ jobs:
       - name: Build
         run: npm run build:workspace
 
-      - name: Publish stable packages
+      - name: Publish stable packages to GitHub Packages
         run: npm run release
         env:
           NODE_AUTH_TOKEN: ${{ steps.devplat_bot_token.outputs.token }}
+          NPM_CONFIG_REGISTRY: https://npm.pkg.github.com
 
-      - name: Publish missing stable packages
+      - name: Publish missing stable packages to GitHub Packages
         run: node scripts/publish-unpublished-packages.mjs
         env:
           NODE_AUTH_TOKEN: ${{ steps.devplat_bot_token.outputs.token }}
+          NPM_CONFIG_REGISTRY: https://npm.pkg.github.com
 
       - name: Upload stable coverage artifacts
         if: always()
@@ -124,7 +126,7 @@ jobs:
             packages/openclaw/openclaw.plugin.json
 
   publish-dev-build:
-    name: Publish Dev Build
+    name: Publish GitHub Packages Dev Build
     if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && !startsWith(github.event.pull_request.head.ref, 'changeset-release/'))
     runs-on: ubuntu-latest
 
@@ -215,13 +217,14 @@ jobs:
           echo "suffix=${suffix}" >> "$GITHUB_OUTPUT"
           echo "manifest=${RUNNER_TEMP}/dev-publish-manifest.json" >> "$GITHUB_OUTPUT"
 
-      - name: Publish dev packages
+      - name: Publish dev packages to GitHub Packages
         shell: bash
         env:
           NODE_AUTH_TOKEN: ${{ steps.devplat_bot_token.outputs.token }}
+          NPM_CONFIG_REGISTRY: https://npm.pkg.github.com
         run: |
           jq -r '.packages[].dir' "${{ steps.prepare.outputs.manifest }}" | while read -r dir; do
-            npm publish --tag "${{ github.event.inputs.dist-tag || 'dev' }}" "$dir"
+            npm publish --registry "https://npm.pkg.github.com" --tag "${{ github.event.inputs.dist-tag || 'dev' }}" "$dir"
           done
 
       - name: Upload dev coverage artifacts
