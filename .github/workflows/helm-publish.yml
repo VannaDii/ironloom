@@ -68,10 +68,10 @@ jobs:
           fi
 
           combined_change_context="${PR_TITLE}"$'\n'"${PR_BODY}"
-          if grep -Eiq 'security|vulnerab|cve' <<< "$combined_change_context"; then
+          if grep -Eiq '(^|[^[:alnum:]_])(security|vulnerab[a-z]*|cve)([^[:alnum:]_]|$)' <<< "$combined_change_context"; then
             artifacthub_change_kind='security'
             contains_security_updates='true'
-          elif grep -Eiq 'fix|bug|regression|patch' <<< "$combined_change_context"; then
+          elif grep -Eiq '(^|[^[:alnum:]_])(fix(e[sd])?|bug(s|fix(es|ed)?)?|regression(s)?|patch(es|ed)?)([^[:alnum:]_]|$)' <<< "$combined_change_context"; then
             artifacthub_change_kind='fixed'
             contains_security_updates='false'
           else
