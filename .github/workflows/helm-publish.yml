@@ -197,10 +197,10 @@ jobs:
         id: artifacthub_metadata
         shell: bash
         run: |
-          metadata_path="${RUNNER_TEMP}/artifacthub-repo.yml"
-          cat <<EOF > "$metadata_path"
-          repositoryID: ${{ steps.artifacthub_repository.outputs.repository_id }}
-          EOF
+          metadata_path=".artifacts/helm/artifacthub-repo.yml"
+          sed \
+            "s/__ARTIFACTHUB_REPOSITORY_ID__/${{ steps.artifacthub_repository.outputs.repository_id }}/" \
+            deploy/helm/devplat/artifacthub-repo.yml > "$metadata_path"
           echo "metadata_path=${metadata_path}" >> "$GITHUB_OUTPUT"
 
       - name: Log in to GHCR for ORAS
@@ -210,6 +210,5 @@ jobs:
         run: |
           oras push \
             "ghcr.io/${{ steps.publish_meta.outputs.owner }}/charts/devplat:artifacthub.io" \
-            --disable-path-validation \
             --config /dev/null:application/vnd.cncf.artifacthub.config.v1+yaml \
             "${{ steps.artifacthub_metadata.outputs.metadata_path }}:application/vnd.cncf.artifacthub.repository-metadata.layer.v1.yaml"

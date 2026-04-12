@@ -1,9 +1,9 @@
 ---
 ---
 
-Fix the Helm Artifact Hub metadata publish step so ORAS accepts the generated
-repository metadata file path during workflow execution.
+Fix the Helm Artifact Hub metadata publish step by rendering a repository-owned
+`artifacthub-repo.yml` file inside the workspace before the ORAS upload.
 
-This change adds the explicit ORAS path-validation override required for the
-workflow's temporary `artifacthub-repo.yml` file, preventing the Helm publish
-job from failing after a successful chart push.
+This change adds a tracked Artifact Hub metadata template and fills in the
+repository ID during the workflow so ORAS can keep its normal path validation
+enabled while publishing the metadata artifact after a successful chart push.
