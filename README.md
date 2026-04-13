@@ -1,4 +1,6 @@
-# DevPlat
+[![CI](https://github.com/VannaDii/devplat/actions/workflows/ci.yml/badge.svg)](https://github.com/VannaDii/devplat/actions/workflows/ci.yml) [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=vannadii_devplat&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=vannadii_devplat) [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=vannadii_devplat&metric=coverage)](https://sonarcloud.io/summary/new_code?id=vannadii_devplat) [![Bugs](https://sonarcloud.io/api/project_badges/measure?project=vannadii_devplat&metric=bugs)](https://sonarcloud.io/summary/new_code?id=vannadii_devplat) [![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/devplat)](https://artifacthub.io/packages/search?repo=devplat)
+
+# Development Platform
 
 DevPlat is a Discord-first autonomous software-delivery platform built as a strict native-ESM TypeScript monorepo. Platform packages own domain logic, orchestration, contracts, and persistence; `@vannadii/devplat-openclaw` exposes that platform into OpenClaw; Discord operates as the primary human control plane; GitHub remains the system of record for specs, pull requests, reviews, and merge history.
 
