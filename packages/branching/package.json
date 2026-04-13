@@ -1,6 +1,6 @@
 {
   "name": "@vannadii/devplat-branching",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Downstream branch coordination contracts.",
   "license": "MIT",
   "type": "module",
@@ -26,8 +26,8 @@
   "dependencies": {
     "io-ts": "2.2.22",
     "@vannadii/devplat-core": "0.0.0",
-    "@vannadii/devplat-prs": "0.0.0",
-    "@vannadii/devplat-worktrees": "0.0.0"
+    "@vannadii/devplat-prs": "0.1.0",
+    "@vannadii/devplat-worktrees": "0.1.0"
   },
   "repository": {
     "type": "git",

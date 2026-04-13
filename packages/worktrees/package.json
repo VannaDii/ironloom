@@ -1,6 +1,6 @@
 {
   "name": "@vannadii/devplat-worktrees",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Worktree allocation and synchronization contracts.",
   "license": "MIT",
   "type": "module",

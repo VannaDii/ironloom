@@ -1,6 +1,6 @@
 {
   "name": "@vannadii/devplat-prs",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Pull request lifecycle management contracts.",
   "license": "MIT",
   "type": "module",

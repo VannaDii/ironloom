@@ -1,6 +1,6 @@
 {
   "name": "@vannadii/devplat-config",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Configuration loading and normalization for DevPlat.",
   "license": "MIT",
   "type": "module",
