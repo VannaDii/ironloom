@@ -123,18 +123,93 @@ jobs:
         run: |
           test -f "${{ steps.stage.outputs.chart_dir }}/README.md"
           test -f "${{ steps.stage.outputs.chart_dir }}/LICENSE"
+          test -f "${{ steps.stage.outputs.chart_dir }}/values.schema.json"
+
+      - name: Prepare Helm signing material
+        id: signing
+        shell: bash
+        env:
+          HELM_GPG_PRIVATE: ${{ secrets.HELM_GPG_PRIVATE }}
+          HELM_GPG_PUBLIC: ${{ secrets.HELM_GPG_PUBLIC }}
+        run: |
+          if [[ -z "$HELM_GPG_PRIVATE" || -z "$HELM_GPG_PUBLIC" ]]; then
+            echo 'Helm signing credentials are missing. Ensure HELM_GPG_PRIVATE and HELM_GPG_PUBLIC are set.' >&2
+            exit 1
+          fi
+
+          export GNUPGHOME="${RUNNER_TEMP}/helm-signing-gnupg"
+          mkdir -p "$GNUPGHOME"
+          chmod 700 "$GNUPGHOME"
+
+          private_key_path="${RUNNER_TEMP}/helm-signing-private-key.asc"
+          public_key_path="${RUNNER_TEMP}/helm-signing-public-key.asc"
+          secret_keyring_path="${RUNNER_TEMP}/helm-signing-secring.gpg"
+          public_keyring_path="${RUNNER_TEMP}/helm-signing-pubring.gpg"
+
+          printf '%s\n' "$HELM_GPG_PRIVATE" > "$private_key_path"
+          printf '%s\n' "$HELM_GPG_PUBLIC" > "$public_key_path"
+          chmod 600 "$private_key_path" "$public_key_path"
+
+          gpg --batch --import "$private_key_path"
+          gpg --batch --import "$public_key_path"
+
+          key_name="$(
+            gpg --batch --list-secret-keys --with-colons \
+              | awk -F: '$1 == "uid" { print $10; exit }'
+          )"
+          if [[ -z "$key_name" ]]; then
+            echo 'Unable to resolve a signing key UID from HELM_GPG_PRIVATE.' >&2
+            exit 1
+          fi
+
+          gpg --batch --export-secret-keys "$key_name" > "$secret_keyring_path"
+          gpg --batch --export "$key_name" > "$public_keyring_path"
+
+          echo "key_name=${key_name}" >> "$GITHUB_OUTPUT"
+          echo "secret_keyring=${secret_keyring_path}" >> "$GITHUB_OUTPUT"
+          echo "public_keyring=${public_keyring_path}" >> "$GITHUB_OUTPUT"
 
       - name: Package chart
+        id: package_chart
         run: |
           mkdir -p .artifacts/helm
-          helm package "${{ steps.stage.outputs.chart_dir }}" --destination .artifacts/helm
+          helm package "${{ steps.stage.outputs.chart_dir }}" \
+            --sign \
+            --key "${{ steps.signing.outputs.key_name }}" \
+            --keyring "${{ steps.signing.outputs.secret_keyring }}" \
+            --destination .artifacts/helm
+          chart_archive="$(find .artifacts/helm -maxdepth 1 -name 'devplat-*.tgz' | head -n 1)"
+          test -n "$chart_archive"
+          echo "chart_archive=${chart_archive}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify packaged chart contents
+        run: |
+          tar -tzf "${{ steps.package_chart.outputs.chart_archive }}" | sort > "${RUNNER_TEMP}/chart-files.txt"
+          for expected_path in \
+            devplat/Chart.yaml \
+            devplat/README.md \
+            devplat/LICENSE \
+            devplat/values.schema.json \
+            devplat/values.yaml \
+            devplat/templates/deployment.yaml
+          do
+            grep -Fx "$expected_path" "${RUNNER_TEMP}/chart-files.txt"
+          done
+
+          test -f "${{ steps.package_chart.outputs.chart_archive }}.prov"
+          tar -xOf "${{ steps.package_chart.outputs.chart_archive }}" devplat/README.md >/dev/null
+
+      - name: Verify chart provenance
+        run: |
+          helm verify "${{ steps.package_chart.outputs.chart_archive }}" \
+            --keyring "${{ steps.signing.outputs.public_keyring }}"
 
       - name: Log in to GHCR OCI registry
         run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
 
       - name: Publish chart
         run: |
-          chart_archive="$(find .artifacts/helm -maxdepth 1 -name 'devplat-*.tgz' | head -n 1)"
+          chart_archive="${{ steps.package_chart.outputs.chart_archive }}"
           test -n "$chart_archive"
           helm push "$chart_archive" "oci://ghcr.io/${{ steps.publish_meta.outputs.owner }}/charts"
 
@@ -256,6 +331,11 @@ jobs:
             "$metadata_path" \
             "${{ steps.artifacthub_repository.outputs.repository_id }}"
           echo "metadata_path=${metadata_path}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify Artifact Hub metadata payload
+        run: |
+          test -f "${{ steps.artifacthub_metadata.outputs.metadata_path }}"
+          grep -E '^repositoryID: [0-9a-f-]+$' "${{ steps.artifacthub_metadata.outputs.metadata_path }}"
 
       - name: Log in to GHCR for ORAS
         run: echo "${{ secrets.GITHUB_TOKEN }}" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
