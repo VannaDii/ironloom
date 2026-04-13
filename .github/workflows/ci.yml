@@ -101,7 +101,7 @@ jobs:
             'packages/*/schemas/*.schema.json'
 
       - name: Upload Generated Artifacts
-        uses: actions/upload-artifact@v7.0.0
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: schemas-${{ github.run_id }}-${{ github.run_attempt }}
           retention-days: 14
@@ -162,7 +162,7 @@ jobs:
         run: npm run test:coverage:workspace
 
       - name: Upload Coverage Artifacts
-        uses: actions/upload-artifact@v7.0.0
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: coverage-${{ github.run_id }}-${{ github.run_attempt }}
           retention-days: 14
@@ -198,7 +198,7 @@ jobs:
         run: npm run build:workspace
 
       - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v7.0.0
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: build-${{ github.run_id }}-${{ github.run_attempt }}
           retention-days: 14
@@ -230,7 +230,7 @@ jobs:
         run: npm run docs:build
 
       - name: Upload Docs Artifact
-        uses: actions/upload-artifact@v7.0.0
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: docs-${{ github.run_id }}-${{ github.run_attempt }}
           retention-days: 14
