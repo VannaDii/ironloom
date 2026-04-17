@@ -158,6 +158,9 @@ jobs:
           name: schemas-${{ github.run_id }}-${{ github.run_attempt }}
           path: .
 
+      - name: Run Live Lab Preflight Tests
+        run: npm run test:openclaw:live-lab:preflight
+
       - name: Test Coverage
         run: npm run test:coverage:workspace
 
