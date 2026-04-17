@@ -39,6 +39,11 @@ export const REQUIRED_INSTRUCTION_FILES = [
   'site/guide-docs/guides/docker-usage.md',
   'site/guide-docs/guides/examples.md',
   'site/guide-docs/guides/helm-k3s-deployment.md',
+  'site/guide-docs/guides/live-test-cleanup-and-concurrency.md',
+  'site/guide-docs/guides/live-test-discord-setup.md',
+  'site/guide-docs/guides/live-test-github-setup.md',
+  'site/guide-docs/guides/live-test-lab.md',
+  'site/guide-docs/guides/live-test-sonar-setup.md',
   'site/guide-docs/guides/openclaw-setup.md',
   'site/guide-docs/guides/operator-guide.md',
   'site/guide-docs/guides/package-reference.md',
@@ -55,6 +60,8 @@ export const REQUIRED_WORKFLOW_FILES = [
   '.github/workflows/docker-publish.yml',
   '.github/workflows/docs-deploy.yml',
   '.github/workflows/helm-publish.yml',
+  '.github/workflows/openclaw-live-lab-janitor.yml',
+  '.github/workflows/openclaw-live-lab.yml',
   '.github/workflows/publish-release.yml',
   '.github/workflows/release.yml',
   '.github/workflows/sonar-bootstrap-check.yml',
@@ -685,6 +692,7 @@ function buildRequiredTextRules({
     {
       path: 'site/guide-docs/index.md',
       requiredText: [
+        '[Live Test Lab](./guides/live-test-lab.md)',
         '[Platform Lifecycle](./guides/platform-lifecycle.md)',
         '[Quality and Performance Policy](./guides/quality-performance-policy.md)',
       ],
@@ -694,6 +702,11 @@ function buildRequiredTextRules({
 
 function validateDocsNavigation(configText, errors) {
   const requiredLinks = [
+    '/guides/live-test-cleanup-and-concurrency',
+    '/guides/live-test-discord-setup',
+    '/guides/live-test-github-setup',
+    '/guides/live-test-lab',
+    '/guides/live-test-sonar-setup',
     '/guides/platform-lifecycle',
     '/guides/quality-performance-policy',
     '/guides/package-reference',
@@ -705,6 +718,7 @@ function validateDocsNavigation(configText, errors) {
 
   for (const link of requiredLinks) {
     const minimumOccurrences =
+      link === '/guides/live-test-lab' ||
       link === '/guides/platform-lifecycle' ||
       link === '/guides/quality-performance-policy'
         ? 2

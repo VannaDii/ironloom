@@ -207,6 +207,39 @@ jobs:
             packages/*/schemas/*.schema.json
             packages/openclaw/openclaw.plugin.json
 
+  openclaw-hermetic-deep-test:
+    name: OpenClaw Hermetic Deep Test
+    runs-on: ubuntu-latest
+    needs:
+      - build
+
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - name: Setup Node
+        uses: actions/setup-node@v6.3.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install Deps
+        run: npm ci
+
+      - name: Verify Node Alignment
+        run: npm run verify:node
+
+      - name: Run Hermetic Deep Test
+        run: node scripts/openclaw-deep-test.mjs --mode hermetic --report-dir "$RUNNER_TEMP/openclaw-deep"
+
+      - name: Upload Hermetic Deep Test Artifact
+        if: failure()
+        uses: actions/upload-artifact@v7.0.0
+        with:
+          name: openclaw-deep-${{ github.run_id }}-${{ github.run_attempt }}
+          retention-days: 14
+          path: ${{ runner.temp }}/openclaw-deep
+
   docs:
     name: Upload Doc Artifacts
     runs-on: ubuntu-latest

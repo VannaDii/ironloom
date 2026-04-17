@@ -32,6 +32,7 @@ Compatibility validation runs on Linux only against the latest stable TypeScript
 npm run check:repo
 npm run check:pre-push
 npm run test:coverage
+npm run test:openclaw:deep
 npm run docs:build
 ```
 
@@ -44,6 +45,7 @@ npm run docs:build
 - [`.github/instructions/`](./.github/instructions): platform, architecture, performance, compatibility, release, testing, schema, review, and operator policies
 - [`site/guide-docs/guides/platform-lifecycle.md`](./site/guide-docs/guides/platform-lifecycle.md): end-to-end platform flow
 - [`site/guide-docs/guides/quality-performance-policy.md`](./site/guide-docs/guides/quality-performance-policy.md): complete-change and performance expectations
+- [`site/guide-docs/guides/live-test-lab.md`](./site/guide-docs/guides/live-test-lab.md): dispatchable live end-to-end test lane and setup references
 
 ## Distribution Surfaces
 

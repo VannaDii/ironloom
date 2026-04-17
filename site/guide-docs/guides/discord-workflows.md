@@ -75,3 +75,8 @@ Project-management lookups must stay read-only. Any lifecycle-changing action st
 - no context leakage between threads
 - thread == unit of work
 - missing or ambiguous thread context must fail closed rather than guess
+
+## Related Guides
+
+- [Live Test Lab](./live-test-lab.md)
+- [Live Test Discord Setup](./live-test-discord-setup.md)
