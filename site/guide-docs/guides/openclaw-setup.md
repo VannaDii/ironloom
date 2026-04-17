@@ -46,3 +46,8 @@ Required foundation-phase tool coverage includes:
 - pull request update, merge, and dependent rebase execution semantics
 
 Keep required tool names documented in `packages/openclaw/README.md`, keep the manifest deterministic, and keep Discord-related tools thread-aware.
+
+## Related Guides
+
+- [Live Test Lab](./live-test-lab.md)
+- [Operator Guide](./operator-guide.md)

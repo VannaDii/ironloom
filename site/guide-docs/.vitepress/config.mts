@@ -16,6 +16,7 @@ export default defineConfig({
       { text: 'Lifecycle', link: '/guides/platform-lifecycle' },
       { text: 'Architecture', link: '/guides/architecture' },
       { text: 'Quality', link: '/guides/quality-performance-policy' },
+      { text: 'Live Lab', link: '/guides/live-test-lab' },
       { text: 'Operator', link: '/guides/operator-guide' },
       { text: 'Developer', link: '/guides/developer-guide' },
     ],
@@ -49,6 +50,23 @@ export default defineConfig({
           {
             text: 'SonarCloud Integration',
             link: '/guides/sonarcloud-integration',
+          },
+          { text: 'Live Test Lab', link: '/guides/live-test-lab' },
+          {
+            text: 'Live Test GitHub Setup',
+            link: '/guides/live-test-github-setup',
+          },
+          {
+            text: 'Live Test Discord Setup',
+            link: '/guides/live-test-discord-setup',
+          },
+          {
+            text: 'Live Test Sonar Setup',
+            link: '/guides/live-test-sonar-setup',
+          },
+          {
+            text: 'Live Test Cleanup and Concurrency',
+            link: '/guides/live-test-cleanup-and-concurrency',
           },
           {
             text: 'Publishing and Release',

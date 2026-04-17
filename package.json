@@ -45,6 +45,8 @@
     "release": "changeset publish",
     "test:coverage:workspace": "vitest run --coverage",
     "test:coverage": "npm run prepare:generated && npm run test:coverage:workspace",
+    "test:openclaw:deep": "node scripts/openclaw-deep-test.mjs --mode hermetic",
+    "test:openclaw:live-lab": "node scripts/openclaw-live-lab.mjs",
     "test:workspace": "turbo run test --output-logs=errors-only",
     "test": "npm run prepare:generated && npm run test:workspace",
     "typecheck:workspace": "turbo run typecheck --output-logs=errors-only",

@@ -1,0 +1,85 @@
+name: OpenClaw Live Lab Janitor
+
+on:
+  schedule:
+    - cron: '17 4 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Report stale resources without deleting them
+        required: false
+        default: false
+        type: boolean
+      repo_max_age_hours:
+        description: Delete live-lab repos older than this many hours
+        required: false
+        default: '24'
+        type: string
+      discord_max_age_days:
+        description: Delete retained Discord categories older than this many days
+        required: false
+        default: '7'
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  janitor:
+    name: OpenClaw Live Lab Janitor
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - name: Setup Node
+        uses: actions/setup-node@v6.3.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install Deps
+        run: npm ci
+
+      - name: Verify Node Alignment
+        run: npm run verify:node
+
+      - name: Create Live-Lab App Token
+        id: live_lab_token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.LIVE_TEST_GITHUB_APP_CLIENT_ID }}
+          owner: ${{ vars.LIVE_TEST_GITHUB_ORG }}
+          permission-administration: write
+          permission-metadata: read
+          private-key: ${{ secrets.LIVE_TEST_GITHUB_APP_PRIVATE_KEY }}
+
+      - name: Run Janitor
+        env:
+          LIVE_TEST_DISCORD_BOT_TOKEN: ${{ secrets.LIVE_TEST_DISCORD_BOT_TOKEN }}
+          LIVE_TEST_DISCORD_GUILD_ID: ${{ vars.LIVE_TEST_DISCORD_GUILD_ID }}
+          LIVE_TEST_GITHUB_ORG: ${{ vars.LIVE_TEST_GITHUB_ORG }}
+          LIVE_TEST_GITHUB_TOKEN: ${{ steps.live_lab_token.outputs.token }}
+          LIVE_TEST_SONAR_ORGANIZATION: ${{ vars.LIVE_TEST_SONAR_ORGANIZATION }}
+          LIVE_TEST_SONAR_TOKEN: ${{ secrets.LIVE_TEST_SONAR_TOKEN }}
+        run: |
+          args=(
+            --report-dir "$RUNNER_TEMP/openclaw-live-lab-janitor"
+            --repo-max-age-hours "${{ inputs.repo_max_age_hours || '24' }}"
+            --discord-max-age-days "${{ inputs.discord_max_age_days || '7' }}"
+          )
+
+          if [[ "${{ inputs.dry_run || false }}" == 'true' ]]; then
+            args+=(--dry-run)
+          fi
+
+          node scripts/openclaw-live-lab-janitor.mjs "${args[@]}"
+
+      - name: Upload Janitor Artifacts
+        if: always()
+        uses: actions/upload-artifact@v7.0.0
+        with:
+          name: openclaw-live-lab-janitor-${{ github.run_id }}-${{ github.run_attempt }}
+          retention-days: 14
+          path: ${{ runner.temp }}/openclaw-live-lab-janitor

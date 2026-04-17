@@ -1,0 +1,92 @@
+name: OpenClaw Live Lab
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Optional ref to validate
+        required: false
+        type: string
+      max_parallel_repos:
+        description: Maximum concurrent live-lab repos before the oldest is evicted
+        required: false
+        default: '6'
+        type: string
+      retain_failed_resources:
+        description: Keep the ephemeral repo, Sonar project, and container after failures
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  live-lab:
+    name: OpenClaw Live Lab
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v6.3.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install Deps
+        run: npm ci
+
+      - name: Verify Node Alignment
+        run: npm run verify:node
+
+      - name: Create Live-Lab App Token
+        id: live_lab_token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.LIVE_TEST_GITHUB_APP_CLIENT_ID }}
+          owner: ${{ vars.LIVE_TEST_GITHUB_ORG }}
+          permission-actions: write
+          permission-administration: write
+          permission-checks: read
+          permission-contents: write
+          permission-issues: write
+          permission-metadata: read
+          permission-pull-requests: write
+          permission-workflows: write
+          private-key: ${{ secrets.LIVE_TEST_GITHUB_APP_PRIVATE_KEY }}
+
+      - name: Run Live Lab
+        env:
+          LIVE_TEST_DISCORD_APPLICATION_ID: ${{ secrets.LIVE_TEST_DISCORD_APPLICATION_ID }}
+          LIVE_TEST_DISCORD_BOT_TOKEN: ${{ secrets.LIVE_TEST_DISCORD_BOT_TOKEN }}
+          LIVE_TEST_DISCORD_GUILD_ID: ${{ vars.LIVE_TEST_DISCORD_GUILD_ID }}
+          LIVE_TEST_DISCORD_PUBLIC_KEY: ${{ secrets.LIVE_TEST_DISCORD_PUBLIC_KEY }}
+          LIVE_TEST_GITHUB_ORG: ${{ vars.LIVE_TEST_GITHUB_ORG }}
+          LIVE_TEST_GITHUB_TOKEN: ${{ steps.live_lab_token.outputs.token }}
+          LIVE_TEST_SONAR_ORGANIZATION: ${{ vars.LIVE_TEST_SONAR_ORGANIZATION }}
+          LIVE_TEST_SONAR_TOKEN: ${{ secrets.LIVE_TEST_SONAR_TOKEN }}
+        run: |
+          args=(
+            --ref "${{ inputs.ref || github.ref_name }}"
+            --report-dir "$RUNNER_TEMP/openclaw-live-lab"
+            --max-parallel-repos "${{ inputs.max_parallel_repos }}"
+          )
+
+          if [[ "${{ inputs.retain_failed_resources }}" == 'true' ]]; then
+            args+=(--retain-failed-resources --retain-container-on-failure)
+          fi
+
+          node scripts/openclaw-live-lab.mjs "${args[@]}"
+
+      - name: Upload Live-Lab Artifacts
+        if: always()
+        uses: actions/upload-artifact@v7.0.0
+        with:
+          name: openclaw-live-lab-${{ github.run_id }}-${{ github.run_attempt }}
+          retention-days: 14
+          path: ${{ runner.temp }}/openclaw-live-lab

@@ -1,0 +1,1415 @@
+import { randomUUID } from 'node:crypto';
+import {
+  appendFile,
+  mkdir,
+  readdir,
+  readFile,
+  rm,
+  writeFile,
+} from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { createRuntimeEnv, runDeepTest } from './openclaw-deep-test.mjs';
+
+const repoRootDirectory = resolve(import.meta.dirname, '..');
+const fixtureRootDirectory = resolve(
+  repoRootDirectory,
+  'scripts/fixtures/openclaw-live-lab-repo',
+);
+const githubApiVersion = '2026-03-10';
+const defaultMaxParallelRepos = 6;
+const defaultReportPrefix = 'devplat-openclaw-live-lab';
+const defaultWorkflowFileName = 'live-dispatch-canary.yml';
+const defaultSonarProjectTimeoutMs = 180_000;
+const defaultWorkflowTimeoutMs = 180_000;
+const defaultPollMs = 5_000;
+const livePrefix = 'devplat-test-';
+
+function parseFlagArguments(argv) {
+  const args = new Map();
+
+  for (let index = 0; index < argv.length; index += 1) {
+    const token = argv[index];
+    if (!token.startsWith('--')) {
+      continue;
+    }
+
+    const next = argv[index + 1];
+    if (next === undefined || next.startsWith('--')) {
+      args.set(token, true);
+      continue;
+    }
+
+    args.set(token, next);
+    index += 1;
+  }
+
+  return args;
+}
+
+function readRequiredEnvironmentValue(env, name) {
+  const value = env[name];
+  if (typeof value !== 'string' || value.length === 0) {
+    throw new Error(`${name} is required for the live lab.`);
+  }
+
+  return value;
+}
+
+function sanitizeSegment(value) {
+  let normalized = '';
+  let needsSeparator = false;
+
+  for (const character of value) {
+    const code = character.codePointAt(0);
+    const isAsciiLetter =
+      code !== undefined &&
+      ((code >= 65 && code <= 90) || (code >= 97 && code <= 122));
+    const isDigit = code !== undefined && code >= 48 && code <= 57;
+    const isLiteral =
+      character === '_' || character === '.' || character === '-';
+
+    if (isAsciiLetter || isDigit || isLiteral) {
+      normalized += character;
+      needsSeparator = false;
+      continue;
+    }
+
+    if (!needsSeparator && normalized.length > 0) {
+      normalized += '-';
+      needsSeparator = true;
+    }
+  }
+
+  while (normalized.startsWith('-')) {
+    normalized = normalized.slice(1);
+  }
+
+  while (normalized.endsWith('-')) {
+    normalized = normalized.slice(0, -1);
+  }
+
+  return normalized;
+}
+
+function encodeRepositoryPath(path) {
+  return path.split('/').map(encodeURIComponent).join('/');
+}
+
+function encodeBranchName(branchName) {
+  return encodeURIComponent(branchName);
+}
+
+function resolveWorkflowUrl({ repository, runId, serverUrl }) {
+  if (
+    typeof repository !== 'string' ||
+    typeof runId !== 'string' ||
+    typeof serverUrl !== 'string'
+  ) {
+    return null;
+  }
+
+  return `${serverUrl}/${repository}/actions/runs/${runId}`;
+}
+
+function serializeError(error) {
+  if (error instanceof Error) {
+    return {
+      message: error.message,
+      stack: error.stack ?? '',
+    };
+  }
+
+  return {
+    message: String(error),
+    stack: '',
+  };
+}
+
+function createRequestError(message, status, responseText) {
+  const statusFragment = status === null ? '' : ` (HTTP ${String(status)})`;
+  const responseFragment = responseText.length > 0 ? `: ${responseText}` : '.';
+  const error = new Error(`${message}${statusFragment}${responseFragment}`);
+  error.status = status;
+  error.responseText = responseText;
+  return error;
+}
+
+async function requestJson({
+  body,
+  expectedStatuses = [200],
+  fetchImpl = fetch,
+  headers = {},
+  method = 'GET',
+  responseType = 'json',
+  url,
+}) {
+  const requestHeaders = { ...headers };
+  let requestBody = body;
+
+  if (
+    body !== undefined &&
+    body !== null &&
+    typeof body === 'object' &&
+    !(body instanceof URLSearchParams) &&
+    !(body instanceof ArrayBuffer) &&
+    !Buffer.isBuffer(body)
+  ) {
+    requestHeaders['content-type'] ??= 'application/json';
+    requestBody = JSON.stringify(body);
+  }
+
+  const response = await fetchImpl(url, {
+    method,
+    headers: requestHeaders,
+    body: requestBody,
+  });
+  const text = await response.text();
+  if (!expectedStatuses.includes(response.status)) {
+    throw createRequestError(`Request to ${url} failed`, response.status, text);
+  }
+
+  if (responseType === 'none' || text.length === 0) {
+    return null;
+  }
+
+  if (responseType === 'text') {
+    return text;
+  }
+
+  return JSON.parse(text);
+}
+
+function createGitHubRequest({ fetchImpl = fetch, token }) {
+  return (path, options = {}) =>
+    requestJson({
+      fetchImpl,
+      url: new URL(path, 'https://api.github.com').toString(),
+      headers: {
+        accept: 'application/vnd.github+json',
+        authorization: `Bearer ${token}`,
+        'x-github-api-version': githubApiVersion,
+        ...options.headers,
+      },
+      ...options,
+    });
+}
+
+function createDiscordRequest({ baseUrl, botToken, fetchImpl = fetch }) {
+  return (path, options = {}) =>
+    requestJson({
+      fetchImpl,
+      url: new URL(path, baseUrl).toString(),
+      headers: {
+        authorization: `Bot ${botToken}`,
+        ...options.headers,
+      },
+      ...options,
+    });
+}
+
+function createSonarRequest({ baseUrl, fetchImpl = fetch, token }) {
+  const basicToken = Buffer.from(`${token}:`, 'utf8').toString('base64');
+
+  return (path, options = {}) =>
+    requestJson({
+      fetchImpl,
+      url: new URL(path, baseUrl).toString(),
+      headers: {
+        authorization: `Basic ${basicToken}`,
+        ...options.headers,
+      },
+      ...options,
+    });
+}
+
+export function parseLiveLabArgs(argv) {
+  const args = parseFlagArguments(argv);
+  const maxParallelReposValue = args.get('--max-parallel-repos');
+  const maxParallelRepos =
+    typeof maxParallelReposValue === 'string'
+      ? Number.parseInt(maxParallelReposValue, 10)
+      : undefined;
+  if (
+    maxParallelReposValue !== undefined &&
+    (!Number.isInteger(maxParallelRepos) || maxParallelRepos < 1)
+  ) {
+    throw new Error('--max-parallel-repos must be a positive integer.');
+  }
+
+  const image = args.get('--image');
+  const skipBuild = args.get('--skip-build') === true;
+  if (skipBuild && typeof image !== 'string') {
+    throw new Error('--skip-build requires --image.');
+  }
+
+  return {
+    image: typeof image === 'string' ? image : undefined,
+    maxParallelRepos,
+    ref: typeof args.get('--ref') === 'string' ? args.get('--ref') : undefined,
+    reportDir:
+      typeof args.get('--report-dir') === 'string'
+        ? resolve(repoRootDirectory, args.get('--report-dir'))
+        : undefined,
+    retainContainerOnFailure:
+      args.get('--retain-container-on-failure') === true,
+    retainFailedResources: args.get('--retain-failed-resources') === true,
+    skipBuild,
+  };
+}
+
+export function createRunIdentifiers({ runAttempt, runNumber }) {
+  const normalizedRunNumber = String(runNumber);
+  const normalizedRunAttempt = String(runAttempt);
+  const runLabel = `${normalizedRunNumber}-${normalizedRunAttempt}`;
+  const repoName = `${livePrefix}${runLabel}`;
+
+  return {
+    branchName: `live-test/${runLabel}`,
+    categoryName: repoName,
+    repoName,
+    runAttempt: normalizedRunAttempt,
+    runLabel,
+    runNumber: normalizedRunNumber,
+  };
+}
+
+export function createDiscordChannelPlan() {
+  return [
+    { key: 'spec', name: 'spec' },
+    { key: 'implementation', name: 'implementation' },
+    { key: 'pullRequest', name: 'pull-request' },
+    { key: 'audit', name: 'audit' },
+    { key: 'projectManagement', name: 'project-management' },
+  ];
+}
+
+export function createStatusMessage({
+  details,
+  phase,
+  ref,
+  repoFullName,
+  runLabel,
+  sha,
+  status,
+  workflowUrl,
+}) {
+  const lines = [
+    `status: ${status}`,
+    `phase: ${phase}`,
+    `run: ${runLabel}`,
+    `repo: ${repoFullName}`,
+    `ref: ${ref}`,
+    `sha: ${sha}`,
+  ];
+
+  if (workflowUrl !== null) {
+    lines.push(`workflow: ${workflowUrl}`);
+  }
+
+  if (details !== undefined && details.length > 0) {
+    lines.push(`details: ${details}`);
+  }
+
+  return lines.join('\n');
+}
+
+export function mapProgressToChannel(progress) {
+  const pullRequestTools = new Set([
+    'create_pull_request_record',
+    'submit_pull_request_update',
+    'submit_pull_request_merge',
+    'plan_rebase_dependents',
+    'execute_rebase_dependents',
+    'create_github_action_request',
+    'submit_github_action',
+  ]);
+
+  if (progress.phase === 'planning') {
+    return 'spec';
+  }
+
+  if (progress.phase === 'config' || progress.phase === 'contracts') {
+    return 'audit';
+  }
+
+  if (progress.phase === 'build' || progress.phase === 'container') {
+    return 'projectManagement';
+  }
+
+  if (
+    progress.phase === 'delivery' &&
+    typeof progress.step === 'string' &&
+    pullRequestTools.has(progress.step)
+  ) {
+    return 'pullRequest';
+  }
+
+  return 'implementation';
+}
+
+export function createEvictionPlan(repositories, maxParallelRepos) {
+  const liveRepositories = repositories
+    .filter((repository) => repository.name.startsWith(livePrefix))
+    .sort((left, right) =>
+      String(left.created_at).localeCompare(String(right.created_at)),
+    );
+
+  if (liveRepositories.length < maxParallelRepos) {
+    return null;
+  }
+
+  return {
+    candidate: liveRepositories[0],
+    liveRepositories,
+  };
+}
+
+export function createSonarProjectKey(githubOrganization, repoName) {
+  return `${githubOrganization}_${repoName}`.replace(
+    /[^a-zA-Z0-9_.:-]+/gu,
+    '_',
+  );
+}
+
+export function createLiveRuntimeEnv({
+  discordChannels,
+  discordConfig,
+  githubOrganization,
+  repoName,
+  sonarOrganization,
+}) {
+  return createRuntimeEnv({
+    DISCORD_APPLICATION_ID: discordConfig.applicationId,
+    DISCORD_AUDIT_CHANNEL_ID: discordChannels.audit.id,
+    DISCORD_BOT_TOKEN: discordConfig.botToken,
+    DISCORD_DEFAULT_GUILD_ID: discordConfig.guildId,
+    DISCORD_IMPLEMENTATION_CHANNEL_ID: discordChannels.implementation.id,
+    DISCORD_PROJECT_MANAGEMENT_CHANNEL_ID: discordChannels.projectManagement.id,
+    DISCORD_PUBLIC_KEY: discordConfig.publicKey,
+    DISCORD_PULL_REQUEST_CHANNEL_ID: discordChannels.pullRequest.id,
+    DISCORD_SPEC_CHANNEL_ID: discordChannels.spec.id,
+    GITHUB_OWNER: githubOrganization,
+    GITHUB_REPO: repoName,
+    SONAR_ORGANIZATION: sonarOrganization,
+    SONAR_PROJECT_KEY: createSonarProjectKey(githubOrganization, repoName),
+  });
+}
+
+export async function collectFixtureFiles(
+  rootDirectory = fixtureRootDirectory,
+) {
+  const queue = [rootDirectory];
+  const entries = [];
+
+  while (queue.length > 0) {
+    const currentDirectory = queue.shift();
+    const directoryEntries = await readdir(currentDirectory, {
+      withFileTypes: true,
+    });
+    directoryEntries.sort((left, right) => left.name.localeCompare(right.name));
+
+    for (const entry of directoryEntries) {
+      const entryPath = resolve(currentDirectory, entry.name);
+      if (entry.isDirectory()) {
+        queue.push(entryPath);
+        continue;
+      }
+
+      const relativePath = entryPath
+        .slice(rootDirectory.length + 1)
+        .replaceAll('\\', '/');
+      entries.push({
+        content: await readFile(entryPath, 'utf8'),
+        path: relativePath,
+      });
+    }
+  }
+
+  return entries.sort((left, right) => {
+    if (left.path === 'README.md') {
+      return -1;
+    }
+    if (right.path === 'README.md') {
+      return 1;
+    }
+
+    return left.path.localeCompare(right.path);
+  });
+}
+
+export function createStepSummary(report) {
+  const lines = [
+    '# OpenClaw Live Lab',
+    '',
+    `- Status: ${report.status}`,
+    `- Run: ${report.runLabel}`,
+    `- Repository: ${report.github?.repoFullName ?? 'n/a'}`,
+    `- Workflow: ${report.workflowUrl ?? 'n/a'}`,
+    `- Discord category: ${report.discord?.categoryName ?? 'n/a'}`,
+    `- Deep-test steps: ${String(report.deepTest?.steps ?? 0)}`,
+  ];
+
+  if (report.evictedRepository !== undefined) {
+    lines.push(`- Evicted repository: ${report.evictedRepository}`);
+  }
+
+  if (report.error !== undefined) {
+    lines.push(`- Failure: ${report.error.message}`);
+  }
+
+  return `${lines.join('\n')}\n`;
+}
+
+export function createLiveLabEnvironment(env = process.env) {
+  const runNumber = env['GITHUB_RUN_NUMBER'] ?? 'local';
+  const runAttempt = env['GITHUB_RUN_ATTEMPT'] ?? '1';
+
+  return {
+    discord: {
+      applicationId: readRequiredEnvironmentValue(
+        env,
+        'LIVE_TEST_DISCORD_APPLICATION_ID',
+      ),
+      baseUrl:
+        env['LIVE_TEST_DISCORD_API_BASE_URL'] ?? 'https://discord.com/api/v10',
+      botToken: readRequiredEnvironmentValue(
+        env,
+        'LIVE_TEST_DISCORD_BOT_TOKEN',
+      ),
+      guildId: readRequiredEnvironmentValue(env, 'LIVE_TEST_DISCORD_GUILD_ID'),
+      publicKey: readRequiredEnvironmentValue(
+        env,
+        'LIVE_TEST_DISCORD_PUBLIC_KEY',
+      ),
+    },
+    github: {
+      organization: readRequiredEnvironmentValue(env, 'LIVE_TEST_GITHUB_ORG'),
+      token: readRequiredEnvironmentValue(env, 'LIVE_TEST_GITHUB_TOKEN'),
+    },
+    githubWorkflow: {
+      ref: env['GITHUB_REF_NAME'] ?? 'local',
+      repository: env['GITHUB_REPOSITORY'] ?? 'VannaDii/devplat',
+      runId: env['GITHUB_RUN_ID'] ?? null,
+      runNumber,
+      runAttempt,
+      serverUrl: env['GITHUB_SERVER_URL'] ?? 'https://github.com',
+      sha: env['GITHUB_SHA'] ?? 'local',
+      stepSummaryPath: env['GITHUB_STEP_SUMMARY'] ?? null,
+    },
+    sonar: {
+      baseUrl: env['LIVE_TEST_SONAR_BASE_URL'] ?? 'https://sonarcloud.io',
+      organization: readRequiredEnvironmentValue(
+        env,
+        'LIVE_TEST_SONAR_ORGANIZATION',
+      ),
+      token: readRequiredEnvironmentValue(env, 'LIVE_TEST_SONAR_TOKEN'),
+    },
+  };
+}
+
+export function discordSnowflakeToTimestamp(snowflake) {
+  const discordEpoch = 1_420_070_400_000n;
+  const createdAt = (BigInt(String(snowflake)) >> 22n) + discordEpoch;
+  return Number(createdAt);
+}
+
+async function sleep(delayMs) {
+  await new Promise((resolvePromise) => {
+    setTimeout(resolvePromise, delayMs);
+  });
+}
+
+async function appendSummary(summaryPath, content) {
+  if (summaryPath === null) {
+    return;
+  }
+
+  await appendFile(summaryPath, content, 'utf8');
+}
+
+async function listOrgRepositories({ githubOrganization, githubRequest }) {
+  return githubRequest(
+    `/orgs/${encodeURIComponent(githubOrganization)}/repos?type=public&sort=created&direction=asc&per_page=100`,
+  );
+}
+
+async function createRepository({
+  githubOrganization,
+  githubRequest,
+  repoName,
+}) {
+  return githubRequest(
+    `/orgs/${encodeURIComponent(githubOrganization)}/repos`,
+    {
+      body: {
+        allow_auto_merge: false,
+        auto_init: false,
+        delete_branch_on_merge: true,
+        description: 'Ephemeral DevPlat live-lab fixture repository.',
+        has_discussions: false,
+        has_issues: false,
+        has_projects: false,
+        has_wiki: false,
+        homepage: 'https://github.com/VannaDii/devplat',
+        name: repoName,
+        private: false,
+        visibility: 'public',
+      },
+      expectedStatuses: [201],
+      method: 'POST',
+    },
+  );
+}
+
+async function hardenRepository({
+  githubOrganization,
+  githubRequest,
+  repoName,
+}) {
+  const basePath = `/repos/${encodeURIComponent(githubOrganization)}/${encodeURIComponent(repoName)}`;
+
+  await githubRequest(`${basePath}/interaction-limits`, {
+    body: {
+      expiry: 'one_month',
+      limit: 'collaborators_only',
+    },
+    expectedStatuses: [200],
+    method: 'PUT',
+  });
+
+  await githubRequest(`${basePath}/actions/permissions`, {
+    body: {
+      allowed_actions: 'selected',
+      enabled: true,
+      sha_pinning_required: true,
+    },
+    expectedStatuses: [204],
+    method: 'PUT',
+    responseType: 'none',
+  });
+
+  await githubRequest(`${basePath}/actions/permissions/selected-actions`, {
+    body: {
+      github_owned_allowed: true,
+      patterns_allowed: [],
+      verified_allowed: false,
+    },
+    expectedStatuses: [204],
+    method: 'PUT',
+    responseType: 'none',
+  });
+
+  await githubRequest(`${basePath}/actions/permissions/workflow`, {
+    body: {
+      can_approve_pull_request_reviews: false,
+      default_workflow_permissions: 'read',
+    },
+    expectedStatuses: [204],
+    method: 'PUT',
+    responseType: 'none',
+  });
+}
+
+async function seedRepository({
+  fixtureFiles,
+  githubOrganization,
+  githubRequest,
+  repoName,
+}) {
+  const basePath = `/repos/${encodeURIComponent(githubOrganization)}/${encodeURIComponent(repoName)}/contents`;
+
+  for (const file of fixtureFiles) {
+    await githubRequest(`${basePath}/${encodeRepositoryPath(file.path)}`, {
+      body: {
+        content: Buffer.from(file.content, 'utf8').toString('base64'),
+        message: `chore(fixtures): seed ${file.path}`,
+      },
+      expectedStatuses: [200, 201],
+      method: 'PUT',
+    });
+  }
+}
+
+async function getRepository({ githubOrganization, githubRequest, repoName }) {
+  return githubRequest(
+    `/repos/${encodeURIComponent(githubOrganization)}/${encodeURIComponent(repoName)}`,
+  );
+}
+
+async function createBranch({
+  branchName,
+  defaultBranch,
+  githubOrganization,
+  githubRequest,
+  repoName,
+}) {
+  const basePath = `/repos/${encodeURIComponent(githubOrganization)}/${encodeURIComponent(repoName)}`;
+  const branch = await githubRequest(
+    `${basePath}/git/ref/heads/${encodeBranchName(defaultBranch)}`,
+  );
+
+  return githubRequest(`${basePath}/git/refs`, {
+    body: {
+      ref: `refs/heads/${branchName}`,
+      sha: branch.object.sha,
+    },
+    expectedStatuses: [201],
+    method: 'POST',
+  });
+}
+
+async function createBranchCanary({
+  branchName,
+  githubOrganization,
+  githubRequest,
+  repoName,
+  runLabel,
+}) {
+  const path = `.live-test/${runLabel}/canary.json`;
+  const payload = {
+    branchName,
+    createdAt: new Date().toISOString(),
+    runLabel,
+  };
+
+  return githubRequest(
+    `/repos/${encodeURIComponent(githubOrganization)}/${encodeURIComponent(repoName)}/contents/${encodeRepositoryPath(path)}`,
+    {
+      body: {
+        branch: branchName,
+        content: Buffer.from(
+          `${JSON.stringify(payload, null, 2)}\n`,
+          'utf8',
+        ).toString('base64'),
+        message: `test(e2e): create ${path}`,
+      },
+      expectedStatuses: [200, 201],
+      method: 'PUT',
+    },
+  );
+}
+
+async function createPullRequest({
+  branchName,
+  defaultBranch,
+  githubOrganization,
+  githubRequest,
+  repoName,
+  runLabel,
+}) {
+  return githubRequest(
+    `/repos/${encodeURIComponent(githubOrganization)}/${encodeURIComponent(repoName)}/pulls`,
+    {
+      body: {
+        base: defaultBranch,
+        body: `Automated live-lab pull request for run ${runLabel}.`,
+        head: branchName,
+        title: `test(live-lab): ${runLabel}`,
+      },
+      expectedStatuses: [201],
+      method: 'POST',
+    },
+  );
+}
+
+async function closePullRequest({
+  githubOrganization,
+  githubRequest,
+  pullRequestNumber,
+  repoName,
+}) {
+  return githubRequest(
+    `/repos/${encodeURIComponent(githubOrganization)}/${encodeURIComponent(repoName)}/pulls/${String(pullRequestNumber)}`,
+    {
+      body: {
+        state: 'closed',
+      },
+      expectedStatuses: [200],
+      method: 'PATCH',
+    },
+  );
+}
+
+async function dispatchFixtureWorkflow({
+  branchName,
+  githubOrganization,
+  githubRequest,
+  repoName,
+  runLabel,
+}) {
+  await githubRequest(
+    `/repos/${encodeURIComponent(githubOrganization)}/${encodeURIComponent(repoName)}/actions/workflows/${encodeURIComponent(defaultWorkflowFileName)}/dispatches`,
+    {
+      body: {
+        inputs: {
+          branch_name: branchName,
+          orchestration_run_id: runLabel,
+        },
+        ref: branchName,
+      },
+      expectedStatuses: [204],
+      method: 'POST',
+      responseType: 'none',
+    },
+  );
+}
+
+async function waitForWorkflowRun({
+  branchName,
+  githubOrganization,
+  githubRequest,
+  pollDelayMs = defaultPollMs,
+  repoName,
+  timeoutMs = defaultWorkflowTimeoutMs,
+}) {
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < timeoutMs) {
+    const response = await githubRequest(
+      `/repos/${encodeURIComponent(githubOrganization)}/${encodeURIComponent(repoName)}/actions/workflows/${encodeURIComponent(defaultWorkflowFileName)}/runs?branch=${encodeURIComponent(branchName)}&event=workflow_dispatch&per_page=10`,
+    );
+    const [run] = response.workflow_runs ?? [];
+    if (run?.status === 'completed') {
+      return run;
+    }
+
+    await sleep(pollDelayMs);
+  }
+
+  throw new Error(
+    `Timed out waiting for ${defaultWorkflowFileName} to complete for ${branchName}.`,
+  );
+}
+
+async function deleteRepository({
+  githubOrganization,
+  githubRequest,
+  repoName,
+}) {
+  await githubRequest(
+    `/repos/${encodeURIComponent(githubOrganization)}/${encodeURIComponent(repoName)}`,
+    {
+      expectedStatuses: [204, 404],
+      method: 'DELETE',
+      responseType: 'none',
+    },
+  );
+}
+
+async function waitForSonarProject({
+  githubOrganization,
+  repoName,
+  sonarOrganization,
+  sonarRequest,
+  timeoutMs = defaultSonarProjectTimeoutMs,
+}) {
+  const projectKey = createSonarProjectKey(githubOrganization, repoName);
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < timeoutMs) {
+    const response = await sonarRequest(
+      `/api/projects/search?organization=${encodeURIComponent(sonarOrganization)}&projects=${encodeURIComponent(projectKey)}`,
+    );
+    if (Array.isArray(response.components) && response.components.length > 0) {
+      return {
+        projectKey,
+        project: response.components[0],
+      };
+    }
+
+    await sleep(defaultPollMs);
+  }
+
+  throw new Error(`Timed out waiting for Sonar project ${projectKey}.`);
+}
+
+async function deleteSonarProject({ projectKey, sonarRequest }) {
+  await sonarRequest(
+    `/api/projects/delete?project=${encodeURIComponent(projectKey)}`,
+    {
+      expectedStatuses: [200, 204, 404],
+      method: 'POST',
+      responseType: 'none',
+    },
+  );
+}
+
+async function getGuild(guildId, discordRequest) {
+  return discordRequest(`/guilds/${encodeURIComponent(guildId)}`);
+}
+
+async function createDiscordChannels({
+  categoryName,
+  discordRequest,
+  guildId,
+}) {
+  const category = await discordRequest(
+    `/guilds/${encodeURIComponent(guildId)}/channels`,
+    {
+      body: {
+        name: categoryName,
+        type: 4,
+      },
+      expectedStatuses: [200, 201],
+      method: 'POST',
+    },
+  );
+
+  const channels = {};
+  for (const channel of createDiscordChannelPlan()) {
+    channels[channel.key] = await discordRequest(
+      `/guilds/${encodeURIComponent(guildId)}/channels`,
+      {
+        body: {
+          name: channel.name,
+          parent_id: category.id,
+          type: 0,
+        },
+        expectedStatuses: [200, 201],
+        method: 'POST',
+      },
+    );
+  }
+
+  return {
+    category,
+    channels,
+  };
+}
+
+async function sendDiscordMessage(channelId, content, discordRequest) {
+  return discordRequest(`/channels/${encodeURIComponent(channelId)}/messages`, {
+    body: { content },
+    expectedStatuses: [200, 201],
+    method: 'POST',
+  });
+}
+
+async function postStatus({
+  channelId,
+  details,
+  discordRequest,
+  phase,
+  ref,
+  repoFullName,
+  runLabel,
+  sha,
+  status,
+  workflowUrl,
+}) {
+  return sendDiscordMessage(
+    channelId,
+    createStatusMessage({
+      details,
+      phase,
+      ref,
+      repoFullName,
+      runLabel,
+      sha,
+      status,
+      workflowUrl,
+    }),
+    discordRequest,
+  );
+}
+
+async function postStatusSafe(options) {
+  try {
+    await postStatus(options);
+  } catch {
+    return null;
+  }
+
+  return true;
+}
+
+async function listGuildChannels({ discordRequest, guildId }) {
+  return discordRequest(`/guilds/${encodeURIComponent(guildId)}/channels`);
+}
+
+async function postEvictionNotices({
+  categoryName,
+  discordRequest,
+  guildId,
+  newRunAuditChannelId,
+  ref,
+  repoFullName,
+  runLabel,
+  sha,
+  workflowUrl,
+}) {
+  const guildChannels = await listGuildChannels({
+    discordRequest,
+    guildId,
+  }).catch(() => []);
+  const category = guildChannels.find(
+    (channel) => channel.type === 4 && channel.name === categoryName,
+  );
+  const childChannels =
+    category === undefined
+      ? []
+      : guildChannels.filter((channel) => channel.parent_id === category.id);
+  const auditChannel = childChannels.find(
+    (channel) => channel.name === 'audit',
+  );
+  const managementChannel = childChannels.find(
+    (channel) => channel.name === 'project-management',
+  );
+
+  for (const channel of [auditChannel, managementChannel]) {
+    if (channel === undefined) {
+      continue;
+    }
+
+    await postStatusSafe({
+      channelId: channel.id,
+      details: `The oldest live-lab repository ${categoryName} is being evicted to free a concurrency slot.`,
+      discordRequest,
+      phase: 'eviction',
+      ref,
+      repoFullName,
+      runLabel,
+      sha,
+      status: 'evicted',
+      workflowUrl,
+    });
+  }
+
+  await postStatusSafe({
+    channelId: newRunAuditChannelId,
+    details: `Evicted oldest live-lab repository ${categoryName} because the cap was reached.`,
+    discordRequest,
+    phase: 'eviction',
+    ref,
+    repoFullName,
+    runLabel,
+    sha,
+    status: 'in-progress',
+    workflowUrl,
+  });
+}
+
+function createDefaultReportDirectory(runLabel) {
+  return resolve(
+    tmpdir(),
+    `${defaultReportPrefix}-${sanitizeSegment(runLabel)}-${randomUUID()}`,
+  );
+}
+
+export async function runLiveLab(options, dependencies = {}) {
+  const appendSummaryFn = dependencies.appendSummary ?? appendSummary;
+  const collectFixtureFilesFn =
+    dependencies.collectFixtureFiles ?? collectFixtureFiles;
+  const discordRequest =
+    dependencies.discordRequest ??
+    createDiscordRequest({
+      baseUrl: options.environment.discord.baseUrl,
+      botToken: options.environment.discord.botToken,
+      fetchImpl: dependencies.fetchImpl,
+    });
+  const githubRequest =
+    dependencies.githubRequest ??
+    createGitHubRequest({
+      fetchImpl: dependencies.fetchImpl,
+      token: options.environment.github.token,
+    });
+  const sonarRequest =
+    dependencies.sonarRequest ??
+    createSonarRequest({
+      baseUrl: options.environment.sonar.baseUrl,
+      fetchImpl: dependencies.fetchImpl,
+      token: options.environment.sonar.token,
+    });
+  const makeDirectory = dependencies.makeDirectory ?? mkdir;
+  const removeDirectory = dependencies.removeDirectory ?? rm;
+  const runDeepTestFn = dependencies.runDeepTest ?? runDeepTest;
+  const writeTextFile = dependencies.writeTextFile ?? writeFile;
+
+  const identifiers = createRunIdentifiers({
+    runAttempt: options.environment.githubWorkflow.runAttempt,
+    runNumber: options.environment.githubWorkflow.runNumber,
+  });
+  const reportDirectory =
+    options.reportDir ?? createDefaultReportDirectory(identifiers.runLabel);
+  const workflowUrl = resolveWorkflowUrl({
+    repository: options.environment.githubWorkflow.repository,
+    runId: options.environment.githubWorkflow.runId,
+    serverUrl: options.environment.githubWorkflow.serverUrl,
+  });
+  const report = {
+    discord: null,
+    evictedRepository: undefined,
+    github: null,
+    runLabel: identifiers.runLabel,
+    status: 'running',
+    workflowUrl,
+  };
+
+  let repoCreated = false;
+  let sonarProjectKey = null;
+  await makeDirectory(reportDirectory, { recursive: true });
+
+  try {
+    await getGuild(options.environment.discord.guildId, discordRequest);
+    await githubRequest(
+      `/orgs/${encodeURIComponent(options.environment.github.organization)}`,
+    );
+    await sonarRequest(
+      `/api/projects/search?organization=${encodeURIComponent(options.environment.sonar.organization)}&ps=1`,
+    );
+
+    const discordChannels = await createDiscordChannels({
+      categoryName: identifiers.categoryName,
+      discordRequest,
+      guildId: options.environment.discord.guildId,
+    });
+    report.discord = {
+      categoryId: discordChannels.category.id,
+      categoryName: discordChannels.category.name,
+      channels: Object.fromEntries(
+        Object.entries(discordChannels.channels).map(([key, channel]) => [
+          key,
+          { id: channel.id, name: channel.name },
+        ]),
+      ),
+    };
+
+    const repoFullName = `${options.environment.github.organization}/${identifiers.repoName}`;
+    await postStatusSafe({
+      channelId: discordChannels.channels.projectManagement.id,
+      details:
+        'Bootstrapped the live-lab category and external service preflight.',
+      discordRequest,
+      phase: 'bootstrap',
+      ref: options.environment.githubWorkflow.ref,
+      repoFullName,
+      runLabel: identifiers.runLabel,
+      sha: options.environment.githubWorkflow.sha,
+      status: 'in-progress',
+      workflowUrl,
+    });
+
+    const repositories = await listOrgRepositories({
+      githubOrganization: options.environment.github.organization,
+      githubRequest,
+    });
+    const evictionPlan = createEvictionPlan(
+      repositories,
+      options.maxParallelRepos,
+    );
+    if (evictionPlan !== null) {
+      report.evictedRepository = evictionPlan.candidate.name;
+      await postEvictionNotices({
+        categoryName: evictionPlan.candidate.name,
+        discordRequest,
+        guildId: options.environment.discord.guildId,
+        newRunAuditChannelId: discordChannels.channels.audit.id,
+        ref: options.environment.githubWorkflow.ref,
+        repoFullName,
+        runLabel: identifiers.runLabel,
+        sha: options.environment.githubWorkflow.sha,
+        workflowUrl,
+      });
+
+      await deleteRepository({
+        githubOrganization: options.environment.github.organization,
+        githubRequest,
+        repoName: evictionPlan.candidate.name,
+      });
+
+      await deleteSonarProject({
+        projectKey: createSonarProjectKey(
+          options.environment.github.organization,
+          evictionPlan.candidate.name,
+        ),
+        sonarRequest,
+      }).catch(() => undefined);
+    }
+
+    const repository = await createRepository({
+      githubOrganization: options.environment.github.organization,
+      githubRequest,
+      repoName: identifiers.repoName,
+    });
+    repoCreated = true;
+    report.github = {
+      createdAt: repository.created_at,
+      htmlUrl: repository.html_url,
+      repoFullName: repository.full_name,
+      repoName: repository.name,
+    };
+
+    await hardenRepository({
+      githubOrganization: options.environment.github.organization,
+      githubRequest,
+      repoName: identifiers.repoName,
+    });
+
+    const fixtureFiles = await collectFixtureFilesFn(fixtureRootDirectory);
+    await seedRepository({
+      fixtureFiles,
+      githubOrganization: options.environment.github.organization,
+      githubRequest,
+      repoName: identifiers.repoName,
+    });
+
+    const hydratedRepository = await getRepository({
+      githubOrganization: options.environment.github.organization,
+      githubRequest,
+      repoName: identifiers.repoName,
+    });
+    const defaultBranch = hydratedRepository.default_branch;
+
+    await createBranch({
+      branchName: identifiers.branchName,
+      defaultBranch,
+      githubOrganization: options.environment.github.organization,
+      githubRequest,
+      repoName: identifiers.repoName,
+    });
+    await createBranchCanary({
+      branchName: identifiers.branchName,
+      githubOrganization: options.environment.github.organization,
+      githubRequest,
+      repoName: identifiers.repoName,
+      runLabel: identifiers.runLabel,
+    });
+
+    const pullRequest = await createPullRequest({
+      branchName: identifiers.branchName,
+      defaultBranch,
+      githubOrganization: options.environment.github.organization,
+      githubRequest,
+      repoName: identifiers.repoName,
+      runLabel: identifiers.runLabel,
+    });
+    report.github.pullRequestNumber = pullRequest.number;
+
+    await dispatchFixtureWorkflow({
+      branchName: identifiers.branchName,
+      githubOrganization: options.environment.github.organization,
+      githubRequest,
+      repoName: identifiers.repoName,
+      runLabel: identifiers.runLabel,
+    });
+
+    const workflowRun = await waitForWorkflowRun({
+      branchName: identifiers.branchName,
+      githubOrganization: options.environment.github.organization,
+      githubRequest,
+      repoName: identifiers.repoName,
+    });
+    report.github.workflowRun = {
+      conclusion: workflowRun.conclusion,
+      htmlUrl: workflowRun.html_url,
+      id: workflowRun.id,
+      status: workflowRun.status,
+    };
+    if (workflowRun.conclusion !== 'success') {
+      throw new Error(
+        `Fixture workflow ${workflowRun.id} finished with ${workflowRun.conclusion}.`,
+      );
+    }
+
+    await closePullRequest({
+      githubOrganization: options.environment.github.organization,
+      githubRequest,
+      pullRequestNumber: pullRequest.number,
+      repoName: identifiers.repoName,
+    });
+
+    const sonarProject = await waitForSonarProject({
+      githubOrganization: options.environment.github.organization,
+      repoName: identifiers.repoName,
+      sonarOrganization: options.environment.sonar.organization,
+      sonarRequest,
+    });
+    sonarProjectKey = sonarProject.projectKey;
+    report.sonar = {
+      projectKey: sonarProject.projectKey,
+      projectName: sonarProject.project.name,
+    };
+
+    const runtimeEnv = createLiveRuntimeEnv({
+      discordChannels: discordChannels.channels,
+      discordConfig: options.environment.discord,
+      githubOrganization: options.environment.github.organization,
+      repoName: identifiers.repoName,
+      sonarOrganization: options.environment.sonar.organization,
+    });
+
+    const deepTestReport = await runDeepTestFn(
+      {
+        image: options.image,
+        mode: 'live',
+        reportDir: resolve(reportDirectory, 'deep-test'),
+        retainContainerOnFailure:
+          options.retainFailedResources || options.retainContainerOnFailure,
+        runtimeEnv,
+        skipBuild: options.skipBuild,
+      },
+      {
+        onProgress: async (progress) => {
+          const channelKey = mapProgressToChannel(progress);
+          const channelId = discordChannels.channels[channelKey].id;
+          await postStatusSafe({
+            channelId,
+            details:
+              progress.message ??
+              (typeof progress.step === 'string'
+                ? `Executing ${progress.step}.`
+                : 'Progress update.'),
+            discordRequest,
+            phase: progress.phase,
+            ref: options.environment.githubWorkflow.ref,
+            repoFullName,
+            runLabel: identifiers.runLabel,
+            sha: options.environment.githubWorkflow.sha,
+            status: 'in-progress',
+            workflowUrl,
+          });
+        },
+      },
+    );
+    report.deepTest = {
+      reportDirectory: deepTestReport.reportDirectory,
+      steps: deepTestReport.steps.length,
+    };
+
+    report.status = 'passed';
+    await postStatusSafe({
+      channelId: discordChannels.channels.projectManagement.id,
+      details: 'Live lab completed successfully.',
+      discordRequest,
+      phase: 'complete',
+      ref: options.environment.githubWorkflow.ref,
+      repoFullName,
+      runLabel: identifiers.runLabel,
+      sha: options.environment.githubWorkflow.sha,
+      status: 'passed',
+      workflowUrl,
+    });
+    await postStatusSafe({
+      channelId: discordChannels.channels.audit.id,
+      details: `Fixture repo ${repoFullName} and Sonar project ${sonarProject.projectKey} validated successfully.`,
+      discordRequest,
+      phase: 'complete',
+      ref: options.environment.githubWorkflow.ref,
+      repoFullName,
+      runLabel: identifiers.runLabel,
+      sha: options.environment.githubWorkflow.sha,
+      status: 'passed',
+      workflowUrl,
+    });
+  } catch (error) {
+    report.error = serializeError(error);
+    report.status = 'failed';
+
+    if (report.discord !== null) {
+      await postStatusSafe({
+        channelId: report.discord.channels.audit.id,
+        details: report.error.message,
+        discordRequest,
+        phase: 'failure',
+        ref: options.environment.githubWorkflow.ref,
+        repoFullName:
+          report.github?.repoFullName ??
+          `${options.environment.github.organization}/${identifiers.repoName}`,
+        runLabel: identifiers.runLabel,
+        sha: options.environment.githubWorkflow.sha,
+        status: 'failed',
+        workflowUrl,
+      });
+      await postStatusSafe({
+        channelId: report.discord.channels.projectManagement.id,
+        details:
+          'Live lab failed. Inspect the uploaded report and retained Discord channels.',
+        discordRequest,
+        phase: 'failure',
+        ref: options.environment.githubWorkflow.ref,
+        repoFullName:
+          report.github?.repoFullName ??
+          `${options.environment.github.organization}/${identifiers.repoName}`,
+        runLabel: identifiers.runLabel,
+        sha: options.environment.githubWorkflow.sha,
+        status: 'failed',
+        workflowUrl,
+      });
+    }
+
+    throw error;
+  } finally {
+    report.completedAt = new Date().toISOString();
+    report.reportDirectory = reportDirectory;
+    await writeTextFile(
+      resolve(reportDirectory, 'live-lab-report.json'),
+      `${JSON.stringify(report, null, 2)}\n`,
+      'utf8',
+    );
+    await appendSummaryFn(
+      options.environment.githubWorkflow.stepSummaryPath,
+      createStepSummary(report),
+    );
+
+    if (
+      repoCreated &&
+      (report.status === 'passed' || !options.retainFailedResources)
+    ) {
+      await deleteRepository({
+        githubOrganization: options.environment.github.organization,
+        githubRequest,
+        repoName: identifiers.repoName,
+      }).catch(() => undefined);
+    }
+
+    if (
+      sonarProjectKey !== null &&
+      (report.status === 'passed' || !options.retainFailedResources)
+    ) {
+      await deleteSonarProject({
+        projectKey: sonarProjectKey,
+        sonarRequest,
+      }).catch(() => undefined);
+    }
+
+    if (report.status === 'passed' && options.cleanupReportDir === true) {
+      await removeDirectory(reportDirectory, { force: true, recursive: true });
+    }
+  }
+
+  return report;
+}
+
+export async function main(argv = process.argv.slice(2)) {
+  const args = parseLiveLabArgs(argv);
+  const environment = createLiveLabEnvironment();
+  const report = await runLiveLab({
+    ...args,
+    environment,
+    maxParallelRepos: args.maxParallelRepos ?? defaultMaxParallelRepos,
+  });
+
+  process.stdout.write(
+    `${JSON.stringify(
+      {
+        completedAt: report.completedAt,
+        reportDirectory: report.reportDirectory,
+        repository: report.github?.repoFullName ?? null,
+        runLabel: report.runLabel,
+        status: report.status,
+      },
+      null,
+      2,
+    )}\n`,
+  );
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  main().catch((error) => {
+    process.stderr.write(`${serializeError(error).message}\n`);
+    process.exitCode = 1;
+  });
+}
