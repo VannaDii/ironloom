@@ -194,7 +194,6 @@ export function createPluginConfig(runtimeEnv) {
 
 export function createGatewayConfig({
   gatewayToken,
-  mode,
   pluginConfig,
   workspaceDirectory = '/state/workspace',
 }) {
@@ -225,9 +224,6 @@ export function createGatewayConfig({
         },
       },
     },
-    devplat: {
-      testMode: mode,
-    },
   };
 }
 
@@ -243,6 +239,7 @@ export function buildDockerBuildArgs(imageTag) {
 }
 
 export function buildDockerRunArgs({
+  bundledExtensionsDirectory,
   containerName,
   devplatStateDirectory,
   imageTag,
@@ -259,11 +256,21 @@ export function buildDockerRunArgs({
     '-e',
     'OPENCLAW_CONFIG_PATH=/state/openclaw.json',
     '-e',
+    'HOME=/state/home',
+    '-e',
+    'OPENCLAW_HOME=/state/openclaw-home',
+    '-e',
     'OPENCLAW_NO_RESPAWN=1',
+    '-e',
+    'TMPDIR=/state/tmp',
+    '-e',
+    `DEVPLAT_TEST_MODE=${mode}`,
     '-v',
     `${runtimeDirectory}:/state`,
     '-v',
     `${devplatStateDirectory}:/app/.devplat`,
+    '-v',
+    `${bundledExtensionsDirectory}:/app/packages/openclaw/node_modules/openclaw/dist/extensions:ro`,
   ];
 
   if (mode === 'hermetic') {
@@ -320,16 +327,26 @@ process.stdout.write(JSON.stringify({ status: response.status, body: parsedBody 
 `;
 }
 
-function assertPartialMatch(expected, actual, path = 'result.details') {
+export function assertPartialMatch(expected, actual, path = 'result.details') {
   if (expected === undefined) {
     return;
   }
 
-  if (
-    typeof expected !== 'object' ||
-    expected === null ||
-    Array.isArray(expected)
-  ) {
+  if (Array.isArray(expected)) {
+    if (!Array.isArray(actual) || expected.length !== actual.length) {
+      throw new Error(
+        `${path} mismatch: expected ${JSON.stringify(expected)}, received ${JSON.stringify(actual)}.`,
+      );
+    }
+
+    for (const [index, value] of expected.entries()) {
+      assertPartialMatch(value, actual[index], `${path}[${String(index)}]`);
+    }
+
+    return;
+  }
+
+  if (typeof expected !== 'object' || expected === null) {
     if (expected !== actual) {
       throw new Error(
         `${path} mismatch: expected ${JSON.stringify(expected)}, received ${JSON.stringify(actual)}.`,
@@ -1332,6 +1349,13 @@ export async function runDeepTest(options, dependencies = {}) {
     options.reportDir ??
     (await makeTempDirectory('devplat-openclaw-deep-test'));
   const runtimeDirectory = resolve(reportDirectory, 'runtime');
+  const bundledExtensionsDirectory = resolve(
+    runtimeDirectory,
+    'bundled-extensions',
+  );
+  const homeDirectory = resolve(runtimeDirectory, 'home');
+  const openclawHomeDirectory = resolve(runtimeDirectory, 'openclaw-home');
+  const runtimeTempDirectory = resolve(runtimeDirectory, 'tmp');
   const devplatStateDirectory = resolve(reportDirectory, 'devplat-state');
   const imageTag =
     options.image ??
@@ -1345,11 +1369,14 @@ export async function runDeepTest(options, dependencies = {}) {
   const pluginConfig = options.pluginConfig ?? createPluginConfig(runtimeEnv);
   const gatewayConfig = createGatewayConfig({
     gatewayToken,
-    mode: options.mode,
     pluginConfig,
   });
 
   await ensureWritableDirectory(runtimeDirectory);
+  await ensureWritableDirectory(bundledExtensionsDirectory);
+  await ensureWritableDirectory(homeDirectory);
+  await ensureWritableDirectory(openclawHomeDirectory);
+  await ensureWritableDirectory(runtimeTempDirectory);
   await ensureWritableDirectory(devplatStateDirectory);
   await writeTextFile(
     resolve(runtimeDirectory, 'openclaw.json'),
@@ -1397,6 +1424,7 @@ export async function runDeepTest(options, dependencies = {}) {
     await commandRunner(
       'docker',
       buildDockerRunArgs({
+        bundledExtensionsDirectory,
         containerName,
         devplatStateDirectory,
         imageTag,

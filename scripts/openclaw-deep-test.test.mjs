@@ -1,10 +1,11 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
+  assertPartialMatch,
   buildDockerBuildArgs,
   buildDockerRunArgs,
   createDeepScenario,
@@ -65,11 +66,12 @@ describe('openclaw-deep-test helpers', () => {
         const pluginConfig = createPluginConfig(runtimeEnv);
         const gatewayConfig = createGatewayConfig({
           gatewayToken: 'token-1',
-          mode: 'hermetic',
           pluginConfig,
         });
         const buildArgs = buildDockerBuildArgs('devplat:test');
         const runArgs = buildDockerRunArgs({
+          bundledExtensionsDirectory:
+            '/sandbox/openclaw-runtime/bundled-extensions',
           containerName: 'devplat-test-container',
           devplatStateDirectory: '/sandbox/devplat-state',
           imageTag: 'devplat:test',
@@ -88,6 +90,7 @@ describe('openclaw-deep-test helpers', () => {
             load: { paths: ['/app/packages/openclaw'] },
           },
         });
+        expect(gatewayConfig).not.toHaveProperty('devplat');
         expect(buildArgs).toEqual([
           'build',
           '-t',
@@ -98,6 +101,16 @@ describe('openclaw-deep-test helpers', () => {
         ]);
         expect(runArgs).toEqual(
           expect.arrayContaining([
+            '-e',
+            'HOME=/state/home',
+            '-e',
+            'OPENCLAW_HOME=/state/openclaw-home',
+            '-e',
+            'TMPDIR=/state/tmp',
+            '-e',
+            'DEVPLAT_TEST_MODE=hermetic',
+            '-v',
+            '/sandbox/openclaw-runtime/bundled-extensions:/app/packages/openclaw/node_modules/openclaw/dist/extensions:ro',
             '--network',
             'none',
             'devplat:test',
@@ -146,6 +159,19 @@ describe('openclaw-deep-test helpers', () => {
             },
             steps: [{ tool: 'resolve_runtime_config', ok: true }],
           }),
+        ).not.toThrow();
+      },
+    },
+    {
+      name: 'matches array-valued result details structurally',
+      inputs: {},
+      mock: async () => undefined,
+      assert: async () => {
+        expect(() =>
+          assertPartialMatch(
+            { completedSliceIds: ['slice-0', 'slice-1'] },
+            { completedSliceIds: ['slice-0', 'slice-1'] },
+          ),
         ).not.toThrow();
       },
     },
@@ -280,6 +306,18 @@ describe('runDeepTest', () => {
           resolve(context.reportDirectory, 'runtime/openclaw.json'),
           'utf8',
         );
+        const runtimeTempStats = await stat(
+          resolve(context.reportDirectory, 'runtime/tmp'),
+        );
+        const bundledExtensionsStats = await stat(
+          resolve(context.reportDirectory, 'runtime/bundled-extensions'),
+        );
+        const openclawHomeStats = await stat(
+          resolve(context.reportDirectory, 'runtime/openclaw-home'),
+        );
+        const homeStats = await stat(
+          resolve(context.reportDirectory, 'runtime/home'),
+        );
 
         expect(report.steps).toHaveLength(1);
         expect(savedReport.persisted).toMatchObject({
@@ -290,6 +328,10 @@ describe('runDeepTest', () => {
         expect(savedRuntimeEnv).not.toContain('bot-secret');
         expect(savedGatewayConfig).toContain('[redacted]');
         expect(savedGatewayConfig).not.toContain('gateway-secret');
+        expect(bundledExtensionsStats.isDirectory()).toBe(true);
+        expect(homeStats.isDirectory()).toBe(true);
+        expect(openclawHomeStats.isDirectory()).toBe(true);
+        expect(runtimeTempStats.isDirectory()).toBe(true);
         expect(context.invocations).toEqual(
           expect.arrayContaining([
             expect.arrayContaining(['docker', 'build']),
