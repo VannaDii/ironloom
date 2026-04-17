@@ -197,11 +197,17 @@ function createGitHubRequest({ fetchImpl = fetch, token }) {
     });
 }
 
-function createDiscordRequest({ baseUrl, botToken, fetchImpl = fetch }) {
+function resolveApiRequestUrl(path, baseUrl) {
+  const normalizedBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+  const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
+  return new URL(normalizedPath, normalizedBaseUrl).toString();
+}
+
+export function createDiscordRequest({ baseUrl, botToken, fetchImpl = fetch }) {
   return (path, options = {}) =>
     requestJson({
       fetchImpl,
-      url: new URL(path, baseUrl).toString(),
+      url: resolveApiRequestUrl(path, baseUrl),
       headers: {
         authorization: `Bot ${botToken}`,
         ...options.headers,

@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   collectFixtureFiles,
   createDiscordChannelPlan,
+  createDiscordRequest,
   createEvictionPlan,
   createLiveLabEnvironment,
   createLiveRuntimeEnv,
@@ -87,6 +88,47 @@ describe('openclaw-live-lab helpers', () => {
           'pull-request',
           'audit',
           'project-management',
+        ]);
+      },
+    },
+    {
+      name: 'preserves the Discord API base path during preflight requests',
+      inputs: {},
+      mock: async () => {
+        const fetchCalls = [];
+        const fetchImpl = async (url, options) => {
+          fetchCalls.push({ options, url: String(url) });
+
+          return {
+            status: 200,
+            text: async () => JSON.stringify({ id: 'guild-1' }),
+          };
+        };
+
+        return {
+          discordRequest: createDiscordRequest({
+            baseUrl: 'https://discord.example/api/v10',
+            botToken: 'bot-token-1',
+            fetchImpl,
+          }),
+          fetchCalls,
+        };
+      },
+      assert: async (context) => {
+        await expect(
+          context.discordRequest('/guilds/guild-1'),
+        ).resolves.toEqual({ id: 'guild-1' });
+
+        expect(context.fetchCalls).toEqual([
+          {
+            options: expect.objectContaining({
+              headers: expect.objectContaining({
+                authorization: 'Bot bot-token-1',
+              }),
+              method: 'GET',
+            }),
+            url: 'https://discord.example/api/v10/guilds/guild-1',
+          },
         ]);
       },
     },
@@ -229,7 +271,7 @@ describe('runLiveLab', () => {
   const baseEnvironment = {
     discord: {
       applicationId: 'app-1',
-      baseUrl: 'https://discord.example/api',
+      baseUrl: 'https://discord.example/api/v10',
       botToken: 'bot-token-1',
       guildId: 'guild-1',
       publicKey: 'public-key-1',
