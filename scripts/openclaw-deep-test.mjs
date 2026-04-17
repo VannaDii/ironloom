@@ -13,6 +13,7 @@ const defaultReadinessTimeoutMs = 60_000;
 const defaultReadinessPollMs = 1_000;
 const defaultImageTagPrefix = 'devplat-openclaw-deep-test';
 const fixedTimestamp = '2026-04-04T00:00:00.000Z';
+const redactedValue = '[redacted]';
 
 function parseFlagArguments(argv) {
   const args = new Map();
@@ -99,6 +100,36 @@ function sanitizeNameSegment(value) {
 
 function createStep(tool, params, expected, phase) {
   return { tool, params, expected, phase };
+}
+
+function isSensitiveKey(key) {
+  const normalized = key.replace(/[^a-z0-9]/gi, '').toLowerCase();
+
+  return (
+    normalized === 'publickey' ||
+    normalized === 'privatekey' ||
+    normalized.endsWith('token') ||
+    normalized.endsWith('secret') ||
+    normalized.endsWith('password') ||
+    normalized.endsWith('apikey')
+  );
+}
+
+export function sanitizeSnapshotForArtifacts(snapshot) {
+  if (Array.isArray(snapshot)) {
+    return snapshot.map((value) => sanitizeSnapshotForArtifacts(value));
+  }
+
+  if (typeof snapshot !== 'object' || snapshot === null) {
+    return snapshot;
+  }
+
+  return Object.fromEntries(
+    Object.entries(snapshot).map(([key, value]) => [
+      key,
+      isSensitiveKey(key) ? redactedValue : sanitizeSnapshotForArtifacts(value),
+    ]),
+  );
 }
 
 export function createRuntimeEnv(overrides = {}) {
@@ -265,6 +296,7 @@ export function createInvokeScript({ gatewayToken, request }) {
   const encodedToken = Buffer.from(gatewayToken, 'utf8').toString('base64');
 
   return `
+(async () => {
 const body = JSON.parse(Buffer.from(${JSON.stringify(encodedBody)}, 'base64').toString('utf8'));
 const token = Buffer.from(${JSON.stringify(encodedToken)}, 'base64').toString('utf8');
 const response = await fetch('http://127.0.0.1:${String(defaultGatewayPort)}/tools/invoke', {
@@ -281,6 +313,10 @@ if (text.length > 0) {
   parsedBody = JSON.parse(text);
 }
 process.stdout.write(JSON.stringify({ status: response.status, body: parsedBody }));
+})().catch((error) => {
+  process.stderr.write(String(error instanceof Error ? error.message : error));
+  process.exitCode = 1;
+});
 `;
 }
 
@@ -1250,6 +1286,30 @@ async function captureContainerLogs(commandRunner, containerName) {
   }
 }
 
+async function writeArtifactRuntimeEnv({
+  reportDirectory,
+  runtimeEnv,
+  writeTextFile,
+}) {
+  await writeTextFile(
+    resolve(reportDirectory, 'runtime-env.json'),
+    `${JSON.stringify(sanitizeSnapshotForArtifacts(runtimeEnv), null, 2)}\n`,
+    'utf8',
+  );
+}
+
+async function writeArtifactGatewayConfig({
+  gatewayConfig,
+  runtimeDirectory,
+  writeTextFile,
+}) {
+  await writeTextFile(
+    resolve(runtimeDirectory, 'openclaw.json'),
+    `${JSON.stringify(sanitizeSnapshotForArtifacts(gatewayConfig), null, 2)}\n`,
+    'utf8',
+  );
+}
+
 export async function runDeepTest(options, dependencies = {}) {
   const commandRunner = dependencies.commandRunner ?? runCommand;
   const removeDirectory = dependencies.removeDirectory ?? rm;
@@ -1296,11 +1356,11 @@ export async function runDeepTest(options, dependencies = {}) {
     `${JSON.stringify(gatewayConfig, null, 2)}\n`,
     'utf8',
   );
-  await writeTextFile(
-    resolve(reportDirectory, 'runtime-env.json'),
-    `${JSON.stringify(runtimeEnv, null, 2)}\n`,
-    'utf8',
-  );
+  await writeArtifactRuntimeEnv({
+    reportDirectory,
+    runtimeEnv,
+    writeTextFile,
+  });
 
   const report = {
     containerName,
@@ -1396,16 +1456,21 @@ export async function runDeepTest(options, dependencies = {}) {
       ? await captureContainerLogs(commandRunner, containerName)
       : '';
     report.completedAt = new Date().toISOString();
-    await writeTextFile(
-      resolve(reportDirectory, 'deep-test-report.json'),
-      `${JSON.stringify(report, null, 2)}\n`,
-      'utf8',
-    );
     if (containerStarted && !options.retainContainerOnFailure) {
       await commandRunner('docker', ['rm', '-f', containerName]).catch(
         () => undefined,
       );
     }
+    await writeArtifactGatewayConfig({
+      gatewayConfig,
+      runtimeDirectory,
+      writeTextFile,
+    });
+    await writeTextFile(
+      resolve(reportDirectory, 'deep-test-report.json'),
+      `${JSON.stringify(report, null, 2)}\n`,
+      'utf8',
+    );
     throw error;
   }
 
@@ -1413,15 +1478,19 @@ export async function runDeepTest(options, dependencies = {}) {
     commandRunner,
     containerName,
   );
+  if (containerStarted) {
+    await commandRunner('docker', ['rm', '-f', containerName]);
+  }
+  await writeArtifactGatewayConfig({
+    gatewayConfig,
+    runtimeDirectory,
+    writeTextFile,
+  });
   await writeTextFile(
     resolve(reportDirectory, 'deep-test-report.json'),
     `${JSON.stringify(report, null, 2)}\n`,
     'utf8',
   );
-
-  if (containerStarted) {
-    await commandRunner('docker', ['rm', '-f', containerName]);
-  }
 
   if (options.cleanupReportDir === true) {
     await removeDirectory(reportDirectory, { force: true, recursive: true });

@@ -229,13 +229,25 @@ export function selectExpiredDiscordCategories({ channels, maxAgeMs, now }) {
 }
 
 export function createCleanupSummary(report) {
+  const resourceLabel = report.dryRun ? 'Would delete' : 'Deleted';
+  const repositories = report.dryRun
+    ? report.wouldDeleteRepositories.length
+    : report.deletedRepositories.length;
+  const sonarProjects = report.dryRun
+    ? report.wouldDeleteSonarProjects.length
+    : report.deletedSonarProjects.length;
+  const discordCategories = report.dryRun
+    ? report.wouldDeleteDiscordCategories.length
+    : report.deletedDiscordCategories.length;
+
   return [
     '# OpenClaw Live-Lab Janitor',
     '',
     `- Dry run: ${String(report.dryRun)}`,
-    `- Deleted repositories: ${String(report.deletedRepositories.length)}`,
-    `- Deleted Sonar projects: ${String(report.deletedSonarProjects.length)}`,
-    `- Deleted Discord categories: ${String(report.deletedDiscordCategories.length)}`,
+    `- ${resourceLabel} repositories: ${String(repositories)}`,
+    `- ${resourceLabel} Sonar projects: ${String(sonarProjects)}`,
+    `- ${resourceLabel} Discord categories: ${String(discordCategories)}`,
+    `- Cleanup errors: ${String(report.cleanupErrors.length)}`,
     report.error === undefined ? '' : `- Failure: ${report.error.message}`,
     '',
   ].join('\n');
@@ -326,10 +338,14 @@ export async function runJanitor(options, dependencies = {}) {
   const now = options.now ?? Date.now();
   const reportDirectory = options.reportDir ?? createDefaultReportDirectory();
   const report = {
+    cleanupErrors: [],
     deletedDiscordCategories: [],
     deletedRepositories: [],
     deletedSonarProjects: [],
     dryRun: options.dryRun,
+    wouldDeleteDiscordCategories: [],
+    wouldDeleteRepositories: [],
+    wouldDeleteSonarProjects: [],
   };
 
   await makeDirectory(reportDirectory, { recursive: true });
@@ -346,28 +362,37 @@ export async function runJanitor(options, dependencies = {}) {
     });
 
     for (const repository of expiredRepositories) {
-      if (!options.dryRun) {
-        await deleteRepository({
-          githubOrganization: options.environment.github.organization,
-          githubRequest,
-          repoName: repository.name,
-        });
-        await deleteSonarProject({
-          projectKey: createSonarProjectKey(
-            options.environment.github.organization,
-            repository.name,
-          ),
-          sonarRequest,
-        }).catch(() => undefined);
+      const projectKey = createSonarProjectKey(
+        options.environment.github.organization,
+        repository.name,
+      );
+
+      if (options.dryRun) {
+        report.wouldDeleteRepositories.push(repository.name);
+        report.wouldDeleteSonarProjects.push(projectKey);
+        continue;
       }
 
+      await deleteRepository({
+        githubOrganization: options.environment.github.organization,
+        githubRequest,
+        repoName: repository.name,
+      });
       report.deletedRepositories.push(repository.name);
-      report.deletedSonarProjects.push(
-        createSonarProjectKey(
-          options.environment.github.organization,
-          repository.name,
-        ),
-      );
+
+      try {
+        await deleteSonarProject({
+          projectKey,
+          sonarRequest,
+        });
+        report.deletedSonarProjects.push(projectKey);
+      } catch (error) {
+        report.cleanupErrors.push({
+          error: serializeError(error),
+          scope: 'sonar-project',
+          target: projectKey,
+        });
+      }
     }
 
     const channels = await listGuildChannels({
@@ -384,15 +409,23 @@ export async function runJanitor(options, dependencies = {}) {
       const children = channels.filter(
         (channel) => channel.parent_id === category.id,
       );
-      if (!options.dryRun) {
-        for (const child of children) {
-          await deleteDiscordChannel(child.id, discordRequest);
-        }
-
-        await deleteDiscordChannel(category.id, discordRequest);
+      if (options.dryRun) {
+        report.wouldDeleteDiscordCategories.push(category.name);
+        continue;
       }
 
+      for (const child of children) {
+        await deleteDiscordChannel(child.id, discordRequest);
+      }
+
+      await deleteDiscordChannel(category.id, discordRequest);
       report.deletedDiscordCategories.push(category.name);
+    }
+
+    if (report.cleanupErrors.length > 0) {
+      throw new Error(
+        `Janitor completed with ${String(report.cleanupErrors.length)} cleanup error(s).`,
+      );
     }
   } catch (error) {
     report.error = serializeError(error);

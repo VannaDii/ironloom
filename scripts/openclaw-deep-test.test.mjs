@@ -9,10 +9,12 @@ import {
   buildDockerRunArgs,
   createDeepScenario,
   createGatewayConfig,
+  createInvokeScript,
   createPluginConfig,
   createRuntimeEnv,
   parseDeepTestArgs,
   runDeepTest,
+  sanitizeSnapshotForArtifacts,
   validateDeepTestReport,
 } from './openclaw-deep-test.mjs';
 
@@ -147,6 +149,37 @@ describe('openclaw-deep-test helpers', () => {
         ).not.toThrow();
       },
     },
+    {
+      name: 'renders an invocable script and redacts sensitive snapshot fields',
+      inputs: {},
+      mock: async () => undefined,
+      assert: async () => {
+        const script = createInvokeScript({
+          gatewayToken: 'gateway-token-1',
+          request: {
+            args: { scope: 'state' },
+            tool: 'list_stored_records',
+          },
+        });
+        const sanitized = sanitizeSnapshotForArtifacts({
+          authToken: 'token-1',
+          nested: {
+            publicKey: 'public-key-1',
+            value: 'kept',
+          },
+        });
+
+        expect(script).toContain('(async () => {');
+        expect(script).toContain('})().catch((error) => {');
+        expect(sanitized).toEqual({
+          authToken: '[redacted]',
+          nested: {
+            publicKey: '[redacted]',
+            value: 'kept',
+          },
+        });
+      },
+    },
   ];
 
   it.each(cases)('$name', async (testCase) => {
@@ -213,9 +246,12 @@ describe('runDeepTest', () => {
       assert: async (context, inputs) => {
         const report = await runDeepTest(
           {
+            gatewayToken: 'gateway-secret',
             mode: 'hermetic',
             reportDir: context.reportDirectory,
-            runtimeEnv: createRuntimeEnv(),
+            runtimeEnv: createRuntimeEnv({
+              DISCORD_BOT_TOKEN: 'bot-secret',
+            }),
             scenario: inputs.scenario,
           },
           {
@@ -236,12 +272,24 @@ describe('runDeepTest', () => {
             'utf8',
           ),
         );
+        const savedRuntimeEnv = await readFile(
+          resolve(context.reportDirectory, 'runtime-env.json'),
+          'utf8',
+        );
+        const savedGatewayConfig = await readFile(
+          resolve(context.reportDirectory, 'runtime/openclaw.json'),
+          'utf8',
+        );
 
         expect(report.steps).toHaveLength(1);
         expect(savedReport.persisted).toMatchObject({
           artifacts: ['storage-openclaw-artifact-1'],
           memory: ['memory-openclaw-1'],
         });
+        expect(savedRuntimeEnv).toContain('[redacted]');
+        expect(savedRuntimeEnv).not.toContain('bot-secret');
+        expect(savedGatewayConfig).toContain('[redacted]');
+        expect(savedGatewayConfig).not.toContain('gateway-secret');
         expect(context.invocations).toEqual(
           expect.arrayContaining([
             expect.arrayContaining(['docker', 'build']),

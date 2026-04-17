@@ -259,6 +259,7 @@ describe('runLiveLab', () => {
     {
       name: 'runs the full live lab and cleans up repo resources on success',
       inputs: {
+        ref: 'refs/heads/release-candidate',
         retainFailedResources: false,
       },
       mock: async () => {
@@ -267,6 +268,7 @@ describe('runLiveLab', () => {
         const summaryEntries = [];
         const githubCalls = [];
         const discordCalls = [];
+        const discordMessages = [];
         const sonarCalls = [];
         const discordChannelResponses = [
           { id: 'category-1', name: 'devplat-test-200-1', type: 4 },
@@ -399,6 +401,7 @@ describe('runLiveLab', () => {
             path.endsWith('/messages') &&
             options.method === 'POST'
           ) {
+            discordMessages.push(options.body.content);
             return { id: `message-${discordCalls.length}` };
           }
 
@@ -464,6 +467,7 @@ describe('runLiveLab', () => {
         return {
           collectFixtureFiles: async () => fixtureFiles,
           discordCalls,
+          discordMessages,
           discordRequest,
           githubCalls,
           githubRequest,
@@ -479,6 +483,7 @@ describe('runLiveLab', () => {
           {
             environment: baseEnvironment,
             maxParallelRepos: 6,
+            ref: inputs.ref,
             reportDir: context.reportDir,
             retainFailedResources: inputs.retainFailedResources,
             skipBuild: true,
@@ -503,6 +508,11 @@ describe('runLiveLab', () => {
         );
 
         expect(report.status).toBe('passed');
+        expect(savedReport.ref).toBe(inputs.ref);
+        expect(savedReport.cleanup).toMatchObject({
+          repository: { status: 'deleted' },
+          sonarProject: { status: 'deleted' },
+        });
         expect(savedReport.github.repoFullName).toBe(
           'sandbox-org/devplat-test-200-1',
         );
@@ -529,7 +539,238 @@ describe('runLiveLab', () => {
             ['/channels/pull-request-1/messages', 'POST'],
           ]),
         );
+        expect(context.discordMessages).toEqual(
+          expect.arrayContaining([
+            expect.stringContaining(`ref: ${inputs.ref}`),
+          ]),
+        );
         expect(context.summaryEntries[0]).toContain('Status: passed');
+        expect(context.summaryEntries[0]).toContain(`Ref: ${inputs.ref}`);
+      },
+    },
+    {
+      name: 'fails the run when repository cleanup fails after a successful deep test',
+      inputs: {},
+      mock: async () => {
+        const reportDir = await mkdtemp(
+          resolve(tmpdir(), 'devplat-live-lab-cleanup-failure-'),
+        );
+        temporaryRoots.push(reportDir);
+        const summaryEntries = [];
+        const githubCalls = [];
+        const discordChannelResponses = [
+          { id: 'category-1', name: 'devplat-test-200-1', type: 4 },
+          { id: 'spec-1', name: 'spec', type: 0 },
+          { id: 'implementation-1', name: 'implementation', type: 0 },
+          { id: 'pull-request-1', name: 'pull-request', type: 0 },
+          { id: 'audit-1', name: 'audit', type: 0 },
+          { id: 'project-management-1', name: 'project-management', type: 0 },
+        ];
+
+        const githubRoutes = new Map([
+          ['GET /orgs/sandbox-org', { login: 'sandbox-org' }],
+          [
+            'GET /orgs/sandbox-org/repos?type=public&sort=created&direction=asc&per_page=100',
+            [],
+          ],
+          [
+            'POST /orgs/sandbox-org/repos',
+            {
+              created_at: '2026-04-16T00:00:00.000Z',
+              full_name: 'sandbox-org/devplat-test-200-1',
+              html_url: 'https://github.com/sandbox-org/devplat-test-200-1',
+              name: 'devplat-test-200-1',
+            },
+          ],
+          [
+            'PUT /repos/sandbox-org/devplat-test-200-1/actions/permissions',
+            null,
+          ],
+          [
+            'PUT /repos/sandbox-org/devplat-test-200-1/actions/permissions/selected-actions',
+            null,
+          ],
+          [
+            'PUT /repos/sandbox-org/devplat-test-200-1/actions/permissions/workflow',
+            null,
+          ],
+          [
+            'PUT /repos/sandbox-org/devplat-test-200-1/interaction-limits',
+            { limit: 'collaborators_only' },
+          ],
+          [
+            'GET /repos/sandbox-org/devplat-test-200-1',
+            { default_branch: 'main' },
+          ],
+          [
+            'GET /repos/sandbox-org/devplat-test-200-1/git/ref/heads/main',
+            { object: { sha: 'sha-main-1' } },
+          ],
+          [
+            'POST /repos/sandbox-org/devplat-test-200-1/git/refs',
+            { ref: 'refs/heads/live-test/200-1' },
+          ],
+          ['POST /repos/sandbox-org/devplat-test-200-1/pulls', { number: 42 }],
+          [
+            'POST /repos/sandbox-org/devplat-test-200-1/actions/workflows/live-dispatch-canary.yml/dispatches',
+            null,
+          ],
+          [
+            'GET /repos/sandbox-org/devplat-test-200-1/actions/workflows/live-dispatch-canary.yml/runs?branch=live-test%2F200-1&event=workflow_dispatch&per_page=10',
+            {
+              workflow_runs: [
+                {
+                  conclusion: 'success',
+                  html_url:
+                    'https://github.com/sandbox-org/devplat-test-200-1/actions/runs/1',
+                  id: 1,
+                  status: 'completed',
+                },
+              ],
+            },
+          ],
+          [
+            'PATCH /repos/sandbox-org/devplat-test-200-1/pulls/42',
+            { number: 42, state: 'closed' },
+          ],
+        ]);
+        const githubRequest = createTrackedRouteHandler(
+          'GitHub',
+          githubCalls,
+          githubRoutes,
+        );
+        githubRoutes.set(
+          'PUT /repos/sandbox-org/devplat-test-200-1/contents/README.md',
+          {
+            content: {
+              path: '/repos/sandbox-org/devplat-test-200-1/contents/README.md',
+            },
+          },
+        );
+        githubRoutes.set(
+          'PUT /repos/sandbox-org/devplat-test-200-1/contents/.github/workflows/live-dispatch-canary.yml',
+          {
+            content: {
+              path: '/repos/sandbox-org/devplat-test-200-1/contents/.github/workflows/live-dispatch-canary.yml',
+            },
+          },
+        );
+        githubRoutes.set(
+          'PUT /repos/sandbox-org/devplat-test-200-1/contents/.live-test/200-1/canary.json',
+          {
+            content: {
+              path: '/repos/sandbox-org/devplat-test-200-1/contents/.live-test/200-1/canary.json',
+            },
+          },
+        );
+        githubRoutes.set('DELETE /repos/sandbox-org/devplat-test-200-1', () => {
+          throw new Error('repo cleanup failed');
+        });
+
+        return {
+          discordRequest: async (path, options = {}) => {
+            if (path === '/guilds/guild-1' && options.method === undefined) {
+              return { id: 'guild-1' };
+            }
+            if (
+              path === '/guilds/guild-1/channels' &&
+              options.method === 'POST'
+            ) {
+              return discordChannelResponses.shift();
+            }
+            if (
+              path.startsWith('/channels/') &&
+              path.endsWith('/messages') &&
+              options.method === 'POST'
+            ) {
+              return { id: 'message-1' };
+            }
+
+            throw new Error(
+              `Unexpected Discord request: ${path} ${options.method ?? 'GET'}`,
+            );
+          },
+          githubRequest,
+          reportDir,
+          runDeepTestMock: async () => ({
+            reportDirectory: resolve(reportDir, 'deep-test'),
+            steps: [{ tool: 'resolve_runtime_config' }],
+          }),
+          sonarRequest: async (path, options = {}) => {
+            if (
+              path === '/api/projects/search?organization=sandbox-sonar&ps=1' &&
+              options.method === undefined
+            ) {
+              return { components: [] };
+            }
+            if (
+              path ===
+                '/api/projects/search?organization=sandbox-sonar&projects=sandbox-org_devplat-test-200-1' &&
+              options.method === undefined
+            ) {
+              return {
+                components: [
+                  { key: 'sandbox-org_devplat-test-200-1', name: 'fixture' },
+                ],
+              };
+            }
+            if (
+              path ===
+                '/api/projects/delete?project=sandbox-org_devplat-test-200-1' &&
+              options.method === 'POST'
+            ) {
+              return null;
+            }
+
+            throw new Error(
+              `Unexpected Sonar request: ${path} ${options.method ?? 'GET'}`,
+            );
+          },
+          summaryEntries,
+        };
+      },
+      assert: async (context) => {
+        await expect(
+          runLiveLab(
+            {
+              environment: baseEnvironment,
+              maxParallelRepos: 6,
+              reportDir: context.reportDir,
+              retainFailedResources: false,
+              skipBuild: true,
+            },
+            {
+              appendSummary: async (_path, content) => {
+                context.summaryEntries.push(content);
+              },
+              collectFixtureFiles: async () => [
+                { path: 'README.md', content: '# Fixture\n' },
+                {
+                  path: '.github/workflows/live-dispatch-canary.yml',
+                  content: 'name: Canary\n',
+                },
+              ],
+              discordRequest: context.discordRequest,
+              githubRequest: context.githubRequest,
+              runDeepTest: context.runDeepTestMock,
+              sonarRequest: context.sonarRequest,
+            },
+          ),
+        ).rejects.toThrow('Failed to delete live-lab repository');
+
+        const savedReport = JSON.parse(
+          await readFile(
+            resolve(context.reportDir, 'live-lab-report.json'),
+            'utf8',
+          ),
+        );
+
+        expect(savedReport.status).toBe('failed');
+        expect(savedReport.cleanup).toMatchObject({
+          repository: { status: 'failed' },
+          sonarProject: { status: 'deleted' },
+        });
+        expect(context.summaryEntries[0]).toContain('Status: failed');
       },
     },
     {
@@ -793,6 +1034,10 @@ describe('runLiveLab', () => {
 
         expect(savedReport.status).toBe('failed');
         expect(savedReport.evictedRepository).toBe('devplat-test-199-1');
+        expect(savedReport.cleanup).toMatchObject({
+          repository: { status: 'deleted' },
+          sonarProject: { status: 'deleted' },
+        });
         expect(context.githubCalls).toEqual(
           expect.arrayContaining([
             ['/repos/sandbox-org/devplat-test-199-1', 'DELETE'],

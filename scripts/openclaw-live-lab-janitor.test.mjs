@@ -104,10 +104,14 @@ describe('openclaw-live-lab-janitor helpers', () => {
           now,
         });
         const summary = createCleanupSummary({
+          cleanupErrors: [],
           deletedDiscordCategories: ['devplat-test-10-1'],
           deletedRepositories: ['devplat-test-10-1'],
           deletedSonarProjects: ['sandbox-org_devplat-test-10-1'],
           dryRun: false,
+          wouldDeleteDiscordCategories: [],
+          wouldDeleteRepositories: [],
+          wouldDeleteSonarProjects: [],
         });
 
         expect(repositories.map((repository) => repository.name)).toEqual([
@@ -272,6 +276,7 @@ describe('runJanitor', () => {
         expect(savedReport.deletedSonarProjects).toEqual([
           'sandbox-org_devplat-test-100-1',
         ]);
+        expect(savedReport.cleanupErrors).toEqual([]);
         expect(context.githubCalls).toEqual(
           expect.arrayContaining([
             ['/repos/sandbox-org/devplat-test-100-1', 'DELETE'],
@@ -371,8 +376,12 @@ describe('runJanitor', () => {
           },
         );
 
-        expect(report.deletedRepositories).toEqual(['devplat-test-100-1']);
-        expect(report.deletedDiscordCategories).toEqual(['devplat-test-100-1']);
+        expect(report.deletedRepositories).toEqual([]);
+        expect(report.deletedDiscordCategories).toEqual([]);
+        expect(report.wouldDeleteRepositories).toEqual(['devplat-test-100-1']);
+        expect(report.wouldDeleteDiscordCategories).toEqual([
+          'devplat-test-100-1',
+        ]);
         expect(context.githubCalls).toEqual([
           [
             '/orgs/sandbox-org/repos?type=public&sort=created&direction=asc&per_page=100',
@@ -383,6 +392,104 @@ describe('runJanitor', () => {
           ['/guilds/guild-1/channels', 'GET'],
         ]);
         expect(context.sonarCalls).toEqual([]);
+      },
+    },
+    {
+      name: 'surfaces Sonar cleanup failures without claiming deletion',
+      inputs: {},
+      mock: async () => {
+        const reportDir = await mkdtemp(
+          resolve(tmpdir(), 'devplat-janitor-sonar-failure-'),
+        );
+        temporaryRoots.push(reportDir);
+
+        return {
+          discordRequest: async (path, options = {}) => {
+            if (
+              path === '/guilds/guild-1/channels' &&
+              options.method === undefined
+            ) {
+              return [];
+            }
+
+            throw new Error(
+              `Unexpected Discord request: ${path} ${options.method ?? 'GET'}`,
+            );
+          },
+          githubRequest: async (path, options = {}) => {
+            if (
+              path ===
+                '/orgs/sandbox-org/repos?type=public&sort=created&direction=asc&per_page=100' &&
+              options.method === undefined
+            ) {
+              return [
+                {
+                  created_at: '2026-04-10T00:00:00.000Z',
+                  name: 'devplat-test-100-1',
+                },
+              ];
+            }
+            if (
+              path === '/repos/sandbox-org/devplat-test-100-1' &&
+              options.method === 'DELETE'
+            ) {
+              return null;
+            }
+
+            throw new Error(
+              `Unexpected GitHub request: ${path} ${options.method ?? 'GET'}`,
+            );
+          },
+          reportDir,
+          sonarRequest: async (path, options = {}) => {
+            if (
+              path ===
+                '/api/projects/delete?project=sandbox-org_devplat-test-100-1' &&
+              options.method === 'POST'
+            ) {
+              throw new Error('sonar cleanup failed');
+            }
+
+            throw new Error(
+              `Unexpected Sonar request: ${path} ${options.method ?? 'GET'}`,
+            );
+          },
+        };
+      },
+      assert: async (context) => {
+        await expect(
+          runJanitor(
+            {
+              discordMaxAgeDays: 7,
+              dryRun: false,
+              environment: baseEnvironment,
+              now: Date.parse('2026-04-16T00:00:00.000Z'),
+              repoMaxAgeHours: 24,
+              reportDir: context.reportDir,
+            },
+            {
+              discordRequest: context.discordRequest,
+              githubRequest: context.githubRequest,
+              sonarRequest: context.sonarRequest,
+            },
+          ),
+        ).rejects.toThrow('cleanup error');
+
+        const savedReport = JSON.parse(
+          await readFile(
+            resolve(context.reportDir, 'live-lab-janitor-report.json'),
+            'utf8',
+          ),
+        );
+
+        expect(savedReport.deletedRepositories).toEqual(['devplat-test-100-1']);
+        expect(savedReport.deletedSonarProjects).toEqual([]);
+        expect(savedReport.cleanupErrors).toEqual([
+          expect.objectContaining({
+            scope: 'sonar-project',
+            target: 'sandbox-org_devplat-test-100-1',
+          }),
+        ]);
       },
     },
   ];

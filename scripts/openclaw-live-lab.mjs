@@ -445,11 +445,14 @@ export function createStepSummary(report) {
     '# OpenClaw Live Lab',
     '',
     `- Status: ${report.status}`,
+    `- Ref: ${report.ref ?? 'n/a'}`,
     `- Run: ${report.runLabel}`,
     `- Repository: ${report.github?.repoFullName ?? 'n/a'}`,
     `- Workflow: ${report.workflowUrl ?? 'n/a'}`,
     `- Discord category: ${report.discord?.categoryName ?? 'n/a'}`,
     `- Deep-test steps: ${String(report.deepTest?.steps ?? 0)}`,
+    `- Repository cleanup: ${report.cleanup?.repository.status ?? 'n/a'}`,
+    `- Sonar cleanup: ${report.cleanup?.sonarProject.status ?? 'n/a'}`,
   ];
 
   if (report.evictedRepository !== undefined) {
@@ -926,6 +929,135 @@ async function postStatusSafe(options) {
   return true;
 }
 
+async function cleanupLiveLabResources({
+  githubOrganization,
+  githubRequest,
+  identifiers,
+  report,
+  retainFailedResources,
+  repoCreated,
+  repoFullName,
+  sonarProjectKey,
+  sonarRequest,
+}) {
+  const shouldCleanupResources =
+    report.status === 'passed' || !retainFailedResources;
+  let cleanupFailure = null;
+
+  if (!repoCreated) {
+    report.cleanup.repository.status = 'not-created';
+  } else if (!shouldCleanupResources) {
+    report.cleanup.repository.status = 'retained';
+  } else {
+    try {
+      await deleteRepository({
+        githubOrganization,
+        githubRequest,
+        repoName: identifiers.repoName,
+      });
+      report.cleanup.repository.status = 'deleted';
+    } catch (error) {
+      report.cleanup.repository.error = serializeError(error);
+      report.cleanup.repository.status = 'failed';
+      cleanupFailure ??= new Error(
+        `Failed to delete live-lab repository ${repoFullName}.`,
+      );
+    }
+  }
+
+  if (sonarProjectKey === null) {
+    report.cleanup.sonarProject.status = 'not-created';
+  } else if (!shouldCleanupResources) {
+    report.cleanup.sonarProject.status = 'retained';
+  } else {
+    try {
+      await deleteSonarProject({
+        projectKey: sonarProjectKey,
+        sonarRequest,
+      });
+      report.cleanup.sonarProject.status = 'deleted';
+    } catch (error) {
+      report.cleanup.sonarProject.error = serializeError(error);
+      report.cleanup.sonarProject.status = 'failed';
+      cleanupFailure ??= new Error(
+        `Failed to delete Sonar project ${sonarProjectKey}.`,
+      );
+    }
+  }
+
+  return cleanupFailure;
+}
+
+async function postFinalLiveLabStatus({
+  cleanupFailure,
+  discordRequest,
+  ref,
+  report,
+  repoFullName,
+  runLabel,
+  sha,
+  sonarProjectKey,
+  workflowUrl,
+}) {
+  if (report.discord === null) {
+    return;
+  }
+
+  if (cleanupFailure === null) {
+    await postStatusSafe({
+      channelId: report.discord.channels.projectManagement.id,
+      details: 'Live lab completed successfully.',
+      discordRequest,
+      phase: 'complete',
+      ref,
+      repoFullName,
+      runLabel,
+      sha,
+      status: 'passed',
+      workflowUrl,
+    });
+    await postStatusSafe({
+      channelId: report.discord.channels.audit.id,
+      details: `Fixture repo ${repoFullName} and Sonar project ${sonarProjectKey} validated successfully.`,
+      discordRequest,
+      phase: 'complete',
+      ref,
+      repoFullName,
+      runLabel,
+      sha,
+      status: 'passed',
+      workflowUrl,
+    });
+    return;
+  }
+
+  await postStatusSafe({
+    channelId: report.discord.channels.audit.id,
+    details: cleanupFailure.message,
+    discordRequest,
+    phase: 'failure',
+    ref,
+    repoFullName,
+    runLabel,
+    sha,
+    status: 'failed',
+    workflowUrl,
+  });
+  await postStatusSafe({
+    channelId: report.discord.channels.projectManagement.id,
+    details:
+      'Live lab failed during cleanup. Inspect the uploaded report and retained Discord channels.',
+    discordRequest,
+    phase: 'failure',
+    ref,
+    repoFullName,
+    runLabel,
+    sha,
+    status: 'failed',
+    workflowUrl,
+  });
+}
+
 async function listGuildChannels({ discordRequest, guildId }) {
   return discordRequest(`/guilds/${encodeURIComponent(guildId)}/channels`);
 }
@@ -1032,6 +1164,12 @@ export async function runLiveLab(options, dependencies = {}) {
     runAttempt: options.environment.githubWorkflow.runAttempt,
     runNumber: options.environment.githubWorkflow.runNumber,
   });
+  const effectiveRef = options.ref ?? options.environment.githubWorkflow.ref;
+  const repoFullName = `${options.environment.github.organization}/${identifiers.repoName}`;
+  const sonarProjectTarget = createSonarProjectKey(
+    options.environment.github.organization,
+    identifiers.repoName,
+  );
   const reportDirectory =
     options.reportDir ?? createDefaultReportDirectory(identifiers.runLabel);
   const workflowUrl = resolveWorkflowUrl({
@@ -1040,14 +1178,27 @@ export async function runLiveLab(options, dependencies = {}) {
     serverUrl: options.environment.githubWorkflow.serverUrl,
   });
   const report = {
+    cleanup: {
+      repository: {
+        status: 'pending',
+        target: repoFullName,
+      },
+      sonarProject: {
+        status: 'pending',
+        target: sonarProjectTarget,
+      },
+    },
     discord: null,
     evictedRepository: undefined,
     github: null,
+    ref: effectiveRef,
     runLabel: identifiers.runLabel,
     status: 'running',
     workflowUrl,
   };
 
+  let caughtError = null;
+  let cleanupFailure;
   let repoCreated = false;
   let sonarProjectKey = null;
   await makeDirectory(reportDirectory, { recursive: true });
@@ -1077,14 +1228,13 @@ export async function runLiveLab(options, dependencies = {}) {
       ),
     };
 
-    const repoFullName = `${options.environment.github.organization}/${identifiers.repoName}`;
     await postStatusSafe({
       channelId: discordChannels.channels.projectManagement.id,
       details:
         'Bootstrapped the live-lab category and external service preflight.',
       discordRequest,
       phase: 'bootstrap',
-      ref: options.environment.githubWorkflow.ref,
+      ref: effectiveRef,
       repoFullName,
       runLabel: identifiers.runLabel,
       sha: options.environment.githubWorkflow.sha,
@@ -1107,7 +1257,7 @@ export async function runLiveLab(options, dependencies = {}) {
         discordRequest,
         guildId: options.environment.discord.guildId,
         newRunAuditChannelId: discordChannels.channels.audit.id,
-        ref: options.environment.githubWorkflow.ref,
+        ref: effectiveRef,
         repoFullName,
         runLabel: identifiers.runLabel,
         sha: options.environment.githubWorkflow.sha,
@@ -1264,7 +1414,7 @@ export async function runLiveLab(options, dependencies = {}) {
                 : 'Progress update.'),
             discordRequest,
             phase: progress.phase,
-            ref: options.environment.githubWorkflow.ref,
+            ref: effectiveRef,
             repoFullName,
             runLabel: identifiers.runLabel,
             sha: options.environment.githubWorkflow.sha,
@@ -1280,31 +1430,8 @@ export async function runLiveLab(options, dependencies = {}) {
     };
 
     report.status = 'passed';
-    await postStatusSafe({
-      channelId: discordChannels.channels.projectManagement.id,
-      details: 'Live lab completed successfully.',
-      discordRequest,
-      phase: 'complete',
-      ref: options.environment.githubWorkflow.ref,
-      repoFullName,
-      runLabel: identifiers.runLabel,
-      sha: options.environment.githubWorkflow.sha,
-      status: 'passed',
-      workflowUrl,
-    });
-    await postStatusSafe({
-      channelId: discordChannels.channels.audit.id,
-      details: `Fixture repo ${repoFullName} and Sonar project ${sonarProject.projectKey} validated successfully.`,
-      discordRequest,
-      phase: 'complete',
-      ref: options.environment.githubWorkflow.ref,
-      repoFullName,
-      runLabel: identifiers.runLabel,
-      sha: options.environment.githubWorkflow.sha,
-      status: 'passed',
-      workflowUrl,
-    });
   } catch (error) {
+    caughtError = error;
     report.error = serializeError(error);
     report.status = 'failed';
 
@@ -1314,7 +1441,7 @@ export async function runLiveLab(options, dependencies = {}) {
         details: report.error.message,
         discordRequest,
         phase: 'failure',
-        ref: options.environment.githubWorkflow.ref,
+        ref: effectiveRef,
         repoFullName:
           report.github?.repoFullName ??
           `${options.environment.github.organization}/${identifiers.repoName}`,
@@ -1329,7 +1456,7 @@ export async function runLiveLab(options, dependencies = {}) {
           'Live lab failed. Inspect the uploaded report and retained Discord channels.',
         discordRequest,
         phase: 'failure',
-        ref: options.environment.githubWorkflow.ref,
+        ref: effectiveRef,
         repoFullName:
           report.github?.repoFullName ??
           `${options.environment.github.organization}/${identifiers.repoName}`,
@@ -1339,9 +1466,38 @@ export async function runLiveLab(options, dependencies = {}) {
         workflowUrl,
       });
     }
-
-    throw error;
   } finally {
+    cleanupFailure = await cleanupLiveLabResources({
+      githubOrganization: options.environment.github.organization,
+      githubRequest,
+      identifiers,
+      report,
+      retainFailedResources: options.retainFailedResources,
+      repoCreated,
+      repoFullName,
+      sonarProjectKey,
+      sonarRequest,
+    });
+
+    if (caughtError === null && cleanupFailure !== null) {
+      report.error = serializeError(cleanupFailure);
+      report.status = 'failed';
+    }
+
+    if (caughtError === null) {
+      await postFinalLiveLabStatus({
+        cleanupFailure,
+        discordRequest,
+        ref: effectiveRef,
+        report,
+        repoFullName,
+        runLabel: identifiers.runLabel,
+        sha: options.environment.githubWorkflow.sha,
+        sonarProjectKey,
+        workflowUrl,
+      });
+    }
+
     report.completedAt = new Date().toISOString();
     report.reportDirectory = reportDirectory;
     await writeTextFile(
@@ -1354,30 +1510,17 @@ export async function runLiveLab(options, dependencies = {}) {
       createStepSummary(report),
     );
 
-    if (
-      repoCreated &&
-      (report.status === 'passed' || !options.retainFailedResources)
-    ) {
-      await deleteRepository({
-        githubOrganization: options.environment.github.organization,
-        githubRequest,
-        repoName: identifiers.repoName,
-      }).catch(() => undefined);
-    }
-
-    if (
-      sonarProjectKey !== null &&
-      (report.status === 'passed' || !options.retainFailedResources)
-    ) {
-      await deleteSonarProject({
-        projectKey: sonarProjectKey,
-        sonarRequest,
-      }).catch(() => undefined);
-    }
-
     if (report.status === 'passed' && options.cleanupReportDir === true) {
       await removeDirectory(reportDirectory, { force: true, recursive: true });
     }
+  }
+
+  if (caughtError !== null) {
+    throw caughtError;
+  }
+
+  if (cleanupFailure !== null) {
+    throw cleanupFailure;
   }
 
   return report;

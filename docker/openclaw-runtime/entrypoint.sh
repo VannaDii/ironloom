@@ -3,4 +3,4 @@ set -eu
 
 cd /app
 
-exec ./node_modules/.bin/openclaw gateway run "$@"
+exec node ./packages/openclaw/node_modules/openclaw/openclaw.mjs gateway run "$@"
