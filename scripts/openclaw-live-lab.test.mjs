@@ -1,3 +1,4 @@
+import { generateKeyPairSync } from 'node:crypto';
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
@@ -6,20 +7,36 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   collectFixtureFiles,
+  createGitHubRepositoryCreatePath,
+  createGitHubRepositoryListPath,
   createDiscordChannelPlan,
   createDiscordRequest,
   createEvictionPlan,
   createLiveLabEnvironment,
   createLiveRuntimeEnv,
   createRunIdentifiers,
+  loadLiveLabEnvironment,
+  main as runLiveLabCommand,
   createSonarProjectKey,
   createStatusMessage,
   mapProgressToChannel,
   parseLiveLabArgs,
+  resolveGitHubOwnerKind,
   runLiveLab,
 } from './openclaw-live-lab.mjs';
 
 const temporaryRoots = [];
+const { privateKey: liveLabAppPrivateKey } = generateKeyPairSync('rsa', {
+  modulusLength: 2048,
+  privateKeyEncoding: {
+    format: 'pem',
+    type: 'pkcs8',
+  },
+  publicKeyEncoding: {
+    format: 'pem',
+    type: 'spki',
+  },
+});
 
 afterEach(async () => {
   await Promise.all(
@@ -225,6 +242,233 @@ describe('openclaw-live-lab helpers', () => {
       },
     },
     {
+      name: 'loads the environment by minting a GitHub App token',
+      inputs: {},
+      mock: async () => {
+        const fetchCalls = [];
+        const fetchImpl = async (url, options) => {
+          fetchCalls.push({
+            body:
+              typeof options.body === 'string'
+                ? JSON.parse(options.body)
+                : undefined,
+            headers: options.headers,
+            method: options.method,
+            url: String(url),
+          });
+
+          if (String(url).endsWith('/users/sandbox-org')) {
+            return {
+              status: 200,
+              text: async () =>
+                JSON.stringify({ login: 'sandbox-org', type: 'Organization' }),
+            };
+          }
+
+          if (String(url).endsWith('/orgs/sandbox-org/installation')) {
+            return {
+              status: 200,
+              text: async () => JSON.stringify({ id: 42 }),
+            };
+          }
+
+          if (String(url).endsWith('/app/installations/42/access_tokens')) {
+            return {
+              status: 201,
+              text: async () => JSON.stringify({ token: 'github-token-2' }),
+            };
+          }
+
+          throw new Error(`Unexpected fetch: ${String(url)}`);
+        };
+
+        return { fetchCalls, fetchImpl };
+      },
+      assert: async (context) => {
+        const env = {
+          LIVE_TEST_DISCORD_APPLICATION_ID: 'app-1',
+          LIVE_TEST_DISCORD_BOT_TOKEN: 'bot-token-1',
+          LIVE_TEST_DISCORD_GUILD_ID: 'guild-1',
+          LIVE_TEST_DISCORD_PUBLIC_KEY: 'public-key-1',
+          LIVE_TEST_GITHUB_APP_CLIENT_ID: 'client-id-1',
+          LIVE_TEST_GITHUB_APP_PRIVATE_KEY: liveLabAppPrivateKey,
+          LIVE_TEST_GITHUB_ORG: 'sandbox-org',
+          LIVE_TEST_SONAR_ORGANIZATION: 'sandbox-sonar',
+          LIVE_TEST_SONAR_TOKEN: 'sonar-token-1',
+        };
+
+        const environment = await loadLiveLabEnvironment(env, {
+          fetchImpl: context.fetchImpl,
+        });
+
+        expect(environment.github).toMatchObject({
+          organization: 'sandbox-org',
+          token: 'github-token-2',
+        });
+        expect(env['LIVE_TEST_GITHUB_TOKEN']).toBe('github-token-2');
+        expect(context.fetchCalls).toEqual([
+          expect.objectContaining({
+            body: undefined,
+            method: 'GET',
+            url: 'https://api.github.com/users/sandbox-org',
+          }),
+          expect.objectContaining({
+            body: undefined,
+            method: 'GET',
+            url: 'https://api.github.com/orgs/sandbox-org/installation',
+          }),
+          expect.objectContaining({
+            body: {
+              permissions: {
+                actions: 'write',
+                administration: 'write',
+                checks: 'read',
+                contents: 'write',
+                issues: 'write',
+                metadata: 'read',
+                pull_requests: 'write',
+                workflows: 'write',
+              },
+            },
+            method: 'POST',
+            url: 'https://api.github.com/app/installations/42/access_tokens',
+          }),
+        ]);
+      },
+    },
+    {
+      name: 'requires an explicit GitHub token for user-owned live labs',
+      inputs: {},
+      mock: async () => {
+        const fetchCalls = [];
+        const fetchImpl = async (url, options) => {
+          fetchCalls.push({
+            method: options.method,
+            url: String(url),
+          });
+
+          if (String(url).endsWith('/users/sandbox-user')) {
+            return {
+              status: 200,
+              text: async () =>
+                JSON.stringify({ login: 'sandbox-user', type: 'User' }),
+            };
+          }
+
+          throw new Error(`Unexpected fetch: ${String(url)}`);
+        };
+
+        return { fetchCalls, fetchImpl };
+      },
+      assert: async (context) => {
+        await expect(
+          loadLiveLabEnvironment(
+            {
+              LIVE_TEST_DISCORD_APPLICATION_ID: 'app-1',
+              LIVE_TEST_DISCORD_BOT_TOKEN: 'bot-token-1',
+              LIVE_TEST_DISCORD_GUILD_ID: 'guild-1',
+              LIVE_TEST_DISCORD_PUBLIC_KEY: 'public-key-1',
+              LIVE_TEST_GITHUB_APP_CLIENT_ID: 'client-id-1',
+              LIVE_TEST_GITHUB_APP_PRIVATE_KEY: liveLabAppPrivateKey,
+              LIVE_TEST_GITHUB_ORG: 'sandbox-user',
+              LIVE_TEST_SONAR_ORGANIZATION: 'sandbox-sonar',
+              LIVE_TEST_SONAR_TOKEN: 'sonar-token-1',
+            },
+            {
+              fetchImpl: context.fetchImpl,
+            },
+          ),
+        ).rejects.toThrow(
+          'LIVE_TEST_GITHUB_TOKEN is required when LIVE_TEST_GITHUB_ORG points to a user account.',
+        );
+        expect(context.fetchCalls).toEqual([
+          {
+            method: 'GET',
+            url: 'https://api.github.com/users/sandbox-user',
+          },
+        ]);
+      },
+    },
+    {
+      name: 'resolves GitHub owner kinds and routes repository endpoints',
+      inputs: {},
+      mock: async () => undefined,
+      assert: async () => {
+        const orgCalls = [];
+        const orgGithubRequest = async (path) => {
+          orgCalls.push(path);
+
+          if (path === '/orgs/sandbox-org') {
+            return { login: 'sandbox-org' };
+          }
+
+          throw new Error(`Unexpected GitHub request: ${path}`);
+        };
+        const userCalls = [];
+        const userGithubRequest = async (path) => {
+          userCalls.push(path);
+
+          if (path === '/orgs/sandbox-user') {
+            throw new Error(
+              'Request to https://api.github.com/orgs/sandbox-user failed with HTTP 404: {"message":"Not Found"}',
+            );
+          }
+          if (path === '/users/sandbox-user') {
+            return { login: 'sandbox-user', type: 'User' };
+          }
+
+          throw new Error(`Unexpected GitHub request: ${path}`);
+        };
+
+        await expect(
+          resolveGitHubOwnerKind({
+            githubOwner: 'sandbox-org',
+            githubRequest: orgGithubRequest,
+          }),
+        ).resolves.toBe('organization');
+        await expect(
+          resolveGitHubOwnerKind({
+            githubOwner: 'sandbox-user',
+            githubRequest: userGithubRequest,
+          }),
+        ).resolves.toBe('user');
+
+        expect(
+          createGitHubRepositoryListPath({
+            githubOwner: 'sandbox-org',
+            githubOwnerKind: 'organization',
+          }),
+        ).toBe(
+          '/orgs/sandbox-org/repos?type=public&sort=created&direction=asc&per_page=100',
+        );
+        expect(
+          createGitHubRepositoryListPath({
+            githubOwner: 'sandbox-user',
+            githubOwnerKind: 'user',
+          }),
+        ).toBe(
+          '/users/sandbox-user/repos?type=owner&sort=created&direction=asc&per_page=100',
+        );
+        expect(
+          createGitHubRepositoryCreatePath({
+            githubOwner: 'sandbox-org',
+            githubOwnerKind: 'organization',
+          }),
+        ).toBe('/orgs/sandbox-org/repos');
+        expect(
+          createGitHubRepositoryCreatePath({
+            githubOwner: 'sandbox-user',
+            githubOwnerKind: 'user',
+          }),
+        ).toBe('/user/repos');
+        expect(orgCalls).toEqual(['/orgs/sandbox-org']);
+        expect(userCalls).toEqual([
+          '/orgs/sandbox-user',
+          '/users/sandbox-user',
+        ]);
+      },
+    },
+    {
       name: 'collects fixture files recursively with readme first',
       inputs: {},
       mock: async () => {
@@ -257,6 +501,60 @@ describe('openclaw-live-lab helpers', () => {
           '.github/workflows/test.yml',
           'notes.txt',
         ]);
+      },
+    },
+    {
+      name: 'runs the CLI entrypoint with injected collaborators',
+      inputs: {
+        argv: ['--ref', 'release-candidate', '--max-parallel-repos', '8'],
+      },
+      mock: async () => {
+        const writes = [];
+
+        return { writes };
+      },
+      assert: async (context, inputs) => {
+        let capturedOptions = null;
+        const reportDirectory = resolve(tmpdir(), 'devplat-live-lab-report');
+        const environment = {
+          github: {
+            organization: 'sandbox-org',
+            token: 'github-token-1',
+          },
+        };
+        const report = await runLiveLabCommand(inputs.argv, {
+          createEnvironment: async () => environment,
+          runLiveLabFn: async (options) => {
+            capturedOptions = options;
+
+            return {
+              completedAt: '2026-04-19T04:00:00.000Z',
+              github: {
+                repoFullName: 'sandbox-org/devplat-test-300-1',
+              },
+              reportDirectory,
+              runLabel: '300-1',
+              status: 'passed',
+            };
+          },
+          writeOutput: (value) => {
+            context.writes.push(value);
+          },
+        });
+
+        expect(capturedOptions).toMatchObject({
+          environment,
+          maxParallelRepos: 8,
+          ref: 'release-candidate',
+        });
+        expect(report.status).toBe('passed');
+        expect(JSON.parse(context.writes[0])).toEqual({
+          completedAt: '2026-04-19T04:00:00.000Z',
+          reportDirectory,
+          repository: 'sandbox-org/devplat-test-300-1',
+          runLabel: '300-1',
+          status: 'passed',
+        });
       },
     },
   ];
@@ -374,7 +672,13 @@ describe('runLiveLab', () => {
           ['POST /repos/sandbox-org/devplat-test-200-1/pulls', { number: 42 }],
           [
             'POST /repos/sandbox-org/devplat-test-200-1/actions/workflows/live-dispatch-canary.yml/dispatches',
-            null,
+            {
+              html_url:
+                'https://github.com/sandbox-org/devplat-test-200-1/actions/runs/1',
+              run_url:
+                'https://api.github.com/repos/sandbox-org/devplat-test-200-1/actions/runs/1',
+              workflow_run_id: 1,
+            },
           ],
           [
             'GET /repos/sandbox-org/devplat-test-200-1/actions/workflows/live-dispatch-canary.yml/runs?branch=live-test%2F200-1&event=workflow_dispatch&per_page=10',
@@ -588,6 +892,268 @@ describe('runLiveLab', () => {
         );
         expect(context.summaryEntries[0]).toContain('Status: passed');
         expect(context.summaryEntries[0]).toContain(`Ref: ${inputs.ref}`);
+      },
+    },
+    {
+      name: 'creates a Sonar project directly for user-owned live labs',
+      inputs: {
+        ref: 'main',
+        retainFailedResources: false,
+      },
+      mock: async () => {
+        const reportDir = await mkdtemp(
+          resolve(tmpdir(), 'devplat-live-lab-user-owner-'),
+        );
+        temporaryRoots.push(reportDir);
+        const githubCalls = [];
+        const sonarCalls = [];
+        const discordChannelResponses = [
+          { id: 'category-1', name: 'devplat-test-200-1', type: 4 },
+          { id: 'spec-1', name: 'spec', type: 0 },
+          { id: 'implementation-1', name: 'implementation', type: 0 },
+          { id: 'pull-request-1', name: 'pull-request', type: 0 },
+          { id: 'audit-1', name: 'audit', type: 0 },
+          { id: 'project-management-1', name: 'project-management', type: 0 },
+        ];
+
+        const githubRoutes = new Map([
+          [
+            'GET /orgs/sandbox-user',
+            () => {
+              throw new Error(
+                'Request to https://api.github.com/orgs/sandbox-user failed (HTTP 404): {"message":"Not Found"}',
+              );
+            },
+          ],
+          ['GET /users/sandbox-user', { login: 'sandbox-user', type: 'User' }],
+          [
+            'GET /users/sandbox-user/repos?type=owner&sort=created&direction=asc&per_page=100',
+            [],
+          ],
+          [
+            'POST /user/repos',
+            {
+              created_at: '2026-04-16T00:00:00.000Z',
+              full_name: 'sandbox-user/devplat-test-200-1',
+              html_url: 'https://github.com/sandbox-user/devplat-test-200-1',
+              name: 'devplat-test-200-1',
+            },
+          ],
+          [
+            'PUT /repos/sandbox-user/devplat-test-200-1/actions/permissions',
+            null,
+          ],
+          [
+            'PUT /repos/sandbox-user/devplat-test-200-1/actions/permissions/selected-actions',
+            null,
+          ],
+          [
+            'PUT /repos/sandbox-user/devplat-test-200-1/actions/permissions/workflow',
+            null,
+          ],
+          [
+            'PUT /repos/sandbox-user/devplat-test-200-1/interaction-limits',
+            { limit: 'collaborators_only' },
+          ],
+          [
+            'GET /repos/sandbox-user/devplat-test-200-1',
+            { default_branch: 'main' },
+          ],
+          [
+            'GET /repos/sandbox-user/devplat-test-200-1/git/ref/heads/main',
+            { object: { sha: 'sha-main-1' } },
+          ],
+          [
+            'POST /repos/sandbox-user/devplat-test-200-1/git/refs',
+            { ref: 'refs/heads/live-test/200-1' },
+          ],
+          ['POST /repos/sandbox-user/devplat-test-200-1/pulls', { number: 42 }],
+          [
+            'POST /repos/sandbox-user/devplat-test-200-1/actions/workflows/live-dispatch-canary.yml/dispatches',
+            {
+              html_url:
+                'https://github.com/sandbox-user/devplat-test-200-1/actions/runs/1',
+              run_url:
+                'https://api.github.com/repos/sandbox-user/devplat-test-200-1/actions/runs/1',
+              workflow_run_id: 1,
+            },
+          ],
+          [
+            'GET /repos/sandbox-user/devplat-test-200-1/actions/workflows/live-dispatch-canary.yml/runs?branch=live-test%2F200-1&event=workflow_dispatch&per_page=10',
+            {
+              workflow_runs: [
+                {
+                  conclusion: 'success',
+                  html_url:
+                    'https://github.com/sandbox-user/devplat-test-200-1/actions/runs/1',
+                  id: 1,
+                  status: 'completed',
+                },
+              ],
+            },
+          ],
+          [
+            'PATCH /repos/sandbox-user/devplat-test-200-1/pulls/42',
+            { number: 42, state: 'closed' },
+          ],
+          ['DELETE /repos/sandbox-user/devplat-test-200-1', null],
+        ]);
+        const githubRequest = createTrackedRouteHandler(
+          'GitHub',
+          githubCalls,
+          githubRoutes,
+        );
+        githubRoutes.set(
+          'PUT /repos/sandbox-user/devplat-test-200-1/contents/README.md',
+          {
+            content: {
+              path: '/repos/sandbox-user/devplat-test-200-1/contents/README.md',
+            },
+          },
+        );
+        githubRoutes.set(
+          'PUT /repos/sandbox-user/devplat-test-200-1/contents/.github/workflows/live-dispatch-canary.yml',
+          {
+            content: {
+              path: '/repos/sandbox-user/devplat-test-200-1/contents/.github/workflows/live-dispatch-canary.yml',
+            },
+          },
+        );
+        githubRoutes.set(
+          'PUT /repos/sandbox-user/devplat-test-200-1/contents/.live-test/200-1/canary.json',
+          {
+            content: {
+              path: '/repos/sandbox-user/devplat-test-200-1/contents/.live-test/200-1/canary.json',
+            },
+          },
+        );
+
+        const sonarRequest = async (path, options = {}) => {
+          sonarCalls.push([path, options.method ?? 'GET']);
+
+          if (
+            path === '/api/projects/search?organization=sandbox-sonar&ps=1' &&
+            options.method === undefined
+          ) {
+            return { components: [] };
+          }
+          if (
+            path ===
+              '/api/projects/create?organization=sandbox-sonar&project=sandbox-user_devplat-test-200-1&name=devplat-test-200-1' &&
+            options.method === 'POST'
+          ) {
+            return {
+              project: {
+                key: 'sandbox-user_devplat-test-200-1',
+                name: 'devplat-test-200-1',
+              },
+            };
+          }
+          if (
+            path ===
+              '/api/projects/delete?project=sandbox-user_devplat-test-200-1' &&
+            options.method === 'POST'
+          ) {
+            return null;
+          }
+
+          throw new Error(
+            `Unexpected Sonar request: ${path} ${options.method ?? 'GET'}`,
+          );
+        };
+
+        return {
+          discordRequest: async (path, options = {}) => {
+            if (path === '/guilds/guild-1' && options.method === undefined) {
+              return { id: 'guild-1' };
+            }
+            if (
+              path === '/guilds/guild-1/channels' &&
+              options.method === 'POST'
+            ) {
+              return discordChannelResponses.shift();
+            }
+            if (
+              path.startsWith('/channels/') &&
+              path.endsWith('/messages') &&
+              options.method === 'POST'
+            ) {
+              return { id: 'message-1' };
+            }
+
+            throw new Error(
+              `Unexpected Discord request: ${path} ${options.method ?? 'GET'}`,
+            );
+          },
+          githubCalls,
+          githubRequest,
+          reportDir,
+          runDeepTestMock: async () => ({
+            reportDirectory: resolve(reportDir, 'deep-test'),
+            steps: [{ tool: 'verify_sonar_bootstrap' }],
+          }),
+          sonarCalls,
+          sonarRequest,
+          summaryEntries: [],
+        };
+      },
+      assert: async (context, inputs) => {
+        const report = await runLiveLab(
+          {
+            environment: {
+              ...baseEnvironment,
+              github: {
+                organization: 'sandbox-user',
+                token: 'github-token-1',
+              },
+            },
+            maxParallelRepos: 6,
+            ref: inputs.ref,
+            reportDir: context.reportDir,
+            retainFailedResources: inputs.retainFailedResources,
+            skipBuild: true,
+          },
+          {
+            appendSummary: async (_path, content) => {
+              context.summaryEntries.push(content);
+            },
+            collectFixtureFiles: async () => [
+              { path: 'README.md', content: '# Fixture\n' },
+              {
+                path: '.github/workflows/live-dispatch-canary.yml',
+                content: 'name: Canary\n',
+              },
+            ],
+            discordRequest: context.discordRequest,
+            githubRequest: context.githubRequest,
+            runDeepTest: context.runDeepTestMock,
+            sonarRequest: context.sonarRequest,
+          },
+        );
+
+        expect(report.status).toBe('passed');
+        expect(report.sonar).toEqual({
+          projectKey: 'sandbox-user_devplat-test-200-1',
+          projectName: 'devplat-test-200-1',
+        });
+        expect(context.githubCalls).toEqual(
+          expect.arrayContaining([
+            ['/users/sandbox-user', 'GET'],
+            ['/user/repos', 'POST'],
+          ]),
+        );
+        expect(context.sonarCalls).toEqual(
+          expect.arrayContaining([
+            [
+              '/api/projects/create?organization=sandbox-sonar&project=sandbox-user_devplat-test-200-1&name=devplat-test-200-1',
+              'POST',
+            ],
+            [
+              '/api/projects/delete?project=sandbox-user_devplat-test-200-1',
+              'POST',
+            ],
+          ]),
+        );
       },
     },
     {

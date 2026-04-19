@@ -42,9 +42,14 @@ Set these in the DevPlat repository before dispatching the live lab:
 - secret: `LIVE_TEST_SONAR_TOKEN`
 - variable: `LIVE_TEST_SONAR_ORGANIZATION`
 
-The live workflow mints an org-scoped GitHub App installation token with
-`actions/create-github-app-token@v3` and `client-id`. Do not replace it with a
-PAT.
+The live-lab scripts mint the GitHub App installation token directly from these
+inputs. Use the same values in local `.env` runs, and do not replace the app
+credentials with a PAT.
+
+If `LIVE_TEST_GITHUB_ORG` names a personal user account instead of an
+organization, also set `LIVE_TEST_GITHUB_TOKEN`. The live lab creates the
+ephemeral repository through `POST /user/repos`, which requires a user token
+rather than a GitHub App installation token.
 
 ## Workflow Usage
 
@@ -56,6 +61,14 @@ Run `.github/workflows/openclaw-live-lab.yml` with:
 
 The workflow writes a report bundle under `$RUNNER_TEMP/openclaw-live-lab` and
 uploads it as a workflow artifact.
+
+The matching local invocation is:
+
+```sh
+npm run test:openclaw:live-lab:local -- --ref main
+```
+
+That command uses `.env` and the same GitHub App bootstrap path as the workflow.
 
 ## Discord Reporting Layout
 

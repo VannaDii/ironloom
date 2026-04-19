@@ -11,6 +11,7 @@ import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { ensureLiveTestGitHubToken } from './github-app-token.mjs';
 import { createRuntimeEnv, runDeepTest } from './openclaw-deep-test.mjs';
 
 const repoRootDirectory = resolve(import.meta.dirname, '..');
@@ -26,6 +27,16 @@ const defaultSonarProjectTimeoutMs = 180_000;
 const defaultWorkflowTimeoutMs = 180_000;
 const defaultPollMs = 5_000;
 const livePrefix = 'devplat-test-';
+const liveLabGitHubAppPermissions = Object.freeze({
+  actions: 'write',
+  administration: 'write',
+  checks: 'read',
+  contents: 'write',
+  issues: 'write',
+  metadata: 'read',
+  pull_requests: 'write',
+  workflows: 'write',
+});
 
 function parseFlagArguments(argv) {
   const args = new Map();
@@ -519,6 +530,60 @@ export function createLiveLabEnvironment(env = process.env) {
   };
 }
 
+async function resolvePublicGitHubOwnerKind({
+  fetchImpl = fetch,
+  githubOwner,
+}) {
+  const owner = await requestJson({
+    fetchImpl,
+    headers: {
+      accept: 'application/vnd.github+json',
+      'x-github-api-version': githubApiVersion,
+    },
+    url: new URL(
+      `/users/${encodeURIComponent(githubOwner)}`,
+      'https://api.github.com',
+    ).toString(),
+  });
+
+  if (owner?.type === 'User') {
+    return 'user';
+  }
+  if (owner?.type === 'Organization') {
+    return 'organization';
+  }
+
+  throw new Error(
+    `GitHub owner ${githubOwner} must resolve to a User or Organization account.`,
+  );
+}
+
+export async function loadLiveLabEnvironment(
+  env = process.env,
+  { fetchImpl = fetch } = {},
+) {
+  const existingToken = env['LIVE_TEST_GITHUB_TOKEN'];
+  if (
+    (typeof existingToken !== 'string' || existingToken.length === 0) &&
+    (await resolvePublicGitHubOwnerKind({
+      fetchImpl,
+      githubOwner: readRequiredEnvironmentValue(env, 'LIVE_TEST_GITHUB_ORG'),
+    })) === 'user'
+  ) {
+    throw new Error(
+      'LIVE_TEST_GITHUB_TOKEN is required when LIVE_TEST_GITHUB_ORG points to a user account.',
+    );
+  }
+
+  await ensureLiveTestGitHubToken({
+    env,
+    fetchImpl,
+    permissions: liveLabGitHubAppPermissions,
+  });
+
+  return createLiveLabEnvironment(env);
+}
+
 export function discordSnowflakeToTimestamp(snowflake) {
   const discordEpoch = 1_420_070_400_000n;
   const createdAt = (BigInt(String(snowflake)) >> 22n) + discordEpoch;
@@ -539,19 +604,92 @@ async function appendSummary(summaryPath, content) {
   await appendFile(summaryPath, content, 'utf8');
 }
 
-async function listOrgRepositories({ githubOrganization, githubRequest }) {
+function isGitHubNotFoundError(error) {
+  return (
+    error instanceof Error &&
+    ((typeof error.status === 'number' && error.status === 404) ||
+      error.message.includes('(HTTP 404)') ||
+      error.message.includes(' failed with HTTP 404'))
+  );
+}
+
+export async function resolveGitHubOwnerKind({ githubOwner, githubRequest }) {
+  try {
+    await githubRequest(`/orgs/${encodeURIComponent(githubOwner)}`);
+    return 'organization';
+  } catch (error) {
+    if (!isGitHubNotFoundError(error)) {
+      throw error;
+    }
+  }
+
+  const owner = await githubRequest(
+    `/users/${encodeURIComponent(githubOwner)}`,
+  );
+  if (owner?.type === 'User') {
+    return 'user';
+  }
+  if (owner?.type === 'Organization') {
+    return 'organization';
+  }
+
+  throw new Error(
+    `GitHub owner ${githubOwner} must resolve to a User or Organization account.`,
+  );
+}
+
+export function createGitHubRepositoryListPath({
+  githubOwner,
+  githubOwnerKind,
+}) {
+  if (githubOwnerKind === 'organization') {
+    return `/orgs/${encodeURIComponent(githubOwner)}/repos?type=public&sort=created&direction=asc&per_page=100`;
+  }
+  if (githubOwnerKind === 'user') {
+    return `/users/${encodeURIComponent(githubOwner)}/repos?type=owner&sort=created&direction=asc&per_page=100`;
+  }
+
+  throw new Error(`Unsupported GitHub owner kind: ${githubOwnerKind}`);
+}
+
+export function createGitHubRepositoryCreatePath({
+  githubOwner,
+  githubOwnerKind,
+}) {
+  if (githubOwnerKind === 'organization') {
+    return `/orgs/${encodeURIComponent(githubOwner)}/repos`;
+  }
+  if (githubOwnerKind === 'user') {
+    return '/user/repos';
+  }
+
+  throw new Error(`Unsupported GitHub owner kind: ${githubOwnerKind}`);
+}
+
+async function listRepositories({
+  githubOrganization,
+  githubOwnerKind,
+  githubRequest,
+}) {
   return githubRequest(
-    `/orgs/${encodeURIComponent(githubOrganization)}/repos?type=public&sort=created&direction=asc&per_page=100`,
+    createGitHubRepositoryListPath({
+      githubOwner: githubOrganization,
+      githubOwnerKind,
+    }),
   );
 }
 
 async function createRepository({
   githubOrganization,
+  githubOwnerKind,
   githubRequest,
   repoName,
 }) {
   return githubRequest(
-    `/orgs/${encodeURIComponent(githubOrganization)}/repos`,
+    createGitHubRepositoryCreatePath({
+      githubOwner: githubOrganization,
+      githubOwnerKind,
+    }),
     {
       body: {
         allow_auto_merge: false,
@@ -749,7 +887,7 @@ async function dispatchFixtureWorkflow({
   repoName,
   runLabel,
 }) {
-  await githubRequest(
+  return githubRequest(
     `/repos/${encodeURIComponent(githubOrganization)}/${encodeURIComponent(repoName)}/actions/workflows/${encodeURIComponent(defaultWorkflowFileName)}/dispatches`,
     {
       body: {
@@ -759,9 +897,8 @@ async function dispatchFixtureWorkflow({
         },
         ref: branchName,
       },
-      expectedStatuses: [204],
+      expectedStatuses: [200, 204],
       method: 'POST',
-      responseType: 'none',
     },
   );
 }
@@ -833,6 +970,21 @@ async function waitForSonarProject({
   }
 
   throw new Error(`Timed out waiting for Sonar project ${projectKey}.`);
+}
+
+async function createSonarProject({
+  projectKey,
+  projectName,
+  sonarOrganization,
+  sonarRequest,
+}) {
+  return sonarRequest(
+    `/api/projects/create?organization=${encodeURIComponent(sonarOrganization)}&project=${encodeURIComponent(projectKey)}&name=${encodeURIComponent(projectName)}`,
+    {
+      expectedStatuses: [200],
+      method: 'POST',
+    },
+  );
 }
 
 async function deleteSonarProject({ projectKey, sonarRequest }) {
@@ -1211,9 +1363,10 @@ export async function runLiveLab(options, dependencies = {}) {
 
   try {
     await getGuild(options.environment.discord.guildId, discordRequest);
-    await githubRequest(
-      `/orgs/${encodeURIComponent(options.environment.github.organization)}`,
-    );
+    const githubOwnerKind = await resolveGitHubOwnerKind({
+      githubOwner: options.environment.github.organization,
+      githubRequest,
+    });
     await sonarRequest(
       `/api/projects/search?organization=${encodeURIComponent(options.environment.sonar.organization)}&ps=1`,
     );
@@ -1248,8 +1401,9 @@ export async function runLiveLab(options, dependencies = {}) {
       workflowUrl,
     });
 
-    const repositories = await listOrgRepositories({
+    const repositories = await listRepositories({
       githubOrganization: options.environment.github.organization,
+      githubOwnerKind,
       githubRequest,
     });
     const evictionPlan = createEvictionPlan(
@@ -1287,6 +1441,7 @@ export async function runLiveLab(options, dependencies = {}) {
 
     const repository = await createRepository({
       githubOrganization: options.environment.github.organization,
+      githubOwnerKind,
       githubRequest,
       repoName: identifiers.repoName,
     });
@@ -1377,17 +1532,34 @@ export async function runLiveLab(options, dependencies = {}) {
       repoName: identifiers.repoName,
     });
 
-    const sonarProject = await waitForSonarProject({
-      githubOrganization: options.environment.github.organization,
-      repoName: identifiers.repoName,
-      sonarOrganization: options.environment.sonar.organization,
-      sonarRequest,
-    });
-    sonarProjectKey = sonarProject.projectKey;
-    report.sonar = {
-      projectKey: sonarProject.projectKey,
-      projectName: sonarProject.project.name,
-    };
+    if (githubOwnerKind === 'user') {
+      sonarProjectKey = createSonarProjectKey(
+        options.environment.github.organization,
+        identifiers.repoName,
+      );
+      const sonarProject = await createSonarProject({
+        projectKey: sonarProjectKey,
+        projectName: identifiers.repoName,
+        sonarOrganization: options.environment.sonar.organization,
+        sonarRequest,
+      });
+      report.sonar = {
+        projectKey: sonarProjectKey,
+        projectName: sonarProject?.project?.name ?? identifiers.repoName,
+      };
+    } else {
+      const sonarProject = await waitForSonarProject({
+        githubOrganization: options.environment.github.organization,
+        repoName: identifiers.repoName,
+        sonarOrganization: options.environment.sonar.organization,
+        sonarRequest,
+      });
+      sonarProjectKey = sonarProject.projectKey;
+      report.sonar = {
+        projectKey: sonarProject.projectKey,
+        projectName: sonarProject.project.name,
+      };
+    }
 
     const runtimeEnv = createLiveRuntimeEnv({
       discordChannels: discordChannels.channels,
@@ -1532,16 +1704,25 @@ export async function runLiveLab(options, dependencies = {}) {
   return report;
 }
 
-export async function main(argv = process.argv.slice(2)) {
+export async function main(
+  argv = process.argv.slice(2),
+  {
+    createEnvironment = loadLiveLabEnvironment,
+    runLiveLabFn = runLiveLab,
+    writeOutput = (content) => {
+      process.stdout.write(content);
+    },
+  } = {},
+) {
   const args = parseLiveLabArgs(argv);
-  const environment = createLiveLabEnvironment();
-  const report = await runLiveLab({
+  const environment = await createEnvironment();
+  const report = await runLiveLabFn({
     ...args,
     environment,
     maxParallelRepos: args.maxParallelRepos ?? defaultMaxParallelRepos,
   });
 
-  process.stdout.write(
+  writeOutput(
     `${JSON.stringify(
       {
         completedAt: report.completedAt,
@@ -1554,6 +1735,8 @@ export async function main(argv = process.argv.slice(2)) {
       2,
     )}\n`,
   );
+
+  return report;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

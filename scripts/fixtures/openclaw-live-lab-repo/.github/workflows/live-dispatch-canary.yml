@@ -35,7 +35,7 @@ jobs:
           EOF
 
       - name: Upload dispatch report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
         with:
           name: dispatch-canary-${{ inputs.orchestration_run_id }}
           path: report/run.json

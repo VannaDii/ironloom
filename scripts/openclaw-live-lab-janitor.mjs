@@ -3,15 +3,23 @@ import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { ensureLiveTestGitHubToken } from './github-app-token.mjs';
 import {
+  createDiscordRequest,
+  createGitHubRepositoryListPath,
   createSonarProjectKey,
   discordSnowflakeToTimestamp,
+  resolveGitHubOwnerKind,
 } from './openclaw-live-lab.mjs';
 
 const livePrefix = 'devplat-test-';
 const githubApiVersion = '2026-03-10';
 const defaultRepoMaxAgeHours = 24;
 const defaultDiscordMaxAgeDays = 7;
+const janitorGitHubAppPermissions = Object.freeze({
+  administration: 'write',
+  metadata: 'read',
+});
 
 function parseFlagArguments(argv) {
   const args = new Map();
@@ -121,19 +129,6 @@ function createGitHubRequest({ fetchImpl = fetch, token }) {
     });
 }
 
-function createDiscordRequest({ baseUrl, botToken, fetchImpl = fetch }) {
-  return (path, options = {}) =>
-    requestJson({
-      fetchImpl,
-      url: new URL(path, baseUrl).toString(),
-      headers: {
-        authorization: `Bot ${botToken}`,
-        ...options.headers,
-      },
-      ...options,
-    });
-}
-
 function createSonarRequest({ baseUrl, fetchImpl = fetch, token }) {
   const basicToken = Buffer.from(`${token}:`, 'utf8').toString('base64');
 
@@ -208,6 +203,19 @@ export function createJanitorEnvironment(env = process.env) {
   };
 }
 
+export async function loadJanitorEnvironment(
+  env = process.env,
+  { fetchImpl = fetch } = {},
+) {
+  await ensureLiveTestGitHubToken({
+    env,
+    fetchImpl,
+    permissions: janitorGitHubAppPermissions,
+  });
+
+  return createJanitorEnvironment(env);
+}
+
 export function selectExpiredRepositories({ maxAgeMs, now, repositories }) {
   return repositories
     .filter((repository) => repository.name.startsWith(livePrefix))
@@ -261,9 +269,16 @@ async function appendSummary(summaryPath, content) {
   await appendFile(summaryPath, content, 'utf8');
 }
 
-async function listRepositories({ githubOrganization, githubRequest }) {
+async function listRepositories({
+  githubOrganization,
+  githubOwnerKind,
+  githubRequest,
+}) {
   return githubRequest(
-    `/orgs/${encodeURIComponent(githubOrganization)}/repos?type=public&sort=created&direction=asc&per_page=100`,
+    createGitHubRepositoryListPath({
+      githubOwner: githubOrganization,
+      githubOwnerKind,
+    }),
   );
 }
 
@@ -351,8 +366,13 @@ export async function runJanitor(options, dependencies = {}) {
   await makeDirectory(reportDirectory, { recursive: true });
 
   try {
+    const githubOwnerKind = await resolveGitHubOwnerKind({
+      githubOwner: options.environment.github.organization,
+      githubRequest,
+    });
     const repositories = await listRepositories({
       githubOrganization: options.environment.github.organization,
+      githubOwnerKind,
       githubRequest,
     });
     const expiredRepositories = selectExpiredRepositories({
@@ -451,15 +471,24 @@ export async function runJanitor(options, dependencies = {}) {
   return report;
 }
 
-export async function main(argv = process.argv.slice(2)) {
+export async function main(
+  argv = process.argv.slice(2),
+  {
+    createEnvironment = loadJanitorEnvironment,
+    runJanitorFn = runJanitor,
+    writeOutput = (content) => {
+      process.stdout.write(content);
+    },
+  } = {},
+) {
   const args = parseJanitorArgs(argv);
-  const environment = createJanitorEnvironment();
-  const report = await runJanitor({
+  const environment = await createEnvironment();
+  const report = await runJanitorFn({
     ...args,
     environment,
   });
 
-  process.stdout.write(
+  writeOutput(
     `${JSON.stringify(
       {
         deletedDiscordCategories: report.deletedDiscordCategories.length,
@@ -471,6 +500,8 @@ export async function main(argv = process.argv.slice(2)) {
       2,
     )}\n`,
   );
+
+  return report;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

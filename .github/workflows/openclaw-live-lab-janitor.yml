@@ -45,22 +45,14 @@ jobs:
       - name: Verify Node Alignment
         run: npm run verify:node
 
-      - name: Create Live-Lab App Token
-        id: live_lab_token
-        uses: actions/create-github-app-token@v3
-        with:
-          client-id: ${{ vars.LIVE_TEST_GITHUB_APP_CLIENT_ID }}
-          owner: ${{ vars.LIVE_TEST_GITHUB_ORG }}
-          permission-administration: write
-          permission-metadata: read
-          private-key: ${{ secrets.LIVE_TEST_GITHUB_APP_PRIVATE_KEY }}
-
       - name: Run Janitor
         env:
           LIVE_TEST_DISCORD_BOT_TOKEN: ${{ secrets.LIVE_TEST_DISCORD_BOT_TOKEN }}
           LIVE_TEST_DISCORD_GUILD_ID: ${{ vars.LIVE_TEST_DISCORD_GUILD_ID }}
+          LIVE_TEST_GITHUB_APP_CLIENT_ID: ${{ vars.LIVE_TEST_GITHUB_APP_CLIENT_ID }}
+          LIVE_TEST_GITHUB_APP_PRIVATE_KEY: ${{ secrets.LIVE_TEST_GITHUB_APP_PRIVATE_KEY }}
           LIVE_TEST_GITHUB_ORG: ${{ vars.LIVE_TEST_GITHUB_ORG }}
-          LIVE_TEST_GITHUB_TOKEN: ${{ steps.live_lab_token.outputs.token }}
+          LIVE_TEST_GITHUB_TOKEN: ${{ secrets.LIVE_TEST_GITHUB_TOKEN }}
           LIVE_TEST_SONAR_ORGANIZATION: ${{ vars.LIVE_TEST_SONAR_ORGANIZATION }}
           LIVE_TEST_SONAR_TOKEN: ${{ secrets.LIVE_TEST_SONAR_TOKEN }}
         run: |

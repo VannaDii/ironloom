@@ -43,10 +43,9 @@ repositories.
 2. Grant it access to all repositories in that organization.
 3. Complete the installation.
 
-The live workflow uses `actions/create-github-app-token@v3` with `client-id`
-and the `LIVE_TEST_GITHUB_ORG` repository variable as the `owner` input. When
-`repositories` is left empty, the token is scoped to all repositories in that
-installation.
+The live-lab scripts mint the GitHub App installation token themselves from the
+app client ID, private key, and `LIVE_TEST_GITHUB_ORG`. That keeps local `.env`
+runs and GitHub workflow runs on the same credential path.
 
 ## 5. Generate and Store Credentials
 
@@ -57,6 +56,15 @@ installation.
 - variable: `LIVE_TEST_GITHUB_APP_CLIENT_ID`
 - variable: `LIVE_TEST_GITHUB_ORG`
 - secret: `LIVE_TEST_GITHUB_APP_PRIVATE_KEY`
+
+For local runs, mirror those same values in `.env`. `LIVE_TEST_GITHUB_TOKEN`
+can still be supplied explicitly, but it is optional when the app credentials
+are present.
+
+If `LIVE_TEST_GITHUB_ORG` points to a personal user account instead of an
+organization, `LIVE_TEST_GITHUB_TOKEN` becomes required for the live lab. A
+GitHub App installation token can enumerate a user installation, but it cannot
+create repositories through `POST /user/repos`.
 
 ## 6. Verify the App Can Administer Repositories
 

@@ -1,3 +1,4 @@
+import { generateKeyPairSync } from 'node:crypto';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
@@ -7,6 +8,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   createCleanupSummary,
   createJanitorEnvironment,
+  loadJanitorEnvironment,
+  main as runJanitorCommand,
   parseJanitorArgs,
   runJanitor,
   selectExpiredDiscordCategories,
@@ -14,6 +17,17 @@ import {
 } from './openclaw-live-lab-janitor.mjs';
 
 const temporaryRoots = [];
+const { privateKey: janitorAppPrivateKey } = generateKeyPairSync('rsa', {
+  modulusLength: 2048,
+  privateKeyEncoding: {
+    format: 'pem',
+    type: 'pkcs8',
+  },
+  publicKeyEncoding: {
+    format: 'pem',
+    type: 'spki',
+  },
+});
 
 function createSnowflakeFromTimestamp(timestampMs) {
   const discordEpoch = 1_420_070_400_000n;
@@ -123,6 +137,133 @@ describe('openclaw-live-lab-janitor helpers', () => {
         expect(summary).toContain('Deleted repositories: 1');
       },
     },
+    {
+      name: 'loads the janitor environment by minting a GitHub App token',
+      inputs: {},
+      mock: async () => {
+        const fetchCalls = [];
+        const fetchImpl = async (url, options) => {
+          fetchCalls.push({
+            body:
+              typeof options.body === 'string'
+                ? JSON.parse(options.body)
+                : undefined,
+            method: options.method,
+            url: String(url),
+          });
+
+          if (String(url).endsWith('/orgs/sandbox-org/installation')) {
+            return {
+              status: 200,
+              text: async () => JSON.stringify({ id: 77 }),
+            };
+          }
+
+          if (String(url).endsWith('/app/installations/77/access_tokens')) {
+            return {
+              status: 201,
+              text: async () => JSON.stringify({ token: 'github-token-2' }),
+            };
+          }
+
+          throw new Error(`Unexpected fetch: ${String(url)}`);
+        };
+
+        return { fetchCalls, fetchImpl };
+      },
+      assert: async (context) => {
+        const env = {
+          LIVE_TEST_DISCORD_BOT_TOKEN: 'bot-token-1',
+          LIVE_TEST_DISCORD_GUILD_ID: 'guild-1',
+          LIVE_TEST_GITHUB_APP_CLIENT_ID: 'client-id-1',
+          LIVE_TEST_GITHUB_APP_PRIVATE_KEY: janitorAppPrivateKey,
+          LIVE_TEST_GITHUB_ORG: 'sandbox-org',
+          LIVE_TEST_SONAR_ORGANIZATION: 'sandbox-sonar',
+          LIVE_TEST_SONAR_TOKEN: 'sonar-token-1',
+        };
+
+        const environment = await loadJanitorEnvironment(env, {
+          fetchImpl: context.fetchImpl,
+        });
+
+        expect(environment.github).toMatchObject({
+          organization: 'sandbox-org',
+          token: 'github-token-2',
+        });
+        expect(env['LIVE_TEST_GITHUB_TOKEN']).toBe('github-token-2');
+        expect(context.fetchCalls).toEqual([
+          {
+            body: undefined,
+            method: 'GET',
+            url: 'https://api.github.com/orgs/sandbox-org/installation',
+          },
+          {
+            body: {
+              permissions: {
+                administration: 'write',
+                metadata: 'read',
+              },
+            },
+            method: 'POST',
+            url: 'https://api.github.com/app/installations/77/access_tokens',
+          },
+        ]);
+      },
+    },
+    {
+      name: 'runs the janitor CLI entrypoint with injected collaborators',
+      inputs: {
+        argv: ['--repo-max-age-hours', '12', '--discord-max-age-days', '5'],
+      },
+      mock: async () => {
+        const writes = [];
+
+        return { writes };
+      },
+      assert: async (context, inputs) => {
+        let capturedOptions = null;
+        const reportDirectory = resolve(
+          tmpdir(),
+          'devplat-live-lab-janitor-report',
+        );
+        const environment = {
+          github: {
+            organization: 'sandbox-org',
+            token: 'github-token-1',
+          },
+        };
+        const report = await runJanitorCommand(inputs.argv, {
+          createEnvironment: async () => environment,
+          runJanitorFn: async (options) => {
+            capturedOptions = options;
+
+            return {
+              deletedDiscordCategories: ['devplat-test-1-1'],
+              deletedRepositories: ['devplat-test-1-1'],
+              deletedSonarProjects: ['sandbox-org_devplat-test-1-1'],
+              reportDirectory,
+            };
+          },
+          writeOutput: (value) => {
+            context.writes.push(value);
+          },
+        });
+
+        expect(capturedOptions).toMatchObject({
+          discordMaxAgeDays: 5,
+          dryRun: false,
+          environment,
+          repoMaxAgeHours: 12,
+        });
+        expect(report.deletedRepositories).toEqual(['devplat-test-1-1']);
+        expect(JSON.parse(context.writes[0])).toEqual({
+          deletedDiscordCategories: 1,
+          deletedRepositories: 1,
+          deletedSonarProjects: 1,
+          reportDirectory,
+        });
+      },
+    },
   ];
 
   it.each(cases)('$name', async (testCase) => {
@@ -202,6 +343,9 @@ describe('runJanitor', () => {
           githubRequest: async (path, options = {}) => {
             githubCalls.push([path, options.method ?? 'GET']);
 
+            if (path === '/orgs/sandbox-org' && options.method === undefined) {
+              return { login: 'sandbox-org' };
+            }
             if (
               path ===
                 '/orgs/sandbox-org/repos?type=public&sort=created&direction=asc&per_page=100' &&
@@ -332,6 +476,9 @@ describe('runJanitor', () => {
           githubRequest: async (path, options = {}) => {
             githubCalls.push([path, options.method ?? 'GET']);
 
+            if (path === '/orgs/sandbox-org' && options.method === undefined) {
+              return { login: 'sandbox-org' };
+            }
             if (
               path ===
                 '/orgs/sandbox-org/repos?type=public&sort=created&direction=asc&per_page=100' &&
@@ -383,6 +530,7 @@ describe('runJanitor', () => {
           'devplat-test-100-1',
         ]);
         expect(context.githubCalls).toEqual([
+          ['/orgs/sandbox-org', 'GET'],
           [
             '/orgs/sandbox-org/repos?type=public&sort=created&direction=asc&per_page=100',
             'GET',
@@ -417,6 +565,9 @@ describe('runJanitor', () => {
             );
           },
           githubRequest: async (path, options = {}) => {
+            if (path === '/orgs/sandbox-org' && options.method === undefined) {
+              return { login: 'sandbox-org' };
+            }
             if (
               path ===
                 '/orgs/sandbox-org/repos?type=public&sort=created&direction=asc&per_page=100' &&
@@ -489,6 +640,103 @@ describe('runJanitor', () => {
             scope: 'sonar-project',
             target: 'sandbox-org_devplat-test-100-1',
           }),
+        ]);
+      },
+    },
+    {
+      name: 'uses user repository endpoints when the GitHub owner is a user account',
+      inputs: {},
+      mock: async () => {
+        const reportDir = await mkdtemp(
+          resolve(tmpdir(), 'devplat-janitor-user-owner-'),
+        );
+        temporaryRoots.push(reportDir);
+        const githubCalls = [];
+
+        return {
+          githubCalls,
+          discordRequest: async (path, options = {}) => {
+            if (
+              path === '/guilds/guild-1/channels' &&
+              options.method === undefined
+            ) {
+              return [];
+            }
+
+            throw new Error(
+              `Unexpected Discord request: ${path} ${options.method ?? 'GET'}`,
+            );
+          },
+          githubRequest: async (path, options = {}) => {
+            githubCalls.push([path, options.method ?? 'GET']);
+
+            if (path === '/orgs/sandbox-user' && options.method === undefined) {
+              throw new Error(
+                'Request to https://api.github.com/orgs/sandbox-user failed with HTTP 404: {"message":"Not Found"}',
+              );
+            }
+            if (
+              path === '/users/sandbox-user' &&
+              options.method === undefined
+            ) {
+              return { login: 'sandbox-user', type: 'User' };
+            }
+            if (
+              path ===
+                '/users/sandbox-user/repos?type=owner&sort=created&direction=asc&per_page=100' &&
+              options.method === undefined
+            ) {
+              return [
+                {
+                  created_at: '2026-04-10T00:00:00.000Z',
+                  name: 'devplat-test-100-1',
+                },
+              ];
+            }
+
+            throw new Error(
+              `Unexpected GitHub request: ${path} ${options.method ?? 'GET'}`,
+            );
+          },
+          reportDir,
+          sonarRequest: async (path, options = {}) => {
+            throw new Error(
+              `Unexpected Sonar request: ${path} ${options.method ?? 'GET'}`,
+            );
+          },
+        };
+      },
+      assert: async (context) => {
+        const report = await runJanitor(
+          {
+            discordMaxAgeDays: 7,
+            dryRun: true,
+            environment: {
+              ...baseEnvironment,
+              github: {
+                organization: 'sandbox-user',
+                token: 'github-token-1',
+              },
+            },
+            now: Date.parse('2026-04-16T00:00:00.000Z'),
+            repoMaxAgeHours: 24,
+            reportDir: context.reportDir,
+          },
+          {
+            discordRequest: context.discordRequest,
+            githubRequest: context.githubRequest,
+            sonarRequest: context.sonarRequest,
+          },
+        );
+
+        expect(report.wouldDeleteRepositories).toEqual(['devplat-test-100-1']);
+        expect(context.githubCalls).toEqual([
+          ['/orgs/sandbox-user', 'GET'],
+          ['/users/sandbox-user', 'GET'],
+          [
+            '/users/sandbox-user/repos?type=owner&sort=created&direction=asc&per_page=100',
+            'GET',
+          ],
         ]);
       },
     },

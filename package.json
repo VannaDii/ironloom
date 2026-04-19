@@ -47,6 +47,8 @@
     "test:coverage": "npm run prepare:generated && npm run test:coverage:workspace",
     "test:openclaw:deep": "node scripts/openclaw-deep-test.mjs --mode hermetic",
     "test:openclaw:live-lab": "node scripts/openclaw-live-lab.mjs",
+    "test:openclaw:live-lab:janitor:local": "node --env-file=.env scripts/openclaw-live-lab-janitor.mjs",
+    "test:openclaw:live-lab:local": "node --env-file=.env scripts/openclaw-live-lab.mjs",
     "test:openclaw:live-lab:preflight": "vitest run scripts/openclaw-live-lab.test.mjs",
     "test:workspace": "turbo run test --output-logs=errors-only",
     "test": "npm run prepare:generated && npm run test:workspace",
