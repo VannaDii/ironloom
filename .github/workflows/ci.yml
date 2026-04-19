@@ -235,13 +235,31 @@ jobs:
       - name: Run Hermetic Deep Test
         run: node scripts/openclaw-deep-test.mjs --mode hermetic --report-dir "$RUNNER_TEMP/openclaw-deep"
 
+      - name: Normalize Hermetic Deep Test Artifact Permissions
+        if: always()
+        run: |
+          if [[ -d "$RUNNER_TEMP/openclaw-deep" ]]; then
+            sudo chown -R "$(id -u):$(id -g)" "$RUNNER_TEMP/openclaw-deep" || true
+            sudo chmod -R u+rwX,go+rX "$RUNNER_TEMP/openclaw-deep" || true
+          fi
+
+      - name: Package Hermetic Deep Test Artifact
+        if: always()
+        run: |
+          artifact="$RUNNER_TEMP/openclaw-deep-${{ github.run_id }}-${{ github.run_attempt }}.tgz"
+
+          if [[ -d "$RUNNER_TEMP/openclaw-deep" ]]; then
+            tar -C "$RUNNER_TEMP" -czf "$artifact" openclaw-deep
+          fi
+
       - name: Upload Hermetic Deep Test Artifact
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v7.0.0
         with:
           name: openclaw-deep-${{ github.run_id }}-${{ github.run_attempt }}
           retention-days: 14
-          path: ${{ runner.temp }}/openclaw-deep
+          if-no-files-found: warn
+          path: ${{ runner.temp }}/openclaw-deep-${{ github.run_id }}-${{ github.run_attempt }}.tgz
 
   docs:
     name: Upload Doc Artifacts
