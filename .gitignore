@@ -18,3 +18,4 @@ packages/**/dist/
 site/guide-docs/.vitepress/dist/
 site/guide-docs/.vitepress/.temp/
 .artifacts/
+.env
