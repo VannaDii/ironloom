@@ -69,6 +69,14 @@ jobs:
 
           node scripts/openclaw-live-lab.mjs "${args[@]}"
 
+      - name: Normalize Live-Lab Artifact Permissions
+        if: always()
+        run: |
+          if [[ -d "$RUNNER_TEMP/openclaw-live-lab" ]]; then
+            sudo chown -R "$(id -u):$(id -g)" "$RUNNER_TEMP/openclaw-live-lab" || true
+            sudo chmod -R u+rwX,go+rX "$RUNNER_TEMP/openclaw-live-lab" || true
+          fi
+
       - name: Upload Live-Lab Artifacts
         if: always()
         uses: actions/upload-artifact@v7.0.0
