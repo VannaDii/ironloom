@@ -11,7 +11,7 @@ nvm use
 npm ci
 ```
 
-Compatibility validation runs on Linux only against the latest stable TypeScript `5.x` and `6.x` releases. Primary authoring targets TypeScript `6.0.2`.
+Compatibility validation runs on Linux only against the latest stable TypeScript `5.x` and `6.x` releases. Primary authoring targets TypeScript `6.0.3`.
 
 Use [`PLATFORM.md`](./PLATFORM.md) as the authoritative foundation-scope document for required packages, workflows, delivery surfaces, and acceptance criteria. This guide focuses on how changes are implemented and reviewed.
 

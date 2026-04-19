@@ -15,7 +15,7 @@ DevPlat is a strict native-ESM TypeScript monorepo for an autonomous software-de
 
 - Node `24.14.1`
 - `packageManager` `npm@11.12.1`
-- TypeScript `6.0.2`
+- TypeScript `6.0.3`
 - Native ESM with `module` and `moduleResolution` set to `NodeNext`
 
-Compatibility validation runs on Linux only against the latest stable TypeScript `5.x` and `6.x` releases. Primary authoring targets TypeScript `6.0.2`.
+Compatibility validation runs on Linux only against the latest stable TypeScript `5.x` and `6.x` releases. Primary authoring targets TypeScript `6.0.3`.
