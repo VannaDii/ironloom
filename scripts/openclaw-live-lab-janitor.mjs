@@ -15,7 +15,7 @@ import {
 const livePrefix = 'devplat-test-';
 const githubApiVersion = '2026-03-10';
 const defaultRepoMaxAgeHours = 24;
-const defaultDiscordMaxAgeDays = 7;
+const defaultDiscordMaxAgeHours = 7 * 24;
 const janitorGitHubAppPermissions = Object.freeze({
   administration: 'write',
   metadata: 'read',
@@ -147,26 +147,26 @@ function createSonarRequest({ baseUrl, fetchImpl = fetch, token }) {
 export function parseJanitorArgs(argv) {
   const args = parseFlagArguments(argv);
   const repoMaxAgeHoursValue = args.get('--repo-max-age-hours');
-  const discordMaxAgeDaysValue = args.get('--discord-max-age-days');
+  const discordMaxAgeHoursValue = args.get('--discord-max-age-hours');
   const repoMaxAgeHours =
     typeof repoMaxAgeHoursValue === 'string'
       ? Number.parseInt(repoMaxAgeHoursValue, 10)
       : defaultRepoMaxAgeHours;
-  const discordMaxAgeDays =
-    typeof discordMaxAgeDaysValue === 'string'
-      ? Number.parseInt(discordMaxAgeDaysValue, 10)
-      : defaultDiscordMaxAgeDays;
+  const discordMaxAgeHours =
+    typeof discordMaxAgeHoursValue === 'string'
+      ? Number.parseInt(discordMaxAgeHoursValue, 10)
+      : defaultDiscordMaxAgeHours;
 
-  if (!Number.isInteger(repoMaxAgeHours) || repoMaxAgeHours < 1) {
-    throw new Error('--repo-max-age-hours must be a positive integer.');
+  if (!Number.isInteger(repoMaxAgeHours) || repoMaxAgeHours < 0) {
+    throw new Error('--repo-max-age-hours must be a non-negative integer.');
   }
 
-  if (!Number.isInteger(discordMaxAgeDays) || discordMaxAgeDays < 1) {
-    throw new Error('--discord-max-age-days must be a positive integer.');
+  if (!Number.isInteger(discordMaxAgeHours) || discordMaxAgeHours < 0) {
+    throw new Error('--discord-max-age-hours must be a non-negative integer.');
   }
 
   return {
-    discordMaxAgeDays,
+    discordMaxAgeHours,
     dryRun: args.get('--dry-run') === true,
     repoMaxAgeHours,
     reportDir:
@@ -436,7 +436,7 @@ export async function runJanitor(options, dependencies = {}) {
     });
     const expiredCategories = selectExpiredDiscordCategories({
       channels,
-      maxAgeMs: options.discordMaxAgeDays * 24 * 60 * 60 * 1_000,
+      maxAgeMs: options.discordMaxAgeHours * 60 * 60 * 1_000,
       now,
     });
 

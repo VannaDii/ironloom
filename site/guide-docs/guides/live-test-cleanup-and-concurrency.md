@@ -47,7 +47,7 @@ The live workflow and janitor split cleanup work:
 - janitor workflow:
   - deletes `devplat-test-*` repos older than `24h`
   - deletes matching Sonar projects older than `24h`
-  - deletes leftover legacy Discord categories from the older per-run layout
+  - deletes leftover legacy Discord categories from the older per-run layout once they age past the configured hour window, default `168h`
 
 ## Retaining Failed Resources
 

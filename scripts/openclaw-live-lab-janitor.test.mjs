@@ -52,7 +52,7 @@ describe('openclaw-live-lab-janitor helpers', () => {
         const parsed = parseJanitorArgs([
           '--repo-max-age-hours',
           '12',
-          '--discord-max-age-days',
+          '--discord-max-age-hours',
           '5',
           '--dry-run',
         ]);
@@ -66,11 +66,29 @@ describe('openclaw-live-lab-janitor helpers', () => {
         });
 
         expect(parsed).toMatchObject({
-          discordMaxAgeDays: 5,
+          discordMaxAgeHours: 5,
           dryRun: true,
           repoMaxAgeHours: 12,
         });
         expect(environment.github.organization).toBe('sandbox-org');
+      },
+    },
+    {
+      name: 'accepts zero-hour janitor windows for immediate cleanup',
+      inputs: {},
+      mock: async () => undefined,
+      assert: async () => {
+        expect(
+          parseJanitorArgs([
+            '--repo-max-age-hours',
+            '0',
+            '--discord-max-age-hours',
+            '0',
+          ]),
+        ).toMatchObject({
+          discordMaxAgeHours: 0,
+          repoMaxAgeHours: 0,
+        });
       },
     },
     {
@@ -218,7 +236,7 @@ describe('openclaw-live-lab-janitor helpers', () => {
     {
       name: 'runs the janitor CLI entrypoint with injected collaborators',
       inputs: {
-        argv: ['--repo-max-age-hours', '12', '--discord-max-age-days', '5'],
+        argv: ['--repo-max-age-hours', '12', '--discord-max-age-hours', '5'],
       },
       mock: async () => {
         const writes = [];
@@ -255,7 +273,7 @@ describe('openclaw-live-lab-janitor helpers', () => {
         });
 
         expect(capturedOptions).toMatchObject({
-          discordMaxAgeDays: 5,
+          discordMaxAgeHours: 5,
           dryRun: false,
           environment,
           repoMaxAgeHours: 12,
@@ -407,7 +425,7 @@ describe('runJanitor', () => {
       assert: async (context, inputs) => {
         const report = await runJanitor(
           {
-            discordMaxAgeDays: 7,
+            discordMaxAgeHours: 7 * 24,
             dryRun: inputs.dryRun,
             environment: baseEnvironment,
             now: Date.parse('2026-04-16T00:00:00.000Z'),
@@ -537,7 +555,7 @@ describe('runJanitor', () => {
       assert: async (context, inputs) => {
         const report = await runJanitor(
           {
-            discordMaxAgeDays: 7,
+            discordMaxAgeHours: 7 * 24,
             dryRun: inputs.dryRun,
             environment: baseEnvironment,
             now: Date.parse('2026-04-16T00:00:00.000Z'),
@@ -644,7 +662,7 @@ describe('runJanitor', () => {
       assert: async (context) => {
         const report = await runJanitor(
           {
-            discordMaxAgeDays: 7,
+            discordMaxAgeHours: 7 * 24,
             dryRun: false,
             environment: baseEnvironment,
             now: Date.parse('2026-04-16T00:00:00.000Z'),
@@ -737,7 +755,7 @@ describe('runJanitor', () => {
         await expect(
           runJanitor(
             {
-              discordMaxAgeDays: 7,
+              discordMaxAgeHours: 7 * 24,
               dryRun: false,
               environment: baseEnvironment,
               now: Date.parse('2026-04-16T00:00:00.000Z'),
@@ -839,7 +857,7 @@ describe('runJanitor', () => {
       assert: async (context) => {
         const report = await runJanitor(
           {
-            discordMaxAgeDays: 7,
+            discordMaxAgeHours: 7 * 24,
             dryRun: true,
             environment: {
               ...baseEnvironment,
