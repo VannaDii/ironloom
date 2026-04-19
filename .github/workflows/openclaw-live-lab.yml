@@ -77,10 +77,19 @@ jobs:
             sudo chmod -R u+rwX,go+rX "$RUNNER_TEMP/openclaw-live-lab" || true
           fi
 
+      - name: Package Live-Lab Artifacts
+        if: always()
+        run: |
+          artifact="$RUNNER_TEMP/openclaw-live-lab-${{ github.run_id }}-${{ github.run_attempt }}.tgz"
+
+          if [[ -d "$RUNNER_TEMP/openclaw-live-lab" ]]; then
+            tar -C "$RUNNER_TEMP" -czf "$artifact" openclaw-live-lab
+          fi
+
       - name: Upload Live-Lab Artifacts
         if: always()
         uses: actions/upload-artifact@v7.0.0
         with:
           name: openclaw-live-lab-${{ github.run_id }}-${{ github.run_attempt }}
           retention-days: 14
-          path: ${{ runner.temp }}/openclaw-live-lab
+          path: ${{ runner.temp }}/openclaw-live-lab-${{ github.run_id }}-${{ github.run_attempt }}.tgz
