@@ -88,7 +88,7 @@ describe('openclaw-live-lab-janitor helpers', () => {
               name: 'devplat-test-10-1',
             },
             {
-              created_at: '2026-04-15T20:00:00.000Z',
+              created_at: '2026-04-14T12:00:00.000Z',
               name: 'devplat-test-11-1',
             },
             {
@@ -108,7 +108,7 @@ describe('openclaw-live-lab-janitor helpers', () => {
             },
             {
               id: createSnowflakeFromTimestamp(
-                Date.parse('2026-04-15T12:00:00.000Z'),
+                Date.parse('2026-04-08T00:00:00.000Z'),
               ),
               name: 'devplat-test-11-1',
               type: 4,
@@ -123,6 +123,8 @@ describe('openclaw-live-lab-janitor helpers', () => {
           deletedRepositories: ['devplat-test-10-1'],
           deletedSonarProjects: ['sandbox-org_devplat-test-10-1'],
           dryRun: false,
+          preservedDiscordCategory: 'devplat-test-11-1',
+          preservedRepository: 'devplat-test-11-1',
           wouldDeleteDiscordCategories: [],
           wouldDeleteRepositories: [],
           wouldDeleteSonarProjects: [],
@@ -135,6 +137,9 @@ describe('openclaw-live-lab-janitor helpers', () => {
           'devplat-test-10-1',
         ]);
         expect(summary).toContain('Deleted repositories: 1');
+        expect(summary).toContain(
+          'Preserved latest repository: devplat-test-11-1',
+        );
       },
     },
     {
@@ -322,6 +327,13 @@ describe('runJanitor', () => {
                   type: 4,
                 },
                 {
+                  id: createSnowflakeFromTimestamp(
+                    Date.parse('2026-04-12T00:00:00.000Z'),
+                  ),
+                  name: 'devplat-test-101-1',
+                  type: 4,
+                },
+                {
                   id: 'spec-channel',
                   name: 'spec',
                   parent_id: createSnowflakeFromTimestamp(
@@ -417,6 +429,9 @@ describe('runJanitor', () => {
         );
 
         expect(report.deletedRepositories).toEqual(['devplat-test-100-1']);
+        expect(report.deletedDiscordCategories).toEqual(['devplat-test-100-1']);
+        expect(report.preservedRepository).toBe('devplat-test-101-1');
+        expect(report.preservedDiscordCategory).toBe('devplat-test-101-1');
         expect(savedReport.deletedSonarProjects).toEqual([
           'sandbox-org_devplat-test-100-1',
         ]);
@@ -455,6 +470,9 @@ describe('runJanitor', () => {
         const categoryId = createSnowflakeFromTimestamp(
           Date.parse('2026-04-01T00:00:00.000Z'),
         );
+        const newestCategoryId = createSnowflakeFromTimestamp(
+          Date.parse('2026-04-12T00:00:00.000Z'),
+        );
 
         return {
           discordCalls,
@@ -465,7 +483,14 @@ describe('runJanitor', () => {
               path === '/guilds/guild-1/channels' &&
               options.method === undefined
             ) {
-              return [{ id: categoryId, name: 'devplat-test-100-1', type: 4 }];
+              return [
+                { id: categoryId, name: 'devplat-test-100-1', type: 4 },
+                {
+                  id: newestCategoryId,
+                  name: 'devplat-test-101-1',
+                  type: 4,
+                },
+              ];
             }
 
             throw new Error(
@@ -488,6 +513,10 @@ describe('runJanitor', () => {
                 {
                   created_at: '2026-04-10T00:00:00.000Z',
                   name: 'devplat-test-100-1',
+                },
+                {
+                  created_at: '2026-04-15T12:00:00.000Z',
+                  name: 'devplat-test-101-1',
                 },
               ];
             }
@@ -525,6 +554,8 @@ describe('runJanitor', () => {
 
         expect(report.deletedRepositories).toEqual([]);
         expect(report.deletedDiscordCategories).toEqual([]);
+        expect(report.preservedRepository).toBe('devplat-test-101-1');
+        expect(report.preservedDiscordCategory).toBe('devplat-test-101-1');
         expect(report.wouldDeleteRepositories).toEqual(['devplat-test-100-1']);
         expect(report.wouldDeleteDiscordCategories).toEqual([
           'devplat-test-100-1',
@@ -540,6 +571,89 @@ describe('runJanitor', () => {
           ['/guilds/guild-1/channels', 'GET'],
         ]);
         expect(context.sonarCalls).toEqual([]);
+      },
+    },
+    {
+      name: 'preserves the latest retained repo and category even when they are stale',
+      inputs: {},
+      mock: async () => {
+        const reportDir = await mkdtemp(
+          resolve(tmpdir(), 'devplat-janitor-preserve-latest-'),
+        );
+        temporaryRoots.push(reportDir);
+
+        return {
+          discordRequest: async (path, options = {}) => {
+            if (
+              path === '/guilds/guild-1/channels' &&
+              options.method === undefined
+            ) {
+              return [
+                {
+                  id: createSnowflakeFromTimestamp(
+                    Date.parse('2026-04-01T00:00:00.000Z'),
+                  ),
+                  name: 'devplat-test-101-1',
+                  type: 4,
+                },
+              ];
+            }
+
+            throw new Error(
+              `Unexpected Discord request: ${path} ${options.method ?? 'GET'}`,
+            );
+          },
+          githubRequest: async (path, options = {}) => {
+            if (path === '/orgs/sandbox-org' && options.method === undefined) {
+              return { login: 'sandbox-org' };
+            }
+            if (
+              path ===
+                '/orgs/sandbox-org/repos?type=public&sort=created&direction=asc&per_page=100' &&
+              options.method === undefined
+            ) {
+              return [
+                {
+                  created_at: '2026-04-01T00:00:00.000Z',
+                  name: 'devplat-test-101-1',
+                },
+              ];
+            }
+
+            throw new Error(
+              `Unexpected GitHub request: ${path} ${options.method ?? 'GET'}`,
+            );
+          },
+          reportDir,
+          sonarRequest: async (path, options = {}) => {
+            throw new Error(
+              `Unexpected Sonar request: ${path} ${options.method ?? 'GET'}`,
+            );
+          },
+        };
+      },
+      assert: async (context) => {
+        const report = await runJanitor(
+          {
+            discordMaxAgeDays: 7,
+            dryRun: false,
+            environment: baseEnvironment,
+            now: Date.parse('2026-04-16T00:00:00.000Z'),
+            repoMaxAgeHours: 24,
+            reportDir: context.reportDir,
+          },
+          {
+            discordRequest: context.discordRequest,
+            githubRequest: context.githubRequest,
+            sonarRequest: context.sonarRequest,
+          },
+        );
+
+        expect(report.deletedRepositories).toEqual([]);
+        expect(report.deletedDiscordCategories).toEqual([]);
+        expect(report.deletedSonarProjects).toEqual([]);
+        expect(report.preservedRepository).toBe('devplat-test-101-1');
+        expect(report.preservedDiscordCategory).toBe('devplat-test-101-1');
       },
     },
     {
@@ -577,6 +691,10 @@ describe('runJanitor', () => {
                 {
                   created_at: '2026-04-10T00:00:00.000Z',
                   name: 'devplat-test-100-1',
+                },
+                {
+                  created_at: '2026-04-15T12:00:00.000Z',
+                  name: 'devplat-test-101-1',
                 },
               ];
             }
@@ -691,6 +809,10 @@ describe('runJanitor', () => {
                   created_at: '2026-04-10T00:00:00.000Z',
                   name: 'devplat-test-100-1',
                 },
+                {
+                  created_at: '2026-04-15T12:00:00.000Z',
+                  name: 'devplat-test-101-1',
+                },
               ];
             }
 
@@ -730,6 +852,7 @@ describe('runJanitor', () => {
         );
 
         expect(report.wouldDeleteRepositories).toEqual(['devplat-test-100-1']);
+        expect(report.preservedRepository).toBe('devplat-test-101-1');
         expect(context.githubCalls).toEqual([
           ['/orgs/sandbox-user', 'GET'],
           ['/users/sandbox-user', 'GET'],

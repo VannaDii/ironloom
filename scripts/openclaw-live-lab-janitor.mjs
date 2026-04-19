@@ -217,8 +217,15 @@ export async function loadJanitorEnvironment(
 }
 
 export function selectExpiredRepositories({ maxAgeMs, now, repositories }) {
+  const latestRepositoryName = repositories
+    .filter((repository) => repository.name.startsWith(livePrefix))
+    .sort((left, right) =>
+      String(right.created_at).localeCompare(String(left.created_at)),
+    )[0]?.name;
+
   return repositories
     .filter((repository) => repository.name.startsWith(livePrefix))
+    .filter((repository) => repository.name !== latestRepositoryName)
     .filter((repository) => now - Date.parse(repository.created_at) >= maxAgeMs)
     .sort((left, right) =>
       String(left.created_at).localeCompare(String(right.created_at)),
@@ -226,10 +233,21 @@ export function selectExpiredRepositories({ maxAgeMs, now, repositories }) {
 }
 
 export function selectExpiredDiscordCategories({ channels, maxAgeMs, now }) {
+  const latestCategoryName = channels
+    .filter(
+      (channel) => channel.type === 4 && channel.name.startsWith(livePrefix),
+    )
+    .sort(
+      (left, right) =>
+        discordSnowflakeToTimestamp(right.id) -
+        discordSnowflakeToTimestamp(left.id),
+    )[0]?.name;
+
   return channels
     .filter(
       (channel) => channel.type === 4 && channel.name.startsWith(livePrefix),
     )
+    .filter((channel) => channel.name !== latestCategoryName)
     .filter(
       (channel) => now - discordSnowflakeToTimestamp(channel.id) >= maxAgeMs,
     )
@@ -255,6 +273,8 @@ export function createCleanupSummary(report) {
     `- ${resourceLabel} repositories: ${String(repositories)}`,
     `- ${resourceLabel} Sonar projects: ${String(sonarProjects)}`,
     `- ${resourceLabel} Discord categories: ${String(discordCategories)}`,
+    `- Preserved latest repository: ${report.preservedRepository ?? 'n/a'}`,
+    `- Preserved latest Discord category: ${report.preservedDiscordCategory ?? 'n/a'}`,
     `- Cleanup errors: ${String(report.cleanupErrors.length)}`,
     report.error === undefined ? '' : `- Failure: ${report.error.message}`,
     '',
@@ -358,6 +378,8 @@ export async function runJanitor(options, dependencies = {}) {
     deletedRepositories: [],
     deletedSonarProjects: [],
     dryRun: options.dryRun,
+    preservedDiscordCategory: null,
+    preservedRepository: null,
     wouldDeleteDiscordCategories: [],
     wouldDeleteRepositories: [],
     wouldDeleteSonarProjects: [],
@@ -375,6 +397,12 @@ export async function runJanitor(options, dependencies = {}) {
       githubOwnerKind,
       githubRequest,
     });
+    report.preservedRepository =
+      repositories
+        .filter((repository) => repository.name.startsWith(livePrefix))
+        .sort((left, right) =>
+          String(right.created_at).localeCompare(String(left.created_at)),
+        )[0]?.name ?? null;
     const expiredRepositories = selectExpiredRepositories({
       maxAgeMs: options.repoMaxAgeHours * 60 * 60 * 1_000,
       now,
@@ -419,6 +447,17 @@ export async function runJanitor(options, dependencies = {}) {
       discordRequest,
       guildId: options.environment.discord.guildId,
     });
+    report.preservedDiscordCategory =
+      channels
+        .filter(
+          (channel) =>
+            channel.type === 4 && channel.name.startsWith(livePrefix),
+        )
+        .sort(
+          (left, right) =>
+            discordSnowflakeToTimestamp(right.id) -
+            discordSnowflakeToTimestamp(left.id),
+        )[0]?.name ?? null;
     const expiredCategories = selectExpiredDiscordCategories({
       channels,
       maxAgeMs: options.discordMaxAgeDays * 24 * 60 * 60 * 1_000,
