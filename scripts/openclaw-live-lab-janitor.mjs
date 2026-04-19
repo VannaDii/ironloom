@@ -233,21 +233,10 @@ export function selectExpiredRepositories({ maxAgeMs, now, repositories }) {
 }
 
 export function selectExpiredDiscordCategories({ channels, maxAgeMs, now }) {
-  const latestCategoryName = channels
-    .filter(
-      (channel) => channel.type === 4 && channel.name.startsWith(livePrefix),
-    )
-    .sort(
-      (left, right) =>
-        discordSnowflakeToTimestamp(right.id) -
-        discordSnowflakeToTimestamp(left.id),
-    )[0]?.name;
-
   return channels
     .filter(
       (channel) => channel.type === 4 && channel.name.startsWith(livePrefix),
     )
-    .filter((channel) => channel.name !== latestCategoryName)
     .filter(
       (channel) => now - discordSnowflakeToTimestamp(channel.id) >= maxAgeMs,
     )
@@ -274,7 +263,6 @@ export function createCleanupSummary(report) {
     `- ${resourceLabel} Sonar projects: ${String(sonarProjects)}`,
     `- ${resourceLabel} Discord categories: ${String(discordCategories)}`,
     `- Preserved latest repository: ${report.preservedRepository ?? 'n/a'}`,
-    `- Preserved latest Discord category: ${report.preservedDiscordCategory ?? 'n/a'}`,
     `- Cleanup errors: ${String(report.cleanupErrors.length)}`,
     report.error === undefined ? '' : `- Failure: ${report.error.message}`,
     '',
@@ -378,7 +366,6 @@ export async function runJanitor(options, dependencies = {}) {
     deletedRepositories: [],
     deletedSonarProjects: [],
     dryRun: options.dryRun,
-    preservedDiscordCategory: null,
     preservedRepository: null,
     wouldDeleteDiscordCategories: [],
     wouldDeleteRepositories: [],
@@ -447,17 +434,6 @@ export async function runJanitor(options, dependencies = {}) {
       discordRequest,
       guildId: options.environment.discord.guildId,
     });
-    report.preservedDiscordCategory =
-      channels
-        .filter(
-          (channel) =>
-            channel.type === 4 && channel.name.startsWith(livePrefix),
-        )
-        .sort(
-          (left, right) =>
-            discordSnowflakeToTimestamp(right.id) -
-            discordSnowflakeToTimestamp(left.id),
-        )[0]?.name ?? null;
     const expiredCategories = selectExpiredDiscordCategories({
       channels,
       maxAgeMs: options.discordMaxAgeDays * 24 * 60 * 60 * 1_000,

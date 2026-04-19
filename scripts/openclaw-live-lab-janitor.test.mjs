@@ -123,7 +123,6 @@ describe('openclaw-live-lab-janitor helpers', () => {
           deletedRepositories: ['devplat-test-10-1'],
           deletedSonarProjects: ['sandbox-org_devplat-test-10-1'],
           dryRun: false,
-          preservedDiscordCategory: 'devplat-test-11-1',
           preservedRepository: 'devplat-test-11-1',
           wouldDeleteDiscordCategories: [],
           wouldDeleteRepositories: [],
@@ -135,6 +134,7 @@ describe('openclaw-live-lab-janitor helpers', () => {
         ]);
         expect(categories.map((category) => category.name)).toEqual([
           'devplat-test-10-1',
+          'devplat-test-11-1',
         ]);
         expect(summary).toContain('Deleted repositories: 1');
         expect(summary).toContain(
@@ -431,7 +431,6 @@ describe('runJanitor', () => {
         expect(report.deletedRepositories).toEqual(['devplat-test-100-1']);
         expect(report.deletedDiscordCategories).toEqual(['devplat-test-100-1']);
         expect(report.preservedRepository).toBe('devplat-test-101-1');
-        expect(report.preservedDiscordCategory).toBe('devplat-test-101-1');
         expect(savedReport.deletedSonarProjects).toEqual([
           'sandbox-org_devplat-test-100-1',
         ]);
@@ -555,7 +554,6 @@ describe('runJanitor', () => {
         expect(report.deletedRepositories).toEqual([]);
         expect(report.deletedDiscordCategories).toEqual([]);
         expect(report.preservedRepository).toBe('devplat-test-101-1');
-        expect(report.preservedDiscordCategory).toBe('devplat-test-101-1');
         expect(report.wouldDeleteRepositories).toEqual(['devplat-test-100-1']);
         expect(report.wouldDeleteDiscordCategories).toEqual([
           'devplat-test-100-1',
@@ -574,7 +572,7 @@ describe('runJanitor', () => {
       },
     },
     {
-      name: 'preserves the latest retained repo and category even when they are stale',
+      name: 'preserves the latest retained repo while aging out stale legacy Discord categories',
       inputs: {},
       mock: async () => {
         const reportDir = await mkdtemp(
@@ -597,6 +595,17 @@ describe('runJanitor', () => {
                   type: 4,
                 },
               ];
+            }
+            if (
+              path ===
+                `/channels/${encodeURIComponent(
+                  createSnowflakeFromTimestamp(
+                    Date.parse('2026-04-01T00:00:00.000Z'),
+                  ),
+                )}` &&
+              options.method === 'DELETE'
+            ) {
+              return null;
             }
 
             throw new Error(
@@ -650,10 +659,9 @@ describe('runJanitor', () => {
         );
 
         expect(report.deletedRepositories).toEqual([]);
-        expect(report.deletedDiscordCategories).toEqual([]);
+        expect(report.deletedDiscordCategories).toEqual(['devplat-test-101-1']);
         expect(report.deletedSonarProjects).toEqual([]);
         expect(report.preservedRepository).toBe('devplat-test-101-1');
-        expect(report.preservedDiscordCategory).toBe('devplat-test-101-1');
       },
     },
     {
