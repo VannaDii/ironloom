@@ -8,9 +8,9 @@ CI.
 
 - creates a fresh public sandbox repository named `devplat-test-<run_number>-<run_attempt>`
 - hardens that repository immediately after creation
-- creates a Discord category with the same name and five run-dedicated channels
-- reports lifecycle status and progress into those channels for the duration of
-  the run
+- reuses one shared set of five live-lab Discord channels
+- reports lifecycle status and progress into those shared channels for the
+  duration of the run
 - waits for SonarQube Cloud to auto-import the repository
 - runs the OpenClaw live deep test against the real container with network
   access enabled
@@ -72,8 +72,7 @@ That command uses `.env` and the same GitHub App bootstrap path as the workflow.
 
 ## Discord Reporting Layout
 
-Each run creates a category named `devplat-test-<run_number>-<run_attempt>` with
-these channels:
+The live lab reuses these shared channels:
 
 - `spec`
 - `implementation`
@@ -89,8 +88,8 @@ Use them this way:
 - `implementation`: execution, storage, telemetry, review, remediation progress
 - `pull-request`: branch, PR, workflow-dispatch, and rebase progress
 
-Discord channels are retained after the run for operator inspection. The janitor
-workflow removes old categories later.
+Every message is labeled with the run metadata, so operators can correlate
+activity without per-run channel trees.
 
 ## Public Repo Safety Model
 
@@ -134,7 +133,8 @@ eviction.
   container for debugging
 
 `.github/workflows/openclaw-live-lab-janitor.yml` deletes stale live-lab repos,
-SonarQube Cloud projects, and Discord categories on a schedule.
+SonarQube Cloud projects, and any leftover legacy Discord categories from the
+older per-run layout on a schedule.
 
 ## Related Guides
 

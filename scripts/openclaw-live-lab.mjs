@@ -466,7 +466,7 @@ export function createStepSummary(report) {
     `- Run: ${report.runLabel}`,
     `- Repository: ${report.github?.repoFullName ?? 'n/a'}`,
     `- Workflow: ${report.workflowUrl ?? 'n/a'}`,
-    `- Discord category: ${report.discord?.categoryName ?? 'n/a'}`,
+    `- Discord channels: ${report.discord?.channelNames?.join(', ') ?? 'n/a'}`,
     `- Deep-test steps: ${String(report.deepTest?.steps ?? 0)}`,
     `- Repository cleanup: ${report.cleanup?.repository.status ?? 'n/a'}`,
     `- Sonar cleanup: ${report.cleanup?.sonarProject.status ?? 'n/a'}`,
@@ -1002,41 +1002,34 @@ async function getGuild(guildId, discordRequest) {
   return discordRequest(`/guilds/${encodeURIComponent(guildId)}`);
 }
 
-async function createDiscordChannels({
-  categoryName,
-  discordRequest,
-  guildId,
-}) {
-  const category = await discordRequest(
-    `/guilds/${encodeURIComponent(guildId)}/channels`,
-    {
-      body: {
-        name: categoryName,
-        type: 4,
-      },
-      expectedStatuses: [200, 201],
-      method: 'POST',
-    },
-  );
-
+async function ensureDiscordChannels({ discordRequest, guildId }) {
+  const existingChannels = await listGuildChannels({
+    discordRequest,
+    guildId,
+  });
   const channels = {};
+
   for (const channel of createDiscordChannelPlan()) {
-    channels[channel.key] = await discordRequest(
-      `/guilds/${encodeURIComponent(guildId)}/channels`,
-      {
+    const existingChannel = existingChannels.find(
+      (candidate) =>
+        candidate.name === channel.name &&
+        candidate.type === 0 &&
+        (candidate.parent_id === undefined || candidate.parent_id === null),
+    );
+
+    channels[channel.key] =
+      existingChannel ??
+      (await discordRequest(`/guilds/${encodeURIComponent(guildId)}/channels`, {
         body: {
           name: channel.name,
-          parent_id: category.id,
           type: 0,
         },
         expectedStatuses: [200, 201],
         method: 'POST',
-      },
-    );
+      }));
   }
 
   return {
-    category,
     channels,
   };
 }
@@ -1204,7 +1197,7 @@ async function postFinalLiveLabStatus({
   await postStatusSafe({
     channelId: report.discord.channels.projectManagement.id,
     details:
-      'Live lab failed during cleanup. Inspect the uploaded report and retained Discord channels.',
+      'Live lab failed during cleanup. Inspect the uploaded report and shared live-lab channels for details.',
     discordRequest,
     phase: 'failure',
     ref,
@@ -1371,14 +1364,12 @@ export async function runLiveLab(options, dependencies = {}) {
       `/api/projects/search?organization=${encodeURIComponent(options.environment.sonar.organization)}&ps=1`,
     );
 
-    const discordChannels = await createDiscordChannels({
-      categoryName: identifiers.categoryName,
+    const discordChannels = await ensureDiscordChannels({
       discordRequest,
       guildId: options.environment.discord.guildId,
     });
     report.discord = {
-      categoryId: discordChannels.category.id,
-      categoryName: discordChannels.category.name,
+      channelNames: createDiscordChannelPlan().map((channel) => channel.name),
       channels: Object.fromEntries(
         Object.entries(discordChannels.channels).map(([key, channel]) => [
           key,
@@ -1631,7 +1622,7 @@ export async function runLiveLab(options, dependencies = {}) {
       await postStatusSafe({
         channelId: report.discord.channels.projectManagement.id,
         details:
-          'Live lab failed. Inspect the uploaded report and retained Discord channels.',
+          'Live lab failed. Inspect the uploaded report and shared live-lab channels for details.',
         discordRequest,
         phase: 'failure',
         ref: effectiveRef,

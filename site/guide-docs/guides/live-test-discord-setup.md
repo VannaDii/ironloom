@@ -38,8 +38,8 @@ Grant this workflow provisioning permission too:
 
 - `ManageChannels`
 
-`ManageChannels` is required only because the workflow creates and retains the
-run-dedicated category and channels. It is not part of the DevPlat runtime
+`ManageChannels` is required only if you want the workflow to create any missing
+shared live-lab channels automatically. It is not part of the DevPlat runtime
 contract itself.
 
 ## 5. Store the Credentials in GitHub Actions
@@ -55,18 +55,17 @@ Add these to the DevPlat repository:
 
 Before using the workflow, verify the bot can:
 
-1. Create a category.
-2. Create a text channel under that category.
+1. List channels in the sandbox guild.
+2. Create a top-level text channel.
 3. Post a message into that channel.
-4. Delete the test channel and category.
+4. Delete the test channel.
 
 If any step fails, correct permissions before dispatching the live lab.
 
 ## 7. Understand the Workflow-Owned Layout
 
-Operators do not create test channels manually. The live workflow creates one
-category per run named `devplat-test-<run_number>-<run_attempt>` and then
-creates:
+The live workflow reuses one shared set of top-level channels and creates any
+missing channel automatically:
 
 - `spec`
 - `implementation`
@@ -74,8 +73,8 @@ creates:
 - `audit`
 - `project-management`
 
-Those channels remain after the run for inspection until the janitor removes
-them.
+Those channels are reused on every run. Messages stay in place and are labeled
+with the run metadata.
 
 ## 8. Expected Runtime Behavior
 
@@ -86,4 +85,4 @@ During a healthy run:
 - `spec`, `implementation`, and `pull-request` receive phase-specific updates
 
 If the container never boots, the runner still reports the failure through the
-run-dedicated Discord channels.
+shared live-lab channels.

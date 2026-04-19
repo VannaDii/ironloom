@@ -30,11 +30,11 @@ still using it. That behavior is expected.
 A run with `run_number=123` and `run_attempt=2` uses:
 
 - GitHub repo: `devplat-test-123-2`
-- Discord category: `devplat-test-123-2`
+- Discord messages labeled with run `123-2` in the shared live-lab channels
 - branch: `live-test/123-2`
 
-The shared naming scheme makes repo, Discord, Sonar, and report cleanup easier
-to correlate.
+The shared naming scheme makes repo, Sonar, and report cleanup easier to
+correlate, while Discord stays on a stable channel set.
 
 ## Cleanup Rules
 
@@ -43,11 +43,11 @@ The live workflow and janitor split cleanup work:
 - live workflow:
   - deletes the current run repo and Sonar project on success
   - deletes them on failure unless `retain_failed_resources=true`
-  - leaves Discord channels in place for inspection
+  - reuses the shared Discord channels for every run
 - janitor workflow:
   - deletes `devplat-test-*` repos older than `24h`
   - deletes matching Sonar projects older than `24h`
-  - deletes retained Discord categories older than `7d`
+  - deletes leftover legacy Discord categories from the older per-run layout
 
 ## Retaining Failed Resources
 

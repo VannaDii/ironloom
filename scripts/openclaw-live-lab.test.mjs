@@ -610,13 +610,16 @@ describe('runLiveLab', () => {
         const discordCalls = [];
         const discordMessages = [];
         const sonarCalls = [];
-        const discordChannelResponses = [
-          { id: 'category-1', name: 'devplat-test-200-1', type: 4 },
+        const sharedDiscordChannels = [
           { id: 'spec-1', name: 'spec', type: 0 },
           { id: 'implementation-1', name: 'implementation', type: 0 },
           { id: 'pull-request-1', name: 'pull-request', type: 0 },
           { id: 'audit-1', name: 'audit', type: 0 },
-          { id: 'project-management-1', name: 'project-management', type: 0 },
+          {
+            id: 'project-management-1',
+            name: 'project-management',
+            type: 0,
+          },
         ];
         const fixtureFiles = [
           { path: 'README.md', content: '# Fixture\n' },
@@ -738,9 +741,17 @@ describe('runLiveLab', () => {
           }
           if (
             path === '/guilds/guild-1/channels' &&
+            options.method === undefined
+          ) {
+            return sharedDiscordChannels;
+          }
+          if (
+            path === '/guilds/guild-1/channels' &&
             options.method === 'POST'
           ) {
-            return discordChannelResponses.shift();
+            throw new Error(
+              'Shared live-lab channels should have been reused.',
+            );
           }
           if (
             path.startsWith('/channels/') &&
@@ -880,11 +891,15 @@ describe('runLiveLab', () => {
         );
         expect(context.discordCalls).toEqual(
           expect.arrayContaining([
-            ['/guilds/guild-1/channels', 'POST'],
+            ['/guilds/guild-1/channels', 'GET'],
             ['/channels/spec-1/messages', 'POST'],
             ['/channels/pull-request-1/messages', 'POST'],
           ]),
         );
+        expect(context.discordCalls).not.toContainEqual([
+          '/guilds/guild-1/channels',
+          'POST',
+        ]);
         expect(context.discordMessages).toEqual(
           expect.arrayContaining([
             expect.stringContaining(`ref: ${inputs.ref}`),
@@ -892,6 +907,9 @@ describe('runLiveLab', () => {
         );
         expect(context.summaryEntries[0]).toContain('Status: passed');
         expect(context.summaryEntries[0]).toContain(`Ref: ${inputs.ref}`);
+        expect(context.summaryEntries[0]).toContain(
+          'Discord channels: spec, implementation, pull-request, audit, project-management',
+        );
       },
     },
     {
@@ -905,10 +923,10 @@ describe('runLiveLab', () => {
           resolve(tmpdir(), 'devplat-live-lab-user-owner-'),
         );
         temporaryRoots.push(reportDir);
+        const discordCalls = [];
         const githubCalls = [];
         const sonarCalls = [];
         const discordChannelResponses = [
-          { id: 'category-1', name: 'devplat-test-200-1', type: 4 },
           { id: 'spec-1', name: 'spec', type: 0 },
           { id: 'implementation-1', name: 'implementation', type: 0 },
           { id: 'pull-request-1', name: 'pull-request', type: 0 },
@@ -1064,8 +1082,16 @@ describe('runLiveLab', () => {
 
         return {
           discordRequest: async (path, options = {}) => {
+            discordCalls.push([path, options.method ?? 'GET']);
+
             if (path === '/guilds/guild-1' && options.method === undefined) {
               return { id: 'guild-1' };
+            }
+            if (
+              path === '/guilds/guild-1/channels' &&
+              options.method === undefined
+            ) {
+              return [];
             }
             if (
               path === '/guilds/guild-1/channels' &&
@@ -1085,6 +1111,7 @@ describe('runLiveLab', () => {
               `Unexpected Discord request: ${path} ${options.method ?? 'GET'}`,
             );
           },
+          discordCalls,
           githubCalls,
           githubRequest,
           reportDir,
@@ -1136,10 +1163,20 @@ describe('runLiveLab', () => {
           projectKey: 'sandbox-user_devplat-test-200-1',
           projectName: 'devplat-test-200-1',
         });
+        expect(report.cleanup).toMatchObject({
+          repository: { status: 'deleted' },
+          sonarProject: { status: 'deleted' },
+        });
         expect(context.githubCalls).toEqual(
           expect.arrayContaining([
             ['/users/sandbox-user', 'GET'],
             ['/user/repos', 'POST'],
+          ]),
+        );
+        expect(context.discordCalls).toEqual(
+          expect.arrayContaining([
+            ['/guilds/guild-1/channels', 'GET'],
+            ['/guilds/guild-1/channels', 'POST'],
           ]),
         );
         expect(context.sonarCalls).toEqual(
@@ -1166,8 +1203,7 @@ describe('runLiveLab', () => {
         temporaryRoots.push(reportDir);
         const summaryEntries = [];
         const githubCalls = [];
-        const discordChannelResponses = [
-          { id: 'category-1', name: 'devplat-test-200-1', type: 4 },
+        const sharedDiscordChannels = [
           { id: 'spec-1', name: 'spec', type: 0 },
           { id: 'implementation-1', name: 'implementation', type: 0 },
           { id: 'pull-request-1', name: 'pull-request', type: 0 },
@@ -1282,9 +1318,17 @@ describe('runLiveLab', () => {
             }
             if (
               path === '/guilds/guild-1/channels' &&
+              options.method === undefined
+            ) {
+              return sharedDiscordChannels;
+            }
+            if (
+              path === '/guilds/guild-1/channels' &&
               options.method === 'POST'
             ) {
-              return discordChannelResponses.shift();
+              throw new Error(
+                'Shared live-lab channels should have been reused.',
+              );
             }
             if (
               path.startsWith('/channels/') &&
@@ -1389,10 +1433,10 @@ describe('runLiveLab', () => {
           resolve(tmpdir(), 'devplat-live-lab-failure-'),
         );
         temporaryRoots.push(reportDir);
+        const discordCalls = [];
         const githubCalls = [];
         const sonarCalls = [];
-        const discordChannelResponses = [
-          { id: 'category-1', name: 'devplat-test-200-1', type: 4 },
+        const sharedDiscordChannels = [
           { id: 'spec-1', name: 'spec', type: 0 },
           { id: 'implementation-1', name: 'implementation', type: 0 },
           { id: 'pull-request-1', name: 'pull-request', type: 0 },
@@ -1517,20 +1561,17 @@ describe('runLiveLab', () => {
         );
 
         const discordRequest = async (path, options = {}) => {
+          discordCalls.push([path, options.method ?? 'GET']);
+
           if (path === '/guilds/guild-1' && options.method === undefined) {
             return { id: 'guild-1' };
-          }
-          if (
-            path === '/guilds/guild-1/channels' &&
-            options.method === 'POST'
-          ) {
-            return discordChannelResponses.shift();
           }
           if (
             path === '/guilds/guild-1/channels' &&
             options.method === undefined
           ) {
             return [
+              ...sharedDiscordChannels,
               { id: 'old-category', name: 'devplat-test-199-1', type: 4 },
               {
                 id: 'old-audit',
@@ -1600,6 +1641,7 @@ describe('runLiveLab', () => {
         };
 
         return {
+          discordCalls,
           discordRequest,
           githubCalls,
           githubRequest,
@@ -1646,6 +1688,16 @@ describe('runLiveLab', () => {
           repository: { status: 'deleted' },
           sonarProject: { status: 'deleted' },
         });
+        expect(context.discordCalls).toEqual(
+          expect.arrayContaining([
+            ['/guilds/guild-1/channels', 'GET'],
+            ['/channels/project-management-1/messages', 'POST'],
+          ]),
+        );
+        expect(context.discordCalls).not.toContainEqual([
+          '/guilds/guild-1/channels',
+          'POST',
+        ]);
         expect(context.githubCalls).toEqual(
           expect.arrayContaining([
             ['/repos/sandbox-org/devplat-test-199-1', 'DELETE'],
@@ -1664,6 +1716,228 @@ describe('runLiveLab', () => {
             ],
           ]),
         );
+      },
+    },
+    {
+      name: 'retains repo resources after a deep-test failure when retention is enabled',
+      inputs: {},
+      mock: async () => {
+        const reportDir = await mkdtemp(
+          resolve(tmpdir(), 'devplat-live-lab-retained-failure-'),
+        );
+        temporaryRoots.push(reportDir);
+        const discordCalls = [];
+        const githubCalls = [];
+        const sonarCalls = [];
+        const sharedDiscordChannels = [
+          { id: 'spec-1', name: 'spec', type: 0 },
+          { id: 'implementation-1', name: 'implementation', type: 0 },
+          { id: 'pull-request-1', name: 'pull-request', type: 0 },
+          { id: 'audit-1', name: 'audit', type: 0 },
+          { id: 'project-management-1', name: 'project-management', type: 0 },
+        ];
+
+        const githubRoutes = new Map([
+          ['GET /orgs/sandbox-org', { login: 'sandbox-org' }],
+          [
+            'GET /orgs/sandbox-org/repos?type=public&sort=created&direction=asc&per_page=100',
+            [],
+          ],
+          [
+            'POST /orgs/sandbox-org/repos',
+            {
+              created_at: '2026-04-16T00:00:00.000Z',
+              full_name: 'sandbox-org/devplat-test-200-1',
+              html_url: 'https://github.com/sandbox-org/devplat-test-200-1',
+              name: 'devplat-test-200-1',
+            },
+          ],
+          [
+            'PUT /repos/sandbox-org/devplat-test-200-1/interaction-limits',
+            { limit: 'collaborators_only' },
+          ],
+          [
+            'PUT /repos/sandbox-org/devplat-test-200-1/actions/permissions',
+            null,
+          ],
+          [
+            'PUT /repos/sandbox-org/devplat-test-200-1/actions/permissions/selected-actions',
+            null,
+          ],
+          [
+            'PUT /repos/sandbox-org/devplat-test-200-1/actions/permissions/workflow',
+            null,
+          ],
+          [
+            'GET /repos/sandbox-org/devplat-test-200-1',
+            { default_branch: 'main' },
+          ],
+          [
+            'GET /repos/sandbox-org/devplat-test-200-1/git/ref/heads/main',
+            { object: { sha: 'sha-main-1' } },
+          ],
+          [
+            'POST /repos/sandbox-org/devplat-test-200-1/git/refs',
+            { ref: 'refs/heads/live-test/200-1' },
+          ],
+          ['POST /repos/sandbox-org/devplat-test-200-1/pulls', { number: 42 }],
+          [
+            'POST /repos/sandbox-org/devplat-test-200-1/actions/workflows/live-dispatch-canary.yml/dispatches',
+            null,
+          ],
+          [
+            'GET /repos/sandbox-org/devplat-test-200-1/actions/workflows/live-dispatch-canary.yml/runs?branch=live-test%2F200-1&event=workflow_dispatch&per_page=10',
+            {
+              workflow_runs: [
+                {
+                  conclusion: 'success',
+                  html_url:
+                    'https://github.com/sandbox-org/devplat-test-200-1/actions/runs/1',
+                  id: 1,
+                  status: 'completed',
+                },
+              ],
+            },
+          ],
+          [
+            'PATCH /repos/sandbox-org/devplat-test-200-1/pulls/42',
+            { number: 42, state: 'closed' },
+          ],
+        ]);
+        const githubRequest = createTrackedRouteHandler(
+          'GitHub',
+          githubCalls,
+          githubRoutes,
+        );
+        githubRoutes.set(
+          'PUT /repos/sandbox-org/devplat-test-200-1/contents/README.md',
+          {
+            content: {
+              path: '/repos/sandbox-org/devplat-test-200-1/contents/README.md',
+            },
+          },
+        );
+        githubRoutes.set(
+          'PUT /repos/sandbox-org/devplat-test-200-1/contents/.live-test/200-1/canary.json',
+          {
+            content: {
+              path: '/repos/sandbox-org/devplat-test-200-1/contents/.live-test/200-1/canary.json',
+            },
+          },
+        );
+
+        const discordRequest = async (path, options = {}) => {
+          discordCalls.push([path, options.method ?? 'GET']);
+
+          if (path === '/guilds/guild-1' && options.method === undefined) {
+            return { id: 'guild-1' };
+          }
+          if (
+            path === '/guilds/guild-1/channels' &&
+            options.method === undefined
+          ) {
+            return sharedDiscordChannels;
+          }
+          if (
+            path.startsWith('/channels/') &&
+            path.endsWith('/messages') &&
+            options.method === 'POST'
+          ) {
+            return { id: 'message-1' };
+          }
+
+          throw new Error(
+            `Unexpected Discord request: ${path} ${options.method ?? 'GET'}`,
+          );
+        };
+
+        const sonarRequest = async (path, options = {}) => {
+          sonarCalls.push([path, options.method ?? 'GET']);
+
+          if (
+            path === '/api/projects/search?organization=sandbox-sonar&ps=1' &&
+            options.method === undefined
+          ) {
+            return { components: [] };
+          }
+          if (
+            path ===
+              '/api/projects/search?organization=sandbox-sonar&projects=sandbox-org_devplat-test-200-1' &&
+            options.method === undefined
+          ) {
+            return {
+              components: [
+                { key: 'sandbox-org_devplat-test-200-1', name: 'fixture' },
+              ],
+            };
+          }
+
+          throw new Error(
+            `Unexpected Sonar request: ${path} ${options.method ?? 'GET'}`,
+          );
+        };
+
+        return {
+          discordCalls,
+          discordRequest,
+          githubCalls,
+          githubRequest,
+          reportDir,
+          runDeepTestMock: async () => {
+            throw new Error('deep test failed');
+          },
+          sonarCalls,
+          sonarRequest,
+        };
+      },
+      assert: async (context) => {
+        await expect(
+          runLiveLab(
+            {
+              environment: baseEnvironment,
+              maxParallelRepos: 6,
+              reportDir: context.reportDir,
+              retainFailedResources: true,
+              skipBuild: true,
+            },
+            {
+              collectFixtureFiles: async () => [
+                { path: 'README.md', content: '# Fixture\n' },
+              ],
+              discordRequest: context.discordRequest,
+              githubRequest: context.githubRequest,
+              runDeepTest: context.runDeepTestMock,
+              sonarRequest: context.sonarRequest,
+            },
+          ),
+        ).rejects.toThrow('deep test failed');
+
+        const savedReport = JSON.parse(
+          await readFile(
+            resolve(context.reportDir, 'live-lab-report.json'),
+            'utf8',
+          ),
+        );
+
+        expect(savedReport.status).toBe('failed');
+        expect(savedReport.cleanup).toMatchObject({
+          repository: { status: 'retained' },
+          sonarProject: { status: 'retained' },
+        });
+        expect(context.discordCalls).toEqual(
+          expect.arrayContaining([
+            ['/guilds/guild-1/channels', 'GET'],
+            ['/channels/project-management-1/messages', 'POST'],
+          ]),
+        );
+        expect(context.githubCalls).not.toContainEqual([
+          '/repos/sandbox-org/devplat-test-200-1',
+          'DELETE',
+        ]);
+        expect(context.sonarCalls).not.toContainEqual([
+          '/api/projects/delete?project=sandbox-org_devplat-test-200-1',
+          'POST',
+        ]);
       },
     },
   ];
