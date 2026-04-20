@@ -44,7 +44,9 @@ Set these in the DevPlat repository before dispatching the live lab:
 
 The live-lab scripts mint the GitHub App installation token directly from these
 inputs. Use the same values in local `.env` runs, and do not replace the app
-credentials with a PAT.
+credentials with a PAT. Store `LIVE_TEST_GITHUB_APP_PRIVATE_KEY` as a single
+quoted value with literal `\n` escapes between PEM lines; the scripts normalize
+those escapes before minting the JWT for local `--env-file=.env` runs.
 
 If `LIVE_TEST_GITHUB_ORG` names a personal user account instead of an
 organization, also set `LIVE_TEST_GITHUB_TOKEN`. The live lab creates the

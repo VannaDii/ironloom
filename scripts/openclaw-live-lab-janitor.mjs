@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { ensureLiveTestGitHubToken } from './github-app-token.mjs';
 import {
   createDiscordRequest,
-  createGitHubRepositoryListPath,
+  listGitHubRepositories,
   createSonarProjectKey,
   discordSnowflakeToTimestamp,
   resolveGitHubOwnerKind,
@@ -216,20 +216,34 @@ export async function loadJanitorEnvironment(
   return createJanitorEnvironment(env);
 }
 
-export function selectExpiredRepositories({ maxAgeMs, now, repositories }) {
-  const latestRepositoryName = repositories
+function planRepositoryCleanup({ maxAgeMs, now, repositories }) {
+  const liveRepositories = repositories
     .filter((repository) => repository.name.startsWith(livePrefix))
     .sort((left, right) =>
       String(right.created_at).localeCompare(String(left.created_at)),
-    )[0]?.name;
-
-  return repositories
-    .filter((repository) => repository.name.startsWith(livePrefix))
-    .filter((repository) => repository.name !== latestRepositoryName)
+    );
+  const preservedRepository =
+    liveRepositories.find(
+      (repository) => now - Date.parse(repository.created_at) < maxAgeMs,
+    )?.name ?? null;
+  const expiredRepositories = liveRepositories
     .filter((repository) => now - Date.parse(repository.created_at) >= maxAgeMs)
     .sort((left, right) =>
       String(left.created_at).localeCompare(String(right.created_at)),
     );
+
+  return {
+    expiredRepositories,
+    preservedRepository,
+  };
+}
+
+export function selectExpiredRepositories({ maxAgeMs, now, repositories }) {
+  return planRepositoryCleanup({
+    maxAgeMs,
+    now,
+    repositories,
+  }).expiredRepositories;
 }
 
 export function selectExpiredDiscordCategories({ channels, maxAgeMs, now }) {
@@ -282,12 +296,11 @@ async function listRepositories({
   githubOwnerKind,
   githubRequest,
 }) {
-  return githubRequest(
-    createGitHubRepositoryListPath({
-      githubOwner: githubOrganization,
-      githubOwnerKind,
-    }),
-  );
+  return listGitHubRepositories({
+    githubOwner: githubOrganization,
+    githubOwnerKind,
+    githubRequest,
+  });
 }
 
 async function deleteRepository({
@@ -384,17 +397,13 @@ export async function runJanitor(options, dependencies = {}) {
       githubOwnerKind,
       githubRequest,
     });
-    report.preservedRepository =
-      repositories
-        .filter((repository) => repository.name.startsWith(livePrefix))
-        .sort((left, right) =>
-          String(right.created_at).localeCompare(String(left.created_at)),
-        )[0]?.name ?? null;
-    const expiredRepositories = selectExpiredRepositories({
+    const repositoryCleanupPlan = planRepositoryCleanup({
       maxAgeMs: options.repoMaxAgeHours * 60 * 60 * 1_000,
       now,
       repositories,
     });
+    report.preservedRepository = repositoryCleanupPlan.preservedRepository;
+    const expiredRepositories = repositoryCleanupPlan.expiredRepositories;
 
     for (const repository of expiredRepositories) {
       const projectKey = createSonarProjectKey(

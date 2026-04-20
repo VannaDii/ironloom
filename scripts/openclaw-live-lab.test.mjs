@@ -16,6 +16,7 @@ import {
   createLiveRuntimeEnv,
   createRunIdentifiers,
   loadLiveLabEnvironment,
+  listGitHubRepositories,
   main as runLiveLabCommand,
   createSonarProjectKey,
   createStatusMessage,
@@ -309,6 +310,11 @@ describe('openclaw-live-lab helpers', () => {
         expect(context.fetchCalls).toEqual([
           expect.objectContaining({
             body: undefined,
+            headers: expect.objectContaining({
+              accept: 'application/vnd.github+json',
+              authorization: expect.stringMatching(/^Bearer /u),
+              'x-github-api-version': '2026-03-10',
+            }),
             method: 'GET',
             url: 'https://api.github.com/users/sandbox-org',
           }),
@@ -343,6 +349,7 @@ describe('openclaw-live-lab helpers', () => {
         const fetchCalls = [];
         const fetchImpl = async (url, options) => {
           fetchCalls.push({
+            headers: options.headers,
             method: options.method,
             url: String(url),
           });
@@ -382,10 +389,65 @@ describe('openclaw-live-lab helpers', () => {
           'LIVE_TEST_GITHUB_TOKEN is required when LIVE_TEST_GITHUB_ORG points to a user account.',
         );
         expect(context.fetchCalls).toEqual([
-          {
+          expect.objectContaining({
+            headers: expect.objectContaining({
+              authorization: expect.stringMatching(/^Bearer /u),
+            }),
             method: 'GET',
             url: 'https://api.github.com/users/sandbox-user',
+          }),
+        ]);
+      },
+    },
+    {
+      name: 'lists paginated GitHub repositories until the final partial page',
+      inputs: {},
+      mock: async () => {
+        const githubCalls = [];
+        const firstPage = Array.from({ length: 100 }, (_, index) => ({
+          created_at: `2026-04-${String(index + 1).padStart(2, '0')}T00:00:00.000Z`,
+          name: `devplat-test-${String(index + 1)}-1`,
+        }));
+        const secondPage = [
+          {
+            created_at: '2026-04-30T12:00:00.000Z',
+            name: 'devplat-test-101-1',
           },
+        ];
+
+        return {
+          githubCalls,
+          githubRequest: async (path) => {
+            githubCalls.push(path);
+
+            if (
+              path ===
+              '/orgs/sandbox-org/repos?type=public&sort=created&direction=asc&per_page=100'
+            ) {
+              return firstPage;
+            }
+            if (
+              path ===
+              '/orgs/sandbox-org/repos?type=public&sort=created&direction=asc&per_page=100&page=2'
+            ) {
+              return secondPage;
+            }
+
+            throw new Error(`Unexpected GitHub request: ${path}`);
+          },
+        };
+      },
+      assert: async (context) => {
+        const repositories = await listGitHubRepositories({
+          githubOwner: 'sandbox-org',
+          githubOwnerKind: 'organization',
+          githubRequest: context.githubRequest,
+        });
+
+        expect(repositories).toHaveLength(101);
+        expect(context.githubCalls).toEqual([
+          '/orgs/sandbox-org/repos?type=public&sort=created&direction=asc&per_page=100',
+          '/orgs/sandbox-org/repos?type=public&sort=created&direction=asc&per_page=100&page=2',
         ]);
       },
     },
@@ -448,6 +510,15 @@ describe('openclaw-live-lab helpers', () => {
           }),
         ).toBe(
           '/users/sandbox-user/repos?type=owner&sort=created&direction=asc&per_page=100',
+        );
+        expect(
+          createGitHubRepositoryListPath({
+            githubOwner: 'sandbox-org',
+            githubOwnerKind: 'organization',
+            page: 2,
+          }),
+        ).toBe(
+          '/orgs/sandbox-org/repos?type=public&sort=created&direction=asc&per_page=100&page=2',
         );
         expect(
           createGitHubRepositoryCreatePath({

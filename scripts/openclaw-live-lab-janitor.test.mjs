@@ -138,10 +138,13 @@ describe('openclaw-live-lab-janitor helpers', () => {
         const summary = createCleanupSummary({
           cleanupErrors: [],
           deletedDiscordCategories: ['devplat-test-10-1'],
-          deletedRepositories: ['devplat-test-10-1'],
-          deletedSonarProjects: ['sandbox-org_devplat-test-10-1'],
+          deletedRepositories: ['devplat-test-10-1', 'devplat-test-11-1'],
+          deletedSonarProjects: [
+            'sandbox-org_devplat-test-10-1',
+            'sandbox-org_devplat-test-11-1',
+          ],
           dryRun: false,
-          preservedRepository: 'devplat-test-11-1',
+          preservedRepository: null,
           wouldDeleteDiscordCategories: [],
           wouldDeleteRepositories: [],
           wouldDeleteSonarProjects: [],
@@ -149,15 +152,14 @@ describe('openclaw-live-lab-janitor helpers', () => {
 
         expect(repositories.map((repository) => repository.name)).toEqual([
           'devplat-test-10-1',
+          'devplat-test-11-1',
         ]);
         expect(categories.map((category) => category.name)).toEqual([
           'devplat-test-10-1',
           'devplat-test-11-1',
         ]);
-        expect(summary).toContain('Deleted repositories: 1');
-        expect(summary).toContain(
-          'Preserved latest repository: devplat-test-11-1',
-        );
+        expect(summary).toContain('Deleted repositories: 2');
+        expect(summary).toContain('Preserved latest repository: n/a');
       },
     },
     {
@@ -590,7 +592,7 @@ describe('runJanitor', () => {
       },
     },
     {
-      name: 'preserves the latest retained repo while aging out stale legacy Discord categories',
+      name: 'cleans up stale repositories even when they are the newest live repo',
       inputs: {},
       mock: async () => {
         const reportDir = await mkdtemp(
@@ -646,6 +648,12 @@ describe('runJanitor', () => {
                 },
               ];
             }
+            if (
+              path === '/repos/sandbox-org/devplat-test-101-1' &&
+              options.method === 'DELETE'
+            ) {
+              return null;
+            }
 
             throw new Error(
               `Unexpected GitHub request: ${path} ${options.method ?? 'GET'}`,
@@ -653,6 +661,14 @@ describe('runJanitor', () => {
           },
           reportDir,
           sonarRequest: async (path, options = {}) => {
+            if (
+              path ===
+                '/api/projects/delete?project=sandbox-org_devplat-test-101-1' &&
+              options.method === 'POST'
+            ) {
+              return null;
+            }
+
             throw new Error(
               `Unexpected Sonar request: ${path} ${options.method ?? 'GET'}`,
             );
@@ -676,10 +692,12 @@ describe('runJanitor', () => {
           },
         );
 
-        expect(report.deletedRepositories).toEqual([]);
+        expect(report.deletedRepositories).toEqual(['devplat-test-101-1']);
         expect(report.deletedDiscordCategories).toEqual(['devplat-test-101-1']);
-        expect(report.deletedSonarProjects).toEqual([]);
-        expect(report.preservedRepository).toBe('devplat-test-101-1');
+        expect(report.deletedSonarProjects).toEqual([
+          'sandbox-org_devplat-test-101-1',
+        ]);
+        expect(report.preservedRepository).toBeNull();
       },
     },
     {

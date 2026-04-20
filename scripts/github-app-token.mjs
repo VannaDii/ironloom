@@ -66,6 +66,10 @@ function isNotFoundError(error) {
   return error instanceof Error && error.message.includes('(HTTP 404)');
 }
 
+function normalizePrivateKey(privateKey) {
+  return privateKey.trim().replaceAll('\r\n', '\n').replaceAll('\\n', '\n');
+}
+
 export function createGitHubAppJwt({ clientId, now = Date.now(), privateKey }) {
   const header = {
     alg: 'RS256',
@@ -82,7 +86,7 @@ export function createGitHubAppJwt({ clientId, now = Date.now(), privateKey }) {
   const signature = createSign('RSA-SHA256')
     .update(signingInput)
     .end()
-    .sign(createPrivateKey(privateKey));
+    .sign(createPrivateKey(normalizePrivateKey(privateKey)));
 
   return `${signingInput}.${encodeBase64Url(signature)}`;
 }

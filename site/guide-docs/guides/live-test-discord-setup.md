@@ -65,7 +65,7 @@ If any step fails, correct permissions before dispatching the live lab.
 ## 7. Understand the Workflow-Owned Layout
 
 The live workflow reuses one shared set of top-level channels and creates any
-missing channel automatically:
+missing channels automatically:
 
 - `spec`
 - `implementation`

@@ -11,7 +11,10 @@ import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { ensureLiveTestGitHubToken } from './github-app-token.mjs';
+import {
+  createGitHubAppJwt,
+  ensureLiveTestGitHubToken,
+} from './github-app-token.mjs';
 import { createRuntimeEnv, runDeepTest } from './openclaw-deep-test.mjs';
 
 const repoRootDirectory = resolve(import.meta.dirname, '..');
@@ -26,6 +29,7 @@ const defaultWorkflowFileName = 'live-dispatch-canary.yml';
 const defaultSonarProjectTimeoutMs = 180_000;
 const defaultWorkflowTimeoutMs = 180_000;
 const defaultPollMs = 5_000;
+const githubRepositoryListPageSize = 100;
 const livePrefix = 'devplat-test-';
 const liveLabGitHubAppPermissions = Object.freeze({
   actions: 'write',
@@ -530,14 +534,21 @@ export function createLiveLabEnvironment(env = process.env) {
   };
 }
 
-async function resolvePublicGitHubOwnerKind({
+async function resolveGitHubOwnerKindWithAppCredentials({
+  clientId,
   fetchImpl = fetch,
   githubOwner,
+  privateKey,
 }) {
+  const jwt = createGitHubAppJwt({
+    clientId,
+    privateKey,
+  });
   const owner = await requestJson({
     fetchImpl,
     headers: {
       accept: 'application/vnd.github+json',
+      authorization: `Bearer ${jwt}`,
       'x-github-api-version': githubApiVersion,
     },
     url: new URL(
@@ -565,9 +576,17 @@ export async function loadLiveLabEnvironment(
   const existingToken = env['LIVE_TEST_GITHUB_TOKEN'];
   if (
     (typeof existingToken !== 'string' || existingToken.length === 0) &&
-    (await resolvePublicGitHubOwnerKind({
+    (await resolveGitHubOwnerKindWithAppCredentials({
+      clientId: readRequiredEnvironmentValue(
+        env,
+        'LIVE_TEST_GITHUB_APP_CLIENT_ID',
+      ),
       fetchImpl,
       githubOwner: readRequiredEnvironmentValue(env, 'LIVE_TEST_GITHUB_ORG'),
+      privateKey: readRequiredEnvironmentValue(
+        env,
+        'LIVE_TEST_GITHUB_APP_PRIVATE_KEY',
+      ),
     })) === 'user'
   ) {
     throw new Error(
@@ -641,15 +660,57 @@ export async function resolveGitHubOwnerKind({ githubOwner, githubRequest }) {
 export function createGitHubRepositoryListPath({
   githubOwner,
   githubOwnerKind,
+  page = 1,
 }) {
   if (githubOwnerKind === 'organization') {
-    return `/orgs/${encodeURIComponent(githubOwner)}/repos?type=public&sort=created&direction=asc&per_page=100`;
+    const searchParams = new URLSearchParams({
+      type: 'public',
+      sort: 'created',
+      direction: 'asc',
+      per_page: String(githubRepositoryListPageSize),
+    });
+    if (page > 1) {
+      searchParams.set('page', String(page));
+    }
+    return `/orgs/${encodeURIComponent(githubOwner)}/repos?${searchParams.toString()}`;
   }
   if (githubOwnerKind === 'user') {
-    return `/users/${encodeURIComponent(githubOwner)}/repos?type=owner&sort=created&direction=asc&per_page=100`;
+    const searchParams = new URLSearchParams({
+      type: 'owner',
+      sort: 'created',
+      direction: 'asc',
+      per_page: String(githubRepositoryListPageSize),
+    });
+    if (page > 1) {
+      searchParams.set('page', String(page));
+    }
+    return `/users/${encodeURIComponent(githubOwner)}/repos?${searchParams.toString()}`;
   }
 
   throw new Error(`Unsupported GitHub owner kind: ${githubOwnerKind}`);
+}
+
+export async function listGitHubRepositories({
+  githubOwner,
+  githubOwnerKind,
+  githubRequest,
+}) {
+  const repositories = [];
+
+  for (let page = 1; ; page += 1) {
+    const pageRepositories = await githubRequest(
+      createGitHubRepositoryListPath({
+        githubOwner,
+        githubOwnerKind,
+        page,
+      }),
+    );
+    repositories.push(...pageRepositories);
+
+    if (pageRepositories.length < githubRepositoryListPageSize) {
+      return repositories;
+    }
+  }
 }
 
 export function createGitHubRepositoryCreatePath({
@@ -671,12 +732,11 @@ async function listRepositories({
   githubOwnerKind,
   githubRequest,
 }) {
-  return githubRequest(
-    createGitHubRepositoryListPath({
-      githubOwner: githubOrganization,
-      githubOwnerKind,
-    }),
-  );
+  return listGitHubRepositories({
+    githubOwner: githubOrganization,
+    githubOwnerKind,
+    githubRequest,
+  });
 }
 
 async function createRepository({

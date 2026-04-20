@@ -57,9 +57,12 @@ runs and GitHub workflow runs on the same credential path.
 - variable: `LIVE_TEST_GITHUB_ORG`
 - secret: `LIVE_TEST_GITHUB_APP_PRIVATE_KEY`
 
-For local runs, mirror those same values in `.env`. `LIVE_TEST_GITHUB_TOKEN`
-can still be supplied explicitly, but it is optional when the app credentials
-are present.
+For local runs, mirror those same values in `.env`. Store
+`LIVE_TEST_GITHUB_APP_PRIVATE_KEY` as a single quoted value with literal `\n`
+escapes between PEM lines so `node --env-file=.env` preserves the full key; the
+live-lab scripts normalize those escapes before minting the JWT.
+`LIVE_TEST_GITHUB_TOKEN` can still be supplied explicitly, but it is optional
+when the app credentials are present.
 
 If `LIVE_TEST_GITHUB_ORG` points to a personal user account instead of an
 organization, `LIVE_TEST_GITHUB_TOKEN` becomes required for the live lab. A

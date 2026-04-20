@@ -59,6 +59,19 @@ describe('github-app-token helpers', () => {
       },
     },
     {
+      name: 'normalizes single-line private keys copied from local env files',
+      inputs: {},
+      mock: async () => undefined,
+      assert: async () => {
+        const jwt = createGitHubAppJwt({
+          clientId: 'client-id-2',
+          privateKey: githubAppPrivateKey.replaceAll('\n', '\\n'),
+        });
+
+        expect(jwt.split('.')).toHaveLength(3);
+      },
+    },
+    {
       name: 'resolves the organization installation without falling back to the user endpoint',
       inputs: {},
       mock: async () => {
