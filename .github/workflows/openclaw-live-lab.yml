@@ -92,4 +92,5 @@ jobs:
         with:
           name: openclaw-live-lab-${{ github.run_id }}-${{ github.run_attempt }}
           retention-days: 14
+          if-no-files-found: warn
           path: ${{ runner.temp }}/openclaw-live-lab-${{ github.run_id }}-${{ github.run_attempt }}.tgz
