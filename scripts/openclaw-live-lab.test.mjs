@@ -974,6 +974,9 @@ describe('runLiveLab', () => {
         expect(context.discordMessages).toEqual(
           expect.arrayContaining([
             expect.stringContaining(`ref: ${inputs.ref}`),
+            expect.stringContaining(
+              'Bootstrapped the shared live-lab channels and external service preflight.',
+            ),
           ]),
         );
         expect(context.summaryEntries[0]).toContain('Status: passed');

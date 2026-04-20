@@ -1441,7 +1441,7 @@ export async function runLiveLab(options, dependencies = {}) {
     await postStatusSafe({
       channelId: discordChannels.channels.projectManagement.id,
       details:
-        'Bootstrapped the live-lab category and external service preflight.',
+        'Bootstrapped the shared live-lab channels and external service preflight.',
       discordRequest,
       phase: 'bootstrap',
       ref: effectiveRef,
