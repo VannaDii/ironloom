@@ -228,7 +228,8 @@ jobs:
       - repo
       - test
     steps:
-      - uses: actions/checkout@v6.0.2
+      - id: checkout
+        uses: actions/checkout@v6.0.2
 
       - name: Setup Node
         uses: actions/setup-node@v6.3.0
@@ -237,13 +238,16 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Install Deps
+      - id: install_deps
+        name: Install Deps
         run: npm ci
 
-      - name: Verify Node Alignment
+      - id: verify_node
+        name: Verify Node Alignment
         run: npm run verify:node
 
-      - name: Run Hermetic Deep Test
+      - id: run_hermetic_deep_test
+        name: Run Hermetic Deep Test
         run: node scripts/openclaw-deep-test.mjs --mode hermetic --report-dir
           "$RUNNER_TEMP/openclaw-deep"
 
@@ -258,11 +262,28 @@ jobs:
       - name: Package Hermetic Deep Test Artifact
         if: always()
         run: |
+          artifact_root="$RUNNER_TEMP/openclaw-deep"
           artifact="$RUNNER_TEMP/openclaw-deep-${{ github.run_id }}-${{ github.run_attempt }}.tgz"
 
-          if [[ -d "$RUNNER_TEMP/openclaw-deep" ]]; then
-            tar -C "$RUNNER_TEMP" -czf "$artifact" openclaw-deep
+          if [[ ! -d "$artifact_root" ]]; then
+            mkdir -p "$artifact_root"
+            cat > "$artifact_root/artifact-status.json" <<EOF
+          {
+            "status": "report-directory-missing",
+            "workflow": "${{ github.workflow }}",
+            "job": "openclaw-hermetic-deep-test",
+            "run_id": "${{ github.run_id }}",
+            "run_attempt": "${{ github.run_attempt }}",
+            "ref": "${{ github.ref_name }}",
+            "checkout_outcome": "${{ steps.checkout.outcome }}",
+            "install_deps_outcome": "${{ steps.install_deps.outcome }}",
+            "verify_node_outcome": "${{ steps.verify_node.outcome }}",
+            "run_hermetic_deep_test_outcome": "${{ steps.run_hermetic_deep_test.outcome }}"
+          }
+          EOF
           fi
+
+          tar -C "$RUNNER_TEMP" -czf "$artifact" openclaw-deep
 
       - name: Upload Hermetic Deep Test Artifact
         if: always()
@@ -270,7 +291,6 @@ jobs:
         with:
           name: openclaw-deep-${{ github.run_id }}-${{ github.run_attempt }}
           retention-days: 14
-          if-no-files-found: warn
           path: ${{ runner.temp }}/openclaw-deep-${{ github.run_id }}-${{
             github.run_attempt }}.tgz
 
