@@ -110,7 +110,7 @@ describe('openclaw-deep-test helpers', () => {
             '-e',
             'DEVPLAT_TEST_MODE=hermetic',
             '-v',
-            '/sandbox/openclaw-runtime/bundled-extensions:/app/packages/openclaw/node_modules/openclaw/dist/extensions:ro',
+            '/sandbox/openclaw-runtime/bundled-extensions:/app/node_modules/openclaw/dist/extensions:ro',
             '--network',
             'none',
             'devplat:test',
@@ -324,6 +324,8 @@ describe('runDeepTest', () => {
           artifacts: ['storage-openclaw-artifact-1'],
           memory: ['memory-openclaw-1'],
         });
+        expect(report.containerName).toMatch(/^devplat-openclaw-/);
+        expect(report.imageTag).toMatch(/^devplat-openclaw-deep-test:/);
         expect(savedRuntimeEnv).toContain('[redacted]');
         expect(savedRuntimeEnv).not.toContain('bot-secret');
         expect(savedGatewayConfig).toContain('[redacted]');
@@ -394,6 +396,95 @@ describe('runDeepTest', () => {
 
         expect(context.invocations).toEqual(
           expect.arrayContaining([expect.arrayContaining(['rm', '-f'])]),
+        );
+      },
+    },
+    {
+      name: 'scopes default runtime names to the full report path',
+      inputs: {},
+      mock: async () => {
+        const rootDirectory = await mkdtemp(
+          resolve(tmpdir(), 'devplat-openclaw-live-lab-'),
+        );
+        const reportDirectory = resolve(rootDirectory, 'local-7', 'deep-test');
+        temporaryRoots.push(rootDirectory);
+
+        const invocations = [];
+        const commandRunner = async (_command, args) => {
+          invocations.push(args);
+          if (args[0] === 'build') {
+            return { stdout: '', stderr: '' };
+          }
+          if (args[0] === 'run') {
+            return { stdout: 'container-1\n', stderr: '' };
+          }
+          if (args[0] === 'exec') {
+            return {
+              stdout: JSON.stringify({
+                status: 200,
+                body: {
+                  ok: true,
+                  result: {
+                    details: {
+                      status: 'ok',
+                    },
+                  },
+                },
+              }),
+              stderr: '',
+            };
+          }
+          if (args[0] === 'logs') {
+            return { stdout: 'gateway ok\n', stderr: '' };
+          }
+          if (args[0] === 'rm') {
+            return { stdout: '', stderr: '' };
+          }
+
+          throw new Error(`Unexpected docker args: ${args.join(' ')}`);
+        };
+
+        return { commandRunner, invocations, reportDirectory };
+      },
+      assert: async (context) => {
+        const report = await runDeepTest(
+          {
+            gatewayToken: 'gateway-secret',
+            mode: 'live',
+            reportDir: context.reportDirectory,
+            runtimeEnv: createRuntimeEnv(),
+            scenario: [
+              {
+                expected: { status: 'ok' },
+                params: { scope: 'state' },
+                phase: 'config',
+                tool: 'list_stored_records',
+              },
+            ],
+          },
+          {
+            collectStoredKeys: async () => ({
+              artifacts: ['artifact-1'],
+              memory: ['memory-1'],
+              state: ['state-1'],
+              telemetry: ['telemetry-1'],
+            }),
+            commandRunner: context.commandRunner,
+            onProgress: () => undefined,
+          },
+        );
+
+        expect(report.containerName).toContain('local-7-deep-test');
+        expect(report.imageTag).toContain('local-7-deep-test');
+        expect(context.invocations).toEqual(
+          expect.arrayContaining([
+            expect.arrayContaining([
+              'run',
+              '-d',
+              '--name',
+              report.containerName,
+            ]),
+          ]),
         );
       },
     },

@@ -11,6 +11,10 @@ import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import {
+  createGitHubAppJwt,
+  ensureLiveTestGitHubToken,
+} from './github-app-token.mjs';
 import { createRuntimeEnv, runDeepTest } from './openclaw-deep-test.mjs';
 
 const repoRootDirectory = resolve(import.meta.dirname, '..');
@@ -25,7 +29,18 @@ const defaultWorkflowFileName = 'live-dispatch-canary.yml';
 const defaultSonarProjectTimeoutMs = 180_000;
 const defaultWorkflowTimeoutMs = 180_000;
 const defaultPollMs = 5_000;
+const githubRepositoryListPageSize = 100;
 const livePrefix = 'devplat-test-';
+const liveLabGitHubAppPermissions = Object.freeze({
+  actions: 'write',
+  administration: 'write',
+  checks: 'read',
+  contents: 'write',
+  issues: 'write',
+  metadata: 'read',
+  pull_requests: 'write',
+  workflows: 'write',
+});
 
 function parseFlagArguments(argv) {
   const args = new Map();
@@ -455,7 +470,7 @@ export function createStepSummary(report) {
     `- Run: ${report.runLabel}`,
     `- Repository: ${report.github?.repoFullName ?? 'n/a'}`,
     `- Workflow: ${report.workflowUrl ?? 'n/a'}`,
-    `- Discord category: ${report.discord?.categoryName ?? 'n/a'}`,
+    `- Discord channels: ${report.discord?.channelNames?.join(', ') ?? 'n/a'}`,
     `- Deep-test steps: ${String(report.deepTest?.steps ?? 0)}`,
     `- Repository cleanup: ${report.cleanup?.repository.status ?? 'n/a'}`,
     `- Sonar cleanup: ${report.cleanup?.sonarProject.status ?? 'n/a'}`,
@@ -519,6 +534,75 @@ export function createLiveLabEnvironment(env = process.env) {
   };
 }
 
+async function resolveGitHubOwnerKindWithAppCredentials({
+  clientId,
+  fetchImpl = fetch,
+  githubOwner,
+  privateKey,
+}) {
+  const jwt = createGitHubAppJwt({
+    clientId,
+    privateKey,
+  });
+  const owner = await requestJson({
+    fetchImpl,
+    headers: {
+      accept: 'application/vnd.github+json',
+      authorization: `Bearer ${jwt}`,
+      'x-github-api-version': githubApiVersion,
+    },
+    url: new URL(
+      `/users/${encodeURIComponent(githubOwner)}`,
+      'https://api.github.com',
+    ).toString(),
+  });
+
+  if (owner?.type === 'User') {
+    return 'user';
+  }
+  if (owner?.type === 'Organization') {
+    return 'organization';
+  }
+
+  throw new Error(
+    `GitHub owner ${githubOwner} must resolve to a User or Organization account.`,
+  );
+}
+
+export async function loadLiveLabEnvironment(
+  env = process.env,
+  { fetchImpl = fetch } = {},
+) {
+  const existingToken = env['LIVE_TEST_GITHUB_TOKEN'];
+  if (
+    (typeof existingToken !== 'string' || existingToken.length === 0) &&
+    (await resolveGitHubOwnerKindWithAppCredentials({
+      clientId: readRequiredEnvironmentValue(
+        env,
+        'LIVE_TEST_GITHUB_APP_CLIENT_ID',
+      ),
+      fetchImpl,
+      githubOwner: readRequiredEnvironmentValue(env, 'LIVE_TEST_GITHUB_ORG'),
+      privateKey: readRequiredEnvironmentValue(
+        env,
+        'LIVE_TEST_GITHUB_APP_PRIVATE_KEY',
+      ),
+    })) === 'user'
+  ) {
+    throw new Error(
+      'LIVE_TEST_GITHUB_TOKEN is required when LIVE_TEST_GITHUB_ORG points to a user account.',
+    );
+  }
+
+  await ensureLiveTestGitHubToken({
+    env,
+    fetchImpl,
+    permissions: liveLabGitHubAppPermissions,
+  });
+
+  return createLiveLabEnvironment(env);
+}
+
 export function discordSnowflakeToTimestamp(snowflake) {
   const discordEpoch = 1_420_070_400_000n;
   const createdAt = (BigInt(String(snowflake)) >> 22n) + discordEpoch;
@@ -539,19 +623,133 @@ async function appendSummary(summaryPath, content) {
   await appendFile(summaryPath, content, 'utf8');
 }
 
-async function listOrgRepositories({ githubOrganization, githubRequest }) {
-  return githubRequest(
-    `/orgs/${encodeURIComponent(githubOrganization)}/repos?type=public&sort=created&direction=asc&per_page=100`,
+function isGitHubNotFoundError(error) {
+  return (
+    error instanceof Error &&
+    ((typeof error.status === 'number' && error.status === 404) ||
+      error.message.includes('(HTTP 404)') ||
+      error.message.includes(' failed with HTTP 404'))
   );
+}
+
+export async function resolveGitHubOwnerKind({ githubOwner, githubRequest }) {
+  try {
+    await githubRequest(`/orgs/${encodeURIComponent(githubOwner)}`);
+    return 'organization';
+  } catch (error) {
+    if (!isGitHubNotFoundError(error)) {
+      throw error;
+    }
+  }
+
+  const owner = await githubRequest(
+    `/users/${encodeURIComponent(githubOwner)}`,
+  );
+  if (owner?.type === 'User') {
+    return 'user';
+  }
+  if (owner?.type === 'Organization') {
+    return 'organization';
+  }
+
+  throw new Error(
+    `GitHub owner ${githubOwner} must resolve to a User or Organization account.`,
+  );
+}
+
+export function createGitHubRepositoryListPath({
+  githubOwner,
+  githubOwnerKind,
+  page = 1,
+}) {
+  if (githubOwnerKind === 'organization') {
+    const searchParams = new URLSearchParams({
+      type: 'public',
+      sort: 'created',
+      direction: 'asc',
+      per_page: String(githubRepositoryListPageSize),
+    });
+    if (page > 1) {
+      searchParams.set('page', String(page));
+    }
+    return `/orgs/${encodeURIComponent(githubOwner)}/repos?${searchParams.toString()}`;
+  }
+  if (githubOwnerKind === 'user') {
+    const searchParams = new URLSearchParams({
+      type: 'owner',
+      sort: 'created',
+      direction: 'asc',
+      per_page: String(githubRepositoryListPageSize),
+    });
+    if (page > 1) {
+      searchParams.set('page', String(page));
+    }
+    return `/users/${encodeURIComponent(githubOwner)}/repos?${searchParams.toString()}`;
+  }
+
+  throw new Error(`Unsupported GitHub owner kind: ${githubOwnerKind}`);
+}
+
+export async function listGitHubRepositories({
+  githubOwner,
+  githubOwnerKind,
+  githubRequest,
+}) {
+  const repositories = [];
+
+  for (let page = 1; ; page += 1) {
+    const pageRepositories = await githubRequest(
+      createGitHubRepositoryListPath({
+        githubOwner,
+        githubOwnerKind,
+        page,
+      }),
+    );
+    repositories.push(...pageRepositories);
+
+    if (pageRepositories.length < githubRepositoryListPageSize) {
+      return repositories;
+    }
+  }
+}
+
+export function createGitHubRepositoryCreatePath({
+  githubOwner,
+  githubOwnerKind,
+}) {
+  if (githubOwnerKind === 'organization') {
+    return `/orgs/${encodeURIComponent(githubOwner)}/repos`;
+  }
+  if (githubOwnerKind === 'user') {
+    return '/user/repos';
+  }
+
+  throw new Error(`Unsupported GitHub owner kind: ${githubOwnerKind}`);
+}
+
+async function listRepositories({
+  githubOrganization,
+  githubOwnerKind,
+  githubRequest,
+}) {
+  return listGitHubRepositories({
+    githubOwner: githubOrganization,
+    githubOwnerKind,
+    githubRequest,
+  });
 }
 
 async function createRepository({
   githubOrganization,
+  githubOwnerKind,
   githubRequest,
   repoName,
 }) {
   return githubRequest(
-    `/orgs/${encodeURIComponent(githubOrganization)}/repos`,
+    createGitHubRepositoryCreatePath({
+      githubOwner: githubOrganization,
+      githubOwnerKind,
+    }),
     {
       body: {
         allow_auto_merge: false,
@@ -749,7 +947,7 @@ async function dispatchFixtureWorkflow({
   repoName,
   runLabel,
 }) {
-  await githubRequest(
+  return githubRequest(
     `/repos/${encodeURIComponent(githubOrganization)}/${encodeURIComponent(repoName)}/actions/workflows/${encodeURIComponent(defaultWorkflowFileName)}/dispatches`,
     {
       body: {
@@ -759,9 +957,8 @@ async function dispatchFixtureWorkflow({
         },
         ref: branchName,
       },
-      expectedStatuses: [204],
+      expectedStatuses: [200, 204],
       method: 'POST',
-      responseType: 'none',
     },
   );
 }
@@ -835,6 +1032,21 @@ async function waitForSonarProject({
   throw new Error(`Timed out waiting for Sonar project ${projectKey}.`);
 }
 
+async function createSonarProject({
+  projectKey,
+  projectName,
+  sonarOrganization,
+  sonarRequest,
+}) {
+  return sonarRequest(
+    `/api/projects/create?organization=${encodeURIComponent(sonarOrganization)}&project=${encodeURIComponent(projectKey)}&name=${encodeURIComponent(projectName)}`,
+    {
+      expectedStatuses: [200],
+      method: 'POST',
+    },
+  );
+}
+
 async function deleteSonarProject({ projectKey, sonarRequest }) {
   await sonarRequest(
     `/api/projects/delete?project=${encodeURIComponent(projectKey)}`,
@@ -850,41 +1062,34 @@ async function getGuild(guildId, discordRequest) {
   return discordRequest(`/guilds/${encodeURIComponent(guildId)}`);
 }
 
-async function createDiscordChannels({
-  categoryName,
-  discordRequest,
-  guildId,
-}) {
-  const category = await discordRequest(
-    `/guilds/${encodeURIComponent(guildId)}/channels`,
-    {
-      body: {
-        name: categoryName,
-        type: 4,
-      },
-      expectedStatuses: [200, 201],
-      method: 'POST',
-    },
-  );
-
+async function ensureDiscordChannels({ discordRequest, guildId }) {
+  const existingChannels = await listGuildChannels({
+    discordRequest,
+    guildId,
+  });
   const channels = {};
+
   for (const channel of createDiscordChannelPlan()) {
-    channels[channel.key] = await discordRequest(
-      `/guilds/${encodeURIComponent(guildId)}/channels`,
-      {
+    const existingChannel = existingChannels.find(
+      (candidate) =>
+        candidate.name === channel.name &&
+        candidate.type === 0 &&
+        (candidate.parent_id === undefined || candidate.parent_id === null),
+    );
+
+    channels[channel.key] =
+      existingChannel ??
+      (await discordRequest(`/guilds/${encodeURIComponent(guildId)}/channels`, {
         body: {
           name: channel.name,
-          parent_id: category.id,
           type: 0,
         },
         expectedStatuses: [200, 201],
         method: 'POST',
-      },
-    );
+      }));
   }
 
   return {
-    category,
     channels,
   };
 }
@@ -1052,7 +1257,7 @@ async function postFinalLiveLabStatus({
   await postStatusSafe({
     channelId: report.discord.channels.projectManagement.id,
     details:
-      'Live lab failed during cleanup. Inspect the uploaded report and retained Discord channels.',
+      'Live lab failed during cleanup. Inspect the uploaded report and shared live-lab channels for details.',
     discordRequest,
     phase: 'failure',
     ref,
@@ -1211,21 +1416,20 @@ export async function runLiveLab(options, dependencies = {}) {
 
   try {
     await getGuild(options.environment.discord.guildId, discordRequest);
-    await githubRequest(
-      `/orgs/${encodeURIComponent(options.environment.github.organization)}`,
-    );
+    const githubOwnerKind = await resolveGitHubOwnerKind({
+      githubOwner: options.environment.github.organization,
+      githubRequest,
+    });
     await sonarRequest(
       `/api/projects/search?organization=${encodeURIComponent(options.environment.sonar.organization)}&ps=1`,
     );
 
-    const discordChannels = await createDiscordChannels({
-      categoryName: identifiers.categoryName,
+    const discordChannels = await ensureDiscordChannels({
       discordRequest,
       guildId: options.environment.discord.guildId,
     });
     report.discord = {
-      categoryId: discordChannels.category.id,
-      categoryName: discordChannels.category.name,
+      channelNames: createDiscordChannelPlan().map((channel) => channel.name),
       channels: Object.fromEntries(
         Object.entries(discordChannels.channels).map(([key, channel]) => [
           key,
@@ -1237,7 +1441,7 @@ export async function runLiveLab(options, dependencies = {}) {
     await postStatusSafe({
       channelId: discordChannels.channels.projectManagement.id,
       details:
-        'Bootstrapped the live-lab category and external service preflight.',
+        'Bootstrapped the shared live-lab channels and external service preflight.',
       discordRequest,
       phase: 'bootstrap',
       ref: effectiveRef,
@@ -1248,8 +1452,9 @@ export async function runLiveLab(options, dependencies = {}) {
       workflowUrl,
     });
 
-    const repositories = await listOrgRepositories({
+    const repositories = await listRepositories({
       githubOrganization: options.environment.github.organization,
+      githubOwnerKind,
       githubRequest,
     });
     const evictionPlan = createEvictionPlan(
@@ -1287,6 +1492,7 @@ export async function runLiveLab(options, dependencies = {}) {
 
     const repository = await createRepository({
       githubOrganization: options.environment.github.organization,
+      githubOwnerKind,
       githubRequest,
       repoName: identifiers.repoName,
     });
@@ -1377,17 +1583,34 @@ export async function runLiveLab(options, dependencies = {}) {
       repoName: identifiers.repoName,
     });
 
-    const sonarProject = await waitForSonarProject({
-      githubOrganization: options.environment.github.organization,
-      repoName: identifiers.repoName,
-      sonarOrganization: options.environment.sonar.organization,
-      sonarRequest,
-    });
-    sonarProjectKey = sonarProject.projectKey;
-    report.sonar = {
-      projectKey: sonarProject.projectKey,
-      projectName: sonarProject.project.name,
-    };
+    if (githubOwnerKind === 'user') {
+      sonarProjectKey = createSonarProjectKey(
+        options.environment.github.organization,
+        identifiers.repoName,
+      );
+      const sonarProject = await createSonarProject({
+        projectKey: sonarProjectKey,
+        projectName: identifiers.repoName,
+        sonarOrganization: options.environment.sonar.organization,
+        sonarRequest,
+      });
+      report.sonar = {
+        projectKey: sonarProjectKey,
+        projectName: sonarProject?.project?.name ?? identifiers.repoName,
+      };
+    } else {
+      const sonarProject = await waitForSonarProject({
+        githubOrganization: options.environment.github.organization,
+        repoName: identifiers.repoName,
+        sonarOrganization: options.environment.sonar.organization,
+        sonarRequest,
+      });
+      sonarProjectKey = sonarProject.projectKey;
+      report.sonar = {
+        projectKey: sonarProject.projectKey,
+        projectName: sonarProject.project.name,
+      };
+    }
 
     const runtimeEnv = createLiveRuntimeEnv({
       discordChannels: discordChannels.channels,
@@ -1459,7 +1682,7 @@ export async function runLiveLab(options, dependencies = {}) {
       await postStatusSafe({
         channelId: report.discord.channels.projectManagement.id,
         details:
-          'Live lab failed. Inspect the uploaded report and retained Discord channels.',
+          'Live lab failed. Inspect the uploaded report and shared live-lab channels for details.',
         discordRequest,
         phase: 'failure',
         ref: effectiveRef,
@@ -1532,16 +1755,25 @@ export async function runLiveLab(options, dependencies = {}) {
   return report;
 }
 
-export async function main(argv = process.argv.slice(2)) {
+export async function main(
+  argv = process.argv.slice(2),
+  {
+    createEnvironment = loadLiveLabEnvironment,
+    runLiveLabFn = runLiveLab,
+    writeOutput = (content) => {
+      process.stdout.write(content);
+    },
+  } = {},
+) {
   const args = parseLiveLabArgs(argv);
-  const environment = createLiveLabEnvironment();
-  const report = await runLiveLab({
+  const environment = await createEnvironment();
+  const report = await runLiveLabFn({
     ...args,
     environment,
     maxParallelRepos: args.maxParallelRepos ?? defaultMaxParallelRepos,
   });
 
-  process.stdout.write(
+  writeOutput(
     `${JSON.stringify(
       {
         completedAt: report.completedAt,
@@ -1554,6 +1786,8 @@ export async function main(argv = process.argv.slice(2)) {
       2,
     )}\n`,
   );
+
+  return report;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

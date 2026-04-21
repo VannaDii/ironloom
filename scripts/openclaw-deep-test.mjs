@@ -1,7 +1,7 @@
 import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
 import { chmod, mkdir, readdir, rm, writeFile } from 'node:fs/promises';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -96,6 +96,21 @@ function sanitizeNameSegment(value) {
   }
 
   return normalized;
+}
+
+function createScopedRuntimeName(reportDirectory) {
+  const resolvedReportDirectory = resolve(reportDirectory);
+  const reportSegment = sanitizeNameSegment(
+    `${basename(resolve(resolvedReportDirectory, '..'))}-${basename(
+      resolvedReportDirectory,
+    )}`,
+  );
+  const digest = createHash('sha256')
+    .update(resolvedReportDirectory)
+    .digest('hex')
+    .slice(0, 12);
+
+  return reportSegment.length > 0 ? `${reportSegment}-${digest}` : digest;
 }
 
 function createStep(tool, params, expected, phase) {
@@ -270,7 +285,7 @@ export function buildDockerRunArgs({
     '-v',
     `${devplatStateDirectory}:/app/.devplat`,
     '-v',
-    `${bundledExtensionsDirectory}:/app/packages/openclaw/node_modules/openclaw/dist/extensions:ro`,
+    `${bundledExtensionsDirectory}:/app/node_modules/openclaw/dist/extensions:ro`,
   ];
 
   if (mode === 'hermetic') {
@@ -1359,12 +1374,12 @@ export async function runDeepTest(options, dependencies = {}) {
   const devplatStateDirectory = resolve(reportDirectory, 'devplat-state');
   const imageTag =
     options.image ??
-    `${defaultImageTagPrefix}:${sanitizeNameSegment(
-      basename(reportDirectory),
-    )}`;
+    `${defaultImageTagPrefix}:${createScopedRuntimeName(reportDirectory)}`;
   const containerName =
     options.containerName ??
-    sanitizeNameSegment(`devplat-openclaw-${basename(reportDirectory)}`);
+    sanitizeNameSegment(
+      `devplat-openclaw-${createScopedRuntimeName(reportDirectory)}`,
+    );
   const runtimeEnv = options.runtimeEnv ?? createRuntimeEnv();
   const pluginConfig = options.pluginConfig ?? createPluginConfig(runtimeEnv);
   const gatewayConfig = createGatewayConfig({

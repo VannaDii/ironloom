@@ -15,7 +15,7 @@ DevPlat is a Discord-first autonomous software-delivery platform built as a stri
 
 - Node.js `v24.14.1` from `.nvmrc`
 - `packageManager` `npm@11.12.1`
-- TypeScript `6.0.2` as the authoring baseline
+- TypeScript `6.0.3` as the authoring baseline
 
 Always activate the pinned runtime before development:
 
@@ -24,7 +24,7 @@ nvm use
 npm ci
 ```
 
-Compatibility validation runs on Linux only against the latest stable TypeScript `5.x` and `6.x` releases. Primary authoring targets TypeScript `6.0.2`.
+Compatibility validation runs on Linux only against the latest stable TypeScript `5.x` and `6.x` releases. Primary authoring targets TypeScript `6.0.3`.
 
 ## Baseline Commands
 

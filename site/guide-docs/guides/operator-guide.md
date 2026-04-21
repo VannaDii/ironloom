@@ -25,7 +25,7 @@ Missing Discord credentials should fail during config load. Do not rely on place
 - keep the project-management channel query-only and ensure every result points back to a bound work thread
 - rotate credentials through secret references instead of baking them into images
 - use the live lab only against the sandbox GitHub org, SonarQube Cloud org, and Discord guild
-- expect live-lab Discord categories to be retained until the janitor removes them
+- expect live-lab updates to land in the shared spec, implementation, pull-request, audit, and project-management channels with run labels in every message
 
 ## Recovery
 

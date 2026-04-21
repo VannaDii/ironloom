@@ -8,14 +8,14 @@
 
 ## TypeScript Policy
 
-- Primary authoring targets TypeScript `6.0.2`.
+- Primary authoring targets TypeScript `6.0.3`.
 - Keep strict TypeScript settings enabled across the repository.
 - Do not weaken typing rules, emitted-specifier rules, or package-boundary checks to accommodate convenience changes.
 
 ## Compatibility Matrix
 
 - Compatibility validation runs on Linux only against the latest stable TypeScript `5.x` and `6.x` releases.
-- The compatibility matrix validates support; it does not replace the TypeScript `6.0.2` authoring baseline.
+- The compatibility matrix validates support; it does not replace the TypeScript `6.0.3` authoring baseline.
 
 ## Explicit Non-goals
 

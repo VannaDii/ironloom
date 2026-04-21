@@ -15,20 +15,23 @@ DevPlat publishes through four primary surfaces:
 - let the `release.yml` workflow create or update the release pull request
 - merge the release pull request into `main`
 - let the publish workflows release packages, container artifacts, and charts from the merged state
-- let every non-release merge to `main` publish a full prerelease workspace snapshot plus aligned dev Docker and Helm artifacts
+- let every pull request CI run publish a PR-numbered dev Helm chart
+- let merges to `main` publish a unique non-dev Helm chart version from the merged state
+- let every non-release merge to `main` publish a full prerelease workspace snapshot plus aligned dev packages and Docker artifacts
 
 ## Publish Workflows
 
 - `release.yml`: creates or updates the Changesets release pull request
 - `publish-release.yml`: publishes stable package versions after the release pull request merges, backfills any workspace packages that have not been published yet, and publishes full dev package snapshots for non-release merges to `main`
 - `docker-publish.yml`: publishes `devplat-openclaw-runtime` to GHCR with release tags for release merges and `dev` tags for non-release merges to `main`
-- `helm-publish.yml`: packages and pushes the Helm chart to GHCR OCI with release-aligned chart and image tags for release merges and prerelease tags for non-release merges to `main`
+- `helm-publish.yml`: manual entry point that calls the reusable Helm publish action
+- `.github/actions/publish-helm-chart/action.yml`: packages and pushes the Helm chart to GHCR OCI, using PR-numbered dev versions for pull request CI runs and non-dev build-metadata versions for `main` merges
 - `docs-deploy.yml`: builds and deploys the VitePress site through the Pages artifact flow
 
 ## Helm Publication Requirements
 
 - keep `deploy/helm/devplat/values.schema.json` aligned with the chart values surface so `helm lint` and install-time validation fail fast on invalid inputs
-- sign the packaged chart in `helm-publish.yml` with `helm package --sign`
+- sign the packaged chart in `.github/actions/publish-helm-chart/action.yml` with `helm package --sign`
 - publish the `.prov` provenance file alongside the chart archive so OCI pushes include the Helm provenance layer automatically
 - keep the Helm signing secrets available to Actions:
   - `HELM_GPG_PRIVATE`

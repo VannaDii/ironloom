@@ -27,7 +27,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v6.0.2
+      - id: checkout
+        uses: actions/checkout@v6.0.2
         with:
           ref: ${{ inputs.ref || github.ref }}
 
@@ -38,36 +39,25 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Install Deps
+      - id: install_deps
+        name: Install Deps
         run: npm ci
 
-      - name: Verify Node Alignment
+      - id: verify_node
+        name: Verify Node Alignment
         run: npm run verify:node
 
-      - name: Create Live-Lab App Token
-        id: live_lab_token
-        uses: actions/create-github-app-token@v3
-        with:
-          client-id: ${{ vars.LIVE_TEST_GITHUB_APP_CLIENT_ID }}
-          owner: ${{ vars.LIVE_TEST_GITHUB_ORG }}
-          permission-actions: write
-          permission-administration: write
-          permission-checks: read
-          permission-contents: write
-          permission-issues: write
-          permission-metadata: read
-          permission-pull-requests: write
-          permission-workflows: write
-          private-key: ${{ secrets.LIVE_TEST_GITHUB_APP_PRIVATE_KEY }}
-
-      - name: Run Live Lab
+      - id: run_live_lab
+        name: Run Live Lab
         env:
           LIVE_TEST_DISCORD_APPLICATION_ID: ${{ secrets.LIVE_TEST_DISCORD_APPLICATION_ID }}
           LIVE_TEST_DISCORD_BOT_TOKEN: ${{ secrets.LIVE_TEST_DISCORD_BOT_TOKEN }}
           LIVE_TEST_DISCORD_GUILD_ID: ${{ vars.LIVE_TEST_DISCORD_GUILD_ID }}
           LIVE_TEST_DISCORD_PUBLIC_KEY: ${{ secrets.LIVE_TEST_DISCORD_PUBLIC_KEY }}
+          LIVE_TEST_GITHUB_APP_CLIENT_ID: ${{ vars.LIVE_TEST_GITHUB_APP_CLIENT_ID }}
+          LIVE_TEST_GITHUB_APP_PRIVATE_KEY: ${{ secrets.LIVE_TEST_GITHUB_APP_PRIVATE_KEY }}
           LIVE_TEST_GITHUB_ORG: ${{ vars.LIVE_TEST_GITHUB_ORG }}
-          LIVE_TEST_GITHUB_TOKEN: ${{ steps.live_lab_token.outputs.token }}
+          LIVE_TEST_GITHUB_TOKEN: ${{ secrets.LIVE_TEST_GITHUB_TOKEN }}
           LIVE_TEST_SONAR_ORGANIZATION: ${{ vars.LIVE_TEST_SONAR_ORGANIZATION }}
           LIVE_TEST_SONAR_TOKEN: ${{ secrets.LIVE_TEST_SONAR_TOKEN }}
         run: |
@@ -83,10 +73,44 @@ jobs:
 
           node scripts/openclaw-live-lab.mjs "${args[@]}"
 
+      - name: Normalize Live-Lab Artifact Permissions
+        if: always()
+        run: |
+          if [[ -d "$RUNNER_TEMP/openclaw-live-lab" ]]; then
+            sudo chown -R "$(id -u):$(id -g)" "$RUNNER_TEMP/openclaw-live-lab" || true
+            sudo chmod -R u+rwX,go+rX "$RUNNER_TEMP/openclaw-live-lab" || true
+          fi
+
+      - name: Package Live-Lab Artifacts
+        if: always()
+        run: |
+          artifact_root="$RUNNER_TEMP/openclaw-live-lab"
+          artifact="$RUNNER_TEMP/openclaw-live-lab-${{ github.run_id }}-${{ github.run_attempt }}.tgz"
+
+          if [[ ! -d "$artifact_root" ]]; then
+            mkdir -p "$artifact_root"
+            cat > "$artifact_root/artifact-status.json" <<EOF
+          {
+            "status": "report-directory-missing",
+            "workflow": "${{ github.workflow }}",
+            "job": "live-lab",
+            "run_id": "${{ github.run_id }}",
+            "run_attempt": "${{ github.run_attempt }}",
+            "ref": "${{ inputs.ref || github.ref_name }}",
+            "checkout_outcome": "${{ steps.checkout.outcome }}",
+            "install_deps_outcome": "${{ steps.install_deps.outcome }}",
+            "verify_node_outcome": "${{ steps.verify_node.outcome }}",
+            "run_live_lab_outcome": "${{ steps.run_live_lab.outcome }}"
+          }
+          EOF
+          fi
+
+          tar -C "$RUNNER_TEMP" -czf "$artifact" openclaw-live-lab
+
       - name: Upload Live-Lab Artifacts
         if: always()
-        uses: actions/upload-artifact@v7.0.0
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: openclaw-live-lab-${{ github.run_id }}-${{ github.run_attempt }}
           retention-days: 14
-          path: ${{ runner.temp }}/openclaw-live-lab
+          path: ${{ runner.temp }}/openclaw-live-lab-${{ github.run_id }}-${{ github.run_attempt }}.tgz

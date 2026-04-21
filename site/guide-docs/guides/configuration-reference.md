@@ -8,7 +8,7 @@
 
 ## TypeScript
 
-- primary authoring target: TypeScript `6.0.2`
+- primary authoring target: TypeScript `6.0.3`
 - Compatibility validation runs on Linux only against the latest stable TypeScript `5.x` and `6.x` releases.
 - source packages compile under `NodeNext` module settings
 

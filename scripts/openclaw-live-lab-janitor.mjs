@@ -3,15 +3,23 @@ import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { ensureLiveTestGitHubToken } from './github-app-token.mjs';
 import {
+  createDiscordRequest,
+  listGitHubRepositories,
   createSonarProjectKey,
   discordSnowflakeToTimestamp,
+  resolveGitHubOwnerKind,
 } from './openclaw-live-lab.mjs';
 
 const livePrefix = 'devplat-test-';
 const githubApiVersion = '2026-03-10';
 const defaultRepoMaxAgeHours = 24;
-const defaultDiscordMaxAgeDays = 7;
+const defaultDiscordMaxAgeHours = 7 * 24;
+const janitorGitHubAppPermissions = Object.freeze({
+  administration: 'write',
+  metadata: 'read',
+});
 
 function parseFlagArguments(argv) {
   const args = new Map();
@@ -121,19 +129,6 @@ function createGitHubRequest({ fetchImpl = fetch, token }) {
     });
 }
 
-function createDiscordRequest({ baseUrl, botToken, fetchImpl = fetch }) {
-  return (path, options = {}) =>
-    requestJson({
-      fetchImpl,
-      url: new URL(path, baseUrl).toString(),
-      headers: {
-        authorization: `Bot ${botToken}`,
-        ...options.headers,
-      },
-      ...options,
-    });
-}
-
 function createSonarRequest({ baseUrl, fetchImpl = fetch, token }) {
   const basicToken = Buffer.from(`${token}:`, 'utf8').toString('base64');
 
@@ -152,26 +147,26 @@ function createSonarRequest({ baseUrl, fetchImpl = fetch, token }) {
 export function parseJanitorArgs(argv) {
   const args = parseFlagArguments(argv);
   const repoMaxAgeHoursValue = args.get('--repo-max-age-hours');
-  const discordMaxAgeDaysValue = args.get('--discord-max-age-days');
+  const discordMaxAgeHoursValue = args.get('--discord-max-age-hours');
   const repoMaxAgeHours =
     typeof repoMaxAgeHoursValue === 'string'
       ? Number.parseInt(repoMaxAgeHoursValue, 10)
       : defaultRepoMaxAgeHours;
-  const discordMaxAgeDays =
-    typeof discordMaxAgeDaysValue === 'string'
-      ? Number.parseInt(discordMaxAgeDaysValue, 10)
-      : defaultDiscordMaxAgeDays;
+  const discordMaxAgeHours =
+    typeof discordMaxAgeHoursValue === 'string'
+      ? Number.parseInt(discordMaxAgeHoursValue, 10)
+      : defaultDiscordMaxAgeHours;
 
-  if (!Number.isInteger(repoMaxAgeHours) || repoMaxAgeHours < 1) {
-    throw new Error('--repo-max-age-hours must be a positive integer.');
+  if (!Number.isInteger(repoMaxAgeHours) || repoMaxAgeHours < 0) {
+    throw new Error('--repo-max-age-hours must be a non-negative integer.');
   }
 
-  if (!Number.isInteger(discordMaxAgeDays) || discordMaxAgeDays < 1) {
-    throw new Error('--discord-max-age-days must be a positive integer.');
+  if (!Number.isInteger(discordMaxAgeHours) || discordMaxAgeHours < 0) {
+    throw new Error('--discord-max-age-hours must be a non-negative integer.');
   }
 
   return {
-    discordMaxAgeDays,
+    discordMaxAgeHours,
     dryRun: args.get('--dry-run') === true,
     repoMaxAgeHours,
     reportDir:
@@ -208,13 +203,47 @@ export function createJanitorEnvironment(env = process.env) {
   };
 }
 
-export function selectExpiredRepositories({ maxAgeMs, now, repositories }) {
-  return repositories
+export async function loadJanitorEnvironment(
+  env = process.env,
+  { fetchImpl = fetch } = {},
+) {
+  await ensureLiveTestGitHubToken({
+    env,
+    fetchImpl,
+    permissions: janitorGitHubAppPermissions,
+  });
+
+  return createJanitorEnvironment(env);
+}
+
+function planRepositoryCleanup({ maxAgeMs, now, repositories }) {
+  const liveRepositories = repositories
     .filter((repository) => repository.name.startsWith(livePrefix))
+    .sort((left, right) =>
+      String(right.created_at).localeCompare(String(left.created_at)),
+    );
+  const preservedRepository =
+    liveRepositories.find(
+      (repository) => now - Date.parse(repository.created_at) < maxAgeMs,
+    )?.name ?? null;
+  const expiredRepositories = liveRepositories
     .filter((repository) => now - Date.parse(repository.created_at) >= maxAgeMs)
     .sort((left, right) =>
       String(left.created_at).localeCompare(String(right.created_at)),
     );
+
+  return {
+    expiredRepositories,
+    preservedRepository,
+  };
+}
+
+export function selectExpiredRepositories({ maxAgeMs, now, repositories }) {
+  return planRepositoryCleanup({
+    maxAgeMs,
+    now,
+    repositories,
+  }).expiredRepositories;
 }
 
 export function selectExpiredDiscordCategories({ channels, maxAgeMs, now }) {
@@ -247,6 +276,7 @@ export function createCleanupSummary(report) {
     `- ${resourceLabel} repositories: ${String(repositories)}`,
     `- ${resourceLabel} Sonar projects: ${String(sonarProjects)}`,
     `- ${resourceLabel} Discord categories: ${String(discordCategories)}`,
+    `- Preserved latest repository: ${report.preservedRepository ?? 'n/a'}`,
     `- Cleanup errors: ${String(report.cleanupErrors.length)}`,
     report.error === undefined ? '' : `- Failure: ${report.error.message}`,
     '',
@@ -261,10 +291,16 @@ async function appendSummary(summaryPath, content) {
   await appendFile(summaryPath, content, 'utf8');
 }
 
-async function listRepositories({ githubOrganization, githubRequest }) {
-  return githubRequest(
-    `/orgs/${encodeURIComponent(githubOrganization)}/repos?type=public&sort=created&direction=asc&per_page=100`,
-  );
+async function listRepositories({
+  githubOrganization,
+  githubOwnerKind,
+  githubRequest,
+}) {
+  return listGitHubRepositories({
+    githubOwner: githubOrganization,
+    githubOwnerKind,
+    githubRequest,
+  });
 }
 
 async function deleteRepository({
@@ -343,6 +379,7 @@ export async function runJanitor(options, dependencies = {}) {
     deletedRepositories: [],
     deletedSonarProjects: [],
     dryRun: options.dryRun,
+    preservedRepository: null,
     wouldDeleteDiscordCategories: [],
     wouldDeleteRepositories: [],
     wouldDeleteSonarProjects: [],
@@ -351,15 +388,22 @@ export async function runJanitor(options, dependencies = {}) {
   await makeDirectory(reportDirectory, { recursive: true });
 
   try {
-    const repositories = await listRepositories({
-      githubOrganization: options.environment.github.organization,
+    const githubOwnerKind = await resolveGitHubOwnerKind({
+      githubOwner: options.environment.github.organization,
       githubRequest,
     });
-    const expiredRepositories = selectExpiredRepositories({
+    const repositories = await listRepositories({
+      githubOrganization: options.environment.github.organization,
+      githubOwnerKind,
+      githubRequest,
+    });
+    const repositoryCleanupPlan = planRepositoryCleanup({
       maxAgeMs: options.repoMaxAgeHours * 60 * 60 * 1_000,
       now,
       repositories,
     });
+    report.preservedRepository = repositoryCleanupPlan.preservedRepository;
+    const expiredRepositories = repositoryCleanupPlan.expiredRepositories;
 
     for (const repository of expiredRepositories) {
       const projectKey = createSonarProjectKey(
@@ -401,7 +445,7 @@ export async function runJanitor(options, dependencies = {}) {
     });
     const expiredCategories = selectExpiredDiscordCategories({
       channels,
-      maxAgeMs: options.discordMaxAgeDays * 24 * 60 * 60 * 1_000,
+      maxAgeMs: options.discordMaxAgeHours * 60 * 60 * 1_000,
       now,
     });
 
@@ -451,15 +495,24 @@ export async function runJanitor(options, dependencies = {}) {
   return report;
 }
 
-export async function main(argv = process.argv.slice(2)) {
+export async function main(
+  argv = process.argv.slice(2),
+  {
+    createEnvironment = loadJanitorEnvironment,
+    runJanitorFn = runJanitor,
+    writeOutput = (content) => {
+      process.stdout.write(content);
+    },
+  } = {},
+) {
   const args = parseJanitorArgs(argv);
-  const environment = createJanitorEnvironment();
-  const report = await runJanitor({
+  const environment = await createEnvironment();
+  const report = await runJanitorFn({
     ...args,
     environment,
   });
 
-  process.stdout.write(
+  writeOutput(
     `${JSON.stringify(
       {
         deletedDiscordCategories: report.deletedDiscordCategories.length,
@@ -471,6 +524,8 @@ export async function main(argv = process.argv.slice(2)) {
       2,
     )}\n`,
   );
+
+  return report;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
