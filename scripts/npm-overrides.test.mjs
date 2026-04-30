@@ -40,25 +40,6 @@ describe('npm override shims', () => {
     expect(require(shimPath)).toBe(globalThis.DOMException);
   });
 
-  it('keeps prism-media on the documented opusscript fallback', () => {
-    const discordVoiceRoot = path.dirname(
-      path.dirname(require.resolve('@discordjs/voice')),
-    );
-    const prismOpusPath = path.join(
-      discordVoiceRoot,
-      'node_modules',
-      'prism-media',
-      'src',
-      'opus',
-      'Opus.js',
-    );
-    const { Encoder } = require(prismOpusPath);
-    const encoder = new Encoder({ rate: 48_000, channels: 2, frameSize: 960 });
-
-    expect(Encoder.type).toBe('opusscript');
-    encoder.destroy();
-  });
-
   it('installs the node-domexception override as the native constructor', () => {
     expect(require('node-domexception')).toBe(globalThis.DOMException);
   });

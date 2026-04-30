@@ -12,4 +12,7 @@ export interface MergeDecisionPayload {
   blockingFindings: string[];
 }
 
-export type MergeDecisionArtifact = ArtifactEnvelope<MergeDecisionPayload>;
+export type MergeDecisionArtifact = ArtifactEnvelope<
+  MergeDecisionPayload,
+  'merge-decision'
+>;

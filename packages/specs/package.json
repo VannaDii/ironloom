@@ -8,6 +8,10 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "source": {
+        "types": "./src/index.ts",
+        "import": "./src/index.ts"
+      },
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     }
@@ -25,8 +29,8 @@
   },
   "dependencies": {
     "io-ts": "2.2.22",
-    "@vannadii/devplat-artifacts": "0.0.0",
-    "@vannadii/devplat-core": "0.0.0"
+    "@vannadii/devplat-artifacts": "file:../artifacts",
+    "@vannadii/devplat-core": "file:../core"
   },
   "repository": {
     "type": "git",

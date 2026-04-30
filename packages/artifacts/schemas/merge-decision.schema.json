@@ -3,16 +3,17 @@
   "$ref": "#/definitions/MergeDecisionArtifact",
   "definitions": {
     "MergeDecisionArtifact": {
-      "$ref": "#/definitions/ArtifactEnvelope%3CMergeDecisionPayload%3E"
+      "$ref": "#/definitions/ArtifactEnvelope%3CMergeDecisionPayload%2C%22merge-decision%22%3E"
     },
-    "ArtifactEnvelope<MergeDecisionPayload>": {
+    "ArtifactEnvelope<MergeDecisionPayload,\"merge-decision\">": {
       "type": "object",
       "properties": {
         "id": {
           "type": "string"
         },
         "artifactType": {
-          "type": "string"
+          "type": "string",
+          "const": "merge-decision"
         },
         "version": {
           "type": "number",

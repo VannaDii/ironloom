@@ -49,6 +49,30 @@ for (const packageDirectoryName of packageDirectories) {
     );
   }
 
+  const sourceExport = rootExport.source;
+  if (
+    typeof sourceExport !== 'object' ||
+    sourceExport === null ||
+    Array.isArray(sourceExport)
+  ) {
+    failures.push(
+      `${packageDirectoryName}: exports["."].source must be an object`,
+    );
+    continue;
+  }
+
+  if (sourceExport.import !== './src/index.ts') {
+    failures.push(
+      `${packageDirectoryName}: exports["."].source.import must be ./src/index.ts`,
+    );
+  }
+
+  if (sourceExport.types !== './src/index.ts') {
+    failures.push(
+      `${packageDirectoryName}: exports["."].source.types must be ./src/index.ts`,
+    );
+  }
+
   if (rootExport.import !== './dist/index.js') {
     failures.push(
       `${packageDirectoryName}: exports["."].import must be ./dist/index.js`,

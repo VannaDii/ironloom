@@ -8,6 +8,10 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "source": {
+        "types": "./src/index.ts",
+        "import": "./src/index.ts"
+      },
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     }
@@ -25,30 +29,30 @@
     "test": "vitest run --config ../../vitest.package.config.mts"
   },
   "dependencies": {
-    "@vannadii/devplat-artifacts": "0.0.0",
-    "@vannadii/devplat-branching": "0.0.1",
-    "@vannadii/devplat-config": "0.1.0",
-    "@vannadii/devplat-core": "0.0.0",
-    "@vannadii/devplat-discord": "0.1.0",
-    "@vannadii/devplat-execution": "0.0.0",
-    "@vannadii/devplat-gates": "0.0.0",
-    "@vannadii/devplat-github": "0.0.0",
-    "@vannadii/devplat-memory": "0.0.0",
-    "@vannadii/devplat-observability": "0.0.0",
-    "@vannadii/devplat-policy": "0.0.0",
-    "@vannadii/devplat-prs": "0.1.0",
-    "@vannadii/devplat-queue": "0.0.0",
-    "@vannadii/devplat-remediation": "0.0.0",
-    "@vannadii/devplat-research": "0.0.0",
-    "@vannadii/devplat-review": "0.0.0",
-    "@vannadii/devplat-slicing": "0.0.1",
-    "@vannadii/devplat-sonarcloud": "0.0.0",
-    "@vannadii/devplat-specs": "0.1.0",
-    "@vannadii/devplat-storage": "0.0.0",
-    "@vannadii/devplat-supervisor": "0.0.1",
-    "@vannadii/devplat-worktrees": "0.1.0",
+    "@vannadii/devplat-artifacts": "file:../artifacts",
+    "@vannadii/devplat-branching": "file:../branching",
+    "@vannadii/devplat-config": "file:../config",
+    "@vannadii/devplat-core": "file:../core",
+    "@vannadii/devplat-discord": "file:../discord",
+    "@vannadii/devplat-execution": "file:../execution",
+    "@vannadii/devplat-gates": "file:../gates",
+    "@vannadii/devplat-github": "file:../github",
+    "@vannadii/devplat-memory": "file:../memory",
+    "@vannadii/devplat-observability": "file:../observability",
+    "@vannadii/devplat-policy": "file:../policy",
+    "@vannadii/devplat-prs": "file:../prs",
+    "@vannadii/devplat-queue": "file:../queue",
+    "@vannadii/devplat-remediation": "file:../remediation",
+    "@vannadii/devplat-research": "file:../research",
+    "@vannadii/devplat-review": "file:../review",
+    "@vannadii/devplat-slicing": "file:../slicing",
+    "@vannadii/devplat-sonarcloud": "file:../sonarcloud",
+    "@vannadii/devplat-specs": "file:../specs",
+    "@vannadii/devplat-storage": "file:../storage",
+    "@vannadii/devplat-supervisor": "file:../supervisor",
+    "@vannadii/devplat-worktrees": "file:../worktrees",
     "io-ts": "2.2.22",
-    "openclaw": "2026.4.15"
+    "openclaw": "2026.4.27"
   },
   "openclaw": {
     "extensions": [

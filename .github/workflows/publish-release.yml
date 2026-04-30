@@ -34,16 +34,24 @@ permissions:
 jobs:
   publish:
     name: Publish GitHub Packages Release
-    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && startsWith(github.event.pull_request.head.ref, 'changeset-release/')
+    if: github.event.pull_request.merged == true &&
+      github.event.pull_request.base.ref == 'main' &&
+      startsWith(github.event.pull_request.head.ref, 'changeset-release/')
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+      packages: write
+      pull-requests: read
 
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
 
       - name: Setup Node
-        uses: actions/setup-node@v6.3.0
+        uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -87,17 +95,26 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_REGISTRY: https://npm.pkg.github.com
 
+      - name: Push Changesets package tags
+        run: git push --follow-tags
+
       - name: Publish missing stable packages to GitHub Packages
         run: node scripts/publish-unpublished-packages.mjs
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_REGISTRY: https://npm.pkg.github.com
 
+      - name: Create release line tags
+        run: npm run release:tag-lines
+
       - name: Upload stable coverage artifacts
         if: always()
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7
         with:
-          name: stable-coverage-artifacts-${{ steps.artifact_meta.outputs.safe_workflow_name }}-${{ steps.artifact_meta.outputs.safe_ref_name }}-${{ steps.artifact_meta.outputs.short_sha }}
+          name: stable-coverage-artifacts-${{
+            steps.artifact_meta.outputs.safe_workflow_name }}-${{
+            steps.artifact_meta.outputs.safe_ref_name }}-${{
+            steps.artifact_meta.outputs.short_sha }}
           retention-days: 14
           path: |
             coverage/lcov.info
@@ -107,9 +124,12 @@ jobs:
 
       - name: Upload stable build artifacts
         if: always()
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7
         with:
-          name: stable-build-artifacts-${{ steps.artifact_meta.outputs.safe_workflow_name }}-${{ steps.artifact_meta.outputs.safe_ref_name }}-${{ steps.artifact_meta.outputs.short_sha }}
+          name:
+            stable-build-artifacts-${{ steps.artifact_meta.outputs.safe_workflow_name
+            }}-${{ steps.artifact_meta.outputs.safe_ref_name }}-${{
+            steps.artifact_meta.outputs.short_sha }}
           retention-days: 14
           path: |
             packages/*/dist/**
@@ -118,7 +138,10 @@ jobs:
 
   publish-dev-build:
     name: Publish GitHub Packages Dev Build
-    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && !startsWith(github.event.pull_request.head.ref, 'changeset-release/'))
+    if: github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == true &&
+      github.event.pull_request.base.ref == 'main' &&
+      !startsWith(github.event.pull_request.head.ref, 'changeset-release/'))
     runs-on: ubuntu-latest
 
     steps:
@@ -133,7 +156,7 @@ jobs:
             echo "ref=${{ github.event.pull_request.merge_commit_sha }}" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v6
         with:
           ref: ${{ steps.resolved.outputs.ref }}
           fetch-depth: 0
@@ -165,7 +188,7 @@ jobs:
           echo "short_sha=${short_sha}" >> "$GITHUB_OUTPUT"
 
       - name: Setup Node
-        uses: actions/setup-node@v6.3.0
+        uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -211,9 +234,12 @@ jobs:
 
       - name: Upload dev coverage artifacts
         if: always()
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7
         with:
-          name: dev-coverage-artifacts-${{ steps.artifact_meta.outputs.safe_workflow_name }}-${{ steps.artifact_meta.outputs.safe_ref_name }}-${{ steps.artifact_meta.outputs.short_sha }}
+          name:
+            dev-coverage-artifacts-${{ steps.artifact_meta.outputs.safe_workflow_name
+            }}-${{ steps.artifact_meta.outputs.safe_ref_name }}-${{
+            steps.artifact_meta.outputs.short_sha }}
           retention-days: 14
           path: |
             coverage/lcov.info
@@ -223,9 +249,12 @@ jobs:
 
       - name: Upload dev publish artifacts
         if: always()
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7
         with:
-          name: dev-publish-artifacts-${{ steps.artifact_meta.outputs.safe_workflow_name }}-${{ steps.artifact_meta.outputs.safe_ref_name }}-${{ steps.artifact_meta.outputs.short_sha }}
+          name:
+            dev-publish-artifacts-${{ steps.artifact_meta.outputs.safe_workflow_name
+            }}-${{ steps.artifact_meta.outputs.safe_ref_name }}-${{
+            steps.artifact_meta.outputs.short_sha }}
           retention-days: 14
           path: |
             ${{ runner.temp }}/dev-publish/**

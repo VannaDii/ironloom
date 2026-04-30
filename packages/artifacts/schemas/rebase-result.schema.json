@@ -3,16 +3,17 @@
   "$ref": "#/definitions/RebaseResultArtifact",
   "definitions": {
     "RebaseResultArtifact": {
-      "$ref": "#/definitions/ArtifactEnvelope%3CRebaseResultPayload%3E"
+      "$ref": "#/definitions/ArtifactEnvelope%3CRebaseResultPayload%2C%22rebase-result%22%3E"
     },
-    "ArtifactEnvelope<RebaseResultPayload>": {
+    "ArtifactEnvelope<RebaseResultPayload,\"rebase-result\">": {
       "type": "object",
       "properties": {
         "id": {
           "type": "string"
         },
         "artifactType": {
-          "type": "string"
+          "type": "string",
+          "const": "rebase-result"
         },
         "version": {
           "type": "number",

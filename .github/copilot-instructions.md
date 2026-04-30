@@ -5,6 +5,7 @@
 - Treat this repository as compliance-first platform infrastructure.
 - Run `nvm use` before install, test, lint, typecheck, build, or release guidance.
 - Preserve strict TypeScript, ESLint, coverage, schema, policy, Sonar, and audit requirements.
+- Do not use TypeScript type assertions or casts anywhere in authored code; banned forms include `as`, `as unknown`, angle-bracket casts, non-null assertions, and double assertions.
 - Use `PLATFORM.md` as the authoritative foundation-scope document for required packages, workflows, delivery surfaces, and acceptance criteria.
 - Keep branch names and pull request titles free of registered tool names.
 - Treat `codex` as a reserved tool name and keep it out of branch names and pull request titles.

@@ -9,8 +9,44 @@ const typedFiles = [
   'packages/*/src/**/*.mts',
   'packages/*/src/**/*.cts',
 ];
-const scriptFiles = ['scripts/**/*.ts'];
-const testFiles = ['packages/*/src/**/*.test.ts', 'vitest.config.mts'];
+const scriptFiles = ['scripts/**/*.ts', 'scripts/**/*.mts', 'scripts/**/*.cts'];
+const typeScriptFiles = ['**/*.ts', '**/*.mts', '**/*.cts'];
+const testFiles = [
+  '**/*.test.ts',
+  '**/*.test.mts',
+  '**/*.test.cts',
+  'vitest.config.mts',
+];
+const noTypeAssertionSyntaxRules = {
+  'no-restricted-syntax': [
+    'error',
+    {
+      selector: 'TSAsExpression',
+      message: 'Type assertions and casts are forbidden in authored code.',
+    },
+    {
+      selector: 'TSTypeAssertion',
+      message: 'Type assertions and casts are forbidden in authored code.',
+    },
+    {
+      selector: 'TSNonNullExpression',
+      message: 'Non-null assertions are forbidden in authored code.',
+    },
+  ],
+};
+const noTypeAssertionRules = {
+  ...noTypeAssertionSyntaxRules,
+  '@typescript-eslint/consistent-type-assertions': [
+    'error',
+    {
+      assertionStyle: 'never',
+    },
+  ],
+  '@typescript-eslint/no-confusing-non-null-assertion': 'error',
+  '@typescript-eslint/no-extra-non-null-assertion': 'error',
+  '@typescript-eslint/no-non-null-assertion': 'error',
+  '@typescript-eslint/no-unnecessary-type-assertion': 'error',
+};
 
 const restrictedImportPatterns = [
   {
@@ -45,7 +81,7 @@ const typedConfigs = tseslint.configs.strictTypeChecked.map((config) => ({
     },
     parserOptions: {
       ...config.languageOptions?.parserOptions,
-      projectService: true,
+      project: ['./tsconfig.eslint.json'],
       tsconfigRootDir: import.meta.dirname,
     },
   },
@@ -74,7 +110,7 @@ const scriptConfigs = tseslint.configs.strictTypeChecked.map((config) => ({
     },
     parserOptions: {
       ...config.languageOptions?.parserOptions,
-      project: ['./tsconfig.schemas.json'],
+      project: ['./tsconfig.eslint.json'],
       tsconfigRootDir: import.meta.dirname,
     },
   },
@@ -104,9 +140,18 @@ export default [
   ...testConfigs,
   ...scriptConfigs,
   {
+    files: typeScriptFiles,
+    ignores: testFiles,
+    languageOptions: {
+      parser: tseslint.parser,
+    },
+    rules: noTypeAssertionSyntaxRules,
+  },
+  {
     files: typedFiles,
     ignores: testFiles,
     rules: {
+      ...noTypeAssertionRules,
       '@typescript-eslint/explicit-function-return-type': [
         'error',
         {
@@ -138,6 +183,7 @@ export default [
   {
     files: scriptFiles,
     rules: {
+      ...noTypeAssertionRules,
       '@typescript-eslint/explicit-function-return-type': [
         'error',
         {

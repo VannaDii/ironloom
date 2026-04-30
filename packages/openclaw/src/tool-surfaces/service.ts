@@ -95,7 +95,13 @@ import {
 } from './logic.js';
 import type { OpenDiscordThreadToolInput } from './types.js';
 
-function readSchema(fileName: string): Record<string, unknown> {
+type ToolParameterSchema = AnyAgentTool['parameters'] & Record<string, unknown>;
+
+function isToolParameterSchema(value: unknown): value is ToolParameterSchema {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function readSchema(fileName: string): ToolParameterSchema {
   const filePath = resolve(
     import.meta.dirname,
     '..',
@@ -104,11 +110,11 @@ function readSchema(fileName: string): Record<string, unknown> {
     fileName,
   );
   const parsed: unknown = JSON.parse(readFileSync(filePath, 'utf8'));
-  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+  if (!isToolParameterSchema(parsed)) {
     throw new Error(`Schema ${fileName} must contain a JSON object.`);
   }
 
-  return parsed as Record<string, unknown>;
+  return parsed;
 }
 
 function createTextResult(payload: unknown): {
@@ -181,7 +187,7 @@ export function createRunGatesTool(
     label: 'Run Gates',
     description:
       'Run the configured DevPlat gate suite through the execution runtime.',
-    parameters: readSchema('tool-run-gates-params.schema.json') as unknown,
+    parameters: readSchema('tool-run-gates-params.schema.json'),
     async execute(_toolCallId: string, params: unknown) {
       const rawParams: unknown = params;
       const decoded = decodeWithCodec(RunGatesToolInputCodec, rawParams);
@@ -206,9 +212,7 @@ export function createResearchBriefTool(): AnyAgentTool {
     label: 'Create Research Brief',
     description:
       'Normalize a research brief and return it as a structured DevPlat artifact.',
-    parameters: readSchema(
-      'tool-create-research-brief-params.schema.json',
-    ) as unknown,
+    parameters: readSchema('tool-create-research-brief-params.schema.json'),
     execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(
         CreateResearchBriefToolInputCodec,
@@ -234,9 +238,7 @@ export function createSpecRecordTool(): AnyAgentTool {
     label: 'Create Spec Record',
     description:
       'Normalize a spec record and return it as a structured DevPlat artifact.',
-    parameters: readSchema(
-      'tool-create-spec-record-params.schema.json',
-    ) as unknown,
+    parameters: readSchema('tool-create-spec-record-params.schema.json'),
     execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(CreateSpecRecordToolInputCodec, params);
       if (!decoded.ok) {
@@ -259,9 +261,7 @@ export function createApproveSpecRecordTool(): AnyAgentTool {
     label: 'Approve Spec Record',
     description:
       'Approve a spec record and return it as a structured DevPlat artifact.',
-    parameters: readSchema(
-      'tool-approve-spec-record-params.schema.json',
-    ) as unknown,
+    parameters: readSchema('tool-approve-spec-record-params.schema.json'),
     execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(ApproveSpecRecordToolInputCodec, params);
       if (!decoded.ok) {
@@ -285,9 +285,7 @@ export function createUpdateSpecRecordTool(): AnyAgentTool {
     label: 'Update Spec Record',
     description:
       'Create a revised spec record, increment its version, and return the updated artifact.',
-    parameters: readSchema(
-      'tool-update-spec-record-params.schema.json',
-    ) as unknown,
+    parameters: readSchema('tool-update-spec-record-params.schema.json'),
     execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(UpdateSpecRecordToolInputCodec, params);
       if (!decoded.ok) {
@@ -311,9 +309,7 @@ export function createSlicePlanTool(): AnyAgentTool {
     label: 'Create Slice Plan',
     description:
       'Normalize a dependency-aware slice plan for implementation routing.',
-    parameters: readSchema(
-      'tool-create-slice-plan-params.schema.json',
-    ) as unknown,
+    parameters: readSchema('tool-create-slice-plan-params.schema.json'),
     execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(CreateSlicePlanToolInputCodec, params);
       if (!decoded.ok) {
@@ -338,7 +334,7 @@ export function createEvaluateSlicePlanReadinessTool(): AnyAgentTool {
       'Evaluate whether a slice plan is ready for execution given completed dependencies.',
     parameters: readSchema(
       'tool-evaluate-slice-plan-readiness-params.schema.json',
-    ) as unknown,
+    ),
     execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(
         EvaluateSlicePlanReadinessToolInputCodec,
@@ -375,9 +371,7 @@ export function createResolveRuntimeConfigTool(): AnyAgentTool {
     label: 'Resolve Runtime Config',
     description:
       'Resolve a normalized DevPlat runtime config from an environment-style input map.',
-    parameters: readSchema(
-      'tool-resolve-runtime-config-params.schema.json',
-    ) as unknown,
+    parameters: readSchema('tool-resolve-runtime-config-params.schema.json'),
     execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(
         ResolveRuntimeConfigToolInputCodec,
@@ -407,7 +401,7 @@ export function createOpenClawPluginConfigTool(): AnyAgentTool {
       'Translate a normalized DevPlat runtime config into an OpenClaw plugin config.',
     parameters: readSchema(
       'tool-create-openclaw-plugin-config-params.schema.json',
-    ) as unknown,
+    ),
     execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(
         CreateOpenClawPluginConfigToolInputCodec,
@@ -433,9 +427,7 @@ export function createArtifactEnvelopeTool(): AnyAgentTool {
     label: 'Create Artifact Envelope',
     description:
       'Normalize a generic artifact envelope against the shared artifact contract.',
-    parameters: readSchema(
-      'tool-create-artifact-envelope-params.schema.json',
-    ) as unknown,
+    parameters: readSchema('tool-create-artifact-envelope-params.schema.json'),
     execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(
         CreateArtifactEnvelopeToolInputCodec,
@@ -461,9 +453,7 @@ export function createApprovalRecordTool(): AnyAgentTool {
     label: 'Create Approval Record',
     description:
       'Normalize an approval-record artifact for auditable approval decisions.',
-    parameters: readSchema(
-      'tool-create-approval-record-params.schema.json',
-    ) as unknown,
+    parameters: readSchema('tool-create-approval-record-params.schema.json'),
     execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(
         CreateApprovalRecordToolInputCodec,
@@ -491,9 +481,7 @@ export function createAuditLogTool(): AnyAgentTool {
     label: 'Create Audit Log',
     description:
       'Normalize an audit-log artifact for operator-visible control actions.',
-    parameters: readSchema(
-      'tool-create-audit-log-params.schema.json',
-    ) as unknown,
+    parameters: readSchema('tool-create-audit-log-params.schema.json'),
     execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(CreateAuditLogToolInputCodec, params);
       if (!decoded.ok) {
@@ -516,9 +504,7 @@ export function createMergeDecisionTool(): AnyAgentTool {
     label: 'Create Merge Decision',
     description:
       'Normalize a merge-decision artifact for PR merge approval outcomes.',
-    parameters: readSchema(
-      'tool-create-merge-decision-params.schema.json',
-    ) as unknown,
+    parameters: readSchema('tool-create-merge-decision-params.schema.json'),
     execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(
         CreateMergeDecisionToolInputCodec,
@@ -546,9 +532,7 @@ export function createRebaseResultTool(): AnyAgentTool {
     label: 'Create Rebase Result',
     description:
       'Normalize a rebase-result artifact for downstream branch refresh outcomes.',
-    parameters: readSchema(
-      'tool-create-rebase-result-params.schema.json',
-    ) as unknown,
+    parameters: readSchema('tool-create-rebase-result-params.schema.json'),
     execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(CreateRebaseResultToolInputCodec, params);
       if (!decoded.ok) {
@@ -587,9 +571,7 @@ export function createExecuteCommandTool(
     label: 'Execute Command',
     description:
       'Run a structured subprocess request through the DevPlat execution runtime when policy allows it.',
-    parameters: readSchema(
-      'tool-execute-command-params.schema.json',
-    ) as unknown,
+    parameters: readSchema('tool-execute-command-params.schema.json'),
     async execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(ExecuteCommandToolInputCodec, params);
       if (!decoded.ok) {
@@ -691,9 +673,7 @@ export function createAllocateWorktreeTool(): AnyAgentTool {
     name: 'allocate_worktree',
     label: 'Allocate Worktree',
     description: 'Allocate a deterministic worktree path for a task branch.',
-    parameters: readSchema(
-      'tool-allocate-worktree-params.schema.json',
-    ) as unknown,
+    parameters: readSchema('tool-allocate-worktree-params.schema.json'),
     execute(_toolCallId: string, params: unknown) {
       const rawParams: unknown = params;
       const decoded = decodeWithCodec(
@@ -723,7 +703,7 @@ export function createSyncWorktreeTool(): AnyAgentTool {
     label: 'Sync Worktree',
     description:
       'Synchronize an allocated worktree with its base branch using an explicit sync mode.',
-    parameters: readSchema('tool-sync-worktree-params.schema.json') as unknown,
+    parameters: readSchema('tool-sync-worktree-params.schema.json'),
     execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(SyncWorktreeToolInputCodec, params);
       if (!decoded.ok) {
@@ -750,9 +730,7 @@ export function createReleaseWorktreeTool(): AnyAgentTool {
     label: 'Release Worktree',
     description:
       'Release an allocated worktree using an explicit cleanup strategy.',
-    parameters: readSchema(
-      'tool-release-worktree-params.schema.json',
-    ) as unknown,
+    parameters: readSchema('tool-release-worktree-params.schema.json'),
     execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(ReleaseWorktreeToolInputCodec, params);
       if (!decoded.ok) {
@@ -778,9 +756,7 @@ export function createBindDiscordThreadTool(): AnyAgentTool {
     label: 'Bind Discord Thread',
     description:
       'Bind a Discord thread to a deterministic spec, implementation, or audit routing key.',
-    parameters: readSchema(
-      'tool-bind-discord-thread-params.schema.json',
-    ) as unknown,
+    parameters: readSchema('tool-bind-discord-thread-params.schema.json'),
     async execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(BindDiscordThreadToolInputCodec, params);
       if (!decoded.ok) {
@@ -816,9 +792,7 @@ export function createOpenDiscordThreadTool(): AnyAgentTool {
     label: 'Open Discord Thread',
     description:
       'Open and persist a Discord spec, implementation, or pull-request thread session with audit artifacts.',
-    parameters: readSchema(
-      'tool-open-discord-thread-params.schema.json',
-    ) as unknown,
+    parameters: readSchema('tool-open-discord-thread-params.schema.json'),
     async execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(OpenDiscordThreadToolInputCodec, params);
       if (!decoded.ok) {
@@ -842,9 +816,7 @@ export function createHandleDiscordApprovalTool(): AnyAgentTool {
     label: 'Handle Discord Approval',
     description:
       'Process a Discord approval action with policy enforcement, audit artifacts, and telemetry.',
-    parameters: readSchema(
-      'tool-handle-discord-approval-params.schema.json',
-    ) as unknown,
+    parameters: readSchema('tool-handle-discord-approval-params.schema.json'),
     async execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(
         HandleDiscordApprovalToolInputCodec,
@@ -871,9 +843,7 @@ export function createHandleDiscordControlTool(): AnyAgentTool {
     label: 'Handle Discord Control',
     description:
       'Process a thread-scoped Discord control action with policy checks and telemetry.',
-    parameters: readSchema(
-      'tool-handle-discord-control-params.schema.json',
-    ) as unknown,
+    parameters: readSchema('tool-handle-discord-control-params.schema.json'),
     async execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(
         HandleDiscordControlToolInputCodec,
@@ -899,9 +869,7 @@ export function createVerifySonarBootstrapTool(): AnyAgentTool {
     label: 'Verify Sonar Bootstrap',
     description:
       'Verify that the configured Sonar project has a computed, passing quality gate with 90% overall and new-code coverage thresholds.',
-    parameters: readSchema(
-      'tool-verify-sonar-bootstrap-params.schema.json',
-    ) as unknown,
+    parameters: readSchema('tool-verify-sonar-bootstrap-params.schema.json'),
     execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(
         VerifySonarBootstrapToolInputCodec,
@@ -931,7 +899,7 @@ export function createEvaluateSonarQualityGateTool(): AnyAgentTool {
       'Evaluate Sonar coverage and blocking-issue thresholds against DevPlat policy.',
     parameters: readSchema(
       'tool-evaluate-sonar-quality-gate-params.schema.json',
-    ) as unknown,
+    ),
     execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(
         EvaluateSonarQualityGateToolInputCodec,
@@ -962,9 +930,7 @@ export function createReviewFindingTool(): AnyAgentTool {
     label: 'Create Review Finding',
     description:
       'Normalize a review finding and return it as a structured DevPlat artifact.',
-    parameters: readSchema(
-      'tool-create-review-finding-params.schema.json',
-    ) as unknown,
+    parameters: readSchema('tool-create-review-finding-params.schema.json'),
     execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(
         CreateReviewFindingToolInputCodec,
@@ -990,9 +956,7 @@ export function createRemediationPlanTool(): AnyAgentTool {
     label: 'Create Remediation Plan',
     description:
       'Create a remediation plan from review findings while preserving approval rules.',
-    parameters: readSchema(
-      'tool-create-remediation-plan-params.schema.json',
-    ) as unknown,
+    parameters: readSchema('tool-create-remediation-plan-params.schema.json'),
     execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(
         CreateRemediationPlanToolInputCodec,
@@ -1021,9 +985,7 @@ export function createRememberMemoryEntryTool(): AnyAgentTool {
     label: 'Remember Memory Entry',
     description:
       'Normalize and persist a long-lived project memory entry through DevPlat storage.',
-    parameters: readSchema(
-      'tool-remember-memory-entry-params.schema.json',
-    ) as unknown,
+    parameters: readSchema('tool-remember-memory-entry-params.schema.json'),
     async execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(
         RememberMemoryEntryToolInputCodec,
@@ -1047,9 +1009,7 @@ export function createEvaluatePolicyActionTool(): AnyAgentTool {
     label: 'Evaluate Policy Action',
     description:
       'Evaluate whether a proposed control action is automatically allowed or requires approval.',
-    parameters: readSchema(
-      'tool-evaluate-policy-action-params.schema.json',
-    ) as unknown,
+    parameters: readSchema('tool-evaluate-policy-action-params.schema.json'),
     execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(
         EvaluatePolicyActionToolInputCodec,
@@ -1078,9 +1038,7 @@ export function createRecordTelemetryEventTool(): AnyAgentTool {
     label: 'Record Telemetry Event',
     description:
       'Normalize and persist a telemetry event for Discord, GitHub, supervisor, or storage activity.',
-    parameters: readSchema(
-      'tool-record-telemetry-event-params.schema.json',
-    ) as unknown,
+    parameters: readSchema('tool-record-telemetry-event-params.schema.json'),
     async execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(
         RecordTelemetryEventToolInputCodec,
@@ -1104,9 +1062,7 @@ export function createTaskRecordTool(): AnyAgentTool {
     label: 'Create Task Record',
     description:
       'Normalize a queue task record before claim, execution, review, and merge lifecycle updates.',
-    parameters: readSchema(
-      'tool-create-task-record-params.schema.json',
-    ) as unknown,
+    parameters: readSchema('tool-create-task-record-params.schema.json'),
     execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(CreateTaskRecordToolInputCodec, params);
       if (!decoded.ok) {
@@ -1129,9 +1085,7 @@ export function createReadStoredRecordTool(): AnyAgentTool {
     label: 'Read Stored Record',
     description:
       'Read a stored DevPlat record from the file-backed Phase 0 storage layer.',
-    parameters: readSchema(
-      'tool-read-stored-record-params.schema.json',
-    ) as unknown,
+    parameters: readSchema('tool-read-stored-record-params.schema.json'),
     async execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(ReadStoredRecordToolInputCodec, params);
       if (!decoded.ok) {
@@ -1169,9 +1123,7 @@ export function createListStoredRecordsTool(): AnyAgentTool {
     label: 'List Stored Records',
     description:
       'List stored record keys by scope from the file-backed Phase 0 storage layer.',
-    parameters: readSchema(
-      'tool-list-stored-records-params.schema.json',
-    ) as unknown,
+    parameters: readSchema('tool-list-stored-records-params.schema.json'),
     async execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(ListStoredRecordsToolInputCodec, params);
       if (!decoded.ok) {
@@ -1196,7 +1148,7 @@ export function createStoreRecordTool(): AnyAgentTool {
     label: 'Store Record',
     description:
       'Persist a structured DevPlat record through the file-backed Phase 0 storage layer when policy allows it.',
-    parameters: readSchema('tool-store-record-params.schema.json') as unknown,
+    parameters: readSchema('tool-store-record-params.schema.json'),
     async execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(StoreRecordToolInputCodec, params);
       if (!decoded.ok) {
@@ -1269,7 +1221,7 @@ export function createPullRequestRecordTool(): AnyAgentTool {
       'Normalize a pull request record before review, merge-readiness, and GitHub update decisions.',
     parameters: readSchema(
       'tool-create-pull-request-record-params.schema.json',
-    ) as unknown,
+    ),
     execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(
         CreatePullRequestRecordToolInputCodec,
@@ -1297,7 +1249,7 @@ export function createSubmitPullRequestUpdateTool(): AnyAgentTool {
       'Submit a pull request update decision through the GitHub workflow adapter.',
     parameters: readSchema(
       'tool-submit-pull-request-update-params.schema.json',
-    ) as unknown,
+    ),
     async execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(
         SubmitPullRequestUpdateToolInputCodec,
@@ -1324,9 +1276,7 @@ export function createSubmitPullRequestMergeTool(): AnyAgentTool {
     label: 'Submit Pull Request Merge',
     description:
       'Submit a merge-ready pull request through the GitHub workflow adapter.',
-    parameters: readSchema(
-      'tool-submit-pull-request-merge-params.schema.json',
-    ) as unknown,
+    parameters: readSchema('tool-submit-pull-request-merge-params.schema.json'),
     async execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(
         SubmitPullRequestMergeToolInputCodec,
@@ -1353,9 +1303,7 @@ export function createPlanRebaseDependentsTool(): AnyAgentTool {
     label: 'Plan Rebase Dependents',
     description:
       'Create a downstream rebase plan for branches that depend on a merged pull request.',
-    parameters: readSchema(
-      'tool-plan-rebase-dependents-params.schema.json',
-    ) as unknown,
+    parameters: readSchema('tool-plan-rebase-dependents-params.schema.json'),
     execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(
         PlanRebaseDependentsToolInputCodec,
@@ -1384,9 +1332,7 @@ export function createExecuteRebaseDependentsTool(): AnyAgentTool {
     label: 'Execute Rebase Dependents',
     description:
       'Plan and execute dependent branch refreshes through explicit worktree sync operations.',
-    parameters: readSchema(
-      'tool-execute-rebase-dependents-params.schema.json',
-    ) as unknown,
+    parameters: readSchema('tool-execute-rebase-dependents-params.schema.json'),
     execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(
         ExecuteRebaseDependentsToolInputCodec,
@@ -1414,9 +1360,7 @@ export function createSubmitGitHubActionTool(): AnyAgentTool {
     label: 'Submit GitHub Action',
     description:
       'Submit a GitHub workflow action request through the policy- and telemetry-aware adapter.',
-    parameters: readSchema(
-      'tool-submit-github-action-params.schema.json',
-    ) as unknown,
+    parameters: readSchema('tool-submit-github-action-params.schema.json'),
     async execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(SubmitGitHubActionToolInputCodec, params);
       if (!decoded.ok) {
@@ -1442,7 +1386,7 @@ export function createGitHubActionRequestTool(): AnyAgentTool {
       'Normalize a GitHub workflow action request before submission.',
     parameters: readSchema(
       'tool-create-github-action-request-params.schema.json',
-    ) as unknown,
+    ),
     execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(
         CreateGitHubActionRequestToolInputCodec,
@@ -1467,7 +1411,7 @@ export function createClaimTaskTool(): AnyAgentTool {
     name: 'claim_task',
     label: 'Claim Task',
     description: 'Claim a queued task for a specific assignee.',
-    parameters: readSchema('tool-claim-task-params.schema.json') as unknown,
+    parameters: readSchema('tool-claim-task-params.schema.json'),
     execute(_toolCallId: string, params: unknown) {
       const rawParams: unknown = params;
       const decoded = decodeWithCodec(ClaimTaskToolInputCodec, rawParams);
@@ -1502,7 +1446,7 @@ export function createUpdateTaskTool(): AnyAgentTool {
     name: 'update_task',
     label: 'Update Task',
     description: 'Update a task lifecycle state.',
-    parameters: readSchema('tool-update-task-params.schema.json') as unknown,
+    parameters: readSchema('tool-update-task-params.schema.json'),
     execute(_toolCallId: string, params: unknown) {
       const rawParams: unknown = params;
       const decoded = decodeWithCodec(UpdateTaskToolInputCodec, rawParams);
@@ -1538,9 +1482,7 @@ export function createValidateArtifactTool(): AnyAgentTool {
     label: 'Validate Artifact',
     description:
       'Validate an artifact envelope against the shared artifact contract.',
-    parameters: readSchema(
-      'tool-validate-artifact-params.schema.json',
-    ) as unknown,
+    parameters: readSchema('tool-validate-artifact-params.schema.json'),
     execute(_toolCallId: string, params: unknown) {
       const rawParams: unknown = params;
       const decoded = decodeWithCodec(
@@ -1575,9 +1517,7 @@ export function createRunSupervisorStepTool(): AnyAgentTool {
     label: 'Run Supervisor Step',
     description:
       'Run a single supervisor step with policy and telemetry recording.',
-    parameters: readSchema(
-      'tool-run-supervisor-step-params.schema.json',
-    ) as unknown,
+    parameters: readSchema('tool-run-supervisor-step-params.schema.json'),
     async execute(_toolCallId: string, params: unknown) {
       const rawParams: unknown = params;
       const decoded = decodeWithCodec(

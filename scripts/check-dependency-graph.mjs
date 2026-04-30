@@ -94,6 +94,23 @@ for (const [packageName, entry] of packageEntries) {
     ),
   );
 
+  for (const dependency of declaredDependencies) {
+    const dependencyEntry = packageEntries.get(dependency);
+    if (dependencyEntry === undefined) {
+      failures.push(
+        `${entry.directoryName}: declares unknown workspace package ${dependency}`,
+      );
+      continue;
+    }
+
+    const expectedVersion = `file:../${dependencyEntry.directoryName}`;
+    if (entry.packageJson.dependencies?.[dependency] !== expectedVersion) {
+      failures.push(
+        `${entry.directoryName}: declares ${dependency} as ${entry.packageJson.dependencies?.[dependency]} but must use ${expectedVersion}`,
+      );
+    }
+  }
+
   const referencedPackages = new Set(
     (entry.tsconfig.references ?? []).map((reference) => {
       const normalizedPath = String(reference.path).replaceAll('\\', '/');

@@ -8,4 +8,4 @@ export interface AuditLogPayload {
   details: Record<string, unknown>;
 }
 
-export type AuditLogArtifact = ArtifactEnvelope<AuditLogPayload>;
+export type AuditLogArtifact = ArtifactEnvelope<AuditLogPayload, 'audit-log'>;

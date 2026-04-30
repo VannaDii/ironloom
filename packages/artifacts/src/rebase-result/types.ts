@@ -10,4 +10,7 @@ export interface RebaseResultPayload {
   details: string;
 }
 
-export type RebaseResultArtifact = ArtifactEnvelope<RebaseResultPayload>;
+export type RebaseResultArtifact = ArtifactEnvelope<
+  RebaseResultPayload,
+  'rebase-result'
+>;
