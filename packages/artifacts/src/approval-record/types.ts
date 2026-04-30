@@ -1,19 +1,18 @@
-import type { ArtifactEnvelope } from '../artifact-envelope/types.js';
+import type * as t from 'io-ts';
 
-export type ApprovalSubjectType = 'spec' | 'slice' | 'pull-request' | 'merge';
+import type {
+  ApprovalDecisionCodec,
+  ApprovalRecordArtifactCodec,
+  ApprovalRecordPayloadCodec,
+  ApprovalSubjectTypeCodec,
+} from './codec.js';
 
-export type ApprovalDecision = 'approved' | 'rejected' | 'needs-changes';
+export type ApprovalSubjectType = t.TypeOf<typeof ApprovalSubjectTypeCodec>;
 
-export interface ApprovalRecordPayload {
-  approvalId: string;
-  subjectType: ApprovalSubjectType;
-  subjectId: string;
-  actorId: string;
-  decision: ApprovalDecision;
-  rationale: string;
-}
+export type ApprovalDecision = t.TypeOf<typeof ApprovalDecisionCodec>;
 
-export type ApprovalRecordArtifact = ArtifactEnvelope<
-  ApprovalRecordPayload,
-  'approval-record'
+export type ApprovalRecordPayload = t.TypeOf<typeof ApprovalRecordPayloadCodec>;
+
+export type ApprovalRecordArtifact = t.TypeOf<
+  typeof ApprovalRecordArtifactCodec
 >;

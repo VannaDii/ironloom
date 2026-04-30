@@ -8,7 +8,7 @@ export const schemaRegistry = [
   [
     'artifacts',
     'artifact-envelope',
-    'ArtifactEnvelopeSchema',
+    'ArtifactEnvelope',
     'schemas/artifact-envelope.schema.json',
   ],
   [

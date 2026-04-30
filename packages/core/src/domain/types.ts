@@ -1,24 +1,16 @@
-export type LifecycleStatus =
-  | 'draft'
-  | 'queued'
-  | 'claimed'
-  | 'running'
-  | 'review'
-  | 'blocked'
-  | 'approved'
-  | 'merge-ready'
-  | 'merged'
-  | 'failed'
-  | 'rebasing'
-  | 'complete';
+import type * as t from 'io-ts';
 
-export interface TraceRecord {
-  id: string;
-  summary: string;
-  status: LifecycleStatus;
-  trace: string[];
-  updatedAt: string;
-}
+import type {
+  DevplatErrorCodec,
+  DevplatErrorKindCodec,
+  DomainSnapshotCodec,
+  LifecycleStatusCodec,
+  TraceRecordCodec,
+} from './codec.js';
+
+export type LifecycleStatus = t.TypeOf<typeof LifecycleStatusCodec>;
+
+export type TraceRecord = t.TypeOf<typeof TraceRecordCodec>;
 
 declare const devplatIdBrand: unique symbol;
 declare const repositoryKeyBrand: unique symbol;
@@ -32,40 +24,21 @@ export type IsoTimestamp = string & {
   readonly [isoTimestampBrand]: 'IsoTimestamp';
 };
 
-export type DevplatErrorKind =
-  | 'configuration'
-  | 'validation'
-  | 'policy-denied'
-  | 'not-found'
-  | 'external-service'
-  | 'execution'
-  | 'unknown';
+export type DevplatErrorKind = t.TypeOf<typeof DevplatErrorKindCodec>;
 
-export interface DevplatError {
-  kind: DevplatErrorKind;
-  message: string;
-  retryable: boolean;
-  details: Record<string, unknown>;
-}
+export type DevplatError = t.TypeOf<typeof DevplatErrorCodec>;
 
-export interface DomainSnapshot extends TraceRecord {
-  domain: string;
-}
+export type DomainSnapshot = t.TypeOf<typeof DomainSnapshotCodec>;
 
-export interface DevplatSuccess<T> {
+export type DevplatSuccess<T> = {
   ok: true;
   value: T;
-}
+};
 
-export interface DevplatFailure {
+export type DevplatFailure = {
   ok: false;
   error: string;
   diagnostic?: DevplatError;
-}
+};
 
 export type DevplatResult<T> = DevplatSuccess<T> | DevplatFailure;
-
-export type Exact<
-  TExpected,
-  TActual extends TExpected,
-> = TExpected extends TActual ? true : never;

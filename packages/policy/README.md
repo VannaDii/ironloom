@@ -23,6 +23,8 @@ flowchart LR
 - Do not perform the requested action from policy code.
 - Return explicit denial reasons for Discord, OpenClaw, and audit artifacts.
 
+- Keep public TypeScript contracts derived from the exported codecs.
+
 ## Development
 
 ```bash

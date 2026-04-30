@@ -1,8 +1,6 @@
 import * as t from 'io-ts';
 
-import { LifecycleStatusCodec, type Exact } from '@vannadii/devplat-core';
-
-import type { ApprovalRecordArtifact } from './types.js';
+import { LifecycleStatusCodec } from '@vannadii/devplat-core';
 
 export const ApprovalSubjectTypeCodec = t.union([
   t.literal('spec'),
@@ -36,8 +34,3 @@ export const ApprovalRecordArtifactCodec = t.type({
   updatedAt: t.string,
   payload: ApprovalRecordPayloadCodec,
 });
-
-export type _ApprovalRecordArtifactExact = Exact<
-  ApprovalRecordArtifact,
-  t.TypeOf<typeof ApprovalRecordArtifactCodec>
->;

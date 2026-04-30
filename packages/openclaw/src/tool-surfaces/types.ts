@@ -1,226 +1,220 @@
+import type * as t from 'io-ts';
+
 import type {
-  DiscordApprovalRequest,
-  DiscordChannelBinding,
-  DiscordControlRequest,
-  DiscordThreadSession,
-} from '@vannadii/devplat-discord';
-import type {
-  ApprovalRecordArtifact,
-  ArtifactEnvelope,
-  AuditLogArtifact,
-  MergeDecisionArtifact,
-  RebaseResultArtifact,
-} from '@vannadii/devplat-artifacts';
-import type { LifecycleStatus } from '@vannadii/devplat-core';
-import type { GitHubActionRequest } from '@vannadii/devplat-github';
-import type { MemoryEntry } from '@vannadii/devplat-memory';
-import type { TelemetryEvent } from '@vannadii/devplat-observability';
-import type {
-  ExecuteRebaseDependentsInput,
-  RebasePlan,
-} from '@vannadii/devplat-branching';
-import type { StoreScope } from '@vannadii/devplat-storage';
-import type { PullRequestRecord } from '@vannadii/devplat-prs';
-import type { TaskRecord } from '@vannadii/devplat-queue';
-import type { ResearchBrief } from '@vannadii/devplat-research';
-import type { RemediationPlan } from '@vannadii/devplat-remediation';
-import type { ReviewFinding } from '@vannadii/devplat-review';
-import type { SlicePlan } from '@vannadii/devplat-slicing';
-import type {
-  SonarBootstrapVerificationInput,
-  SonarQualityGateResult,
-} from '@vannadii/devplat-sonarcloud';
-import type { SpecRecord } from '@vannadii/devplat-specs';
-import type { DevplatConfig } from '@vannadii/devplat-config';
-import type {
-  WorktreeAllocation,
-  WorktreeReleaseMode,
-  WorktreeSyncMode,
-} from '@vannadii/devplat-worktrees';
+  AllocateWorktreeToolInputCodec,
+  ApproveSpecRecordToolInputCodec,
+  BindDiscordThreadToolInputCodec,
+  ClaimTaskToolInputCodec,
+  CreateApprovalRecordToolInputCodec,
+  CreateArtifactEnvelopeToolInputCodec,
+  CreateAuditLogToolInputCodec,
+  CreateGitHubActionRequestToolInputCodec,
+  CreateMergeDecisionToolInputCodec,
+  CreateOpenClawPluginConfigToolInputCodec,
+  CreatePullRequestRecordToolInputCodec,
+  CreateRebaseResultToolInputCodec,
+  CreateRemediationPlanToolInputCodec,
+  CreateResearchBriefToolInputCodec,
+  CreateReviewFindingToolInputCodec,
+  CreateSlicePlanToolInputCodec,
+  CreateSpecRecordToolInputCodec,
+  CreateTaskRecordToolInputCodec,
+  EvaluatePolicyActionToolInputCodec,
+  EvaluateSlicePlanReadinessToolInputCodec,
+  EvaluateSonarQualityGateToolInputCodec,
+  ExecuteCommandToolInputCodec,
+  ExecuteRebaseDependentsToolInputCodec,
+  HandleDiscordApprovalToolInputCodec,
+  HandleDiscordControlToolInputCodec,
+  ListStoredRecordsToolInputCodec,
+  OpenDiscordThreadToolInputCodec,
+  PlanRebaseDependentsToolInputCodec,
+  ReadStoredRecordToolInputCodec,
+  RecordTelemetryEventToolInputCodec,
+  ReleaseWorktreeToolInputCodec,
+  RememberMemoryEntryToolInputCodec,
+  ResolveRuntimeConfigToolInputCodec,
+  RunGatesToolInputCodec,
+  RunSupervisorStepToolInputCodec,
+  StoreRecordToolInputCodec,
+  StoreRecordToolRecordCodec,
+  SubmitGitHubActionToolInputCodec,
+  SubmitPullRequestMergeToolInputCodec,
+  SubmitPullRequestUpdateToolInputCodec,
+  SyncWorktreeToolInputCodec,
+  UpdateSpecRecordToolInputCodec,
+  UpdateTaskStatusCodec,
+  UpdateTaskToolInputCodec,
+  ValidateArtifactToolInputCodec,
+  VerifySonarBootstrapToolInputCodec,
+} from './codec.js';
 
-export interface RunGatesToolInput {
-  gateNames: string[];
-  summary: string;
-}
+export type RunGatesToolInput = t.TypeOf<typeof RunGatesToolInputCodec>;
 
-export type CreateResearchBriefToolInput = ResearchBrief;
+export type CreateResearchBriefToolInput = t.TypeOf<
+  typeof CreateResearchBriefToolInputCodec
+>;
 
-export type CreateSpecRecordToolInput = SpecRecord;
+export type CreateSpecRecordToolInput = t.TypeOf<
+  typeof CreateSpecRecordToolInputCodec
+>;
 
-export type ApproveSpecRecordToolInput = SpecRecord;
+export type ApproveSpecRecordToolInput = t.TypeOf<
+  typeof ApproveSpecRecordToolInputCodec
+>;
 
-export type UpdateSpecRecordToolInput = SpecRecord;
+export type UpdateSpecRecordToolInput = t.TypeOf<
+  typeof UpdateSpecRecordToolInputCodec
+>;
 
-export type CreateSlicePlanToolInput = SlicePlan;
+export type CreateSlicePlanToolInput = t.TypeOf<
+  typeof CreateSlicePlanToolInputCodec
+>;
 
-export interface EvaluateSlicePlanReadinessToolInput {
-  plan: SlicePlan;
-  completedSliceIds: string[];
-}
+export type EvaluateSlicePlanReadinessToolInput = t.TypeOf<
+  typeof EvaluateSlicePlanReadinessToolInputCodec
+>;
 
-export interface ResolveRuntimeConfigToolInput {
-  env: Record<string, string>;
-}
+export type ResolveRuntimeConfigToolInput = t.TypeOf<
+  typeof ResolveRuntimeConfigToolInputCodec
+>;
 
-export type CreateOpenClawPluginConfigToolInput = DevplatConfig;
+export type CreateOpenClawPluginConfigToolInput = t.TypeOf<
+  typeof CreateOpenClawPluginConfigToolInputCodec
+>;
 
-export type CreateArtifactEnvelopeToolInput = ArtifactEnvelope;
+export type CreateArtifactEnvelopeToolInput = t.TypeOf<
+  typeof CreateArtifactEnvelopeToolInputCodec
+>;
 
-export type CreateApprovalRecordToolInput = ApprovalRecordArtifact;
+export type CreateApprovalRecordToolInput = t.TypeOf<
+  typeof CreateApprovalRecordToolInputCodec
+>;
 
-export type CreateAuditLogToolInput = AuditLogArtifact;
+export type CreateAuditLogToolInput = t.TypeOf<
+  typeof CreateAuditLogToolInputCodec
+>;
 
-export type CreateMergeDecisionToolInput = MergeDecisionArtifact;
+export type CreateMergeDecisionToolInput = t.TypeOf<
+  typeof CreateMergeDecisionToolInputCodec
+>;
 
-export type CreateRebaseResultToolInput = RebaseResultArtifact;
+export type CreateRebaseResultToolInput = t.TypeOf<
+  typeof CreateRebaseResultToolInputCodec
+>;
 
-export interface AllocateWorktreeToolInput {
-  taskId: string;
-  branchName: string;
-}
+export type AllocateWorktreeToolInput = t.TypeOf<
+  typeof AllocateWorktreeToolInputCodec
+>;
 
-export interface SyncWorktreeToolInput {
-  allocation: WorktreeAllocation;
-  baseBranch: string;
-  syncMode?: WorktreeSyncMode;
-}
+export type SyncWorktreeToolInput = t.TypeOf<typeof SyncWorktreeToolInputCodec>;
 
-export interface ReleaseWorktreeToolInput {
-  allocation: WorktreeAllocation;
-  releaseMode?: WorktreeReleaseMode;
-}
+export type ReleaseWorktreeToolInput = t.TypeOf<
+  typeof ReleaseWorktreeToolInputCodec
+>;
 
-export interface BindDiscordThreadToolInput extends DiscordChannelBinding {
-  threadId: string;
-  parentChannelId: string;
-  actorId: string;
-}
+export type BindDiscordThreadToolInput = t.TypeOf<
+  typeof BindDiscordThreadToolInputCodec
+>;
 
-export type OpenDiscordThreadToolInput = DiscordThreadSession & {
-  actorId: string;
-};
+export type OpenDiscordThreadToolInput = t.TypeOf<
+  typeof OpenDiscordThreadToolInputCodec
+>;
 
-export type HandleDiscordApprovalToolInput = DiscordApprovalRequest;
+export type HandleDiscordApprovalToolInput = t.TypeOf<
+  typeof HandleDiscordApprovalToolInputCodec
+>;
 
-export type HandleDiscordControlToolInput = DiscordControlRequest;
+export type HandleDiscordControlToolInput = t.TypeOf<
+  typeof HandleDiscordControlToolInputCodec
+>;
 
-export type VerifySonarBootstrapToolInput = SonarBootstrapVerificationInput;
+export type VerifySonarBootstrapToolInput = t.TypeOf<
+  typeof VerifySonarBootstrapToolInputCodec
+>;
 
-export interface EvaluateSonarQualityGateToolInput {
-  projectKey: SonarQualityGateResult['projectKey'];
-  overallCoverage: SonarQualityGateResult['overallCoverage'];
-  newCodeCoverage: SonarQualityGateResult['newCodeCoverage'];
-  blockingIssues: SonarQualityGateResult['blockingIssues'];
-}
+export type EvaluateSonarQualityGateToolInput = t.TypeOf<
+  typeof EvaluateSonarQualityGateToolInputCodec
+>;
 
-export type CreateReviewFindingToolInput = ReviewFinding;
+export type CreateReviewFindingToolInput = t.TypeOf<
+  typeof CreateReviewFindingToolInputCodec
+>;
 
-export interface CreateRemediationPlanToolInput {
-  findings: ReviewFinding[];
-  autofix: RemediationPlan['autofix'];
-}
+export type CreateRemediationPlanToolInput = t.TypeOf<
+  typeof CreateRemediationPlanToolInputCodec
+>;
 
-export interface ExecuteCommandToolInput {
-  command: string;
-  args: string[];
-  actorId: string;
-  privileged: boolean;
-  cwd?: string;
-  env?: Record<string, string>;
-  timeoutMs?: number;
-}
+export type ExecuteCommandToolInput = t.TypeOf<
+  typeof ExecuteCommandToolInputCodec
+>;
 
-export type RememberMemoryEntryToolInput = MemoryEntry;
+export type RememberMemoryEntryToolInput = t.TypeOf<
+  typeof RememberMemoryEntryToolInputCodec
+>;
 
-export interface EvaluatePolicyActionToolInput {
-  action: string;
-  privileged: boolean;
-}
+export type EvaluatePolicyActionToolInput = t.TypeOf<
+  typeof EvaluatePolicyActionToolInputCodec
+>;
 
-export type RecordTelemetryEventToolInput = TelemetryEvent;
+export type RecordTelemetryEventToolInput = t.TypeOf<
+  typeof RecordTelemetryEventToolInputCodec
+>;
 
-export type CreateTaskRecordToolInput = TaskRecord;
+export type CreateTaskRecordToolInput = t.TypeOf<
+  typeof CreateTaskRecordToolInputCodec
+>;
 
-export interface ReadStoredRecordToolInput {
-  scope: StoreScope;
-  key: string;
-}
+export type ReadStoredRecordToolInput = t.TypeOf<
+  typeof ReadStoredRecordToolInputCodec
+>;
 
-export interface ListStoredRecordsToolInput {
-  scope: StoreScope;
-}
+export type ListStoredRecordsToolInput = t.TypeOf<
+  typeof ListStoredRecordsToolInputCodec
+>;
 
-export interface StoreRecordToolRecord {
-  id: string;
-  key: string;
-  scope: StoreScope;
-  summary: string;
-  status: LifecycleStatus;
-  trace: string[];
-  updatedAt: string;
-  payload: Record<string, unknown>;
-}
+export type StoreRecordToolRecord = t.TypeOf<typeof StoreRecordToolRecordCodec>;
 
-export interface StoreRecordToolInput {
-  record: StoreRecordToolRecord;
-  actorId: string;
-  privileged: boolean;
-}
+export type StoreRecordToolInput = t.TypeOf<typeof StoreRecordToolInputCodec>;
 
-export type CreatePullRequestRecordToolInput = PullRequestRecord;
+export type CreatePullRequestRecordToolInput = t.TypeOf<
+  typeof CreatePullRequestRecordToolInputCodec
+>;
 
-export interface SubmitPullRequestUpdateToolInput {
-  record: PullRequestRecord;
-  actorId: string;
-}
+export type SubmitPullRequestUpdateToolInput = t.TypeOf<
+  typeof SubmitPullRequestUpdateToolInputCodec
+>;
 
-export interface SubmitPullRequestMergeToolInput {
-  record: PullRequestRecord;
-  actorId: string;
-}
+export type SubmitPullRequestMergeToolInput = t.TypeOf<
+  typeof SubmitPullRequestMergeToolInputCodec
+>;
 
-export interface PlanRebaseDependentsToolInput {
-  record: PullRequestRecord;
-  dependentBranches: RebasePlan['dependentBranches'];
-}
+export type PlanRebaseDependentsToolInput = t.TypeOf<
+  typeof PlanRebaseDependentsToolInputCodec
+>;
 
-export type ExecuteRebaseDependentsToolInput = ExecuteRebaseDependentsInput;
+export type ExecuteRebaseDependentsToolInput = t.TypeOf<
+  typeof ExecuteRebaseDependentsToolInputCodec
+>;
 
-export interface SubmitGitHubActionToolInput {
-  request: GitHubActionRequest;
-  actorId: string;
-}
+export type SubmitGitHubActionToolInput = t.TypeOf<
+  typeof SubmitGitHubActionToolInputCodec
+>;
 
-export type CreateGitHubActionRequestToolInput = GitHubActionRequest;
+export type CreateGitHubActionRequestToolInput = t.TypeOf<
+  typeof CreateGitHubActionRequestToolInputCodec
+>;
 
-export interface ClaimTaskToolInput {
-  taskId: string;
-  sliceId: string;
-  threadId: string;
-  assigneeId: string;
-}
+export type ClaimTaskToolInput = t.TypeOf<typeof ClaimTaskToolInputCodec>;
 
-export interface UpdateTaskToolInput {
-  taskId: string;
-  sliceId: string;
-  threadId: string;
-  status:
-    | 'review'
-    | 'blocked'
-    | 'approved'
-    | 'merge-ready'
-    | 'merged'
-    | 'failed'
-    | 'rebasing'
-    | 'complete';
-}
+export type UpdateTaskStatus = t.TypeOf<typeof UpdateTaskStatusCodec>;
 
-export interface ValidateArtifactToolInput {
-  artifact: Record<string, unknown>;
-}
+export type UpdateTaskToolInput = t.TypeOf<typeof UpdateTaskToolInputCodec>;
 
-export interface RunSupervisorStepToolInput {
-  action: string;
-  actorId: string;
-  privileged: boolean;
-}
+export type ValidateArtifactToolInput = t.TypeOf<
+  typeof ValidateArtifactToolInputCodec
+>;
+
+export type RunSupervisorStepToolInput = t.TypeOf<
+  typeof RunSupervisorStepToolInputCodec
+>;

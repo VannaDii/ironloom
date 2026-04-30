@@ -1,33 +1,29 @@
-export type SonarApiQualityGateStatus = 'ERROR' | 'NONE' | 'OK';
+import type * as t from 'io-ts';
 
-export interface SonarQualityGateConditionSnapshot {
-  metricKey: string;
-  comparator: string;
-  errorThreshold: string;
-  actualValue: string | null;
-}
+import type {
+  SonarApiQualityGateStatusCodec,
+  SonarBootstrapVerificationChecksCodec,
+  SonarBootstrapVerificationInputCodec,
+  SonarBootstrapVerificationResultCodec,
+  SonarQualityGateConditionSnapshotCodec,
+} from './codec.js';
 
-export interface SonarBootstrapVerificationInput {
-  projectKey: string;
-  qualityGateStatus: SonarApiQualityGateStatus;
-  conditions: SonarQualityGateConditionSnapshot[];
-  evaluatedAt: string;
-}
+export type SonarApiQualityGateStatus = t.TypeOf<
+  typeof SonarApiQualityGateStatusCodec
+>;
 
-export interface SonarBootstrapVerificationChecks {
-  qualityGateComputed: boolean;
-  qualityGatePassing: boolean;
-  overallCoverageCondition: boolean;
-  newCodeCoverageCondition: boolean;
-}
+export type SonarQualityGateConditionSnapshot = t.TypeOf<
+  typeof SonarQualityGateConditionSnapshotCodec
+>;
 
-export interface SonarBootstrapVerificationResult {
-  projectKey: string;
-  status: 'failed' | 'passed';
-  qualityGateStatus: SonarApiQualityGateStatus;
-  overallCoverageThreshold: number;
-  newCodeCoverageThreshold: number;
-  checks: SonarBootstrapVerificationChecks;
-  issues: string[];
-  evaluatedAt: string;
-}
+export type SonarBootstrapVerificationInput = t.TypeOf<
+  typeof SonarBootstrapVerificationInputCodec
+>;
+
+export type SonarBootstrapVerificationChecks = t.TypeOf<
+  typeof SonarBootstrapVerificationChecksCodec
+>;
+
+export type SonarBootstrapVerificationResult = t.TypeOf<
+  typeof SonarBootstrapVerificationResultCodec
+>;

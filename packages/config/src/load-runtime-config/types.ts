@@ -1,85 +1,38 @@
-import type { LifecycleStatus } from '@vannadii/devplat-core';
+import type * as t from 'io-ts';
 
-export type DiscordApiVersion = 'v10';
+import type {
+  DevplatConfigCodec,
+  DiscordApiVersionCodec,
+  DiscordInstallScopeCodec,
+  DiscordPermissionCodec,
+  DiscordRuntimeConfigCodec,
+  OpenClawActionGateConfigCodec,
+  OpenClawGatewayConfigCodec,
+  RepositoryRuntimeConfigCodec,
+  StorageRuntimeConfigCodec,
+  WorktreeRuntimeConfigCodec,
+} from './codec.js';
 
-export type DiscordInstallScope = 'bot' | 'applications.commands';
+export type DiscordApiVersion = t.TypeOf<typeof DiscordApiVersionCodec>;
 
-export type DiscordPermission =
-  | 'ViewChannel'
-  | 'SendMessages'
-  | 'CreatePublicThreads'
-  | 'CreatePrivateThreads'
-  | 'SendMessagesInThreads'
-  | 'ManageThreads'
-  | 'ReadMessageHistory';
+export type DiscordInstallScope = t.TypeOf<typeof DiscordInstallScopeCodec>;
 
-export interface DiscordRuntimeConfig {
-  apiBaseUrl: string;
-  apiVersion: DiscordApiVersion;
-  applicationId: string;
-  publicKey: string;
-  botToken: string;
-  installScopes: readonly DiscordInstallScope[];
-  requiredPermissions: readonly DiscordPermission[];
-  defaultGuildId: string;
-  specChannelId: string;
-  implementationChannelId: string;
-  pullRequestChannelId: string;
-  auditChannelId: string;
-  projectManagementChannelId: string;
-  threadBindingMode: 'inherit-parent';
-}
+export type DiscordPermission = t.TypeOf<typeof DiscordPermissionCodec>;
 
-export interface RepositoryRuntimeConfig {
-  owner: string;
-  repo: string;
-  defaultBranch: string;
-  repositoryKey: string;
-}
+export type DiscordRuntimeConfig = t.TypeOf<typeof DiscordRuntimeConfigCodec>;
 
-export interface StorageRuntimeConfig {
-  rootDirectory: string;
-  layoutVersion: 1;
-}
+export type RepositoryRuntimeConfig = t.TypeOf<
+  typeof RepositoryRuntimeConfigCodec
+>;
 
-export interface WorktreeRuntimeConfig {
-  rootDirectory: string;
-  baseBranch: string;
-}
+export type StorageRuntimeConfig = t.TypeOf<typeof StorageRuntimeConfigCodec>;
 
-export interface OpenClawGatewayConfig {
-  bind: 'loopback';
-  port: number;
-  authMode: 'token';
-}
+export type WorktreeRuntimeConfig = t.TypeOf<typeof WorktreeRuntimeConfigCodec>;
 
-export interface OpenClawActionGateConfig {
-  approveThis: boolean;
-  mergeNow: boolean;
-  retryGates: boolean;
-  rebaseAllDependents: boolean;
-}
+export type OpenClawGatewayConfig = t.TypeOf<typeof OpenClawGatewayConfigCodec>;
 
-export interface DevplatConfig {
-  id: string;
-  summary: string;
-  status: LifecycleStatus;
-  trace: string[];
-  updatedAt: string;
-  githubOwner: string;
-  githubRepo: string;
-  repository: RepositoryRuntimeConfig;
-  storage: StorageRuntimeConfig;
-  worktrees: WorktreeRuntimeConfig;
-  discord: DiscordRuntimeConfig;
-  openclaw: {
-    pluginId: string;
-    gateway: OpenClawGatewayConfig;
-    actionGates: OpenClawActionGateConfig;
-  };
-  sonar: {
-    organization: string;
-    projectKey: string;
-    minimumCoverage: 90;
-  };
-}
+export type OpenClawActionGateConfig = t.TypeOf<
+  typeof OpenClawActionGateConfigCodec
+>;
+
+export type DevplatConfig = t.TypeOf<typeof DevplatConfigCodec>;

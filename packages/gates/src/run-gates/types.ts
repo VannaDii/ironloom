@@ -1,27 +1,18 @@
-import type { LifecycleStatus } from '@vannadii/devplat-core';
+import type * as t from 'io-ts';
 
-export interface GateCheckResult {
-  name: string;
-  success: boolean;
-  detail: string;
-  failureKind?: 'command-failed' | 'timeout' | 'passed';
-  nextAction?: string;
-}
+import type {
+  GateCheckResultCodec,
+  GateFailureClassificationCodec,
+  GateFailureKindCodec,
+  GateRunReportCodec,
+} from './codec.js';
 
-export interface GateFailureClassification {
-  kind: 'passed' | 'retryable' | 'requires-remediation';
-  failedGateNames: string[];
-  nextAction: string;
-}
+export type GateFailureKind = t.TypeOf<typeof GateFailureKindCodec>;
 
-export interface GateRunReport {
-  id: string;
-  summary: string;
-  status: LifecycleStatus;
-  trace: string[];
-  updatedAt: string;
-  passed: boolean;
-  results: GateCheckResult[];
-  classification?: GateFailureClassification;
-  nextAction?: string;
-}
+export type GateCheckResult = t.TypeOf<typeof GateCheckResultCodec>;
+
+export type GateFailureClassification = t.TypeOf<
+  typeof GateFailureClassificationCodec
+>;
+
+export type GateRunReport = t.TypeOf<typeof GateRunReportCodec>;

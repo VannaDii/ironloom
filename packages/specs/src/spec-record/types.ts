@@ -1,22 +1,13 @@
-export type SpecApprovalState = 'draft' | 'review' | 'approved';
+import type * as t from 'io-ts';
 
-export interface SpecRevision {
-  version: number;
-  summary: string;
-  updatedAt: string;
-  artifactId?: string;
-}
+import type {
+  SpecApprovalStateCodec,
+  SpecRecordCodec,
+  SpecRevisionCodec,
+} from './codec.js';
 
-export interface SpecRecord {
-  specId: string;
-  researchId: string;
-  title: string;
-  objective: string;
-  acceptanceCriteria: string[];
-  approvalState: SpecApprovalState;
-  version: number;
-  updatedAt: string;
-  revisionHistory?: SpecRevision[];
-  renderedPullRequestBody?: string;
-  sourceArtifactIds?: string[];
-}
+export type SpecApprovalState = t.TypeOf<typeof SpecApprovalStateCodec>;
+
+export type SpecRevision = t.TypeOf<typeof SpecRevisionCodec>;
+
+export type SpecRecord = t.TypeOf<typeof SpecRecordCodec>;

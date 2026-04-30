@@ -1,8 +1,6 @@
 import * as t from 'io-ts';
 
-import { LifecycleStatusCodec, type Exact } from '@vannadii/devplat-core';
-
-import type { SupervisorDecision } from './types.js';
+import { LifecycleStatusCodec } from '@vannadii/devplat-core';
 
 export const SupervisorPhaseCodec = t.union([
   t.literal('research'),
@@ -33,8 +31,3 @@ export const SupervisorDecisionCodec = t.intersection([
     routedTo: t.string,
   }),
 ]);
-
-export type _SupervisorDecisionExact = Exact<
-  SupervisorDecision,
-  t.TypeOf<typeof SupervisorDecisionCodec>
->;

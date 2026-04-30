@@ -1,11 +1,7 @@
-import type { ArtifactEnvelope } from '../artifact-envelope/types.js';
+import type * as t from 'io-ts';
 
-export interface AuditLogPayload {
-  auditId: string;
-  actorId: string;
-  action: string;
-  scope: string;
-  details: Record<string, unknown>;
-}
+import type { AuditLogArtifactCodec, AuditLogPayloadCodec } from './codec.js';
 
-export type AuditLogArtifact = ArtifactEnvelope<AuditLogPayload, 'audit-log'>;
+export type AuditLogPayload = t.TypeOf<typeof AuditLogPayloadCodec>;
+
+export type AuditLogArtifact = t.TypeOf<typeof AuditLogArtifactCodec>;

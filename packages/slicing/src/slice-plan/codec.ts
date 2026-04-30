@@ -1,7 +1,5 @@
 import * as t from 'io-ts';
 
-import type { SlicePlan } from './types.js';
-
 export const SliceDependencyEdgeCodec = t.type({
   fromSliceId: t.string,
   toSliceId: t.string,
@@ -19,6 +17,12 @@ export const SliceWorkPacketCodec = t.type({
   estimatedPullRequestCount: t.number,
 });
 
+export const SliceSizeCodec = t.union([
+  t.literal('small'),
+  t.literal('medium'),
+  t.literal('large'),
+]);
+
 export const SlicePlanCodec = t.intersection([
   t.type({
     sliceId: t.string,
@@ -27,11 +31,7 @@ export const SlicePlanCodec = t.intersection([
     dependsOn: t.array(t.string),
     acceptanceCriteria: t.array(t.string),
     doneConditions: t.array(t.string),
-    size: t.union([
-      t.literal('small'),
-      t.literal('medium'),
-      t.literal('large'),
-    ]),
+    size: SliceSizeCodec,
     updatedAt: t.string,
   }),
   t.partial({
@@ -39,10 +39,3 @@ export const SlicePlanCodec = t.intersection([
     workPacket: SliceWorkPacketCodec,
   }),
 ]);
-
-export type _SlicePlanExact =
-  t.TypeOf<typeof SlicePlanCodec> extends SlicePlan
-    ? SlicePlan extends t.TypeOf<typeof SlicePlanCodec>
-      ? true
-      : never
-    : never;

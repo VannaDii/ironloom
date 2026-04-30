@@ -1,16 +1,10 @@
-import type { ArtifactEnvelope } from '../artifact-envelope/types.js';
+import type * as t from 'io-ts';
 
-export interface RebaseResultPayload {
-  resultId: string;
-  mergedPrNumber: number;
-  baseBranch: string;
-  branchName: string;
-  rebased: boolean;
-  conflictsDetected: boolean;
-  details: string;
-}
+import type {
+  RebaseResultArtifactCodec,
+  RebaseResultPayloadCodec,
+} from './codec.js';
 
-export type RebaseResultArtifact = ArtifactEnvelope<
-  RebaseResultPayload,
-  'rebase-result'
->;
+export type RebaseResultPayload = t.TypeOf<typeof RebaseResultPayloadCodec>;
+
+export type RebaseResultArtifact = t.TypeOf<typeof RebaseResultArtifactCodec>;

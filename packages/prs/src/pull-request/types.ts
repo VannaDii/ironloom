@@ -1,26 +1,15 @@
-export type PullRequestReviewState =
-  | 'draft'
-  | 'review'
-  | 'approved'
-  | 'changes-requested';
+import type * as t from 'io-ts';
 
-export interface PullRequestProjection {
-  body: string;
-  checklist: string[];
-  riskSummary: string;
-  validationSummary: string;
-  artifactIds: string[];
-}
+import type {
+  PullRequestProjectionCodec,
+  PullRequestRecordCodec,
+  PullRequestReviewStateCodec,
+} from './codec.js';
 
-export interface PullRequestRecord {
-  prNumber: number;
-  branchName: string;
-  baseBranch: string;
-  title: string;
-  labels: string[];
-  reviewState: PullRequestReviewState;
-  mergeReady: boolean;
-  updatedAt: string;
-  projection?: PullRequestProjection;
-  sourceArtifactIds?: string[];
-}
+export type PullRequestReviewState = t.TypeOf<
+  typeof PullRequestReviewStateCodec
+>;
+
+export type PullRequestProjection = t.TypeOf<typeof PullRequestProjectionCodec>;
+
+export type PullRequestRecord = t.TypeOf<typeof PullRequestRecordCodec>;

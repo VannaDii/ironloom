@@ -1,14 +1,6 @@
 import * as t from 'io-ts';
 
-import { LifecycleStatusCodec, type Exact } from '@vannadii/devplat-core';
-
-import type {
-  WorktreeAllocation,
-  WorktreeReleaseMode,
-  WorktreeReleaseResult,
-  WorktreeSyncMode,
-  WorktreeSyncResult,
-} from './types.js';
+import { LifecycleStatusCodec } from '@vannadii/devplat-core';
 
 export const WorktreeSyncModeCodec = t.union([
   t.literal('fast-forward'),
@@ -59,27 +51,11 @@ export const WorktreeReleaseResultCodec = t.type({
   released: t.boolean,
 });
 
-export type _WorktreeAllocationExact = Exact<
-  WorktreeAllocation,
-  t.TypeOf<typeof WorktreeAllocationCodec>
->;
-
-export type _WorktreeSyncResultExact = Exact<
-  WorktreeSyncResult,
-  t.TypeOf<typeof WorktreeSyncResultCodec>
->;
-
-export type _WorktreeSyncModeExact = Exact<
-  WorktreeSyncMode,
-  t.TypeOf<typeof WorktreeSyncModeCodec>
->;
-
-export type _WorktreeReleaseResultExact = Exact<
-  WorktreeReleaseResult,
-  t.TypeOf<typeof WorktreeReleaseResultCodec>
->;
-
-export type _WorktreeReleaseModeExact = Exact<
-  WorktreeReleaseMode,
-  t.TypeOf<typeof WorktreeReleaseModeCodec>
->;
+export const WorktreeGitCommandResultCodec = t.type({
+  command: t.string,
+  args: t.array(t.string),
+  cwd: t.string,
+  exitCode: t.number,
+  stdout: t.string,
+  stderr: t.string,
+});

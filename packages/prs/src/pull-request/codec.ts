@@ -1,7 +1,5 @@
 import * as t from 'io-ts';
 
-import type { PullRequestRecord } from './types.js';
-
 export const PullRequestProjectionCodec = t.type({
   body: t.string,
   checklist: t.array(t.string),
@@ -10,6 +8,13 @@ export const PullRequestProjectionCodec = t.type({
   artifactIds: t.array(t.string),
 });
 
+export const PullRequestReviewStateCodec = t.union([
+  t.literal('draft'),
+  t.literal('review'),
+  t.literal('approved'),
+  t.literal('changes-requested'),
+]);
+
 export const PullRequestRecordCodec = t.intersection([
   t.type({
     prNumber: t.number,
@@ -17,12 +22,7 @@ export const PullRequestRecordCodec = t.intersection([
     baseBranch: t.string,
     title: t.string,
     labels: t.array(t.string),
-    reviewState: t.union([
-      t.literal('draft'),
-      t.literal('review'),
-      t.literal('approved'),
-      t.literal('changes-requested'),
-    ]),
+    reviewState: PullRequestReviewStateCodec,
     mergeReady: t.boolean,
     updatedAt: t.string,
   }),
@@ -31,10 +31,3 @@ export const PullRequestRecordCodec = t.intersection([
     sourceArtifactIds: t.array(t.string),
   }),
 ]);
-
-export type _PullRequestRecordExact =
-  t.TypeOf<typeof PullRequestRecordCodec> extends PullRequestRecord
-    ? PullRequestRecord extends t.TypeOf<typeof PullRequestRecordCodec>
-      ? true
-      : never
-    : never;

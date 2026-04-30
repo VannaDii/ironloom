@@ -1,18 +1,13 @@
-import type { ArtifactEnvelope } from '../artifact-envelope/types.js';
+import type * as t from 'io-ts';
 
-export type MergeStrategy = 'merge' | 'squash' | 'rebase';
+import type {
+  MergeDecisionArtifactCodec,
+  MergeDecisionPayloadCodec,
+  MergeStrategyCodec,
+} from './codec.js';
 
-export interface MergeDecisionPayload {
-  decisionId: string;
-  prNumber: number;
-  actorId: string;
-  mergeStrategy: MergeStrategy;
-  approved: boolean;
-  rationale: string;
-  blockingFindings: string[];
-}
+export type MergeStrategy = t.TypeOf<typeof MergeStrategyCodec>;
 
-export type MergeDecisionArtifact = ArtifactEnvelope<
-  MergeDecisionPayload,
-  'merge-decision'
->;
+export type MergeDecisionPayload = t.TypeOf<typeof MergeDecisionPayloadCodec>;
+
+export type MergeDecisionArtifact = t.TypeOf<typeof MergeDecisionArtifactCodec>;

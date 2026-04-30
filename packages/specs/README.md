@@ -23,6 +23,8 @@ flowchart LR
 - Do not slice or execute implementation work here.
 - Keep spec artifacts aligned with generated schemas and docs.
 
+- Keep public TypeScript contracts derived from the exported codecs.
+
 ## Development
 
 ```bash

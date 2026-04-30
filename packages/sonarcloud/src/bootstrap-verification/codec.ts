@@ -1,9 +1,10 @@
 import * as t from 'io-ts';
 
-import type {
-  SonarBootstrapVerificationInput,
-  SonarBootstrapVerificationResult,
-} from './types.js';
+export const SonarApiQualityGateStatusCodec = t.union([
+  t.literal('ERROR'),
+  t.literal('NONE'),
+  t.literal('OK'),
+]);
 
 export const SonarQualityGateConditionSnapshotCodec = t.type({
   metricKey: t.string,
@@ -14,11 +15,7 @@ export const SonarQualityGateConditionSnapshotCodec = t.type({
 
 export const SonarBootstrapVerificationInputCodec = t.type({
   projectKey: t.string,
-  qualityGateStatus: t.union([
-    t.literal('ERROR'),
-    t.literal('NONE'),
-    t.literal('OK'),
-  ]),
+  qualityGateStatus: SonarApiQualityGateStatusCodec,
   conditions: t.array(SonarQualityGateConditionSnapshotCodec),
   evaluatedAt: t.string,
 });
@@ -33,36 +30,10 @@ export const SonarBootstrapVerificationChecksCodec = t.type({
 export const SonarBootstrapVerificationResultCodec = t.type({
   projectKey: t.string,
   status: t.union([t.literal('failed'), t.literal('passed')]),
-  qualityGateStatus: t.union([
-    t.literal('ERROR'),
-    t.literal('NONE'),
-    t.literal('OK'),
-  ]),
+  qualityGateStatus: SonarApiQualityGateStatusCodec,
   overallCoverageThreshold: t.number,
   newCodeCoverageThreshold: t.number,
   checks: SonarBootstrapVerificationChecksCodec,
   issues: t.array(t.string),
   evaluatedAt: t.string,
 });
-
-export type _SonarBootstrapVerificationInputExact =
-  t.TypeOf<
-    typeof SonarBootstrapVerificationInputCodec
-  > extends SonarBootstrapVerificationInput
-    ? SonarBootstrapVerificationInput extends t.TypeOf<
-        typeof SonarBootstrapVerificationInputCodec
-      >
-      ? true
-      : never
-    : never;
-
-export type _SonarBootstrapVerificationResultExact =
-  t.TypeOf<
-    typeof SonarBootstrapVerificationResultCodec
-  > extends SonarBootstrapVerificationResult
-    ? SonarBootstrapVerificationResult extends t.TypeOf<
-        typeof SonarBootstrapVerificationResultCodec
-      >
-      ? true
-      : never
-    : never;

@@ -1,8 +1,6 @@
 import * as t from 'io-ts';
 
-import { LifecycleStatusCodec, type Exact } from '@vannadii/devplat-core';
-
-import type { ArtifactEnvelopeSchema } from './types.js';
+import { LifecycleStatusCodec } from '@vannadii/devplat-core';
 
 export const ArtifactEnvelopeCodec = t.intersection([
   t.type({
@@ -27,8 +25,3 @@ export const ArtifactEnvelopeCodec = t.intersection([
     ]),
   }),
 ]);
-
-export type _ArtifactEnvelopeExact = Exact<
-  ArtifactEnvelopeSchema,
-  t.TypeOf<typeof ArtifactEnvelopeCodec>
->;

@@ -23,6 +23,8 @@ flowchart LR
 - Do not put workflow orchestration or external API calls in this package.
 - Keep public contracts aligned with codecs, generated schemas, docs, and tests.
 
+- Keep public TypeScript contracts derived from the exported codecs.
+
 ## Development
 
 ```bash

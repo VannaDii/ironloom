@@ -1,28 +1,15 @@
-import type { LifecycleStatus } from '@vannadii/devplat-core';
+import type * as t from 'io-ts';
 
-export type DiscordBindingKind =
-  | 'spec'
-  | 'implementation'
-  | 'pull-request'
-  | 'audit';
+import type {
+  DiscordBindingKindCodec,
+  DiscordChannelBindingCodec,
+  DiscordThreadBindingResultCodec,
+} from './codec.js';
 
-export interface DiscordChannelBinding {
-  id: string;
-  summary: string;
-  status: LifecycleStatus;
-  trace: string[];
-  updatedAt: string;
-  guildId: string;
-  channelId: string;
-  kind: DiscordBindingKind;
-  threadBindingMode: 'inherit-parent';
-}
+export type DiscordBindingKind = t.TypeOf<typeof DiscordBindingKindCodec>;
 
-export interface DiscordThreadBindingResult {
-  binding: DiscordChannelBinding;
-  threadId: string;
-  parentChannelId: string;
-  routingKey: string;
-  inherited: true;
-  persistedKey: string;
-}
+export type DiscordChannelBinding = t.TypeOf<typeof DiscordChannelBindingCodec>;
+
+export type DiscordThreadBindingResult = t.TypeOf<
+  typeof DiscordThreadBindingResultCodec
+>;

@@ -1,31 +1,19 @@
-export type SliceSize = 'small' | 'medium' | 'large';
+import type * as t from 'io-ts';
 
-export interface SliceDependencyEdge {
-  fromSliceId: string;
-  toSliceId: string;
-}
+import type {
+  SliceDependencyEdgeCodec,
+  SliceDependencyGraphCodec,
+  SlicePlanCodec,
+  SliceSizeCodec,
+  SliceWorkPacketCodec,
+} from './codec.js';
 
-export interface SliceDependencyGraph {
-  sliceId: string;
-  edges: SliceDependencyEdge[];
-  blockedBy: string[];
-}
+export type SliceSize = t.TypeOf<typeof SliceSizeCodec>;
 
-export interface SliceWorkPacket {
-  branchName: string;
-  taskIds: string[];
-  estimatedPullRequestCount: number;
-}
+export type SliceDependencyEdge = t.TypeOf<typeof SliceDependencyEdgeCodec>;
 
-export interface SlicePlan {
-  sliceId: string;
-  specId: string;
-  title: string;
-  dependsOn: string[];
-  acceptanceCriteria: string[];
-  doneConditions: string[];
-  size: SliceSize;
-  updatedAt: string;
-  dependencyGraph?: SliceDependencyGraph;
-  workPacket?: SliceWorkPacket;
-}
+export type SliceDependencyGraph = t.TypeOf<typeof SliceDependencyGraphCodec>;
+
+export type SliceWorkPacket = t.TypeOf<typeof SliceWorkPacketCodec>;
+
+export type SlicePlan = t.TypeOf<typeof SlicePlanCodec>;

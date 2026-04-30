@@ -2,6 +2,8 @@ import type * as t from 'io-ts';
 
 import type {
   StoredRecordCodec,
+  StoredRecordIndexEntryCodec,
+  StorageLayoutContractCodec,
   StoreIndexNameCodec,
   StoreScopeCodec,
 } from './codec.js';
@@ -15,15 +17,8 @@ export type StoredRecord<TPayload extends object = Record<string, unknown>> =
     payload: TPayload;
   };
 
-export interface StoredRecordIndexEntry {
-  id: string;
-  scope: StoreScope;
-  key: string;
-  updatedAt: string;
-}
+export type StoredRecordIndexEntry = t.TypeOf<
+  typeof StoredRecordIndexEntryCodec
+>;
 
-export interface StorageLayoutContract {
-  layoutVersion: 1;
-  scopes: readonly StoreScope[];
-  indexes: readonly StoreIndexName[];
-}
+export type StorageLayoutContract = t.TypeOf<typeof StorageLayoutContractCodec>;

@@ -1,28 +1,20 @@
-export type QualityGateStatus = 'passed' | 'failed';
+import type * as t from 'io-ts';
 
-export type NormalizedSonarIssueSeverity =
-  | 'info'
-  | 'minor'
-  | 'major'
-  | 'critical'
-  | 'blocker';
+import type {
+  NormalizedSonarIssueCodec,
+  NormalizedSonarIssueSeverityCodec,
+  QualityGateStatusCodec,
+  SonarQualityGateResultCodec,
+} from './codec.js';
 
-export interface NormalizedSonarIssue {
-  issueKey: string;
-  severity: NormalizedSonarIssueSeverity;
-  path: string;
-  message: string;
-  effortMinutes: number;
-  blocking: boolean;
-}
+export type QualityGateStatus = t.TypeOf<typeof QualityGateStatusCodec>;
 
-export interface SonarQualityGateResult {
-  projectKey: string;
-  status: QualityGateStatus;
-  overallCoverage: number;
-  newCodeCoverage: number;
-  blockingIssues: number;
-  evaluatedAt: string;
-  issues?: NormalizedSonarIssue[];
-  nextAction?: string;
-}
+export type NormalizedSonarIssueSeverity = t.TypeOf<
+  typeof NormalizedSonarIssueSeverityCodec
+>;
+
+export type NormalizedSonarIssue = t.TypeOf<typeof NormalizedSonarIssueCodec>;
+
+export type SonarQualityGateResult = t.TypeOf<
+  typeof SonarQualityGateResultCodec
+>;

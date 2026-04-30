@@ -1,22 +1,13 @@
-import type { LifecycleStatus } from '@vannadii/devplat-core';
+import type * as t from 'io-ts';
 
-export interface ArtifactEnvelope<
+import type { ArtifactEnvelopeCodec } from './codec.js';
+
+type ArtifactEnvelopeBase = t.TypeOf<typeof ArtifactEnvelopeCodec>;
+
+export type ArtifactEnvelope<
   TPayload extends object = Record<string, unknown>,
   TArtifactType extends string = string,
-> {
-  id: string;
+> = Omit<ArtifactEnvelopeBase, 'artifactType' | 'payload'> & {
   artifactType: TArtifactType;
-  version: 1;
-  summary: string;
-  status: LifecycleStatus;
-  trace: string[];
-  updatedAt: string;
-  migration?: {
-    schemaVersion: 1;
-    previousArtifactId?: string;
-    migratedAt?: string;
-  };
   payload: TPayload;
-}
-
-export type ArtifactEnvelopeSchema = ArtifactEnvelope;
+};

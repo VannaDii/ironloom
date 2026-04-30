@@ -42,3 +42,16 @@ export const StoredRecordCodec = t.intersection([
     indexes: t.readonlyArray(StoreIndexNameCodec),
   }),
 ]);
+
+export const StoredRecordIndexEntryCodec = t.type({
+  id: t.string,
+  scope: StoreScopeCodec,
+  key: t.string,
+  updatedAt: t.string,
+});
+
+export const StorageLayoutContractCodec = t.type({
+  layoutVersion: t.literal(1),
+  scopes: t.readonlyArray(StoreScopeCodec),
+  indexes: t.readonlyArray(StoreIndexNameCodec),
+});

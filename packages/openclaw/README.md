@@ -75,6 +75,8 @@ npm run generate:openclaw-manifest
 npm run check:openclaw-manifest
 ```
 
+- Keep public TypeScript contracts derived from the exported codecs.
+
 ## Development
 
 ```bash

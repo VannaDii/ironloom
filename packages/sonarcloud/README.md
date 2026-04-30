@@ -23,6 +23,8 @@ flowchart LR
 - Do not suppress quality gate failures.
 - Feed normalized issues into review and remediation packages.
 
+- Keep public TypeScript contracts derived from the exported codecs.
+
 ## Development
 
 ```bash

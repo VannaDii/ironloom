@@ -23,6 +23,8 @@ flowchart LR
 - Do not perform network checks or load external service state.
 - Keep schema, codec, docs, and tests aligned whenever config fields change.
 
+- Keep public TypeScript contracts derived from the exported codecs.
+
 ## Development
 
 ```bash

@@ -1,59 +1,35 @@
-import type { LifecycleStatus } from '@vannadii/devplat-core';
+import type * as t from 'io-ts';
 
-export type DiscordThreadKind = 'spec' | 'implementation' | 'pull-request';
+import type {
+  DiscordImplementationThreadSessionCodec,
+  DiscordPullRequestThreadSessionCodec,
+  DiscordSpecThreadSessionCodec,
+  DiscordThreadKindCodec,
+  DiscordThreadSessionCodec,
+  DiscordThreadSessionInputCodec,
+  DiscordThreadSessionResultCodec,
+} from './codec.js';
 
-interface DiscordThreadSessionBase {
-  id: string;
-  summary: string;
-  status: LifecycleStatus;
-  trace: string[];
-  updatedAt: string;
-  guildId: string;
-  channelId: string;
-  parentChannelId: string;
-  threadId: string;
-  artifactId: string;
-}
+export type DiscordThreadKind = t.TypeOf<typeof DiscordThreadKindCodec>;
 
-export interface DiscordThreadSessionInput extends DiscordThreadSessionBase {
-  kind: DiscordThreadKind;
-  specId: string | null;
-  sliceId: string | null;
-  pullRequestNumber: number | null;
-}
+export type DiscordThreadSessionInput = t.TypeOf<
+  typeof DiscordThreadSessionInputCodec
+>;
 
-export interface DiscordSpecThreadSession extends DiscordThreadSessionBase {
-  kind: 'spec';
-  specId: string;
-  sliceId: null;
-  pullRequestNumber: null;
-}
+export type DiscordSpecThreadSession = t.TypeOf<
+  typeof DiscordSpecThreadSessionCodec
+>;
 
-export interface DiscordImplementationThreadSession extends DiscordThreadSessionBase {
-  kind: 'implementation';
-  specId: string | null;
-  sliceId: string;
-  pullRequestNumber: null;
-}
+export type DiscordImplementationThreadSession = t.TypeOf<
+  typeof DiscordImplementationThreadSessionCodec
+>;
 
-export interface DiscordPullRequestThreadSession extends DiscordThreadSessionBase {
-  kind: 'pull-request';
-  specId: string | null;
-  sliceId: string | null;
-  /**
-   * @asType integer
-   * @minimum 1
-   */
-  pullRequestNumber: number;
-}
+export type DiscordPullRequestThreadSession = t.TypeOf<
+  typeof DiscordPullRequestThreadSessionCodec
+>;
 
-export type DiscordThreadSession =
-  | DiscordSpecThreadSession
-  | DiscordImplementationThreadSession
-  | DiscordPullRequestThreadSession;
+export type DiscordThreadSession = t.TypeOf<typeof DiscordThreadSessionCodec>;
 
-export interface DiscordThreadSessionResult {
-  session: DiscordThreadSession;
-  artifactId: string;
-  persistedKey: string;
-}
+export type DiscordThreadSessionResult = t.TypeOf<
+  typeof DiscordThreadSessionResultCodec
+>;

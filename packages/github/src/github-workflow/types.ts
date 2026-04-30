@@ -1,45 +1,27 @@
-export type GitHubAction =
-  | 'create-pr'
-  | 'update-pr'
-  | 'comment-pr'
-  | 'merge-pr'
-  | 'sync-branch';
+import type * as t from 'io-ts';
 
-export type GitHubHttpMethod = 'POST' | 'PATCH' | 'PUT';
-export type GitHubSubmissionMode = 'live' | 'dry-run';
+import type {
+  GitHubActionCodec,
+  GitHubActionDecisionCodec,
+  GitHubActionRequestCodec,
+  GitHubHttpMethodCodec,
+  GitHubRestRequestCodec,
+  GitHubSubmissionModeCodec,
+  GitHubSubmissionReceiptCodec,
+} from './codec.js';
 
-export interface GitHubActionRequest {
-  repoFullName: string;
-  action: GitHubAction;
-  summary: string;
-  privileged: boolean;
-  targetNumber?: number;
-  branchName?: string;
-  baseBranch?: string;
-  title?: string;
-  body?: string;
-  commentBody?: string;
-  expectedHeadSha?: string;
-  updatedAt: string;
-}
+export type GitHubAction = t.TypeOf<typeof GitHubActionCodec>;
 
-export interface GitHubRestRequest {
-  method: GitHubHttpMethod;
-  endpoint: string;
-  body: Record<string, unknown>;
-}
+export type GitHubHttpMethod = t.TypeOf<typeof GitHubHttpMethodCodec>;
 
-export interface GitHubSubmissionReceipt {
-  method: GitHubHttpMethod;
-  endpoint: string;
-  statusCode: number;
-  responseBody: unknown;
-}
+export type GitHubSubmissionMode = t.TypeOf<typeof GitHubSubmissionModeCodec>;
 
-export interface GitHubActionDecision {
-  request: GitHubActionRequest;
-  allowed: boolean;
-  policyDecisionId: string;
-  submitted: boolean;
-  receipt?: GitHubSubmissionReceipt;
-}
+export type GitHubActionRequest = t.TypeOf<typeof GitHubActionRequestCodec>;
+
+export type GitHubRestRequest = t.TypeOf<typeof GitHubRestRequestCodec>;
+
+export type GitHubSubmissionReceipt = t.TypeOf<
+  typeof GitHubSubmissionReceiptCodec
+>;
+
+export type GitHubActionDecision = t.TypeOf<typeof GitHubActionDecisionCodec>;

@@ -1,25 +1,15 @@
-import type { LifecycleStatus } from '@vannadii/devplat-core';
+import type * as t from 'io-ts';
 
-export type DiscordApprovalAction = 'approve' | 'retry' | 'merge' | 'escalate';
+import type {
+  DiscordApprovalActionCodec,
+  DiscordApprovalRequestCodec,
+  DiscordApprovalResultCodec,
+} from './codec.js';
 
-export interface DiscordApprovalRequest {
-  id: string;
-  summary: string;
-  status: LifecycleStatus;
-  trace: string[];
-  updatedAt: string;
-  actorId: string;
-  channelId: string;
-  threadId: string;
-  action: DiscordApprovalAction;
-  artifactId: string;
-  privileged: boolean;
-}
+export type DiscordApprovalAction = t.TypeOf<typeof DiscordApprovalActionCodec>;
 
-export interface DiscordApprovalResult {
-  request: DiscordApprovalRequest;
-  policyDecisionId: string;
-  allowed: boolean;
-  artifactId: string;
-  persistedKey: string;
-}
+export type DiscordApprovalRequest = t.TypeOf<
+  typeof DiscordApprovalRequestCodec
+>;
+
+export type DiscordApprovalResult = t.TypeOf<typeof DiscordApprovalResultCodec>;

@@ -1,53 +1,24 @@
-import type { LifecycleStatus } from '@vannadii/devplat-core';
+import type * as t from 'io-ts';
 
-export interface WorktreeAllocation {
-  id: string;
-  summary: string;
-  status: LifecycleStatus;
-  trace: string[];
-  updatedAt: string;
-  taskId: string;
-  branchName: string;
-  worktreePath: string;
-}
+import type {
+  WorktreeAllocationCodec,
+  WorktreeGitCommandResultCodec,
+  WorktreeReleaseModeCodec,
+  WorktreeReleaseResultCodec,
+  WorktreeSyncModeCodec,
+  WorktreeSyncResultCodec,
+} from './codec.js';
 
-export type WorktreeSyncMode = 'fast-forward' | 'rebase';
+export type WorktreeAllocation = t.TypeOf<typeof WorktreeAllocationCodec>;
 
-export interface WorktreeSyncResult {
-  id: string;
-  summary: string;
-  status: LifecycleStatus;
-  trace: string[];
-  updatedAt: string;
-  taskId: string;
-  branchName: string;
-  worktreePath: string;
-  baseBranch: string;
-  syncMode: WorktreeSyncMode;
-  changed: boolean;
-  conflictsDetected: boolean;
-}
+export type WorktreeSyncMode = t.TypeOf<typeof WorktreeSyncModeCodec>;
 
-export type WorktreeReleaseMode = 'archive' | 'delete';
+export type WorktreeSyncResult = t.TypeOf<typeof WorktreeSyncResultCodec>;
 
-export interface WorktreeReleaseResult {
-  id: string;
-  summary: string;
-  status: LifecycleStatus;
-  trace: string[];
-  updatedAt: string;
-  taskId: string;
-  branchName: string;
-  worktreePath: string;
-  releaseMode: WorktreeReleaseMode;
-  released: boolean;
-}
+export type WorktreeReleaseMode = t.TypeOf<typeof WorktreeReleaseModeCodec>;
 
-export interface WorktreeGitCommandResult {
-  command: string;
-  args: string[];
-  cwd: string;
-  exitCode: number;
-  stdout: string;
-  stderr: string;
-}
+export type WorktreeReleaseResult = t.TypeOf<typeof WorktreeReleaseResultCodec>;
+
+export type WorktreeGitCommandResult = t.TypeOf<
+  typeof WorktreeGitCommandResultCodec
+>;

@@ -1,8 +1,6 @@
 import * as t from 'io-ts';
 
-import { LifecycleStatusCodec, type Exact } from '@vannadii/devplat-core';
-
-import type { RebaseResultArtifact } from './types.js';
+import { LifecycleStatusCodec } from '@vannadii/devplat-core';
 
 export const RebaseResultPayloadCodec = t.type({
   resultId: t.string,
@@ -24,8 +22,3 @@ export const RebaseResultArtifactCodec = t.type({
   updatedAt: t.string,
   payload: RebaseResultPayloadCodec,
 });
-
-export type _RebaseResultArtifactExact = Exact<
-  RebaseResultArtifact,
-  t.TypeOf<typeof RebaseResultArtifactCodec>
->;

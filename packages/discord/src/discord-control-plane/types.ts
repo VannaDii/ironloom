@@ -1,77 +1,38 @@
-import type { LifecycleStatus } from '@vannadii/devplat-core';
+import type * as t from 'io-ts';
 
-export type DiscordControlAction =
-  | 'run-this'
-  | 'claim-this'
-  | 'approve-this'
-  | 'block-this'
-  | 'complete-this'
-  | 'pause-this'
-  | 'resume-this'
-  | 'rebase-all-dependents'
-  | 'retry-gates'
-  | 'merge-now'
-  | 'show-status'
-  | 'show-last-artifact'
-  | 'explain-failure'
-  | 'sync-worktree'
-  | 'release-worktree'
-  | 'update-spec';
+import type {
+  DiscordControlActionCodec,
+  DiscordControlRequestCodec,
+  DiscordControlResultCodec,
+  DiscordInteractionRouteCodec,
+  DiscordInteractionRouteFailureCodec,
+  DiscordInteractionRouteSuccessCodec,
+  DiscordOperatorInteractionCodec,
+  DiscordResponseReceiptCodec,
+} from './codec.js';
 
-export interface DiscordControlRequest {
-  id: string;
-  summary: string;
-  status: LifecycleStatus;
-  trace: string[];
-  updatedAt: string;
-  actorId: string;
-  threadId: string;
-  channelId: string;
-  action: DiscordControlAction;
-  privileged: boolean;
-}
+export type DiscordControlAction = t.TypeOf<typeof DiscordControlActionCodec>;
 
-export interface DiscordControlResult {
-  request: DiscordControlRequest;
-  policyDecisionId: string;
-  allowed: boolean;
-  persistedKey: string;
-  responseReceipt?: DiscordResponseReceipt;
-  threadReceipt?: DiscordResponseReceipt;
-  failedClosed: boolean;
-}
+export type DiscordControlRequest = t.TypeOf<typeof DiscordControlRequestCodec>;
 
-export interface DiscordOperatorInteraction {
-  id: string;
-  token: string;
-  actorId: string;
-  channelId: string;
-  updatedAt: string;
-  commandName?: string;
-  customId?: string;
-  summary?: string;
-  threadId?: string;
-  boundThreadId?: string;
-  privileged?: boolean;
-}
+export type DiscordControlResult = t.TypeOf<typeof DiscordControlResultCodec>;
 
-export interface DiscordInteractionRouteSuccess {
-  ok: true;
-  request: DiscordControlRequest;
-}
+export type DiscordOperatorInteraction = t.TypeOf<
+  typeof DiscordOperatorInteractionCodec
+>;
 
-export interface DiscordInteractionRouteFailure {
-  ok: false;
-  interactionId: string;
-  reason: string;
-}
+export type DiscordInteractionRouteSuccess = t.TypeOf<
+  typeof DiscordInteractionRouteSuccessCodec
+>;
 
-export type DiscordInteractionRoute =
-  | DiscordInteractionRouteSuccess
-  | DiscordInteractionRouteFailure;
+export type DiscordInteractionRouteFailure = t.TypeOf<
+  typeof DiscordInteractionRouteFailureCodec
+>;
 
-export interface DiscordResponseReceipt {
-  endpoint: string;
-  statusCode: number;
-  responseBody: unknown;
-}
+export type DiscordInteractionRoute = t.TypeOf<
+  typeof DiscordInteractionRouteCodec
+>;
+
+export type DiscordResponseReceipt = t.TypeOf<
+  typeof DiscordResponseReceiptCodec
+>;

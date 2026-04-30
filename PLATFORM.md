@@ -47,6 +47,8 @@ the package responsibilities below. Current completion work focuses on:
 
 - repository-scoped runtime configuration for GitHub, Discord, OpenClaw, Sonar,
   storage, and worktrees
+- codec-owned package contracts where exported `io-ts` codecs are the schema
+  and TypeScript type source of truth for lifecycle records and tool inputs
 - durable `.devplat` storage records with layout metadata and index materialization
 - versioned artifact envelopes with migration metadata for future schema changes
 - explicit policy decisions with approval, audit, and privilege-level outcomes
@@ -101,7 +103,7 @@ the package responsibilities below. Current completion work focuses on:
 
 ### Core Layer
 
-- `@vannadii/devplat-core`: domain-wide lifecycle state, result/error primitives, shared metadata helpers, exactness helpers
+- `@vannadii/devplat-core`: domain-wide lifecycle state, result/error primitives, codec-derived public contracts, shared metadata helpers
 - `@vannadii/devplat-config`: environment parsing, typed configuration, defaults, normalization
 - `@vannadii/devplat-artifacts`: artifact envelopes, validators, schema contracts, versioned machine-readable handoffs
 
@@ -145,7 +147,7 @@ the package responsibilities below. Current completion work focuses on:
 
 ## Package Analysis Snapshot
 
-- `@vannadii/devplat-core`: current code covers lifecycle status, trace snapshots, result primitives, codecs, and exactness helpers; remaining gap is typed IDs, richer error taxonomy, and typed timestamp/value-object helpers.
+- `@vannadii/devplat-core`: current code covers lifecycle status, trace snapshots, result primitives, codec-derived public types, and shared decode helpers; remaining gap is typed IDs, richer error taxonomy, and typed timestamp/value-object helpers.
 - `@vannadii/devplat-config`: current code covers normalized runtime config for GitHub, Discord, OpenClaw, and Sonar; remaining gap is broader deployment/storage/worktree defaults and fuller config validation errors.
 - `@vannadii/devplat-artifacts`: current code covers artifact envelopes, approval, audit, merge, rebase, and validation; remaining gap is a fuller artifact registry, explicit migrations, and broader artifact coverage for research/spec/slice/task/review handoffs.
 - `@vannadii/devplat-memory`: current code covers memory-entry persistence plus decision-log, known-trap, and reusable context-bundle modeling.

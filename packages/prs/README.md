@@ -23,6 +23,8 @@ flowchart LR
 - Use policy before merge or update submission.
 - Do not infer Discord thread context here.
 
+- Keep public TypeScript contracts derived from the exported codecs.
+
 ## Development
 
 ```bash

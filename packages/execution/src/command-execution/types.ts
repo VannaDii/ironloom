@@ -1,6 +1,7 @@
 import type * as t from 'io-ts';
 
 import type {
+  CommandExecutionOptionsCodec,
   CommandExecutionPolicyCodec,
   CommandResultCodec,
 } from './codec.js';
@@ -17,12 +18,6 @@ export type CommandTruncationPolicy = NonNullable<
 
 export type CommandResult = t.TypeOf<typeof CommandResultCodec>;
 
-export interface CommandExecutionOptions {
-  cwd?: string;
-  env?: Record<string, string>;
-  timeoutMs?: number;
-  maxOutputBytes?: number;
-  retry?: {
-    attempts: number;
-  };
-}
+export type CommandExecutionOptions = t.TypeOf<
+  typeof CommandExecutionOptionsCodec
+>;

@@ -4,7 +4,7 @@ Shared domain primitives for DevPlat.
 
 ## Responsibility
 
-This package owns lifecycle statuses, trace records, typed ID aliases, structured platform errors, exactness helpers, and shared decode helpers used by all platform packages.
+This package owns lifecycle statuses, trace records, typed ID aliases, structured platform errors, codec-derived public types, and shared decode helpers used by all platform packages.
 
 ## Real-World Flow
 
@@ -21,7 +21,7 @@ flowchart LR
 
 - Keep primitives dependency-light and reusable.
 - Do not add package-specific lifecycle rules here.
-- Keep error and status changes compatible with codecs and generated schemas.
+- Keep error, status, and trace-record changes codec-first and compatible with generated schemas.
 
 ## Development
 

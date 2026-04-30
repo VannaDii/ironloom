@@ -27,6 +27,8 @@ flowchart LR
 - Delegate policy decisions to `@vannadii/devplat-policy`.
 - Do not place platform business logic in Discord handlers.
 
+- Keep public TypeScript contracts derived from the exported codecs.
+
 ## Development
 
 ```bash

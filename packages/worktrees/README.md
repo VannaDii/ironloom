@@ -26,6 +26,8 @@ flowchart LR
 - Require policy mediation before destructive release actions.
 - Do not submit GitHub pull request updates directly.
 
+- Keep public TypeScript contracts derived from the exported codecs.
+
 ## Development
 
 ```bash

@@ -1,11 +1,6 @@
 import * as t from 'io-ts';
 
-import { LifecycleStatusCodec, type Exact } from '@vannadii/devplat-core';
-
-import type {
-  DiscordControlRequest,
-  DiscordOperatorInteraction,
-} from './types.js';
+import { LifecycleStatusCodec } from '@vannadii/devplat-core';
 
 export const DiscordControlActionCodec = t.union([
   t.literal('run-this'),
@@ -57,12 +52,38 @@ export const DiscordOperatorInteractionCodec = t.intersection([
   }),
 ]);
 
-export type _DiscordControlRequestExact = Exact<
-  DiscordControlRequest,
-  t.TypeOf<typeof DiscordControlRequestCodec>
->;
+export const DiscordResponseReceiptCodec = t.type({
+  endpoint: t.string,
+  statusCode: t.number,
+  responseBody: t.unknown,
+});
 
-export type _DiscordOperatorInteractionExact = Exact<
-  DiscordOperatorInteraction,
-  t.TypeOf<typeof DiscordOperatorInteractionCodec>
->;
+export const DiscordControlResultCodec = t.intersection([
+  t.type({
+    request: DiscordControlRequestCodec,
+    policyDecisionId: t.string,
+    allowed: t.boolean,
+    persistedKey: t.string,
+    failedClosed: t.boolean,
+  }),
+  t.partial({
+    responseReceipt: DiscordResponseReceiptCodec,
+    threadReceipt: DiscordResponseReceiptCodec,
+  }),
+]);
+
+export const DiscordInteractionRouteSuccessCodec = t.type({
+  ok: t.literal(true),
+  request: DiscordControlRequestCodec,
+});
+
+export const DiscordInteractionRouteFailureCodec = t.type({
+  ok: t.literal(false),
+  interactionId: t.string,
+  reason: t.string,
+});
+
+export const DiscordInteractionRouteCodec = t.union([
+  DiscordInteractionRouteSuccessCodec,
+  DiscordInteractionRouteFailureCodec,
+]);

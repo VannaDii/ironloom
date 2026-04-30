@@ -23,6 +23,8 @@ flowchart LR
 - Do not own remediation planning or GitHub status publication.
 - Keep gate names and reports stable for OpenClaw and Discord callers.
 
+- Keep public TypeScript contracts derived from the exported codecs.
+
 ## Development
 
 ```bash

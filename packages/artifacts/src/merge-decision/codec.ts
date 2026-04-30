@@ -1,8 +1,6 @@
 import * as t from 'io-ts';
 
-import { LifecycleStatusCodec, type Exact } from '@vannadii/devplat-core';
-
-import type { MergeDecisionArtifact } from './types.js';
+import { LifecycleStatusCodec } from '@vannadii/devplat-core';
 
 export const MergeStrategyCodec = t.union([
   t.literal('merge'),
@@ -30,8 +28,3 @@ export const MergeDecisionArtifactCodec = t.type({
   updatedAt: t.string,
   payload: MergeDecisionPayloadCodec,
 });
-
-export type _MergeDecisionArtifactExact = Exact<
-  MergeDecisionArtifact,
-  t.TypeOf<typeof MergeDecisionArtifactCodec>
->;

@@ -23,6 +23,8 @@ flowchart LR
 - Do not own OpenClaw agent execution; OpenClaw remains the agent loop.
 - Keep outputs auditable and artifact-friendly.
 
+- Keep public TypeScript contracts derived from the exported codecs.
+
 ## Development
 
 ```bash

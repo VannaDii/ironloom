@@ -1,8 +1,6 @@
 import * as t from 'io-ts';
 
-import { LifecycleStatusCodec, type Exact } from '@vannadii/devplat-core';
-
-import type { AuditLogArtifact } from './types.js';
+import { LifecycleStatusCodec } from '@vannadii/devplat-core';
 
 export const AuditLogPayloadCodec = t.type({
   auditId: t.string,
@@ -22,8 +20,3 @@ export const AuditLogArtifactCodec = t.type({
   updatedAt: t.string,
   payload: AuditLogPayloadCodec,
 });
-
-export type _AuditLogArtifactExact = Exact<
-  AuditLogArtifact,
-  t.TypeOf<typeof AuditLogArtifactCodec>
->;

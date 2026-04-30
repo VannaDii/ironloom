@@ -1,19 +1,10 @@
-import type { LifecycleStatus } from '@vannadii/devplat-core';
+import type * as t from 'io-ts';
 
-export interface PolicyDecision {
-  id: string;
-  summary: string;
-  status: LifecycleStatus;
-  trace: string[];
-  updatedAt: string;
-  action: string;
-  allowed: boolean;
-  requiresApproval: boolean;
-  auditRequired: boolean;
-  privilegeLevel:
-    | 'automatic'
-    | 'human-approval'
-    | 'destructive'
-    | 'external-publish';
-  reason: string;
-}
+import type {
+  PolicyDecisionCodec,
+  PolicyPrivilegeLevelCodec,
+} from './codec.js';
+
+export type PolicyPrivilegeLevel = t.TypeOf<typeof PolicyPrivilegeLevelCodec>;
+
+export type PolicyDecision = t.TypeOf<typeof PolicyDecisionCodec>;

@@ -1,26 +1,7 @@
-import type { LifecycleStatus } from '@vannadii/devplat-core';
+import type * as t from 'io-ts';
 
-export type SupervisorPhase =
-  | 'research'
-  | 'spec'
-  | 'slicing'
-  | 'implementation'
-  | 'gates'
-  | 'review'
-  | 'remediation'
-  | 'merge'
-  | 'continuation';
+import type { SupervisorDecisionCodec, SupervisorPhaseCodec } from './codec.js';
 
-export interface SupervisorDecision {
-  id: string;
-  summary: string;
-  status: LifecycleStatus;
-  trace: string[];
-  updatedAt: string;
-  action: string;
-  nextState: LifecycleStatus;
-  approved: boolean;
-  notes: string[];
-  phase?: SupervisorPhase;
-  routedTo?: string;
-}
+export type SupervisorPhase = t.TypeOf<typeof SupervisorPhaseCodec>;
+
+export type SupervisorDecision = t.TypeOf<typeof SupervisorDecisionCodec>;

@@ -1,8 +1,12 @@
 import * as t from 'io-ts';
 
-import { LifecycleStatusCodec, type Exact } from '@vannadii/devplat-core';
+import { LifecycleStatusCodec } from '@vannadii/devplat-core';
 
-import type { GateRunReport } from './types.js';
+export const GateFailureKindCodec = t.union([
+  t.literal('command-failed'),
+  t.literal('timeout'),
+  t.literal('passed'),
+]);
 
 export const GateCheckResultCodec = t.intersection([
   t.type({
@@ -11,11 +15,7 @@ export const GateCheckResultCodec = t.intersection([
     detail: t.string,
   }),
   t.partial({
-    failureKind: t.union([
-      t.literal('command-failed'),
-      t.literal('timeout'),
-      t.literal('passed'),
-    ]),
+    failureKind: GateFailureKindCodec,
     nextAction: t.string,
   }),
 ]);
@@ -45,8 +45,3 @@ export const GateRunReportCodec = t.intersection([
     nextAction: t.string,
   }),
 ]);
-
-export type _GateRunReportExact = Exact<
-  GateRunReport,
-  t.TypeOf<typeof GateRunReportCodec>
->;

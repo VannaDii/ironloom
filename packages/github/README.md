@@ -25,6 +25,8 @@ flowchart LR
 - Delegate privilege checks to `@vannadii/devplat-policy`.
 - Do not put Discord or OpenClaw-specific behavior in this package.
 
+- Keep public TypeScript contracts derived from the exported codecs.
+
 ## Development
 
 ```bash

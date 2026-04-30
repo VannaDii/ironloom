@@ -32,3 +32,13 @@ export const CommandResultCodec = t.intersection([
     policy: CommandExecutionPolicyCodec,
   }),
 ]);
+
+export const CommandExecutionOptionsCodec = t.partial({
+  cwd: t.string,
+  env: t.record(t.string, t.string),
+  timeoutMs: t.number,
+  maxOutputBytes: t.number,
+  retry: t.type({
+    attempts: t.number,
+  }),
+});

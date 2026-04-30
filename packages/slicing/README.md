@@ -23,6 +23,8 @@ flowchart LR
 - Do not claim tasks or allocate worktrees here.
 - Keep dependency output usable by queue and branching flows.
 
+- Keep public TypeScript contracts derived from the exported codecs.
+
 ## Development
 
 ```bash

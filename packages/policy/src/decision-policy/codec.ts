@@ -1,8 +1,13 @@
 import * as t from 'io-ts';
 
-import { LifecycleStatusCodec, type Exact } from '@vannadii/devplat-core';
+import { LifecycleStatusCodec } from '@vannadii/devplat-core';
 
-import type { PolicyDecision } from './types.js';
+export const PolicyPrivilegeLevelCodec = t.union([
+  t.literal('automatic'),
+  t.literal('human-approval'),
+  t.literal('destructive'),
+  t.literal('external-publish'),
+]);
 
 export const PolicyDecisionCodec = t.type({
   id: t.string,
@@ -14,16 +19,6 @@ export const PolicyDecisionCodec = t.type({
   allowed: t.boolean,
   requiresApproval: t.boolean,
   auditRequired: t.boolean,
-  privilegeLevel: t.union([
-    t.literal('automatic'),
-    t.literal('human-approval'),
-    t.literal('destructive'),
-    t.literal('external-publish'),
-  ]),
+  privilegeLevel: PolicyPrivilegeLevelCodec,
   reason: t.string,
 });
-
-export type _PolicyDecisionExact = Exact<
-  PolicyDecision,
-  t.TypeOf<typeof PolicyDecisionCodec>
->;
