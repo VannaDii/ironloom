@@ -63,5 +63,5 @@ Use the root `PLATFORM.md` file as the authoritative foundation-scope document. 
 - keep branch names and pull request titles free of registered tool names
 - keep pull request titles in conventional commit format
 - keep pull request bodies aligned with `.github/pull_request_template.md` and fill every section with concrete change details
-- keep tests in structured `const cases = [...]` tables where each case provides `inputs`, `mock`, and `assert`, then exercises a single implementation per suite
+- keep tests in structured `const cases = [...]` tables where each case provides `inputs`, `mock`, and `assert`, then exercises a single implementation per suite; `npm run check:unit-tests` enforces this for `.test.ts`, `.test.mts`, and `.test.mjs` files
 - document release, rollback, and performance impact when a change touches those surfaces

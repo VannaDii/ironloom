@@ -68,6 +68,11 @@ npm run docs:build
 npm run act:pr
 ```
 
+`npm run check:unit-tests`, included in `check:repo`, verifies that every
+non-trivial `logic.ts` and `service.ts` has a sibling test and that every
+`.test.ts`, `.test.mts`, and `.test.mjs` file uses the structured
+`const cases = [...]` table with `inputs`, `mock`, and `assert` fields.
+
 `npm run act:pr` runs the pull-request CI and TypeScript matrix workflows
 locally through Docker using `act`, `.actrc`, and
 `.github/act/pull_request.json`. The wrapper at `scripts/run-act.sh` cleans up

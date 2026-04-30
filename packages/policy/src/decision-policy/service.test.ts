@@ -1,30 +1,94 @@
 import { describe, expect, it } from 'vitest';
 
 import { DecisionPolicyService } from './service.js';
+import type { PolicyDecision } from './types.js';
+
+type DecisionPolicyServiceInputs =
+  | {
+      mode: 'evaluate';
+      action: string;
+      privileged: boolean;
+    }
+  | {
+      mode: 'execute';
+      decision: PolicyDecision;
+    };
+
+type DecisionPolicyServiceCase = {
+  name: string;
+  inputs: DecisionPolicyServiceInputs;
+  mock: () => {
+    service: DecisionPolicyService;
+  };
+  assert: (
+    context: { service: DecisionPolicyService },
+    inputs: DecisionPolicyServiceInputs,
+  ) => void;
+};
 
 describe('DecisionPolicyService', () => {
-  it('evaluates control actions for privileged paths', () => {
-    const service = new DecisionPolicyService();
-    const decision = service.evaluateControlAction('approve-this', true);
+  const cases = [
+    {
+      name: 'evaluates control actions for privileged paths',
+      inputs: {
+        mode: 'evaluate',
+        action: 'approve-this',
+        privileged: true,
+      },
+      mock: () => ({
+        service: new DecisionPolicyService(),
+      }),
+      assert: (context, inputs) => {
+        if (inputs.mode !== 'evaluate') {
+          throw new Error('expected evaluate inputs');
+        }
 
-    expect(decision.allowed).toBe(false);
-    expect(service.explain(decision)).toContain('approve-this');
-  });
+        const decision = context.service.evaluateControlAction(
+          inputs.action,
+          inputs.privileged,
+        );
 
-  it('covers direct execute for explicit policy decisions', () => {
-    const service = new DecisionPolicyService();
-    const decision = service.execute({
-      id: 'policy-retry-gates',
-      summary: '  retry gates  ',
-      status: 'approved',
-      trace: [],
-      updatedAt: '2026-04-04T00:00:00.000Z',
-      action: 'retry-gates',
-      allowed: true,
-      requiresApproval: false,
-      reason: 'safe',
+        expect(decision.allowed).toBe(false);
+        expect(context.service.explain(decision)).toContain('approve-this');
+      },
+    },
+    {
+      name: 'covers direct execute for explicit policy decisions',
+      inputs: {
+        mode: 'execute',
+        decision: {
+          id: 'policy-retry-gates',
+          summary: '  retry gates  ',
+          status: 'approved',
+          trace: [],
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          action: 'retry-gates',
+          allowed: true,
+          requiresApproval: false,
+          reason: 'safe',
+        },
+      },
+      mock: () => ({
+        service: new DecisionPolicyService(),
+      }),
+      assert: (context, inputs) => {
+        if (inputs.mode !== 'execute') {
+          throw new Error('expected execute inputs');
+        }
+
+        const decision = context.service.execute(inputs.decision);
+
+        expect(decision.summary).toBe('retry gates');
+      },
+    },
+  ] satisfies DecisionPolicyServiceCase[];
+
+  for (const testCase of cases) {
+    it(testCase.name, () => {
+      expect.hasAssertions();
+      const context = testCase.mock();
+
+      testCase.assert(context, testCase.inputs);
     });
-
-    expect(decision.summary).toBe('retry gates');
-  });
+  }
 });

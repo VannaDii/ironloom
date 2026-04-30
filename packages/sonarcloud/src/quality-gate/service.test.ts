@@ -1,29 +1,108 @@
 import { describe, expect, it } from 'vitest';
 
 import { SonarQualityGateService } from './service.js';
+import type { SonarQualityGateResult } from './types.js';
+
+type SonarQualityGateServiceInputs =
+  | {
+      mode: 'evaluate';
+      projectKey: string;
+      passingOverallCoverage: number;
+      passingNewCodeCoverage: number;
+      failingOverallCoverage: number;
+      failingNewCodeCoverage: number;
+      blockingIssues: number;
+    }
+  | {
+      mode: 'execute';
+      result: SonarQualityGateResult;
+    };
+
+type SonarQualityGateServiceCase = {
+  name: string;
+  inputs: SonarQualityGateServiceInputs;
+  mock: () => {
+    service: SonarQualityGateService;
+  };
+  assert: (
+    context: { service: SonarQualityGateService },
+    inputs: SonarQualityGateServiceInputs,
+  ) => void;
+};
 
 describe('SonarQualityGateService', () => {
-  it('enforces the 90 percent coverage policy', () => {
-    const service = new SonarQualityGateService();
-    const passing = service.evaluate('vannadii_devplat', 95, 90, 0);
-    const failing = service.evaluate('vannadii_devplat', 89, 92, 0);
+  const cases = [
+    {
+      name: 'enforces the 90 percent coverage policy',
+      inputs: {
+        mode: 'evaluate',
+        projectKey: 'vannadii_devplat',
+        passingOverallCoverage: 95,
+        passingNewCodeCoverage: 90,
+        failingOverallCoverage: 89,
+        failingNewCodeCoverage: 92,
+        blockingIssues: 0,
+      },
+      mock: () => ({
+        service: new SonarQualityGateService(),
+      }),
+      assert: (context, inputs) => {
+        if (inputs.mode !== 'evaluate') {
+          throw new Error('expected evaluate inputs');
+        }
 
-    expect(service.passes(passing)).toBe(true);
-    expect(service.passes(failing)).toBe(false);
-    expect(service.explain(passing)).toContain('passed');
-  });
+        const passing = context.service.evaluate(
+          inputs.projectKey,
+          inputs.passingOverallCoverage,
+          inputs.passingNewCodeCoverage,
+          inputs.blockingIssues,
+        );
+        const failing = context.service.evaluate(
+          inputs.projectKey,
+          inputs.failingOverallCoverage,
+          inputs.failingNewCodeCoverage,
+          inputs.blockingIssues,
+        );
 
-  it('covers direct execute for blocking-issue failures', () => {
-    const service = new SonarQualityGateService();
-    const result = service.execute({
-      projectKey: 'vannadii_devplat',
-      status: 'passed',
-      overallCoverage: 100,
-      newCodeCoverage: 100,
-      blockingIssues: 1,
-      evaluatedAt: '2026-04-04T00:00:00.000Z',
+        expect(context.service.passes(passing)).toBe(true);
+        expect(context.service.passes(failing)).toBe(false);
+        expect(context.service.explain(passing)).toContain('passed');
+      },
+    },
+    {
+      name: 'covers direct execute for blocking-issue failures',
+      inputs: {
+        mode: 'execute',
+        result: {
+          projectKey: 'vannadii_devplat',
+          status: 'passed',
+          overallCoverage: 100,
+          newCodeCoverage: 100,
+          blockingIssues: 1,
+          evaluatedAt: '2026-04-04T00:00:00.000Z',
+        },
+      },
+      mock: () => ({
+        service: new SonarQualityGateService(),
+      }),
+      assert: (context, inputs) => {
+        if (inputs.mode !== 'execute') {
+          throw new Error('expected execute inputs');
+        }
+
+        const result = context.service.execute(inputs.result);
+
+        expect(result.status).toBe('failed');
+      },
+    },
+  ] satisfies SonarQualityGateServiceCase[];
+
+  for (const testCase of cases) {
+    it(testCase.name, () => {
+      expect.hasAssertions();
+      const context = testCase.mock();
+
+      testCase.assert(context, testCase.inputs);
     });
-
-    expect(result.status).toBe('failed');
-  });
+  }
 });

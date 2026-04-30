@@ -11,36 +11,62 @@ const repoRoot = path.resolve(
 );
 
 describe('npm override shims', () => {
-  it('makes the local discordjs opus shim behave like a missing module', () => {
-    const shimPath = path.join(
-      repoRoot,
-      'tools',
-      'npm-overrides',
-      'discordjs-opus',
-      'index.cjs',
-    );
+  const cases = [
+    {
+      name: 'makes the local discordjs opus shim behave like a missing module',
+      inputs: {
+        mode: 'missing-module',
+        pathSegments: ['tools', 'npm-overrides', 'discordjs-opus', 'index.cjs'],
+      },
+      mock: () => ({}),
+      assert: (context, inputs) => {
+        const shimPath = path.join(repoRoot, ...inputs.pathSegments);
 
-    expect(() => require(shimPath)).toThrowError(
-      expect.objectContaining({
-        code: 'MODULE_NOT_FOUND',
-        message: "Cannot find module '@discordjs/opus'",
-      }),
-    );
-  });
+        expect(() => require(shimPath)).toThrowError(
+          expect.objectContaining({
+            code: 'MODULE_NOT_FOUND',
+            message: "Cannot find module '@discordjs/opus'",
+          }),
+        );
+      },
+    },
+    {
+      name: 'exports the native DOMException from the local node-domexception shim',
+      inputs: {
+        mode: 'local-domexception',
+        pathSegments: [
+          'tools',
+          'npm-overrides',
+          'node-domexception',
+          'index.cjs',
+        ],
+      },
+      mock: () => ({}),
+      assert: (context, inputs) => {
+        const shimPath = path.join(repoRoot, ...inputs.pathSegments);
 
-  it('exports the native DOMException from the local node-domexception shim', () => {
-    const shimPath = path.join(
-      repoRoot,
-      'tools',
-      'npm-overrides',
-      'node-domexception',
-      'index.cjs',
-    );
+        expect(require(shimPath)).toBe(globalThis.DOMException);
+      },
+    },
+    {
+      name: 'installs the node-domexception override as the native constructor',
+      inputs: {
+        mode: 'installed-domexception',
+        packageName: 'node-domexception',
+      },
+      mock: () => ({}),
+      assert: (context, inputs) => {
+        expect(require(inputs.packageName)).toBe(globalThis.DOMException);
+      },
+    },
+  ];
 
-    expect(require(shimPath)).toBe(globalThis.DOMException);
-  });
+  for (const testCase of cases) {
+    it(testCase.name, () => {
+      expect.hasAssertions();
+      const context = testCase.mock();
 
-  it('installs the node-domexception override as the native constructor', () => {
-    expect(require('node-domexception')).toBe(globalThis.DOMException);
-  });
+      testCase.assert(context, testCase.inputs);
+    });
+  }
 });
