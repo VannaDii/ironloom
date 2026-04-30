@@ -73,6 +73,12 @@ for (const packageDirectoryName of packageDirectories) {
     );
   }
 
+  if (!Array.isArray(packageJson.files) || !packageJson.files.includes('src')) {
+    failures.push(
+      `${packageDirectoryName}: files must include src because exports["."].source points at src/index.ts`,
+    );
+  }
+
   if (rootExport.import !== './dist/index.js') {
     failures.push(
       `${packageDirectoryName}: exports["."].import must be ./dist/index.js`,

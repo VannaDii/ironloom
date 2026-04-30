@@ -103,7 +103,7 @@ for (const [packageName, entry] of packageEntries) {
       continue;
     }
 
-    const expectedVersion = `file:../${dependencyEntry.directoryName}`;
+    const expectedVersion = dependencyEntry.packageJson.version;
     if (entry.packageJson.dependencies?.[dependency] !== expectedVersion) {
       failures.push(
         `${entry.directoryName}: declares ${dependency} as ${entry.packageJson.dependencies?.[dependency]} but must use ${expectedVersion}`,

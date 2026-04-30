@@ -102,7 +102,7 @@ async function readTagTarget(rootDirectory, tagName) {
   }
 }
 
-async function createOrUpdateTags({ rootDirectory, dryRun }) {
+export async function createOrUpdateTags({ rootDirectory, dryRun }) {
   const packages = await discoverWorkspacePackageJsons(rootDirectory);
   const version = resolveSingleReleaseVersion(packages);
   const tags = deriveReleaseTags(version);
@@ -147,7 +147,7 @@ async function createOrUpdateTags({ rootDirectory, dryRun }) {
   };
 }
 
-function parseArgs(argv) {
+export function parseArgs(argv) {
   const args = new Map();
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -157,7 +157,12 @@ function parseArgs(argv) {
     }
 
     if (arg === '--root') {
-      args.set('--root', argv[index + 1] ?? '');
+      const rootDirectory = argv[index + 1];
+      if (rootDirectory === undefined || rootDirectory.startsWith('--')) {
+        throw new Error('--root requires a directory value.');
+      }
+
+      args.set('--root', rootDirectory);
       index += 1;
       continue;
     }

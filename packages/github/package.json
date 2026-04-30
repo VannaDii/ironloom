@@ -18,6 +18,7 @@
   },
   "files": [
     "dist",
+    "src",
     "schemas"
   ],
   "scripts": {
@@ -29,9 +30,9 @@
   },
   "dependencies": {
     "io-ts": "2.2.22",
-    "@vannadii/devplat-core": "file:../core",
-    "@vannadii/devplat-observability": "file:../observability",
-    "@vannadii/devplat-policy": "file:../policy"
+    "@vannadii/devplat-core": "0.0.0",
+    "@vannadii/devplat-observability": "0.0.0",
+    "@vannadii/devplat-policy": "0.0.0"
   },
   "repository": {
     "type": "git",

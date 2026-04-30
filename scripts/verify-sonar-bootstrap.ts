@@ -54,7 +54,11 @@ function readObject(value: unknown): object {
 }
 
 function readObjectProperty(value: object, key: string): unknown {
-  return Object.entries(value).find(([entryKey]) => entryKey === key)?.[1];
+  if (!Object.prototype.hasOwnProperty.call(value, key)) {
+    return undefined;
+  }
+
+  return Reflect.get(value, key);
 }
 
 function readConditions(value: unknown): Array<{
