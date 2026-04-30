@@ -1,4 +1,8 @@
-import type { RemediationPlan, RemediationResult } from './types.js';
+import type {
+  RemediationPlan,
+  RemediationResult,
+  RemediationResultSummary,
+} from './types.js';
 
 type RemediationNextAction =
   | 'apply-remediation'
@@ -42,6 +46,41 @@ export function createRemediationPlan(input: RemediationPlan): RemediationPlan {
       : { results: input.results.map(createRemediationResult) }),
     unresolvedFindingIds,
     nextAction: input.nextAction ?? nextAction,
+  };
+}
+
+export function createRemediationResultSummary(
+  input: RemediationPlan,
+): RemediationResultSummary {
+  const plan = createRemediationPlan(input);
+  const results =
+    input.results === undefined
+      ? []
+      : input.results.map(createRemediationResult);
+  const unresolvedFindingIds =
+    input.unresolvedFindingIds === undefined
+      ? plan.findingIds
+      : uniqueTrimmed(input.unresolvedFindingIds);
+  return {
+    planId: plan.planId.trim(),
+    successfulActions: uniqueTrimmed(
+      results.filter((result) => result.success).map((result) => result.action),
+    ),
+    failedActions: uniqueTrimmed(
+      results
+        .filter((result) => !result.success)
+        .map((result) => result.action),
+    ),
+    artifactIds: uniqueTrimmed(
+      results.flatMap((result) =>
+        result.artifactId === undefined ? [] : [result.artifactId],
+      ),
+    ),
+    unresolvedFindingIds,
+    complete:
+      unresolvedFindingIds.length === 0 &&
+      results.every((result) => result.success),
+    updatedAt: plan.updatedAt,
   };
 }
 

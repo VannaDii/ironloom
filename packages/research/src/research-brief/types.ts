@@ -1,10 +1,20 @@
-export interface ResearchBrief {
-  researchId: string;
-  topic: string;
-  question: string;
-  constraints: string[];
-  findings: string[];
-  recommendation: string;
-  sourceUrls: string[];
-  updatedAt: string;
-}
+import type * as t from 'io-ts';
+
+import type {
+  ResearchBriefCodec,
+  ResearchCapabilityComparisonCodec,
+  ResearchFeasibilityCodec,
+  ResearchSourceAttributionCodec,
+} from './codec.js';
+
+export type ResearchSourceAttribution = t.TypeOf<
+  typeof ResearchSourceAttributionCodec
+>;
+
+export type ResearchCapabilityComparison = t.TypeOf<
+  typeof ResearchCapabilityComparisonCodec
+>;
+
+export type ResearchFeasibility = t.TypeOf<typeof ResearchFeasibilityCodec>;
+
+export type ResearchBrief = t.TypeOf<typeof ResearchBriefCodec>;

@@ -20,6 +20,7 @@ flowchart LR
 ## Boundaries
 
 - Store telemetry through `@vannadii/devplat-storage`.
+- Keep telemetry event and run-summary types derived from the exported codecs.
 - Keep audit records separate when they are artifact contracts.
 - Do not own external monitoring vendor integration here.
 

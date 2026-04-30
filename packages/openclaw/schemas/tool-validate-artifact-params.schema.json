@@ -7,7 +7,7 @@
       "properties": {
         "artifact": {
           "type": "object",
-          "additionalProperties": {}
+          "additionalProperties": true
         }
       },
       "required": ["artifact"],

@@ -3,21 +3,46 @@
   "$ref": "#/definitions/VerifySonarBootstrapToolInput",
   "definitions": {
     "VerifySonarBootstrapToolInput": {
-      "$ref": "#/definitions/SonarBootstrapVerificationInput"
-    },
-    "SonarBootstrapVerificationInput": {
       "type": "object",
       "properties": {
         "projectKey": {
           "type": "string"
         },
         "qualityGateStatus": {
-          "$ref": "#/definitions/SonarApiQualityGateStatus"
+          "enum": ["ERROR", "NONE", "OK"]
         },
         "conditions": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/SonarQualityGateConditionSnapshot"
+            "type": "object",
+            "properties": {
+              "metricKey": {
+                "type": "string"
+              },
+              "comparator": {
+                "type": "string"
+              },
+              "errorThreshold": {
+                "type": "string"
+              },
+              "actualValue": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "metricKey",
+              "comparator",
+              "errorThreshold",
+              "actualValue"
+            ],
+            "additionalProperties": false
           }
         },
         "evaluatedAt": {
@@ -30,29 +55,6 @@
         "conditions",
         "evaluatedAt"
       ],
-      "additionalProperties": false
-    },
-    "SonarApiQualityGateStatus": {
-      "type": "string",
-      "enum": ["ERROR", "NONE", "OK"]
-    },
-    "SonarQualityGateConditionSnapshot": {
-      "type": "object",
-      "properties": {
-        "metricKey": {
-          "type": "string"
-        },
-        "comparator": {
-          "type": "string"
-        },
-        "errorThreshold": {
-          "type": "string"
-        },
-        "actualValue": {
-          "type": ["string", "null"]
-        }
-      },
-      "required": ["metricKey", "comparator", "errorThreshold", "actualValue"],
       "additionalProperties": false
     }
   }

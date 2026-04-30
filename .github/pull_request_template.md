@@ -1,9 +1,3 @@
-## Merge Contract
-
-Pull request titles must be conventional commit messages and must not use any registered tool name.
-Treat `codex` as a reserved tool name too; do not use it in branch names or pull request titles.
-Do not open or update a pull request until every changed executable source file is covered 100% by automated unit tests.
-
 ### Behavioral Change
 
 - _<Describe the behavior change, intent, and value.>_

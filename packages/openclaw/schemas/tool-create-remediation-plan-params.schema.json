@@ -8,7 +8,69 @@
         "findings": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/ReviewFinding"
+            "type": "object",
+            "properties": {
+              "findingId": {
+                "type": "string"
+              },
+              "severity": {
+                "enum": ["low", "medium", "high", "critical"]
+              },
+              "path": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "rationale": {
+                "type": "string"
+              },
+              "fixRecommendation": {
+                "type": "string"
+              },
+              "blocking": {
+                "type": "boolean"
+              },
+              "updatedAt": {
+                "type": "string"
+              },
+              "source": {
+                "enum": ["automated", "sonar", "human"]
+              },
+              "specConformance": {
+                "type": "object",
+                "properties": {
+                  "specId": {
+                    "type": "string"
+                  },
+                  "satisfiedCriteria": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "missingCriteria": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": ["specId", "satisfiedCriteria", "missingCriteria"],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "findingId",
+              "severity",
+              "path",
+              "message",
+              "rationale",
+              "fixRecommendation",
+              "blocking",
+              "updatedAt"
+            ],
+            "additionalProperties": false
           }
         },
         "autofix": {
@@ -16,82 +78,6 @@
         }
       },
       "required": ["findings", "autofix"],
-      "additionalProperties": false
-    },
-    "ReviewFinding": {
-      "type": "object",
-      "properties": {
-        "findingId": {
-          "type": "string"
-        },
-        "severity": {
-          "$ref": "#/definitions/ReviewSeverity"
-        },
-        "path": {
-          "type": "string"
-        },
-        "message": {
-          "type": "string"
-        },
-        "rationale": {
-          "type": "string"
-        },
-        "fixRecommendation": {
-          "type": "string"
-        },
-        "blocking": {
-          "type": "boolean"
-        },
-        "updatedAt": {
-          "type": "string"
-        },
-        "source": {
-          "$ref": "#/definitions/ReviewFindingSource"
-        },
-        "specConformance": {
-          "$ref": "#/definitions/SpecConformanceSummary"
-        }
-      },
-      "required": [
-        "findingId",
-        "severity",
-        "path",
-        "message",
-        "rationale",
-        "fixRecommendation",
-        "blocking",
-        "updatedAt"
-      ],
-      "additionalProperties": false
-    },
-    "ReviewSeverity": {
-      "type": "string",
-      "enum": ["low", "medium", "high", "critical"]
-    },
-    "ReviewFindingSource": {
-      "type": "string",
-      "enum": ["automated", "sonar", "human"]
-    },
-    "SpecConformanceSummary": {
-      "type": "object",
-      "properties": {
-        "specId": {
-          "type": "string"
-        },
-        "satisfiedCriteria": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "missingCriteria": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "required": ["specId", "satisfiedCriteria", "missingCriteria"],
       "additionalProperties": false
     }
   }

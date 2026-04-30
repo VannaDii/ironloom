@@ -1,22 +1,19 @@
-export type ReviewSeverity = 'low' | 'medium' | 'high' | 'critical';
+import type * as t from 'io-ts';
 
-export type ReviewFindingSource = 'automated' | 'sonar' | 'human';
+import type {
+  ReviewFindingCodec,
+  ReviewSummaryCodec,
+  SpecConformanceSummaryCodec,
+} from './codec.js';
 
-export interface SpecConformanceSummary {
-  specId: string;
-  satisfiedCriteria: string[];
-  missingCriteria: string[];
-}
+export type SpecConformanceSummary = t.TypeOf<
+  typeof SpecConformanceSummaryCodec
+>;
 
-export interface ReviewFinding {
-  findingId: string;
-  severity: ReviewSeverity;
-  path: string;
-  message: string;
-  rationale: string;
-  fixRecommendation: string;
-  blocking: boolean;
-  updatedAt: string;
-  source?: ReviewFindingSource;
-  specConformance?: SpecConformanceSummary;
-}
+export type ReviewFinding = t.TypeOf<typeof ReviewFindingCodec>;
+
+export type ReviewSeverity = ReviewFinding['severity'];
+
+export type ReviewFindingSource = NonNullable<ReviewFinding['source']>;
+
+export type ReviewSummary = t.TypeOf<typeof ReviewSummaryCodec>;

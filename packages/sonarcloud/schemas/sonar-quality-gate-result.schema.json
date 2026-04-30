@@ -9,7 +9,7 @@
           "type": "string"
         },
         "status": {
-          "$ref": "#/definitions/QualityGateStatus"
+          "enum": ["passed", "failed"]
         },
         "overallCoverage": {
           "type": "number"
@@ -26,7 +26,36 @@
         "issues": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/NormalizedSonarIssue"
+            "type": "object",
+            "properties": {
+              "issueKey": {
+                "type": "string"
+              },
+              "severity": {
+                "enum": ["info", "minor", "major", "critical", "blocker"]
+              },
+              "path": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "effortMinutes": {
+                "type": "number"
+              },
+              "blocking": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "issueKey",
+              "severity",
+              "path",
+              "message",
+              "effortMinutes",
+              "blocking"
+            ],
+            "additionalProperties": false
           }
         },
         "nextAction": {
@@ -42,46 +71,6 @@
         "evaluatedAt"
       ],
       "additionalProperties": false
-    },
-    "QualityGateStatus": {
-      "type": "string",
-      "enum": ["passed", "failed"]
-    },
-    "NormalizedSonarIssue": {
-      "type": "object",
-      "properties": {
-        "issueKey": {
-          "type": "string"
-        },
-        "severity": {
-          "$ref": "#/definitions/NormalizedSonarIssueSeverity"
-        },
-        "path": {
-          "type": "string"
-        },
-        "message": {
-          "type": "string"
-        },
-        "effortMinutes": {
-          "type": "number"
-        },
-        "blocking": {
-          "type": "boolean"
-        }
-      },
-      "required": [
-        "issueKey",
-        "severity",
-        "path",
-        "message",
-        "effortMinutes",
-        "blocking"
-      ],
-      "additionalProperties": false
-    },
-    "NormalizedSonarIssueSeverity": {
-      "type": "string",
-      "enum": ["info", "minor", "major", "critical", "blocker"]
     }
   }
 }

@@ -1,5 +1,5 @@
-import { PathReporter } from 'io-ts/PathReporter';
-import { isLeft } from 'fp-ts/Either';
+import { PathReporter } from 'io-ts/lib/PathReporter.js';
+import { isLeft } from 'fp-ts/lib/Either.js';
 import type * as t from 'io-ts';
 
 import { createDomainSnapshot, describeDomainSnapshot } from './logic.js';

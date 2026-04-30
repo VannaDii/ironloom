@@ -21,6 +21,7 @@ flowchart LR
 
 - This is the only package that may directly read or write `.devplat` paths.
 - Keep storage format auditable JSON.
+- Keep stored record, scope, and index-name types derived from the exported codecs.
 - Do not own lifecycle transitions for stored domain records.
 
 ## Development

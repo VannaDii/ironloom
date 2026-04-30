@@ -1,13 +1,7 @@
-import type { LifecycleStatus } from '@vannadii/devplat-core';
+import type * as t from 'io-ts';
 
-export interface TelemetryEvent {
-  id: string;
-  summary: string;
-  status: LifecycleStatus;
-  trace: string[];
-  updatedAt: string;
-  actorId: string;
-  action: string;
-  scope: 'discord' | 'github' | 'supervisor' | 'storage';
-  details: Record<string, unknown>;
-}
+import type { TelemetryEventCodec, TelemetryRunSummaryCodec } from './codec.js';
+
+export type TelemetryEvent = t.TypeOf<typeof TelemetryEventCodec>;
+
+export type TelemetryRunSummary = t.TypeOf<typeof TelemetryRunSummaryCodec>;

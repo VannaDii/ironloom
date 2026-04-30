@@ -3,27 +3,35 @@
   "$ref": "#/definitions/AuditLogArtifact",
   "definitions": {
     "AuditLogArtifact": {
-      "$ref": "#/definitions/ArtifactEnvelope%3CAuditLogPayload%2C%22audit-log%22%3E"
-    },
-    "ArtifactEnvelope<AuditLogPayload,\"audit-log\">": {
       "type": "object",
       "properties": {
         "id": {
           "type": "string"
         },
         "artifactType": {
-          "type": "string",
           "const": "audit-log"
         },
         "version": {
-          "type": "number",
           "const": 1
         },
         "summary": {
           "type": "string"
         },
         "status": {
-          "$ref": "#/definitions/LifecycleStatus"
+          "enum": [
+            "draft",
+            "queued",
+            "claimed",
+            "running",
+            "review",
+            "blocked",
+            "approved",
+            "merge-ready",
+            "merged",
+            "failed",
+            "rebasing",
+            "complete"
+          ]
         },
         "trace": {
           "type": "array",
@@ -34,25 +42,28 @@
         "updatedAt": {
           "type": "string"
         },
-        "migration": {
+        "payload": {
           "type": "object",
           "properties": {
-            "schemaVersion": {
-              "type": "number",
-              "const": 1
-            },
-            "previousArtifactId": {
+            "auditId": {
               "type": "string"
             },
-            "migratedAt": {
+            "actorId": {
               "type": "string"
+            },
+            "action": {
+              "type": "string"
+            },
+            "scope": {
+              "type": "string"
+            },
+            "details": {
+              "type": "object",
+              "additionalProperties": true
             }
           },
-          "required": ["schemaVersion"],
+          "required": ["auditId", "actorId", "action", "scope", "details"],
           "additionalProperties": false
-        },
-        "payload": {
-          "$ref": "#/definitions/AuditLogPayload"
         }
       },
       "required": [
@@ -65,46 +76,6 @@
         "updatedAt",
         "payload"
       ],
-      "additionalProperties": false
-    },
-    "LifecycleStatus": {
-      "type": "string",
-      "enum": [
-        "draft",
-        "queued",
-        "claimed",
-        "running",
-        "review",
-        "blocked",
-        "approved",
-        "merge-ready",
-        "merged",
-        "failed",
-        "rebasing",
-        "complete"
-      ]
-    },
-    "AuditLogPayload": {
-      "type": "object",
-      "properties": {
-        "auditId": {
-          "type": "string"
-        },
-        "actorId": {
-          "type": "string"
-        },
-        "action": {
-          "type": "string"
-        },
-        "scope": {
-          "type": "string"
-        },
-        "details": {
-          "type": "object",
-          "additionalProperties": {}
-        }
-      },
-      "required": ["auditId", "actorId", "action", "scope", "details"],
       "additionalProperties": false
     }
   }

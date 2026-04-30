@@ -24,7 +24,7 @@
           }
         },
         "approvalState": {
-          "$ref": "#/definitions/SpecApprovalState"
+          "enum": ["draft", "review", "approved"]
         },
         "version": {
           "type": "number"
@@ -35,7 +35,23 @@
         "revisionHistory": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/SpecRevision"
+            "type": "object",
+            "properties": {
+              "version": {
+                "type": "number"
+              },
+              "summary": {
+                "type": "string"
+              },
+              "updatedAt": {
+                "type": "string"
+              },
+              "artifactId": {
+                "type": "string"
+              }
+            },
+            "required": ["version", "summary", "updatedAt"],
+            "additionalProperties": false
           }
         },
         "renderedPullRequestBody": {
@@ -58,29 +74,6 @@
         "version",
         "updatedAt"
       ],
-      "additionalProperties": false
-    },
-    "SpecApprovalState": {
-      "type": "string",
-      "enum": ["draft", "review", "approved"]
-    },
-    "SpecRevision": {
-      "type": "object",
-      "properties": {
-        "version": {
-          "type": "number"
-        },
-        "summary": {
-          "type": "string"
-        },
-        "updatedAt": {
-          "type": "string"
-        },
-        "artifactId": {
-          "type": "string"
-        }
-      },
-      "required": ["version", "summary", "updatedAt"],
       "additionalProperties": false
     }
   }

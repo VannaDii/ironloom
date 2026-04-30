@@ -1,6 +1,20 @@
 import * as t from 'io-ts';
 
-import type { CommandResult } from './types.js';
+export const CommandExecutionPolicyCodec = t.intersection([
+  t.type({
+    retry: t.type({
+      attempts: t.number,
+      retryableExitCodes: t.array(t.number),
+    }),
+  }),
+  t.partial({
+    truncation: t.type({
+      maxOutputBytes: t.number,
+      mode: t.literal('bytes'),
+    }),
+    timeoutMs: t.number,
+  }),
+]);
 
 export const CommandResultCodec = t.intersection([
   t.type({
@@ -15,12 +29,6 @@ export const CommandResultCodec = t.intersection([
   t.partial({
     attempts: t.number,
     truncated: t.boolean,
+    policy: CommandExecutionPolicyCodec,
   }),
 ]);
-
-export type _CommandResultExact =
-  t.TypeOf<typeof CommandResultCodec> extends CommandResult
-    ? CommandResult extends t.TypeOf<typeof CommandResultCodec>
-      ? true
-      : never
-    : never;

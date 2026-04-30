@@ -1,7 +1,5 @@
 import * as t from 'io-ts';
 
-import type { RemediationPlan } from './types.js';
-
 export const RemediationResultCodec = t.intersection([
   t.type({
     action: t.string,
@@ -30,9 +28,12 @@ export const RemediationPlanCodec = t.intersection([
   }),
 ]);
 
-export type _RemediationPlanExact =
-  t.TypeOf<typeof RemediationPlanCodec> extends RemediationPlan
-    ? RemediationPlan extends t.TypeOf<typeof RemediationPlanCodec>
-      ? true
-      : never
-    : never;
+export const RemediationResultSummaryCodec = t.type({
+  planId: t.string,
+  successfulActions: t.array(t.string),
+  failedActions: t.array(t.string),
+  artifactIds: t.array(t.string),
+  unresolvedFindingIds: t.array(t.string),
+  complete: t.boolean,
+  updatedAt: t.string,
+});

@@ -32,7 +32,26 @@
         "results": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/RemediationResult"
+            "type": "object",
+            "properties": {
+              "action": {
+                "type": "string"
+              },
+              "success": {
+                "type": "boolean"
+              },
+              "detail": {
+                "type": "string"
+              },
+              "completedAt": {
+                "type": "string"
+              },
+              "artifactId": {
+                "type": "string"
+              }
+            },
+            "required": ["action", "success", "detail", "completedAt"],
+            "additionalProperties": false
           }
         },
         "unresolvedFindingIds": {
@@ -53,28 +72,6 @@
         "approvalRequired",
         "updatedAt"
       ],
-      "additionalProperties": false
-    },
-    "RemediationResult": {
-      "type": "object",
-      "properties": {
-        "action": {
-          "type": "string"
-        },
-        "success": {
-          "type": "boolean"
-        },
-        "artifactId": {
-          "type": "string"
-        },
-        "detail": {
-          "type": "string"
-        },
-        "completedAt": {
-          "type": "string"
-        }
-      },
-      "required": ["action", "success", "detail", "completedAt"],
       "additionalProperties": false
     }
   }

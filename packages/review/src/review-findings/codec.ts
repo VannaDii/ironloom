@@ -1,7 +1,5 @@
 import * as t from 'io-ts';
 
-import type { ReviewFinding } from './types.js';
-
 export const SpecConformanceSummaryCodec = t.type({
   specId: t.string,
   satisfiedCriteria: t.array(t.string),
@@ -34,9 +32,13 @@ export const ReviewFindingCodec = t.intersection([
   }),
 ]);
 
-export type _ReviewFindingExact =
-  t.TypeOf<typeof ReviewFindingCodec> extends ReviewFinding
-    ? ReviewFinding extends t.TypeOf<typeof ReviewFindingCodec>
-      ? true
-      : never
-    : never;
+export const ReviewSummaryCodec = t.type({
+  summaryId: t.string,
+  specId: t.string,
+  findingIds: t.array(t.string),
+  blockingFindingIds: t.array(t.string),
+  satisfiedCriteria: t.array(t.string),
+  missingCriteria: t.array(t.string),
+  implementationMatchesSpec: t.boolean,
+  updatedAt: t.string,
+});

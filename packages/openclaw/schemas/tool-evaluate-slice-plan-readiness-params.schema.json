@@ -6,7 +6,108 @@
       "type": "object",
       "properties": {
         "plan": {
-          "$ref": "#/definitions/SlicePlan"
+          "type": "object",
+          "properties": {
+            "sliceId": {
+              "type": "string"
+            },
+            "specId": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "dependsOn": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "acceptanceCriteria": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "doneConditions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "size": {
+              "enum": ["small", "medium", "large"]
+            },
+            "updatedAt": {
+              "type": "string"
+            },
+            "dependencyGraph": {
+              "type": "object",
+              "properties": {
+                "sliceId": {
+                  "type": "string"
+                },
+                "edges": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "fromSliceId": {
+                        "type": "string"
+                      },
+                      "toSliceId": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["fromSliceId", "toSliceId"],
+                    "additionalProperties": false
+                  }
+                },
+                "blockedBy": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": ["sliceId", "edges", "blockedBy"],
+              "additionalProperties": false
+            },
+            "workPacket": {
+              "type": "object",
+              "properties": {
+                "branchName": {
+                  "type": "string"
+                },
+                "taskIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "estimatedPullRequestCount": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "branchName",
+                "taskIds",
+                "estimatedPullRequestCount"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "sliceId",
+            "specId",
+            "title",
+            "dependsOn",
+            "acceptanceCriteria",
+            "doneConditions",
+            "size",
+            "updatedAt"
+          ],
+          "additionalProperties": false
         },
         "completedSliceIds": {
           "type": "array",
@@ -16,119 +117,6 @@
         }
       },
       "required": ["plan", "completedSliceIds"],
-      "additionalProperties": false
-    },
-    "SlicePlan": {
-      "type": "object",
-      "properties": {
-        "sliceId": {
-          "type": "string"
-        },
-        "specId": {
-          "type": "string"
-        },
-        "title": {
-          "type": "string"
-        },
-        "dependsOn": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "acceptanceCriteria": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "doneConditions": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "size": {
-          "$ref": "#/definitions/SliceSize"
-        },
-        "updatedAt": {
-          "type": "string"
-        },
-        "dependencyGraph": {
-          "$ref": "#/definitions/SliceDependencyGraph"
-        },
-        "workPacket": {
-          "$ref": "#/definitions/SliceWorkPacket"
-        }
-      },
-      "required": [
-        "sliceId",
-        "specId",
-        "title",
-        "dependsOn",
-        "acceptanceCriteria",
-        "doneConditions",
-        "size",
-        "updatedAt"
-      ],
-      "additionalProperties": false
-    },
-    "SliceSize": {
-      "type": "string",
-      "enum": ["small", "medium", "large"]
-    },
-    "SliceDependencyGraph": {
-      "type": "object",
-      "properties": {
-        "sliceId": {
-          "type": "string"
-        },
-        "edges": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/SliceDependencyEdge"
-          }
-        },
-        "blockedBy": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "required": ["sliceId", "edges", "blockedBy"],
-      "additionalProperties": false
-    },
-    "SliceDependencyEdge": {
-      "type": "object",
-      "properties": {
-        "fromSliceId": {
-          "type": "string"
-        },
-        "toSliceId": {
-          "type": "string"
-        }
-      },
-      "required": ["fromSliceId", "toSliceId"],
-      "additionalProperties": false
-    },
-    "SliceWorkPacket": {
-      "type": "object",
-      "properties": {
-        "branchName": {
-          "type": "string"
-        },
-        "taskIds": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "estimatedPullRequestCount": {
-          "type": "number"
-        }
-      },
-      "required": ["branchName", "taskIds", "estimatedPullRequestCount"],
       "additionalProperties": false
     }
   }

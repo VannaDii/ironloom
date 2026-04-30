@@ -21,6 +21,7 @@ flowchart LR
 
 - Consume review and Sonar findings as inputs.
 - Do not execute fixes directly.
+- Keep remediation plan, result, and summary types derived from the exported codecs.
 - Keep remediation outputs artifact-ready and auditable.
 
 ## Development

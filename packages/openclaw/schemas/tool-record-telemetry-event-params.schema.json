@@ -3,9 +3,6 @@
   "$ref": "#/definitions/RecordTelemetryEventToolInput",
   "definitions": {
     "RecordTelemetryEventToolInput": {
-      "$ref": "#/definitions/TelemetryEvent"
-    },
-    "TelemetryEvent": {
       "type": "object",
       "properties": {
         "id": {
@@ -15,7 +12,20 @@
           "type": "string"
         },
         "status": {
-          "$ref": "#/definitions/LifecycleStatus"
+          "enum": [
+            "draft",
+            "queued",
+            "claimed",
+            "running",
+            "review",
+            "blocked",
+            "approved",
+            "merge-ready",
+            "merged",
+            "failed",
+            "rebasing",
+            "complete"
+          ]
         },
         "trace": {
           "type": "array",
@@ -33,12 +43,11 @@
           "type": "string"
         },
         "scope": {
-          "type": "string",
           "enum": ["discord", "github", "supervisor", "storage"]
         },
         "details": {
           "type": "object",
-          "additionalProperties": {}
+          "additionalProperties": true
         }
       },
       "required": [
@@ -53,23 +62,6 @@
         "details"
       ],
       "additionalProperties": false
-    },
-    "LifecycleStatus": {
-      "type": "string",
-      "enum": [
-        "draft",
-        "queued",
-        "claimed",
-        "running",
-        "review",
-        "blocked",
-        "approved",
-        "merge-ready",
-        "merged",
-        "failed",
-        "rebasing",
-        "complete"
-      ]
     }
   }
 }

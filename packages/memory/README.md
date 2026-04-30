@@ -21,6 +21,7 @@ flowchart LR
 
 - Store memory through `@vannadii/devplat-storage`.
 - Keep source artifact links for auditability.
+- Keep memory entry and context bundle types derived from the exported codecs.
 - Do not mix transient telemetry with long-lived memory.
 
 ## Development

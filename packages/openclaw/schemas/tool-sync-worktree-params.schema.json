@@ -6,81 +6,70 @@
       "type": "object",
       "properties": {
         "allocation": {
-          "$ref": "#/definitions/WorktreeAllocation"
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "status": {
+              "enum": [
+                "draft",
+                "queued",
+                "claimed",
+                "running",
+                "review",
+                "blocked",
+                "approved",
+                "merge-ready",
+                "merged",
+                "failed",
+                "rebasing",
+                "complete"
+              ]
+            },
+            "trace": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "updatedAt": {
+              "type": "string"
+            },
+            "taskId": {
+              "type": "string"
+            },
+            "branchName": {
+              "type": "string"
+            },
+            "worktreePath": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "summary",
+            "status",
+            "trace",
+            "updatedAt",
+            "taskId",
+            "branchName",
+            "worktreePath"
+          ],
+          "additionalProperties": false
         },
         "baseBranch": {
           "type": "string"
         },
         "syncMode": {
-          "$ref": "#/definitions/WorktreeSyncMode"
+          "enum": ["fast-forward", "rebase"]
         }
       },
       "required": ["allocation", "baseBranch"],
       "additionalProperties": false
-    },
-    "WorktreeAllocation": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "summary": {
-          "type": "string"
-        },
-        "status": {
-          "$ref": "#/definitions/LifecycleStatus"
-        },
-        "trace": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "updatedAt": {
-          "type": "string"
-        },
-        "taskId": {
-          "type": "string"
-        },
-        "branchName": {
-          "type": "string"
-        },
-        "worktreePath": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "id",
-        "summary",
-        "status",
-        "trace",
-        "updatedAt",
-        "taskId",
-        "branchName",
-        "worktreePath"
-      ],
-      "additionalProperties": false
-    },
-    "LifecycleStatus": {
-      "type": "string",
-      "enum": [
-        "draft",
-        "queued",
-        "claimed",
-        "running",
-        "review",
-        "blocked",
-        "approved",
-        "merge-ready",
-        "merged",
-        "failed",
-        "rebasing",
-        "complete"
-      ]
-    },
-    "WorktreeSyncMode": {
-      "type": "string",
-      "enum": ["fast-forward", "rebase"]
     }
   }
 }

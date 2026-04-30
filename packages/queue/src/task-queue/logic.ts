@@ -77,6 +77,44 @@ export function claimTask(record: TaskRecord, assigneeId: string): TaskRecord {
   });
 }
 
+export function releaseTask(record: TaskRecord, reason: string): TaskRecord {
+  const recordWithoutAssignee = { ...record };
+  delete recordWithoutAssignee.assigneeId;
+
+  return createTaskRecord({
+    ...recordWithoutAssignee,
+    status: 'queued',
+    transitions: [
+      ...(record.transitions ?? []),
+      createTaskTransitionEvent({
+        fromStatus: record.status,
+        toStatus: 'queued',
+        action: 'release',
+        reason,
+        occurredAt: record.updatedAt,
+      }),
+    ],
+  });
+}
+
+export function resumeTask(record: TaskRecord, actorId: string): TaskRecord {
+  return createTaskRecord({
+    ...record,
+    status: 'running',
+    transitions: [
+      ...(record.transitions ?? []),
+      createTaskTransitionEvent({
+        fromStatus: record.status,
+        toStatus: 'running',
+        action: 'resume',
+        actorId,
+        reason: `Resumed task ${record.taskId}`,
+        occurredAt: record.updatedAt,
+      }),
+    ],
+  });
+}
+
 export function updateTaskStatus(
   record: TaskRecord,
   status: LifecycleStatus,

@@ -1,14 +1,15 @@
-export type MemoryKind = 'decision' | 'constraint' | 'preference' | 'trap';
+import type * as t from 'io-ts';
 
-export type MemoryStatus = 'active' | 'superseded';
+import type { MemoryContextBundleCodec, MemoryEntryCodec } from './codec.js';
 
-export interface MemoryEntry {
-  memoryId: string;
-  kind: MemoryKind;
-  subject: string;
-  detail: string;
-  tags: string[];
-  status: MemoryStatus;
-  sourceArtifactId?: string;
-  updatedAt: string;
-}
+export type MemoryEntry = t.TypeOf<typeof MemoryEntryCodec>;
+
+export type MemoryKind = MemoryEntry['kind'];
+
+export type MemoryStatus = MemoryEntry['status'];
+
+export type MemoryContextBundle = t.TypeOf<typeof MemoryContextBundleCodec>;
+
+export type MemoryDecisionLog = MemoryContextBundle['decisions'];
+
+export type KnownTrapBundle = MemoryContextBundle['knownTraps'];

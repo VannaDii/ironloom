@@ -1,8 +1,6 @@
 import * as t from 'io-ts';
 
-import { LifecycleStatusCodec, type Exact } from '@vannadii/devplat-core';
-
-import type { TelemetryEvent } from './types.js';
+import { LifecycleStatusCodec } from '@vannadii/devplat-core';
 
 export const TelemetryEventCodec = t.type({
   id: t.string,
@@ -21,7 +19,19 @@ export const TelemetryEventCodec = t.type({
   details: t.UnknownRecord,
 });
 
-export type _TelemetryEventExact = Exact<
-  TelemetryEvent,
-  t.TypeOf<typeof TelemetryEventCodec>
->;
+export const TelemetryRunSummaryCodec = t.type({
+  runId: t.string,
+  eventIds: t.array(t.string),
+  scopes: t.array(
+    t.union([
+      t.literal('discord'),
+      t.literal('github'),
+      t.literal('supervisor'),
+      t.literal('storage'),
+    ]),
+  ),
+  actionCount: t.number,
+  failedCount: t.number,
+  startedAt: t.string,
+  completedAt: t.string,
+});

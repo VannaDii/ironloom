@@ -3,9 +3,6 @@
   "$ref": "#/definitions/HandleDiscordControlToolInput",
   "definitions": {
     "HandleDiscordControlToolInput": {
-      "$ref": "#/definitions/DiscordControlRequest"
-    },
-    "DiscordControlRequest": {
       "type": "object",
       "properties": {
         "id": {
@@ -15,7 +12,20 @@
           "type": "string"
         },
         "status": {
-          "$ref": "#/definitions/LifecycleStatus"
+          "enum": [
+            "draft",
+            "queued",
+            "claimed",
+            "running",
+            "review",
+            "blocked",
+            "approved",
+            "merge-ready",
+            "merged",
+            "failed",
+            "rebasing",
+            "complete"
+          ]
         },
         "trace": {
           "type": "array",
@@ -36,7 +46,24 @@
           "type": "string"
         },
         "action": {
-          "$ref": "#/definitions/DiscordControlAction"
+          "enum": [
+            "run-this",
+            "claim-this",
+            "approve-this",
+            "block-this",
+            "complete-this",
+            "pause-this",
+            "resume-this",
+            "rebase-all-dependents",
+            "retry-gates",
+            "merge-now",
+            "show-status",
+            "show-last-artifact",
+            "explain-failure",
+            "sync-worktree",
+            "release-worktree",
+            "update-spec"
+          ]
         },
         "privileged": {
           "type": "boolean"
@@ -55,44 +82,6 @@
         "privileged"
       ],
       "additionalProperties": false
-    },
-    "LifecycleStatus": {
-      "type": "string",
-      "enum": [
-        "draft",
-        "queued",
-        "claimed",
-        "running",
-        "review",
-        "blocked",
-        "approved",
-        "merge-ready",
-        "merged",
-        "failed",
-        "rebasing",
-        "complete"
-      ]
-    },
-    "DiscordControlAction": {
-      "type": "string",
-      "enum": [
-        "run-this",
-        "claim-this",
-        "approve-this",
-        "block-this",
-        "complete-this",
-        "pause-this",
-        "resume-this",
-        "rebase-all-dependents",
-        "retry-gates",
-        "merge-now",
-        "show-status",
-        "show-last-artifact",
-        "explain-failure",
-        "sync-worktree",
-        "release-worktree",
-        "update-spec"
-      ]
     }
   }
 }

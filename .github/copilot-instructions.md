@@ -8,10 +8,8 @@
 - Do not use TypeScript type assertions or casts anywhere in authored code; banned forms include `as`, `as unknown`, angle-bracket casts, non-null assertions, and double assertions.
 - Use `PLATFORM.md` as the authoritative foundation-scope document for required packages, workflows, delivery surfaces, and acceptance criteria.
 - Keep branch names and pull request titles free of registered tool names.
-- Treat `codex` as a reserved tool name and keep it out of branch names and pull request titles.
 - Keep pull request titles in conventional commit form.
 - Keep pull request bodies aligned with `.github/pull_request_template.md` and populate every section with the actual change details.
-- Do not open or update a pull request until every changed executable source file is covered 100% by automated unit tests.
 - Prefer explicit, traceable behavior over hidden convenience.
 
 ## Architectural Boundaries

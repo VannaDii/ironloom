@@ -1,4 +1,8 @@
-import type { CommandResult } from './types.js';
+import type {
+  CommandExecutionOptions,
+  CommandExecutionPolicy,
+  CommandResult,
+} from './types.js';
 
 export function truncateCommandOutput(
   value: string,
@@ -29,6 +33,37 @@ export function createCommandResult(input: CommandResult): CommandResult {
     durationMs: Math.max(0, input.durationMs),
     ...(input.attempts === undefined ? {} : { attempts: input.attempts }),
     ...(input.truncated === undefined ? {} : { truncated: input.truncated }),
+    ...(input.policy === undefined ? {} : { policy: input.policy }),
+  };
+}
+
+export function createCommandExecutionPolicy(
+  input: CommandExecutionOptions,
+): CommandExecutionPolicy {
+  const attempts = Math.max(1, Math.trunc(input.retry?.attempts ?? 1));
+  const timeoutMs =
+    typeof input.timeoutMs === 'number' && input.timeoutMs > 0
+      ? Math.trunc(input.timeoutMs)
+      : undefined;
+  const maxOutputBytes =
+    typeof input.maxOutputBytes === 'number' && input.maxOutputBytes > 0
+      ? Math.trunc(input.maxOutputBytes)
+      : undefined;
+
+  return {
+    retry: {
+      attempts,
+      retryableExitCodes: [1, 124],
+    },
+    ...(maxOutputBytes === undefined
+      ? {}
+      : {
+          truncation: {
+            maxOutputBytes,
+            mode: 'bytes',
+          },
+        }),
+    ...(timeoutMs === undefined ? {} : { timeoutMs }),
   };
 }
 

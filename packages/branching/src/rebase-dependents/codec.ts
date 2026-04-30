@@ -6,25 +6,47 @@ import {
   WorktreeSyncResultCodec,
 } from '@vannadii/devplat-worktrees';
 
-import type {
-  ExecuteRebaseDependentsInput,
-  RebaseExecutionResult,
-  RebasePlan,
-} from './types.js';
+export const DependentBranchesCodec = t.array(t.string);
 
-export const RebasePlanCodec = t.type({
-  mergedPrNumber: t.number,
+export const BranchDependencyGraphCodec = t.type({
   baseBranch: t.string,
-  dependentBranches: t.array(t.string),
-  rebaseRequired: t.boolean,
-  conflictsExpected: t.boolean,
-  updatedAt: t.string,
+  edges: t.array(
+    t.type({
+      fromBranch: t.string,
+      toBranch: t.string,
+    }),
+  ),
 });
+
+export const BranchConflictClassificationCodec = t.type({
+  kind: t.union([
+    t.literal('none'),
+    t.literal('expected'),
+    t.literal('detected'),
+  ]),
+  affectedBranches: t.array(t.string),
+  nextAction: t.string,
+});
+
+export const RebasePlanCodec = t.intersection([
+  t.type({
+    mergedPrNumber: t.number,
+    baseBranch: t.string,
+    dependentBranches: t.array(t.string),
+    rebaseRequired: t.boolean,
+    conflictsExpected: t.boolean,
+    updatedAt: t.string,
+  }),
+  t.partial({
+    dependencyGraph: BranchDependencyGraphCodec,
+    conflictClassification: BranchConflictClassificationCodec,
+  }),
+]);
 
 export const ExecuteRebaseDependentsInputCodec = t.intersection([
   t.type({
     record: PullRequestRecordCodec,
-    dependentBranches: RebasePlanCodec.props.dependentBranches,
+    dependentBranches: DependentBranchesCodec,
   }),
   t.partial({
     syncMode: WorktreeSyncModeCodec,
@@ -38,28 +60,3 @@ export const RebaseExecutionResultCodec = t.type({
   executed: t.boolean,
   conflictsDetected: t.boolean,
 });
-
-export type _RebasePlanExact =
-  t.TypeOf<typeof RebasePlanCodec> extends RebasePlan
-    ? RebasePlan extends t.TypeOf<typeof RebasePlanCodec>
-      ? true
-      : never
-    : never;
-
-export type _ExecuteRebaseDependentsInputExact =
-  t.TypeOf<
-    typeof ExecuteRebaseDependentsInputCodec
-  > extends ExecuteRebaseDependentsInput
-    ? ExecuteRebaseDependentsInput extends t.TypeOf<
-        typeof ExecuteRebaseDependentsInputCodec
-      >
-      ? true
-      : never
-    : never;
-
-export type _RebaseExecutionResultExact =
-  t.TypeOf<typeof RebaseExecutionResultCodec> extends RebaseExecutionResult
-    ? RebaseExecutionResult extends t.TypeOf<typeof RebaseExecutionResultCodec>
-      ? true
-      : never
-    : never;

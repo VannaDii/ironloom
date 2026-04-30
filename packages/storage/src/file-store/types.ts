@@ -1,27 +1,29 @@
-import type { LifecycleStatus } from '@vannadii/devplat-core';
+import type * as t from 'io-ts';
 
-export type StoreScope = 'artifacts' | 'memory' | 'state' | 'telemetry';
+import type {
+  StoredRecordCodec,
+  StoreIndexNameCodec,
+  StoreScopeCodec,
+} from './codec.js';
 
-export type StoreIndexName =
-  | 'active-thread'
-  | 'task'
-  | 'pull-request'
-  | 'branch'
-  | 'artifact';
+export type StoreScope = t.TypeOf<typeof StoreScopeCodec>;
 
-export interface StoredRecord<
-  TPayload extends object = Record<string, unknown>,
-> {
+export type StoreIndexName = t.TypeOf<typeof StoreIndexNameCodec>;
+
+export type StoredRecord<TPayload extends object = Record<string, unknown>> =
+  Omit<t.TypeOf<typeof StoredRecordCodec>, 'payload'> & {
+    payload: TPayload;
+  };
+
+export interface StoredRecordIndexEntry {
   id: string;
-  key: string;
   scope: StoreScope;
-  summary: string;
-  status: LifecycleStatus;
-  trace: string[];
+  key: string;
   updatedAt: string;
-  layoutVersion?: 1;
-  indexes?: readonly StoreIndexName[];
-  payload: TPayload;
 }
 
-export type StoredRecordSchema = StoredRecord;
+export interface StorageLayoutContract {
+  layoutVersion: 1;
+  scopes: readonly StoreScope[];
+  indexes: readonly StoreIndexName[];
+}

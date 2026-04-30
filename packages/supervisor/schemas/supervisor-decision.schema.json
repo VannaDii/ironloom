@@ -12,7 +12,20 @@
           "type": "string"
         },
         "status": {
-          "$ref": "#/definitions/LifecycleStatus"
+          "enum": [
+            "draft",
+            "queued",
+            "claimed",
+            "running",
+            "review",
+            "blocked",
+            "approved",
+            "merge-ready",
+            "merged",
+            "failed",
+            "rebasing",
+            "complete"
+          ]
         },
         "trace": {
           "type": "array",
@@ -27,7 +40,20 @@
           "type": "string"
         },
         "nextState": {
-          "$ref": "#/definitions/LifecycleStatus"
+          "enum": [
+            "draft",
+            "queued",
+            "claimed",
+            "running",
+            "review",
+            "blocked",
+            "approved",
+            "merge-ready",
+            "merged",
+            "failed",
+            "rebasing",
+            "complete"
+          ]
         },
         "approved": {
           "type": "boolean"
@@ -39,7 +65,17 @@
           }
         },
         "phase": {
-          "$ref": "#/definitions/SupervisorPhase"
+          "enum": [
+            "research",
+            "spec",
+            "slicing",
+            "implementation",
+            "gates",
+            "review",
+            "remediation",
+            "merge",
+            "continuation"
+          ]
         },
         "routedTo": {
           "type": "string"
@@ -57,37 +93,6 @@
         "notes"
       ],
       "additionalProperties": false
-    },
-    "LifecycleStatus": {
-      "type": "string",
-      "enum": [
-        "draft",
-        "queued",
-        "claimed",
-        "running",
-        "review",
-        "blocked",
-        "approved",
-        "merge-ready",
-        "merged",
-        "failed",
-        "rebasing",
-        "complete"
-      ]
-    },
-    "SupervisorPhase": {
-      "type": "string",
-      "enum": [
-        "research",
-        "spec",
-        "slicing",
-        "implementation",
-        "gates",
-        "review",
-        "remediation",
-        "merge",
-        "continuation"
-      ]
     }
   }
 }

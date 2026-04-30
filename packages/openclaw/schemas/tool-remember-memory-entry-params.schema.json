@@ -3,16 +3,13 @@
   "$ref": "#/definitions/RememberMemoryEntryToolInput",
   "definitions": {
     "RememberMemoryEntryToolInput": {
-      "$ref": "#/definitions/MemoryEntry"
-    },
-    "MemoryEntry": {
       "type": "object",
       "properties": {
         "memoryId": {
           "type": "string"
         },
         "kind": {
-          "$ref": "#/definitions/MemoryKind"
+          "enum": ["decision", "constraint", "preference", "trap"]
         },
         "subject": {
           "type": "string"
@@ -27,12 +24,12 @@
           }
         },
         "status": {
-          "$ref": "#/definitions/MemoryStatus"
-        },
-        "sourceArtifactId": {
-          "type": "string"
+          "enum": ["active", "superseded"]
         },
         "updatedAt": {
+          "type": "string"
+        },
+        "sourceArtifactId": {
           "type": "string"
         }
       },
@@ -46,14 +43,6 @@
         "updatedAt"
       ],
       "additionalProperties": false
-    },
-    "MemoryKind": {
-      "type": "string",
-      "enum": ["decision", "constraint", "preference", "trap"]
-    },
-    "MemoryStatus": {
-      "type": "string",
-      "enum": ["active", "superseded"]
     }
   }
 }

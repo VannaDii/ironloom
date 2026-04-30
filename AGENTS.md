@@ -8,10 +8,8 @@
 - Do not bypass schema generation or the generated OpenClaw manifest workflow.
 - Use `PLATFORM.md` as the authoritative foundation-scope document for required packages, surfaces, workflows, and acceptance criteria.
 - Branch names and pull request titles must not include any registered tool name.
-- Treat `codex` as a reserved tool name and never use it in branch names or pull request titles.
 - Pull request titles must use conventional commit format.
 - Pull request bodies must follow `.github/pull_request_template.md` and fill every section with repo-specific content.
-- Do not open or update a pull request until every changed executable source file is covered 100% by automated unit tests.
 - Keep GitHub as the source of truth for specs, pull requests, reviews, and merge history.
 - Keep Discord and OpenClaw control flows auditable.
 

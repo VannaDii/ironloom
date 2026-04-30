@@ -1,28 +1,25 @@
-import type { PullRequestRecord } from '@vannadii/devplat-prs';
+import type * as t from 'io-ts';
+
 import type {
-  WorktreeSyncMode,
-  WorktreeSyncResult,
-} from '@vannadii/devplat-worktrees';
+  BranchConflictClassificationCodec,
+  BranchDependencyGraphCodec,
+  ExecuteRebaseDependentsInputCodec,
+  RebaseExecutionResultCodec,
+  RebasePlanCodec,
+} from './codec.js';
 
-export interface RebasePlan {
-  mergedPrNumber: number;
-  baseBranch: string;
-  dependentBranches: string[];
-  rebaseRequired: boolean;
-  conflictsExpected: boolean;
-  updatedAt: string;
-}
+export type RebasePlan = t.TypeOf<typeof RebasePlanCodec>;
 
-export interface ExecuteRebaseDependentsInput {
-  record: PullRequestRecord;
-  dependentBranches: RebasePlan['dependentBranches'];
-  syncMode?: WorktreeSyncMode;
-}
+export type BranchDependencyGraph = t.TypeOf<typeof BranchDependencyGraphCodec>;
 
-export interface RebaseExecutionResult {
-  plan: RebasePlan;
-  syncMode: WorktreeSyncMode;
-  syncResults: WorktreeSyncResult[];
-  executed: boolean;
-  conflictsDetected: boolean;
-}
+export type BranchDependencyEdge = BranchDependencyGraph['edges'][number];
+
+export type BranchConflictClassification = t.TypeOf<
+  typeof BranchConflictClassificationCodec
+>;
+
+export type ExecuteRebaseDependentsInput = t.TypeOf<
+  typeof ExecuteRebaseDependentsInputCodec
+>;
+
+export type RebaseExecutionResult = t.TypeOf<typeof RebaseExecutionResultCodec>;

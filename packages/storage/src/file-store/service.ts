@@ -7,6 +7,7 @@ import {
   buildStorageIndexPath,
   buildStoragePath,
   createStoredRecord,
+  createStoredRecordIndexEntry,
   describeStoredRecord,
 } from './logic.js';
 import { StoredRecordCodec } from './codec.js';
@@ -47,16 +48,7 @@ export class FileStoreService {
         await mkdir(resolve(indexPath, '..'), { recursive: true });
         await writeFile(
           indexPath,
-          `${JSON.stringify(
-            {
-              id: normalized.id,
-              scope: normalized.scope,
-              key: normalized.key,
-              updatedAt: normalized.updatedAt,
-            },
-            null,
-            2,
-          )}\n`,
+          `${JSON.stringify(createStoredRecordIndexEntry(normalized), null, 2)}\n`,
           'utf8',
         );
       }),

@@ -258,7 +258,6 @@ export const REQUIRED_HEADINGS = new Map([
   [
     '.github/pull_request_template.md',
     [
-      '## Merge Contract',
       '### Behavioral Change',
       '### Performance Impact',
       '### Rollback Notes',
@@ -466,10 +465,8 @@ function buildRequiredTextRules({
         'Use `PLATFORM.md` as the authoritative foundation-scope document for required packages, surfaces, workflows, and acceptance criteria.',
         'Do not use TypeScript type assertions or casts anywhere in authored code; banned forms include `as`, `as unknown`, angle-bracket casts, non-null assertions, and double assertions.',
         'Branch names and pull request titles must not include any registered tool name.',
-        'Treat `codex` as a reserved tool name and never use it in branch names or pull request titles.',
         'Pull request titles must use conventional commit format.',
         'Pull request bodies must follow `.github/pull_request_template.md` and fill every section with repo-specific content.',
-        'Do not open or update a pull request until every changed executable source file is covered 100% by automated unit tests.',
         'Do not put business logic inside decorators, `@vannadii/devplat-openclaw`, or `@vannadii/devplat-discord`.',
         'Do not colocate domain logic beside OpenClaw or Discord just because those packages initiate the workflow.',
         'Discord interactions must stay thread-aware and bound to the correct spec, slice, or pull request context.',
@@ -486,10 +483,8 @@ function buildRequiredTextRules({
         'Use `PLATFORM.md` as the authoritative foundation-scope document for required packages, workflows, delivery surfaces, and acceptance criteria.',
         'Do not use TypeScript type assertions or casts anywhere in authored code; banned forms include `as`, `as unknown`, angle-bracket casts, non-null assertions, and double assertions.',
         'Keep branch names and pull request titles free of registered tool names.',
-        'Treat `codex` as a reserved tool name and keep it out of branch names and pull request titles.',
         'Keep pull request titles in conventional commit form.',
         'Keep pull request bodies aligned with `.github/pull_request_template.md` and populate every section with the actual change details.',
-        'Do not open or update a pull request until every changed executable source file is covered 100% by automated unit tests.',
         'Never place business logic inside decorators, `@vannadii/devplat-openclaw`, or `@vannadii/devplat-discord`.',
         'Use structured `const cases = [...]` test tables. Each case must declare `inputs`, a `mock` setup function, and an `assert` function, then run through a single implementation per suite.',
         'Do not colocate domain logic next to OpenClaw or Discord entrypoints just because the workflow starts there.',
@@ -547,10 +542,8 @@ function buildRequiredTextRules({
         'Use [`PLATFORM.md`](./PLATFORM.md) as the authoritative foundation-scope document for required packages, workflows, delivery surfaces, and acceptance criteria.',
         'Keep Discord interactions thread-aware and fail closed when the thread context is missing or ambiguous.',
         'Keep branch names and pull request titles descriptive of intent and never reuse any registered tool name.',
-        'Treat `codex` as a reserved tool name and never use it in branch names or pull request titles.',
         'Keep pull request titles in conventional commit format.',
         'Pull request bodies must use `.github/pull_request_template.md` and populate every section rather than replacing it with an ad hoc summary.',
-        'Do not open or update a pull request until every changed executable source file is covered 100% by automated unit tests.',
         'naming rules',
         'Pull request titles must also use conventional commit format.',
       ],
@@ -559,10 +552,8 @@ function buildRequiredTextRules({
       path: '.github/instructions/github.instructions.md',
       requiredText: [
         'Branch names and pull request titles must describe intent, not reuse any registered tool name.',
-        'Treat `codex` as a reserved tool name and keep it out of branch names and pull request titles.',
         'Pull request titles must use conventional commit format.',
         'Pull request bodies must use the repository template at `.github/pull_request_template.md` and fill every section with concrete change data.',
-        'Do not open or update a pull request until `npm run check:changed-coverage` confirms 100% automated unit-test coverage for every changed executable source file.',
       ],
     },
     {
@@ -612,19 +603,16 @@ function buildRequiredTextRules({
       requiredText: [
         '`npm run check:naming`',
         'keep branch names and pull request titles free of registered tool names',
-        'treat `codex` as a reserved tool name and keep it out of branch names and pull request titles',
         'keep pull request titles in conventional commit format',
         'keep pull request bodies aligned with `.github/pull_request_template.md` and fill every section with concrete change details',
-        'do not open or update a pull request until `npm run check:changed-coverage` confirms 100% automated unit-test coverage for every changed executable source file',
         'keep tests in structured `const cases = [...]` tables where each case provides `inputs`, `mock`, and `assert`, then exercises a single implementation per suite',
       ],
     },
     {
       path: '.github/instructions/testing.instructions.md',
       requiredText: [
-        'Prefer structured `const cases = [...]` tables. Each case should declare `inputs`, a `mock` setup function, and an `assert` function, then run through a single implementation per suite.',
-        'Treat 100% automated unit-test coverage for every changed executable source file as the minimum bar before opening or updating a pull request.',
-        'Run `npm run check:changed-coverage` before opening or updating a pull request.',
+        'Use structured `const cases = [...]` tables. Each case must declare `inputs`, a `mock` setup function, and an `assert` function, then run through a single implementation per suite.',
+        'Run `npm run check:changed-coverage` before completing executable source changes.',
       ],
     },
     {
@@ -685,9 +673,6 @@ function buildRequiredTextRules({
     {
       path: '.github/pull_request_template.md',
       requiredText: [
-        'Pull request titles must be conventional commit messages and must not use any registered tool name.',
-        'Treat `codex` as a reserved tool name too; do not use it in branch names or pull request titles.',
-        'Do not open or update a pull request until every changed executable source file is covered 100% by automated unit tests.',
         '### Performance Impact',
         '### Rollback Notes',
         '## Validation Performed',

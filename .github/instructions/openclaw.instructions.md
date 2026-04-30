@@ -13,7 +13,7 @@
 ## Required Tool Surface
 
 - Keep the minimum adapter surface covering research, specs, slicing, queue state, worktrees, gates, artifact validation, review, remediation, supervisor control, GitHub coordination, and thread-aware Discord control.
-- Keep required tool names registered, documented, and generated from the same source-of-truth types and schemas.
+- Keep required tool names registered, documented, and generated from the same source-of-truth codecs and schemas.
 - When a required capability evolves, update the OpenClaw tool surface, manifest, docs, and tests in the same change.
 
 ## State and Control

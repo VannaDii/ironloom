@@ -34,6 +34,45 @@
         },
         "truncated": {
           "type": "boolean"
+        },
+        "policy": {
+          "type": "object",
+          "properties": {
+            "retry": {
+              "type": "object",
+              "properties": {
+                "attempts": {
+                  "type": "number"
+                },
+                "retryableExitCodes": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                }
+              },
+              "required": ["attempts", "retryableExitCodes"],
+              "additionalProperties": false
+            },
+            "truncation": {
+              "type": "object",
+              "properties": {
+                "maxOutputBytes": {
+                  "type": "number"
+                },
+                "mode": {
+                  "const": "bytes"
+                }
+              },
+              "required": ["maxOutputBytes", "mode"],
+              "additionalProperties": false
+            },
+            "timeoutMs": {
+              "type": "number"
+            }
+          },
+          "required": ["retry"],
+          "additionalProperties": false
         }
       },
       "required": [

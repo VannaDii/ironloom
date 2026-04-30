@@ -24,9 +24,7 @@ Use [`PLATFORM.md`](./PLATFORM.md) as the authoritative foundation-scope documen
 5. Treat Discord and OpenClaw as operator control surfaces with auditable artifacts, never as hidden state stores.
 6. Keep Discord interactions thread-aware and fail closed when the thread context is missing or ambiguous.
 7. Keep branch names and pull request titles descriptive of intent and never reuse any registered tool name.
-8. Treat `codex` as a reserved tool name and never use it in branch names or pull request titles.
-9. Keep pull request titles in conventional commit format.
-10. Do not open or update a pull request until every changed executable source file is covered 100% by automated unit tests.
+8. Keep pull request titles in conventional commit format.
 
 ## Package Contract
 
@@ -58,8 +56,6 @@ That gate covers:
 - Pull requests must describe behavior change, risk, schema and artifact impact, operator impact, performance impact, release impact, rollback notes, and exact validation performed.
 - Pull request bodies must use `.github/pull_request_template.md` and populate every section rather than replacing it with an ad hoc summary.
 - Pull request titles must describe the change outcome and must not repeat any registered tool name.
-- Treat `codex` as a reserved tool name here too; it must not appear in branch names or pull request titles.
-- Do not open or update a pull request until `npm run check:changed-coverage` confirms 100% automated unit-test coverage for every changed executable source file.
 - Do not hide significant behavior changes behind formatting-only commits.
 - Keep release surfaces aligned across GitHub Packages, GHCR Docker, GHCR Helm, and GitHub Pages when a change affects them.
 

@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 
 import {
   createCommandResult,
+  createCommandExecutionPolicy,
   describeCommandResult,
   isSuccessfulCommandResult,
   truncateCommandOutput,
@@ -66,6 +67,7 @@ export class CommandExecutionService {
               stderr,
               durationMs: Date.now() - startedAt,
               attempts: attempt,
+              policy: createCommandExecutionPolicy(options),
             },
             options,
           ),

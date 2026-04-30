@@ -2,8 +2,8 @@
 
 ## Source of Truth
 
-- Export TypeScript types as the schema source of truth.
-- Keep `io-ts` codecs aligned with those types through exactness assertions.
+- Export `io-ts` codecs as the contract and schema source of truth.
+- Derive TypeScript types from codecs for codec-owned public records instead of duplicating interface shapes.
 - Regenerate committed JSON Schemas whenever a public contract changes.
 - Do not hand-edit generated schema files.
 

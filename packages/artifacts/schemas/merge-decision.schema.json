@@ -3,27 +3,35 @@
   "$ref": "#/definitions/MergeDecisionArtifact",
   "definitions": {
     "MergeDecisionArtifact": {
-      "$ref": "#/definitions/ArtifactEnvelope%3CMergeDecisionPayload%2C%22merge-decision%22%3E"
-    },
-    "ArtifactEnvelope<MergeDecisionPayload,\"merge-decision\">": {
       "type": "object",
       "properties": {
         "id": {
           "type": "string"
         },
         "artifactType": {
-          "type": "string",
           "const": "merge-decision"
         },
         "version": {
-          "type": "number",
           "const": 1
         },
         "summary": {
           "type": "string"
         },
         "status": {
-          "$ref": "#/definitions/LifecycleStatus"
+          "enum": [
+            "draft",
+            "queued",
+            "claimed",
+            "running",
+            "review",
+            "blocked",
+            "approved",
+            "merge-ready",
+            "merged",
+            "failed",
+            "rebasing",
+            "complete"
+          ]
         },
         "trace": {
           "type": "array",
@@ -34,25 +42,44 @@
         "updatedAt": {
           "type": "string"
         },
-        "migration": {
+        "payload": {
           "type": "object",
           "properties": {
-            "schemaVersion": {
-              "type": "number",
-              "const": 1
-            },
-            "previousArtifactId": {
+            "decisionId": {
               "type": "string"
             },
-            "migratedAt": {
+            "prNumber": {
+              "type": "number"
+            },
+            "actorId": {
               "type": "string"
+            },
+            "mergeStrategy": {
+              "enum": ["merge", "squash", "rebase"]
+            },
+            "approved": {
+              "type": "boolean"
+            },
+            "rationale": {
+              "type": "string"
+            },
+            "blockingFindings": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           },
-          "required": ["schemaVersion"],
+          "required": [
+            "decisionId",
+            "prNumber",
+            "actorId",
+            "mergeStrategy",
+            "approved",
+            "rationale",
+            "blockingFindings"
+          ],
           "additionalProperties": false
-        },
-        "payload": {
-          "$ref": "#/definitions/MergeDecisionPayload"
         }
       },
       "required": [
@@ -66,66 +93,6 @@
         "payload"
       ],
       "additionalProperties": false
-    },
-    "LifecycleStatus": {
-      "type": "string",
-      "enum": [
-        "draft",
-        "queued",
-        "claimed",
-        "running",
-        "review",
-        "blocked",
-        "approved",
-        "merge-ready",
-        "merged",
-        "failed",
-        "rebasing",
-        "complete"
-      ]
-    },
-    "MergeDecisionPayload": {
-      "type": "object",
-      "properties": {
-        "decisionId": {
-          "type": "string"
-        },
-        "prNumber": {
-          "type": "number"
-        },
-        "actorId": {
-          "type": "string"
-        },
-        "mergeStrategy": {
-          "$ref": "#/definitions/MergeStrategy"
-        },
-        "approved": {
-          "type": "boolean"
-        },
-        "rationale": {
-          "type": "string"
-        },
-        "blockingFindings": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "required": [
-        "decisionId",
-        "prNumber",
-        "actorId",
-        "mergeStrategy",
-        "approved",
-        "rationale",
-        "blockingFindings"
-      ],
-      "additionalProperties": false
-    },
-    "MergeStrategy": {
-      "type": "string",
-      "enum": ["merge", "squash", "rebase"]
     }
   }
 }

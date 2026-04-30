@@ -6,7 +6,90 @@
       "type": "object",
       "properties": {
         "record": {
-          "$ref": "#/definitions/StoreRecordToolRecord"
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "key": {
+              "type": "string"
+            },
+            "scope": {
+              "enum": [
+                "artifacts",
+                "audit",
+                "gates",
+                "memory",
+                "pull-requests",
+                "remediation",
+                "reviews",
+                "slices",
+                "specs",
+                "state",
+                "tasks",
+                "telemetry",
+                "worktrees"
+              ]
+            },
+            "summary": {
+              "type": "string"
+            },
+            "status": {
+              "enum": [
+                "draft",
+                "queued",
+                "claimed",
+                "running",
+                "review",
+                "blocked",
+                "approved",
+                "merge-ready",
+                "merged",
+                "failed",
+                "rebasing",
+                "complete"
+              ]
+            },
+            "trace": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "updatedAt": {
+              "type": "string"
+            },
+            "payload": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "layoutVersion": {
+              "const": 1
+            },
+            "indexes": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "active-thread",
+                  "task",
+                  "pull-request",
+                  "branch",
+                  "artifact"
+                ]
+              }
+            }
+          },
+          "required": [
+            "id",
+            "key",
+            "scope",
+            "summary",
+            "status",
+            "trace",
+            "updatedAt",
+            "payload"
+          ],
+          "additionalProperties": false
         },
         "actorId": {
           "type": "string"
@@ -17,71 +100,6 @@
       },
       "required": ["record", "actorId", "privileged"],
       "additionalProperties": false
-    },
-    "StoreRecordToolRecord": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "key": {
-          "type": "string"
-        },
-        "scope": {
-          "$ref": "#/definitions/StoreScope"
-        },
-        "summary": {
-          "type": "string"
-        },
-        "status": {
-          "$ref": "#/definitions/LifecycleStatus"
-        },
-        "trace": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "updatedAt": {
-          "type": "string"
-        },
-        "payload": {
-          "type": "object",
-          "additionalProperties": {}
-        }
-      },
-      "required": [
-        "id",
-        "key",
-        "scope",
-        "summary",
-        "status",
-        "trace",
-        "updatedAt",
-        "payload"
-      ],
-      "additionalProperties": false
-    },
-    "StoreScope": {
-      "type": "string",
-      "enum": ["artifacts", "memory", "state", "telemetry"]
-    },
-    "LifecycleStatus": {
-      "type": "string",
-      "enum": [
-        "draft",
-        "queued",
-        "claimed",
-        "running",
-        "review",
-        "blocked",
-        "approved",
-        "merge-ready",
-        "merged",
-        "failed",
-        "rebasing",
-        "complete"
-      ]
     }
   }
 }

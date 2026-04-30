@@ -61,9 +61,7 @@ Use the root `PLATFORM.md` file as the authoritative foundation-scope document. 
 - keep GitHub, Discord, OpenClaw, and operator-facing behavior auditable
 - keep Discord interactions thread-aware and fail closed on missing or ambiguous thread context
 - keep branch names and pull request titles free of registered tool names
-- treat `codex` as a reserved tool name and keep it out of branch names and pull request titles
 - keep pull request titles in conventional commit format
 - keep pull request bodies aligned with `.github/pull_request_template.md` and fill every section with concrete change details
-- do not open or update a pull request until `npm run check:changed-coverage` confirms 100% automated unit-test coverage for every changed executable source file
 - keep tests in structured `const cases = [...]` tables where each case provides `inputs`, `mock`, and `assert`, then exercises a single implementation per suite
 - document release, rollback, and performance impact when a change touches those surfaces

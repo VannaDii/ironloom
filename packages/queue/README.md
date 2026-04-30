@@ -21,6 +21,7 @@ flowchart LR
 
 - Keep task state independent of Discord message formatting.
 - Persist durable state through storage-facing callers.
+- Keep task record and transition-event types derived from the exported codecs.
 - Do not allocate worktrees directly from queue logic.
 
 ## Development

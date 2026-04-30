@@ -21,6 +21,7 @@ flowchart LR
 
 - Produce findings; do not apply fixes.
 - Keep review output compatible with remediation planning.
+- Keep finding, conformance, and summary types derived from the exported codecs.
 - Do not call GitHub review APIs directly from this package.
 
 ## Development

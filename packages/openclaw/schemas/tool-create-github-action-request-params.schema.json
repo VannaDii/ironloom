@@ -3,22 +3,28 @@
   "$ref": "#/definitions/CreateGitHubActionRequestToolInput",
   "definitions": {
     "CreateGitHubActionRequestToolInput": {
-      "$ref": "#/definitions/GitHubActionRequest"
-    },
-    "GitHubActionRequest": {
       "type": "object",
       "properties": {
         "repoFullName": {
           "type": "string"
         },
         "action": {
-          "$ref": "#/definitions/GitHubAction"
+          "enum": [
+            "create-pr",
+            "update-pr",
+            "comment-pr",
+            "merge-pr",
+            "sync-branch"
+          ]
         },
         "summary": {
           "type": "string"
         },
         "privileged": {
           "type": "boolean"
+        },
+        "updatedAt": {
+          "type": "string"
         },
         "targetNumber": {
           "type": "number"
@@ -40,9 +46,6 @@
         },
         "expectedHeadSha": {
           "type": "string"
-        },
-        "updatedAt": {
-          "type": "string"
         }
       },
       "required": [
@@ -53,16 +56,6 @@
         "updatedAt"
       ],
       "additionalProperties": false
-    },
-    "GitHubAction": {
-      "type": "string",
-      "enum": [
-        "create-pr",
-        "update-pr",
-        "comment-pr",
-        "merge-pr",
-        "sync-branch"
-      ]
     }
   }
 }

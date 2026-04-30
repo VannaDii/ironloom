@@ -20,6 +20,7 @@ flowchart LR
 ## Boundaries
 
 - Keep research artifacts structured and source-linked.
+- Keep research brief and attribution types derived from the exported codecs.
 - Do not approve specs or create implementation tasks here.
 - Keep brief output compatible with artifact validation.
 

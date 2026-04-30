@@ -9,7 +9,7 @@
           "type": "string"
         },
         "severity": {
-          "$ref": "#/definitions/ReviewSeverity"
+          "enum": ["low", "medium", "high", "critical"]
         },
         "path": {
           "type": "string"
@@ -30,10 +30,29 @@
           "type": "string"
         },
         "source": {
-          "$ref": "#/definitions/ReviewFindingSource"
+          "enum": ["automated", "sonar", "human"]
         },
         "specConformance": {
-          "$ref": "#/definitions/SpecConformanceSummary"
+          "type": "object",
+          "properties": {
+            "specId": {
+              "type": "string"
+            },
+            "satisfiedCriteria": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "missingCriteria": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": ["specId", "satisfiedCriteria", "missingCriteria"],
+          "additionalProperties": false
         }
       },
       "required": [
@@ -46,36 +65,6 @@
         "blocking",
         "updatedAt"
       ],
-      "additionalProperties": false
-    },
-    "ReviewSeverity": {
-      "type": "string",
-      "enum": ["low", "medium", "high", "critical"]
-    },
-    "ReviewFindingSource": {
-      "type": "string",
-      "enum": ["automated", "sonar", "human"]
-    },
-    "SpecConformanceSummary": {
-      "type": "object",
-      "properties": {
-        "specId": {
-          "type": "string"
-        },
-        "satisfiedCriteria": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "missingCriteria": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "required": ["specId", "satisfiedCriteria", "missingCriteria"],
       "additionalProperties": false
     }
   }

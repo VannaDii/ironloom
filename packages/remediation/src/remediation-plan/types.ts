@@ -1,19 +1,15 @@
-export interface RemediationResult {
-  action: string;
-  success: boolean;
-  artifactId?: string;
-  detail: string;
-  completedAt: string;
-}
+import type * as t from 'io-ts';
 
-export interface RemediationPlan {
-  planId: string;
-  findingIds: string[];
-  actions: string[];
-  autofix: boolean;
-  approvalRequired: boolean;
-  updatedAt: string;
-  results?: RemediationResult[];
-  unresolvedFindingIds?: string[];
-  nextAction?: string;
-}
+import type {
+  RemediationPlanCodec,
+  RemediationResultCodec,
+  RemediationResultSummaryCodec,
+} from './codec.js';
+
+export type RemediationResult = t.TypeOf<typeof RemediationResultCodec>;
+
+export type RemediationPlan = t.TypeOf<typeof RemediationPlanCodec>;
+
+export type RemediationResultSummary = t.TypeOf<
+  typeof RemediationResultSummaryCodec
+>;

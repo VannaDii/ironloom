@@ -3,27 +3,35 @@
   "$ref": "#/definitions/ApprovalRecordArtifact",
   "definitions": {
     "ApprovalRecordArtifact": {
-      "$ref": "#/definitions/ArtifactEnvelope%3CApprovalRecordPayload%2C%22approval-record%22%3E"
-    },
-    "ArtifactEnvelope<ApprovalRecordPayload,\"approval-record\">": {
       "type": "object",
       "properties": {
         "id": {
           "type": "string"
         },
         "artifactType": {
-          "type": "string",
           "const": "approval-record"
         },
         "version": {
-          "type": "number",
           "const": 1
         },
         "summary": {
           "type": "string"
         },
         "status": {
-          "$ref": "#/definitions/LifecycleStatus"
+          "enum": [
+            "draft",
+            "queued",
+            "claimed",
+            "running",
+            "review",
+            "blocked",
+            "approved",
+            "merge-ready",
+            "merged",
+            "failed",
+            "rebasing",
+            "complete"
+          ]
         },
         "trace": {
           "type": "array",
@@ -34,25 +42,37 @@
         "updatedAt": {
           "type": "string"
         },
-        "migration": {
+        "payload": {
           "type": "object",
           "properties": {
-            "schemaVersion": {
-              "type": "number",
-              "const": 1
-            },
-            "previousArtifactId": {
+            "approvalId": {
               "type": "string"
             },
-            "migratedAt": {
+            "subjectType": {
+              "enum": ["spec", "slice", "pull-request", "merge"]
+            },
+            "subjectId": {
+              "type": "string"
+            },
+            "actorId": {
+              "type": "string"
+            },
+            "decision": {
+              "enum": ["approved", "rejected", "needs-changes"]
+            },
+            "rationale": {
               "type": "string"
             }
           },
-          "required": ["schemaVersion"],
+          "required": [
+            "approvalId",
+            "subjectType",
+            "subjectId",
+            "actorId",
+            "decision",
+            "rationale"
+          ],
           "additionalProperties": false
-        },
-        "payload": {
-          "$ref": "#/definitions/ApprovalRecordPayload"
         }
       },
       "required": [
@@ -66,63 +86,6 @@
         "payload"
       ],
       "additionalProperties": false
-    },
-    "LifecycleStatus": {
-      "type": "string",
-      "enum": [
-        "draft",
-        "queued",
-        "claimed",
-        "running",
-        "review",
-        "blocked",
-        "approved",
-        "merge-ready",
-        "merged",
-        "failed",
-        "rebasing",
-        "complete"
-      ]
-    },
-    "ApprovalRecordPayload": {
-      "type": "object",
-      "properties": {
-        "approvalId": {
-          "type": "string"
-        },
-        "subjectType": {
-          "$ref": "#/definitions/ApprovalSubjectType"
-        },
-        "subjectId": {
-          "type": "string"
-        },
-        "actorId": {
-          "type": "string"
-        },
-        "decision": {
-          "$ref": "#/definitions/ApprovalDecision"
-        },
-        "rationale": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "approvalId",
-        "subjectType",
-        "subjectId",
-        "actorId",
-        "decision",
-        "rationale"
-      ],
-      "additionalProperties": false
-    },
-    "ApprovalSubjectType": {
-      "type": "string",
-      "enum": ["spec", "slice", "pull-request", "merge"]
-    },
-    "ApprovalDecision": {
-      "type": "string",
-      "enum": ["approved", "rejected", "needs-changes"]
     }
   }
 }

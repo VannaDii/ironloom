@@ -1,7 +1,5 @@
 import * as t from 'io-ts';
 
-import type { MemoryEntry } from './types.js';
-
 export const MemoryEntryCodec = t.intersection([
   t.type({
     memoryId: t.string,
@@ -22,9 +20,17 @@ export const MemoryEntryCodec = t.intersection([
   }),
 ]);
 
-export type _MemoryEntryExact =
-  t.TypeOf<typeof MemoryEntryCodec> extends MemoryEntry
-    ? MemoryEntry extends t.TypeOf<typeof MemoryEntryCodec>
-      ? true
-      : never
-    : never;
+export const MemoryContextBundleCodec = t.type({
+  bundleId: t.string,
+  decisions: t.type({
+    decisionIds: t.array(t.string),
+    rationale: t.string,
+  }),
+  knownTraps: t.type({
+    trapIds: t.array(t.string),
+    mitigation: t.string,
+  }),
+  reusableContext: t.array(t.string),
+  sourceMemoryIds: t.array(t.string),
+  updatedAt: t.string,
+});

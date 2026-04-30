@@ -1,17 +1,24 @@
 import * as t from 'io-ts';
 
-import { LifecycleStatusCodec, type Exact } from '@vannadii/devplat-core';
-
-import type { StoredRecordSchema } from './types.js';
+import { LifecycleStatusCodec } from '@vannadii/devplat-core';
 
 export const StoreScopeCodec = t.union([
   t.literal('artifacts'),
+  t.literal('audit'),
+  t.literal('gates'),
   t.literal('memory'),
+  t.literal('pull-requests'),
+  t.literal('remediation'),
+  t.literal('reviews'),
+  t.literal('slices'),
+  t.literal('specs'),
   t.literal('state'),
+  t.literal('tasks'),
   t.literal('telemetry'),
+  t.literal('worktrees'),
 ]);
 
-const StoreIndexNameCodec = t.union([
+export const StoreIndexNameCodec = t.union([
   t.literal('active-thread'),
   t.literal('task'),
   t.literal('pull-request'),
@@ -35,8 +42,3 @@ export const StoredRecordCodec = t.intersection([
     indexes: t.readonlyArray(StoreIndexNameCodec),
   }),
 ]);
-
-export type _StoredRecordExact = Exact<
-  StoredRecordSchema,
-  t.TypeOf<typeof StoredRecordCodec>
->;

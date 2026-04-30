@@ -3,9 +3,6 @@
   "$ref": "#/definitions/CreateOpenClawPluginConfigToolInput",
   "definitions": {
     "CreateOpenClawPluginConfigToolInput": {
-      "$ref": "#/definitions/DevplatConfig"
-    },
-    "DevplatConfig": {
       "type": "object",
       "properties": {
         "id": {
@@ -15,7 +12,20 @@
           "type": "string"
         },
         "status": {
-          "$ref": "#/definitions/LifecycleStatus"
+          "enum": [
+            "draft",
+            "queued",
+            "claimed",
+            "running",
+            "review",
+            "blocked",
+            "approved",
+            "merge-ready",
+            "merged",
+            "failed",
+            "rebasing",
+            "complete"
+          ]
         },
         "trace": {
           "type": "array",
@@ -33,16 +43,127 @@
           "type": "string"
         },
         "repository": {
-          "$ref": "#/definitions/RepositoryRuntimeConfig"
+          "type": "object",
+          "properties": {
+            "owner": {
+              "type": "string"
+            },
+            "repo": {
+              "type": "string"
+            },
+            "defaultBranch": {
+              "type": "string"
+            },
+            "repositoryKey": {
+              "type": "string"
+            }
+          },
+          "required": ["owner", "repo", "defaultBranch", "repositoryKey"],
+          "additionalProperties": false
         },
         "storage": {
-          "$ref": "#/definitions/StorageRuntimeConfig"
+          "type": "object",
+          "properties": {
+            "rootDirectory": {
+              "type": "string"
+            },
+            "layoutVersion": {
+              "const": 1
+            }
+          },
+          "required": ["rootDirectory", "layoutVersion"],
+          "additionalProperties": false
         },
         "worktrees": {
-          "$ref": "#/definitions/WorktreeRuntimeConfig"
+          "type": "object",
+          "properties": {
+            "rootDirectory": {
+              "type": "string"
+            },
+            "baseBranch": {
+              "type": "string"
+            }
+          },
+          "required": ["rootDirectory", "baseBranch"],
+          "additionalProperties": false
         },
         "discord": {
-          "$ref": "#/definitions/DiscordRuntimeConfig"
+          "type": "object",
+          "properties": {
+            "apiBaseUrl": {
+              "type": "string"
+            },
+            "apiVersion": {
+              "const": "v10"
+            },
+            "applicationId": {
+              "type": "string"
+            },
+            "publicKey": {
+              "type": "string"
+            },
+            "botToken": {
+              "type": "string"
+            },
+            "installScopes": {
+              "type": "array",
+              "items": {
+                "enum": ["bot", "applications.commands"]
+              }
+            },
+            "requiredPermissions": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "ViewChannel",
+                  "SendMessages",
+                  "CreatePublicThreads",
+                  "CreatePrivateThreads",
+                  "SendMessagesInThreads",
+                  "ManageThreads",
+                  "ReadMessageHistory"
+                ]
+              }
+            },
+            "defaultGuildId": {
+              "type": "string"
+            },
+            "specChannelId": {
+              "type": "string"
+            },
+            "implementationChannelId": {
+              "type": "string"
+            },
+            "pullRequestChannelId": {
+              "type": "string"
+            },
+            "auditChannelId": {
+              "type": "string"
+            },
+            "projectManagementChannelId": {
+              "type": "string"
+            },
+            "threadBindingMode": {
+              "const": "inherit-parent"
+            }
+          },
+          "required": [
+            "apiBaseUrl",
+            "apiVersion",
+            "applicationId",
+            "publicKey",
+            "botToken",
+            "installScopes",
+            "requiredPermissions",
+            "defaultGuildId",
+            "specChannelId",
+            "implementationChannelId",
+            "pullRequestChannelId",
+            "auditChannelId",
+            "projectManagementChannelId",
+            "threadBindingMode"
+          ],
+          "additionalProperties": false
         },
         "openclaw": {
           "type": "object",
@@ -51,10 +172,44 @@
               "type": "string"
             },
             "gateway": {
-              "$ref": "#/definitions/OpenClawGatewayConfig"
+              "type": "object",
+              "properties": {
+                "bind": {
+                  "const": "loopback"
+                },
+                "port": {
+                  "type": "number"
+                },
+                "authMode": {
+                  "const": "token"
+                }
+              },
+              "required": ["bind", "port", "authMode"],
+              "additionalProperties": false
             },
             "actionGates": {
-              "$ref": "#/definitions/OpenClawActionGateConfig"
+              "type": "object",
+              "properties": {
+                "approveThis": {
+                  "type": "boolean"
+                },
+                "mergeNow": {
+                  "type": "boolean"
+                },
+                "retryGates": {
+                  "type": "boolean"
+                },
+                "rebaseAllDependents": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "approveThis",
+                "mergeNow",
+                "retryGates",
+                "rebaseAllDependents"
+              ],
+              "additionalProperties": false
             }
           },
           "required": ["pluginId", "gateway", "actionGates"],
@@ -70,7 +225,6 @@
               "type": "string"
             },
             "minimumCoverage": {
-              "type": "number",
               "const": 90
             }
           },
@@ -92,202 +246,6 @@
         "discord",
         "openclaw",
         "sonar"
-      ],
-      "additionalProperties": false
-    },
-    "LifecycleStatus": {
-      "type": "string",
-      "enum": [
-        "draft",
-        "queued",
-        "claimed",
-        "running",
-        "review",
-        "blocked",
-        "approved",
-        "merge-ready",
-        "merged",
-        "failed",
-        "rebasing",
-        "complete"
-      ]
-    },
-    "RepositoryRuntimeConfig": {
-      "type": "object",
-      "properties": {
-        "owner": {
-          "type": "string"
-        },
-        "repo": {
-          "type": "string"
-        },
-        "defaultBranch": {
-          "type": "string"
-        },
-        "repositoryKey": {
-          "type": "string"
-        }
-      },
-      "required": ["owner", "repo", "defaultBranch", "repositoryKey"],
-      "additionalProperties": false
-    },
-    "StorageRuntimeConfig": {
-      "type": "object",
-      "properties": {
-        "rootDirectory": {
-          "type": "string"
-        },
-        "layoutVersion": {
-          "type": "number",
-          "const": 1
-        }
-      },
-      "required": ["rootDirectory", "layoutVersion"],
-      "additionalProperties": false
-    },
-    "WorktreeRuntimeConfig": {
-      "type": "object",
-      "properties": {
-        "rootDirectory": {
-          "type": "string"
-        },
-        "baseBranch": {
-          "type": "string"
-        }
-      },
-      "required": ["rootDirectory", "baseBranch"],
-      "additionalProperties": false
-    },
-    "DiscordRuntimeConfig": {
-      "type": "object",
-      "properties": {
-        "apiBaseUrl": {
-          "type": "string"
-        },
-        "apiVersion": {
-          "$ref": "#/definitions/DiscordApiVersion"
-        },
-        "applicationId": {
-          "type": "string"
-        },
-        "publicKey": {
-          "type": "string"
-        },
-        "botToken": {
-          "type": "string"
-        },
-        "installScopes": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/DiscordInstallScope"
-          }
-        },
-        "requiredPermissions": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/DiscordPermission"
-          }
-        },
-        "defaultGuildId": {
-          "type": "string"
-        },
-        "specChannelId": {
-          "type": "string"
-        },
-        "implementationChannelId": {
-          "type": "string"
-        },
-        "pullRequestChannelId": {
-          "type": "string"
-        },
-        "auditChannelId": {
-          "type": "string"
-        },
-        "projectManagementChannelId": {
-          "type": "string"
-        },
-        "threadBindingMode": {
-          "type": "string",
-          "const": "inherit-parent"
-        }
-      },
-      "required": [
-        "apiBaseUrl",
-        "apiVersion",
-        "applicationId",
-        "publicKey",
-        "botToken",
-        "installScopes",
-        "requiredPermissions",
-        "defaultGuildId",
-        "specChannelId",
-        "implementationChannelId",
-        "pullRequestChannelId",
-        "auditChannelId",
-        "projectManagementChannelId",
-        "threadBindingMode"
-      ],
-      "additionalProperties": false
-    },
-    "DiscordApiVersion": {
-      "type": "string",
-      "const": "v10"
-    },
-    "DiscordInstallScope": {
-      "type": "string",
-      "enum": ["bot", "applications.commands"]
-    },
-    "DiscordPermission": {
-      "type": "string",
-      "enum": [
-        "ViewChannel",
-        "SendMessages",
-        "CreatePublicThreads",
-        "CreatePrivateThreads",
-        "SendMessagesInThreads",
-        "ManageThreads",
-        "ReadMessageHistory"
-      ]
-    },
-    "OpenClawGatewayConfig": {
-      "type": "object",
-      "properties": {
-        "bind": {
-          "type": "string",
-          "const": "loopback"
-        },
-        "port": {
-          "type": "number"
-        },
-        "authMode": {
-          "type": "string",
-          "const": "token"
-        }
-      },
-      "required": ["bind", "port", "authMode"],
-      "additionalProperties": false
-    },
-    "OpenClawActionGateConfig": {
-      "type": "object",
-      "properties": {
-        "approveThis": {
-          "type": "boolean"
-        },
-        "mergeNow": {
-          "type": "boolean"
-        },
-        "retryGates": {
-          "type": "boolean"
-        },
-        "rebaseAllDependents": {
-          "type": "boolean"
-        }
-      },
-      "required": [
-        "approveThis",
-        "mergeNow",
-        "retryGates",
-        "rebaseAllDependents"
       ],
       "additionalProperties": false
     }

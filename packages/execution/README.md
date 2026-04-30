@@ -22,6 +22,7 @@ flowchart LR
 
 - Keep command execution deterministic and auditable.
 - Do not decide whether privileged commands are allowed; use policy before execution.
+- Keep command result and execution-policy types derived from the exported codecs.
 - Keep truncation, retry, and timeout behavior covered by tests.
 
 ## Development

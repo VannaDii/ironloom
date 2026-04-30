@@ -84,6 +84,9 @@ the package responsibilities below. Current completion work focuses on:
 - Docs: VitePress
 - CI/CD: GitHub Actions
 - Quality gate: SonarCloud
+- Public JSON schemas are generated from exported `io-ts` codecs; codec-owned
+  TypeScript public record types derive from those codecs to avoid parallel
+  interface and codec definitions.
 
 ## Repository Structure
 
@@ -145,26 +148,26 @@ the package responsibilities below. Current completion work focuses on:
 - `@vannadii/devplat-core`: current code covers lifecycle status, trace snapshots, result primitives, codecs, and exactness helpers; remaining gap is typed IDs, richer error taxonomy, and typed timestamp/value-object helpers.
 - `@vannadii/devplat-config`: current code covers normalized runtime config for GitHub, Discord, OpenClaw, and Sonar; remaining gap is broader deployment/storage/worktree defaults and fuller config validation errors.
 - `@vannadii/devplat-artifacts`: current code covers artifact envelopes, approval, audit, merge, rebase, and validation; remaining gap is a fuller artifact registry, explicit migrations, and broader artifact coverage for research/spec/slice/task/review handoffs.
-- `@vannadii/devplat-memory`: current code covers a basic memory-entry contract and persistence path; remaining gap is explicit decision-log, known-trap, and reusable context-bundle modeling.
-- `@vannadii/devplat-research`: current code covers structured research briefs; remaining gap is deeper capability comparison, feasibility structure, and richer source attribution.
+- `@vannadii/devplat-memory`: current code covers memory-entry persistence plus decision-log, known-trap, and reusable context-bundle modeling.
+- `@vannadii/devplat-research`: current code covers structured research briefs, capability comparisons, feasibility structure, and source attribution.
 - `@vannadii/devplat-specs`: current code covers spec records, approval, and explicit revision updates; remaining gap is richer revision history and PR-ready spec rendering contracts.
 - `@vannadii/devplat-slicing`: current code covers slice plans and readiness checks; remaining gap is an explicit dependency-graph artifact and richer PR-sized work packet modeling.
-- `@vannadii/devplat-queue`: current code covers task creation, claim, and lifecycle updates; remaining gap is fuller queue abstractions including release/resume history and explicit transition-event outputs.
+- `@vannadii/devplat-queue`: current code covers task creation, claim, lifecycle updates, release/resume transitions, and explicit transition-event history.
 - `@vannadii/devplat-worktrees`: current code covers pure allocation/sync/release records plus Git-backed worktree add, fetch/rebase or fast-forward sync, and archive/delete release methods; remaining gap is deeper branch-safety validation.
-- `@vannadii/devplat-execution`: current code covers structured subprocess execution and timeouts; remaining gap is explicit retry policy, truncation policy, and retry outcome contracts.
+- `@vannadii/devplat-execution`: current code covers structured subprocess execution, timeouts, retry policy, truncation policy, and retry outcome contracts.
 - `@vannadii/devplat-gates`: current code covers gate execution and reports; remaining gap is richer failure classification, next-action hints, and remediation hooks.
 - `@vannadii/devplat-sonarcloud`: current code covers bootstrap verification and quality gate interpretation; remaining gap is fuller issue normalization into review/remediation inputs.
-- `@vannadii/devplat-review`: current code covers structured review findings; remaining gap is broader review summary generation and spec-vs-implementation conformance contracts.
-- `@vannadii/devplat-remediation`: current code covers remediation planning; remaining gap is explicit remediation result artifacts and unresolved-issue summaries.
+- `@vannadii/devplat-review`: current code covers structured review findings, review summary generation, and spec-vs-implementation conformance contracts.
+- `@vannadii/devplat-remediation`: current code covers remediation planning, remediation result records, and unresolved-issue summaries.
 - `@vannadii/devplat-prs`: current code covers PR normalization plus update and merge submission semantics; remaining gap is richer PR body/update projections and deeper review/remediation status projection.
-- `@vannadii/devplat-branching`: current code covers dependent rebase planning and explicit merge-triggered execution through worktree sync orchestration; remaining gap is a fuller branch dependency graph and deeper conflict classification.
+- `@vannadii/devplat-branching`: current code covers dependent rebase planning, explicit merge-triggered execution through worktree sync orchestration, branch dependency graphs, and conflict classification.
 - `@vannadii/devplat-supervisor`: current code covers minimal next-step decision and telemetry; remaining gap is broader lifecycle routing across research, specs, slicing, implementation, review, remediation, merge, and continuation.
-- `@vannadii/devplat-observability`: current code covers telemetry events; remaining gap is richer audit-specific schemas, run metrics, and run summaries.
+- `@vannadii/devplat-observability`: current code covers telemetry events and run summaries; remaining gap is richer audit-specific schemas and run metrics.
 - `@vannadii/devplat-github`: current code covers GitHub action requests, policy-aware submission semantics, and concrete REST request submission for PR create/update/comment/merge and branch sync; remaining gap is richer normalized repo/PR state and issue/spec-PR contracts.
 - `@vannadii/devplat-openclaw`: current code covers deterministic plugin config, broad tool validation, and adapter delegation; remaining gap is keeping tool inventory and handler depth aligned with the intended end-to-end platform surface as package behavior becomes more concrete.
 - `@vannadii/devplat-discord`: current code covers thread-aware bindings, approvals, expanded operator actions, explicit `pull-request` thread sessions, slash/button interaction routing, fail-closed thread ambiguity handling, and REST response posting; remaining gap is deeper command-to-work-item resolution.
 - `@vannadii/devplat-policy`: current code covers privileged-action decisions and explicit approval requirements for risky Discord actions; remaining gap is richer merge/autofix/escalation policy modeling.
-- `@vannadii/devplat-storage`: current code covers filesystem-backed record storage under `.devplat`; remaining gap is richer storage interfaces and explicit layout contracts for every domain surface.
+- `@vannadii/devplat-storage`: current code covers filesystem-backed record storage under `.devplat`, explicit layout contracts, and active thread/task/PR/branch/artifact indexes.
 
 ## OpenClaw Adapter Requirements
 

@@ -6,7 +6,87 @@
       "type": "object",
       "properties": {
         "record": {
-          "$ref": "#/definitions/PullRequestRecord"
+          "type": "object",
+          "properties": {
+            "prNumber": {
+              "type": "number"
+            },
+            "branchName": {
+              "type": "string"
+            },
+            "baseBranch": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "labels": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "reviewState": {
+              "enum": ["draft", "review", "approved", "changes-requested"]
+            },
+            "mergeReady": {
+              "type": "boolean"
+            },
+            "updatedAt": {
+              "type": "string"
+            },
+            "projection": {
+              "type": "object",
+              "properties": {
+                "body": {
+                  "type": "string"
+                },
+                "checklist": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "riskSummary": {
+                  "type": "string"
+                },
+                "validationSummary": {
+                  "type": "string"
+                },
+                "artifactIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "body",
+                "checklist",
+                "riskSummary",
+                "validationSummary",
+                "artifactIds"
+              ],
+              "additionalProperties": false
+            },
+            "sourceArtifactIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "prNumber",
+            "branchName",
+            "baseBranch",
+            "title",
+            "labels",
+            "reviewState",
+            "mergeReady",
+            "updatedAt"
+          ],
+          "additionalProperties": false
         },
         "dependentBranches": {
           "type": "array",
@@ -16,96 +96,6 @@
         }
       },
       "required": ["record", "dependentBranches"],
-      "additionalProperties": false
-    },
-    "PullRequestRecord": {
-      "type": "object",
-      "properties": {
-        "prNumber": {
-          "type": "number"
-        },
-        "branchName": {
-          "type": "string"
-        },
-        "baseBranch": {
-          "type": "string"
-        },
-        "title": {
-          "type": "string"
-        },
-        "labels": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "reviewState": {
-          "$ref": "#/definitions/PullRequestReviewState"
-        },
-        "mergeReady": {
-          "type": "boolean"
-        },
-        "updatedAt": {
-          "type": "string"
-        },
-        "projection": {
-          "$ref": "#/definitions/PullRequestProjection"
-        },
-        "sourceArtifactIds": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "required": [
-        "prNumber",
-        "branchName",
-        "baseBranch",
-        "title",
-        "labels",
-        "reviewState",
-        "mergeReady",
-        "updatedAt"
-      ],
-      "additionalProperties": false
-    },
-    "PullRequestReviewState": {
-      "type": "string",
-      "enum": ["draft", "review", "approved", "changes-requested"]
-    },
-    "PullRequestProjection": {
-      "type": "object",
-      "properties": {
-        "body": {
-          "type": "string"
-        },
-        "checklist": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "riskSummary": {
-          "type": "string"
-        },
-        "validationSummary": {
-          "type": "string"
-        },
-        "artifactIds": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "required": [
-        "body",
-        "checklist",
-        "riskSummary",
-        "validationSummary",
-        "artifactIds"
-      ],
       "additionalProperties": false
     }
   }

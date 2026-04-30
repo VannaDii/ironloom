@@ -12,7 +12,20 @@
           "type": "string"
         },
         "status": {
-          "$ref": "#/definitions/LifecycleStatus"
+          "enum": [
+            "draft",
+            "queued",
+            "claimed",
+            "running",
+            "review",
+            "blocked",
+            "approved",
+            "merge-ready",
+            "merged",
+            "failed",
+            "rebasing",
+            "complete"
+          ]
         },
         "trace": {
           "type": "array",
@@ -29,11 +42,46 @@
         "results": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/GateCheckResult"
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "success": {
+                "type": "boolean"
+              },
+              "detail": {
+                "type": "string"
+              },
+              "failureKind": {
+                "enum": ["command-failed", "timeout", "passed"]
+              },
+              "nextAction": {
+                "type": "string"
+              }
+            },
+            "required": ["name", "success", "detail"],
+            "additionalProperties": false
           }
         },
         "classification": {
-          "$ref": "#/definitions/GateFailureClassification"
+          "type": "object",
+          "properties": {
+            "kind": {
+              "enum": ["passed", "retryable", "requires-remediation"]
+            },
+            "failedGateNames": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "nextAction": {
+              "type": "string"
+            }
+          },
+          "required": ["kind", "failedGateNames", "nextAction"],
+          "additionalProperties": false
         },
         "nextAction": {
           "type": "string"
@@ -48,66 +96,6 @@
         "passed",
         "results"
       ],
-      "additionalProperties": false
-    },
-    "LifecycleStatus": {
-      "type": "string",
-      "enum": [
-        "draft",
-        "queued",
-        "claimed",
-        "running",
-        "review",
-        "blocked",
-        "approved",
-        "merge-ready",
-        "merged",
-        "failed",
-        "rebasing",
-        "complete"
-      ]
-    },
-    "GateCheckResult": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "success": {
-          "type": "boolean"
-        },
-        "detail": {
-          "type": "string"
-        },
-        "failureKind": {
-          "type": "string",
-          "enum": ["command-failed", "timeout", "passed"]
-        },
-        "nextAction": {
-          "type": "string"
-        }
-      },
-      "required": ["name", "success", "detail"],
-      "additionalProperties": false
-    },
-    "GateFailureClassification": {
-      "type": "object",
-      "properties": {
-        "kind": {
-          "type": "string",
-          "enum": ["passed", "retryable", "requires-remediation"]
-        },
-        "failedGateNames": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "nextAction": {
-          "type": "string"
-        }
-      },
-      "required": ["kind", "failedGateNames", "nextAction"],
       "additionalProperties": false
     }
   }

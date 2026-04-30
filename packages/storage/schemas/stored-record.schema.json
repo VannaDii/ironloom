@@ -3,9 +3,6 @@
   "$ref": "#/definitions/StoredRecordSchema",
   "definitions": {
     "StoredRecordSchema": {
-      "$ref": "#/definitions/StoredRecord"
-    },
-    "StoredRecord": {
       "type": "object",
       "properties": {
         "id": {
@@ -15,13 +12,40 @@
           "type": "string"
         },
         "scope": {
-          "$ref": "#/definitions/StoreScope"
+          "enum": [
+            "artifacts",
+            "audit",
+            "gates",
+            "memory",
+            "pull-requests",
+            "remediation",
+            "reviews",
+            "slices",
+            "specs",
+            "state",
+            "tasks",
+            "telemetry",
+            "worktrees"
+          ]
         },
         "summary": {
           "type": "string"
         },
         "status": {
-          "$ref": "#/definitions/LifecycleStatus"
+          "enum": [
+            "draft",
+            "queued",
+            "claimed",
+            "running",
+            "review",
+            "blocked",
+            "approved",
+            "merge-ready",
+            "merged",
+            "failed",
+            "rebasing",
+            "complete"
+          ]
         },
         "trace": {
           "type": "array",
@@ -32,19 +56,24 @@
         "updatedAt": {
           "type": "string"
         },
+        "payload": {
+          "type": "object",
+          "additionalProperties": true
+        },
         "layoutVersion": {
-          "type": "number",
           "const": 1
         },
         "indexes": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/StoreIndexName"
+            "enum": [
+              "active-thread",
+              "task",
+              "pull-request",
+              "branch",
+              "artifact"
+            ]
           }
-        },
-        "payload": {
-          "type": "object",
-          "additionalProperties": {}
         }
       },
       "required": [
@@ -58,31 +87,6 @@
         "payload"
       ],
       "additionalProperties": false
-    },
-    "StoreScope": {
-      "type": "string",
-      "enum": ["artifacts", "memory", "state", "telemetry"]
-    },
-    "LifecycleStatus": {
-      "type": "string",
-      "enum": [
-        "draft",
-        "queued",
-        "claimed",
-        "running",
-        "review",
-        "blocked",
-        "approved",
-        "merge-ready",
-        "merged",
-        "failed",
-        "rebasing",
-        "complete"
-      ]
-    },
-    "StoreIndexName": {
-      "type": "string",
-      "enum": ["active-thread", "task", "pull-request", "branch", "artifact"]
     }
   }
 }

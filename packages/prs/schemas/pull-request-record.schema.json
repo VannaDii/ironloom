@@ -24,7 +24,7 @@
           }
         },
         "reviewState": {
-          "$ref": "#/definitions/PullRequestReviewState"
+          "enum": ["draft", "review", "approved", "changes-requested"]
         },
         "mergeReady": {
           "type": "boolean"
@@ -33,7 +33,38 @@
           "type": "string"
         },
         "projection": {
-          "$ref": "#/definitions/PullRequestProjection"
+          "type": "object",
+          "properties": {
+            "body": {
+              "type": "string"
+            },
+            "checklist": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "riskSummary": {
+              "type": "string"
+            },
+            "validationSummary": {
+              "type": "string"
+            },
+            "artifactIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "body",
+            "checklist",
+            "riskSummary",
+            "validationSummary",
+            "artifactIds"
+          ],
+          "additionalProperties": false
         },
         "sourceArtifactIds": {
           "type": "array",
@@ -51,44 +82,6 @@
         "reviewState",
         "mergeReady",
         "updatedAt"
-      ],
-      "additionalProperties": false
-    },
-    "PullRequestReviewState": {
-      "type": "string",
-      "enum": ["draft", "review", "approved", "changes-requested"]
-    },
-    "PullRequestProjection": {
-      "type": "object",
-      "properties": {
-        "body": {
-          "type": "string"
-        },
-        "checklist": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "riskSummary": {
-          "type": "string"
-        },
-        "validationSummary": {
-          "type": "string"
-        },
-        "artifactIds": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "required": [
-        "body",
-        "checklist",
-        "riskSummary",
-        "validationSummary",
-        "artifactIds"
       ],
       "additionalProperties": false
     }

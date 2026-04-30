@@ -1,30 +1,9 @@
-import type { LifecycleStatus } from '@vannadii/devplat-core';
+import type * as t from 'io-ts';
 
-export type TaskTransitionAction =
-  | 'create'
-  | 'claim'
-  | 'status-update'
-  | 'complete'
-  | 'block';
+import type { TaskRecordCodec, TaskTransitionEventCodec } from './codec.js';
 
-export interface TaskTransitionEvent {
-  fromStatus?: LifecycleStatus;
-  toStatus: LifecycleStatus;
-  action: TaskTransitionAction;
-  actorId?: string;
-  reason: string;
-  occurredAt: string;
-}
+export type TaskTransitionEvent = t.TypeOf<typeof TaskTransitionEventCodec>;
 
-export interface TaskRecord {
-  id: string;
-  summary: string;
-  status: LifecycleStatus;
-  trace: string[];
-  updatedAt: string;
-  taskId: string;
-  sliceId: string;
-  threadId: string;
-  assigneeId?: string;
-  transitions?: TaskTransitionEvent[];
-}
+export type TaskTransitionAction = TaskTransitionEvent['action'];
+
+export type TaskRecord = t.TypeOf<typeof TaskRecordCodec>;

@@ -6,7 +6,59 @@
       "type": "object",
       "properties": {
         "request": {
-          "$ref": "#/definitions/GitHubActionRequest"
+          "type": "object",
+          "properties": {
+            "repoFullName": {
+              "type": "string"
+            },
+            "action": {
+              "enum": [
+                "create-pr",
+                "update-pr",
+                "comment-pr",
+                "merge-pr",
+                "sync-branch"
+              ]
+            },
+            "summary": {
+              "type": "string"
+            },
+            "privileged": {
+              "type": "boolean"
+            },
+            "updatedAt": {
+              "type": "string"
+            },
+            "targetNumber": {
+              "type": "number"
+            },
+            "branchName": {
+              "type": "string"
+            },
+            "baseBranch": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "body": {
+              "type": "string"
+            },
+            "commentBody": {
+              "type": "string"
+            },
+            "expectedHeadSha": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "repoFullName",
+            "action",
+            "summary",
+            "privileged",
+            "updatedAt"
+          ],
+          "additionalProperties": false
         },
         "actorId": {
           "type": "string"
@@ -14,65 +66,6 @@
       },
       "required": ["request", "actorId"],
       "additionalProperties": false
-    },
-    "GitHubActionRequest": {
-      "type": "object",
-      "properties": {
-        "repoFullName": {
-          "type": "string"
-        },
-        "action": {
-          "$ref": "#/definitions/GitHubAction"
-        },
-        "summary": {
-          "type": "string"
-        },
-        "privileged": {
-          "type": "boolean"
-        },
-        "targetNumber": {
-          "type": "number"
-        },
-        "branchName": {
-          "type": "string"
-        },
-        "baseBranch": {
-          "type": "string"
-        },
-        "title": {
-          "type": "string"
-        },
-        "body": {
-          "type": "string"
-        },
-        "commentBody": {
-          "type": "string"
-        },
-        "expectedHeadSha": {
-          "type": "string"
-        },
-        "updatedAt": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "repoFullName",
-        "action",
-        "summary",
-        "privileged",
-        "updatedAt"
-      ],
-      "additionalProperties": false
-    },
-    "GitHubAction": {
-      "type": "string",
-      "enum": [
-        "create-pr",
-        "update-pr",
-        "comment-pr",
-        "merge-pr",
-        "sync-branch"
-      ]
     }
   }
 }

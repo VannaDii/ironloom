@@ -87,6 +87,11 @@ variables documented in the configuration guide before running live operator
 flows. The storage package remains the only package that directly reads or
 writes the committed runtime state directory.
 
+Public contract schemas are generated from exported `io-ts` codecs. For
+codec-owned lifecycle records, derive TypeScript types from those codecs rather
+than duplicating interface shapes, then run `npm run generate:schemas` and
+`npm run generate:openclaw-manifest` with the code change.
+
 ## Instruction Surfaces
 
 - [`PLATFORM.md`](./PLATFORM.md): foundation-scope objective, package responsibilities, delivery surfaces, and acceptance criteria

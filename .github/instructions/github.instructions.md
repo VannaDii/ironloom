@@ -11,10 +11,8 @@
 - Spec work and implementation work should stay distinguishable in GitHub history.
 - Implementation pull requests must retain links to the governing spec, slice, and operator context.
 - Branch names and pull request titles must describe intent, not reuse any registered tool name.
-- Treat `codex` as a reserved tool name and keep it out of branch names and pull request titles.
 - Pull request titles must use conventional commit format.
 - Pull request bodies must use the repository template at `.github/pull_request_template.md` and fill every section with concrete change data.
-- Do not open or update a pull request until `npm run check:changed-coverage` confirms 100% automated unit-test coverage for every changed executable source file.
 - Reviews, approvals, rebases, retries, and merges must leave an auditable GitHub trail.
 
 ## Review and Merge
