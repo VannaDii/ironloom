@@ -12,9 +12,7 @@
           }
         }
       },
-      "required": [
-        "env"
-      ],
+      "required": ["env"],
       "additionalProperties": false
     }
   }

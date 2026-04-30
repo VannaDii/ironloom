@@ -12,6 +12,13 @@ npm run docs:build
 ```
 
 Use `npm run check:pre-push` as the canonical local gate before pushing.
+Use `npm run act:pr` when Docker is available and you want to exercise the
+pull-request GitHub Actions path locally before spending remote CI minutes. The
+local wrapper cleans up `act-*` Docker containers and `.artifacts/act` after
+each workflow, then runs the hermetic OpenClaw deep test outside `act` so nested
+Docker volume paths resolve on the host. The event fixture skips
+secret-backed publish, Sonar upload, remote artifact-transfer paths, and the
+nested-Docker deep-test job while running the normal PR validation jobs.
 
 Use the root `PLATFORM.md` file as the authoritative foundation-scope document. This guide focuses on the implementation discipline that keeps work aligned with that objective.
 
@@ -45,8 +52,7 @@ Use the root `PLATFORM.md` file as the authoritative foundation-scope document. 
 - Keep package responsibilities aligned with `PLATFORM.md`.
 - For package normalization work, add or preserve `package.json`, `tsconfig.json`, `src/index.ts`, strict exports, and repo-standard scripts.
 - Use public package entrypoints only and keep adapter packages out of domain-logic ownership.
-- Treat package `README.md` coverage as part of package completion when publishability or operator-facing behavior changes.
-- Keep package `README.md` coverage on the remaining normalization backlog until every publishable package has one.
+- Keep package `README.md` coverage current; repository validation requires one for every package.
 
 ## Complete Change Standard
 

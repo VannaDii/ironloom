@@ -31,12 +31,7 @@
         },
         "scope": {
           "type": "string",
-          "enum": [
-            "discord",
-            "github",
-            "supervisor",
-            "storage"
-          ]
+          "enum": ["discord", "github", "supervisor", "storage"]
         },
         "details": {
           "type": "object",

@@ -19,6 +19,11 @@ export const GitHubActionRequestCodec = t.intersection([
   t.partial({
     targetNumber: t.number,
     branchName: t.string,
+    baseBranch: t.string,
+    title: t.string,
+    body: t.string,
+    commentBody: t.string,
+    expectedHeadSha: t.string,
   }),
 ]);
 

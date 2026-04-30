@@ -81,12 +81,7 @@
     },
     "DiscordBindingKind": {
       "type": "string",
-      "enum": [
-        "spec",
-        "implementation",
-        "pull-request",
-        "audit"
-      ]
+      "enum": ["spec", "implementation", "pull-request", "audit"]
     }
   }
 }

@@ -2,6 +2,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 
 import { createGenerator } from 'ts-json-schema-generator';
+import { format } from 'prettier';
 
 import { schemaRegistry } from './schema-registry.mjs';
 
@@ -24,8 +25,11 @@ export async function generateSchemas(options = { outDirOverride: null }) {
         : resolve(options.outDirOverride, entry.outputFile);
 
     const schema = generator.createSchema(entry.typeName);
+    const rendered = await format(`${JSON.stringify(schema, null, 2)}\n`, {
+      parser: 'json',
+    });
     await mkdir(dirname(outputPath), { recursive: true });
-    await writeFile(outputPath, `${JSON.stringify(schema, null, 2)}\n`, 'utf8');
+    await writeFile(outputPath, rendered, 'utf8');
   }
 }
 

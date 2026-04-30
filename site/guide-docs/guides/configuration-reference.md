@@ -19,7 +19,11 @@ Runtime configuration normalization reads:
 
 - `GITHUB_OWNER`
 - `GITHUB_REPO`
+- `GITHUB_DEFAULT_BRANCH`
+- `DEVPLAT_STORAGE_ROOT`
+- `DEVPLAT_WORKTREE_ROOT`
 - `OPENCLAW_PLUGIN_ID`
+- `OPENCLAW_GATEWAY_PORT`
 - `DISCORD_API_BASE_URL`
 - `DISCORD_APPLICATION_ID` (required)
 - `DISCORD_PUBLIC_KEY` (required)
@@ -32,6 +36,13 @@ Runtime configuration normalization reads:
 - `DISCORD_PROJECT_MANAGEMENT_CHANNEL_ID`
 - `SONAR_ORGANIZATION`
 - `SONAR_PROJECT_KEY`
+
+The normalized repository runtime config exposes `owner`, `repo`,
+`defaultBranch`, and `repositoryKey`. Storage defaults to `devplat-state` with
+layout version `1`. Worktrees default to `devplat-worktrees` and inherit the
+configured default branch. The OpenClaw gateway defaults to loopback token auth
+on port `18789`. Only `@vannadii/devplat-storage` may directly read or write
+the runtime state directory.
 
 The normalized Discord runtime config also fixes:
 

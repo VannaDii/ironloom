@@ -34,6 +34,12 @@
         },
         "assigneeId": {
           "type": "string"
+        },
+        "transitions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/TaskTransitionEvent"
+          }
         }
       },
       "required": [
@@ -64,6 +70,35 @@
         "rebasing",
         "complete"
       ]
+    },
+    "TaskTransitionEvent": {
+      "type": "object",
+      "properties": {
+        "fromStatus": {
+          "$ref": "#/definitions/LifecycleStatus"
+        },
+        "toStatus": {
+          "$ref": "#/definitions/LifecycleStatus"
+        },
+        "action": {
+          "$ref": "#/definitions/TaskTransitionAction"
+        },
+        "actorId": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "occurredAt": {
+          "type": "string"
+        }
+      },
+      "required": ["toStatus", "action", "reason", "occurredAt"],
+      "additionalProperties": false
+    },
+    "TaskTransitionAction": {
+      "type": "string",
+      "enum": ["create", "claim", "status-update", "complete", "block"]
     }
   }
 }

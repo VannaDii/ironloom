@@ -15,10 +15,7 @@
           "type": "string"
         }
       },
-      "required": [
-        "gateNames",
-        "summary"
-      ],
+      "required": ["gateNames", "summary"],
       "additionalProperties": false
     }
   }

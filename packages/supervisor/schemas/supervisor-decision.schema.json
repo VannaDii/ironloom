@@ -37,6 +37,12 @@
           "items": {
             "type": "string"
           }
+        },
+        "phase": {
+          "$ref": "#/definitions/SupervisorPhase"
+        },
+        "routedTo": {
+          "type": "string"
         }
       },
       "required": [
@@ -67,6 +73,20 @@
         "failed",
         "rebasing",
         "complete"
+      ]
+    },
+    "SupervisorPhase": {
+      "type": "string",
+      "enum": [
+        "research",
+        "spec",
+        "slicing",
+        "implementation",
+        "gates",
+        "review",
+        "remediation",
+        "merge",
+        "continuation"
       ]
     }
   }

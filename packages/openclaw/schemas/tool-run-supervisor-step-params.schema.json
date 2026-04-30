@@ -15,11 +15,7 @@
           "type": "boolean"
         }
       },
-      "required": [
-        "action",
-        "actorId",
-        "privileged"
-      ],
+      "required": ["action", "actorId", "privileged"],
       "additionalProperties": false
     }
   }

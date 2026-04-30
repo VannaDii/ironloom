@@ -2,6 +2,17 @@
 
 `@vannadii/devplat-openclaw` is the adapter-only OpenClaw package for DevPlat. It reads generated schemas, decodes tool input with platform codecs, and delegates lifecycle behavior to platform services. GitHub remains the source of truth for specs, pull requests, reviews, and merges; Discord remains the primary operator control plane through OpenClaw.
 
+## Real-World Flow
+
+```mermaid
+flowchart LR
+  Agent[OpenClaw agent] --> Tool[Generated tool schema]
+  Tool --> Decode[Platform codec decode]
+  Decode --> Service[Package service delegation]
+  Service --> Result[Operational result]
+  Result --> Audit[Artifact id stored key next action]
+```
+
 ## Package Assets
 
 - `openclaw.plugin.json`: generated plugin manifest

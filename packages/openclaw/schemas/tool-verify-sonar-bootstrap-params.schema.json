@@ -34,11 +34,7 @@
     },
     "SonarApiQualityGateStatus": {
       "type": "string",
-      "enum": [
-        "ERROR",
-        "NONE",
-        "OK"
-      ]
+      "enum": ["ERROR", "NONE", "OK"]
     },
     "SonarQualityGateConditionSnapshot": {
       "type": "object",
@@ -53,18 +49,10 @@
           "type": "string"
         },
         "actualValue": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         }
       },
-      "required": [
-        "metricKey",
-        "comparator",
-        "errorThreshold",
-        "actualValue"
-      ],
+      "required": ["metricKey", "comparator", "errorThreshold", "actualValue"],
       "additionalProperties": false
     }
   }

@@ -4,15 +4,94 @@ import { FileStoreService } from '@vannadii/devplat-storage';
 
 import {
   createDiscordControlRequest,
+  createDiscordControlRequestFromInteraction,
   describeDiscordControlRequest,
 } from './logic.js';
-import type { DiscordControlRequest, DiscordControlResult } from './types.js';
+import type {
+  DiscordControlRequest,
+  DiscordControlResult,
+  DiscordOperatorInteraction,
+  DiscordResponseReceipt,
+} from './types.js';
+
+export interface DiscordControlResponseTransport {
+  postInteractionResponse(
+    input: DiscordOperatorInteraction,
+    content: string,
+  ): Promise<DiscordResponseReceipt>;
+  postThreadMessage(
+    threadId: string,
+    content: string,
+  ): Promise<DiscordResponseReceipt>;
+}
+
+export class DiscordRestResponseTransport implements DiscordControlResponseTransport {
+  public constructor(
+    private readonly botToken = process.env['DISCORD_BOT_TOKEN'] ?? '',
+    private readonly baseUrl = process.env['DISCORD_API_BASE_URL'] ??
+      'https://discord.com/api/v10',
+    private readonly fetchImpl = fetch,
+  ) {}
+
+  public async postInteractionResponse(
+    input: DiscordOperatorInteraction,
+    content: string,
+  ): Promise<DiscordResponseReceipt> {
+    const endpoint = `/interactions/${encodeURIComponent(input.id)}/${encodeURIComponent(input.token)}/callback`;
+    const response = await this.fetchImpl(`${this.baseUrl}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        type: 4,
+        data: {
+          content,
+        },
+      }),
+    });
+    const responseBody: unknown = await response.json().catch(() => null);
+
+    return {
+      endpoint,
+      statusCode: response.status,
+      responseBody,
+    };
+  }
+
+  public async postThreadMessage(
+    threadId: string,
+    content: string,
+  ): Promise<DiscordResponseReceipt> {
+    if (this.botToken.trim().length === 0) {
+      throw new Error('DISCORD_BOT_TOKEN is required for Discord responses.');
+    }
+
+    const endpoint = `/channels/${encodeURIComponent(threadId)}/messages`;
+    const response = await this.fetchImpl(`${this.baseUrl}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        authorization: `Bot ${this.botToken}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ content }),
+    });
+    const responseBody: unknown = await response.json().catch(() => null);
+
+    return {
+      endpoint,
+      statusCode: response.status,
+      responseBody,
+    };
+  }
+}
 
 export class DiscordControlPlaneService {
   public constructor(
     private readonly policy = new DecisionPolicyService(),
     private readonly telemetry = new TelemetryEventService(),
     private readonly store = new FileStoreService(),
+    private readonly responses: DiscordControlResponseTransport = new DiscordRestResponseTransport(),
   ) {}
 
   public execute(input: DiscordControlRequest): DiscordControlRequest {
@@ -70,6 +149,60 @@ export class DiscordControlPlaneService {
       policyDecisionId: decision.id,
       allowed: decision.allowed,
       persistedKey: request.id,
+      failedClosed: false,
+    };
+  }
+
+  public async handleInteraction(
+    input: DiscordOperatorInteraction,
+  ): Promise<DiscordControlResult> {
+    const route = createDiscordControlRequestFromInteraction(input);
+
+    if (!route.ok) {
+      const responseReceipt = await this.responses.postInteractionResponse(
+        input,
+        route.reason,
+      );
+
+      return {
+        request: createDiscordControlRequest({
+          id: input.id,
+          summary: route.reason,
+          status: 'blocked',
+          trace: [],
+          updatedAt: input.updatedAt,
+          actorId: input.actorId,
+          threadId: 'unresolved',
+          channelId: input.channelId,
+          action: 'show-status',
+          privileged: false,
+        }),
+        policyDecisionId: 'discord-fail-closed',
+        allowed: false,
+        persistedKey: input.id,
+        responseReceipt,
+        failedClosed: true,
+      };
+    }
+
+    const result = await this.handleAction(route.request);
+    const responseReceipt = await this.responses.postInteractionResponse(
+      input,
+      result.allowed
+        ? `Accepted ${route.request.action}.`
+        : `Blocked ${route.request.action}.`,
+    );
+    const threadReceipt = await this.responses.postThreadMessage(
+      route.request.threadId,
+      result.allowed
+        ? `DevPlat accepted ${route.request.action}.`
+        : `DevPlat blocked ${route.request.action}.`,
+    );
+
+    return {
+      ...result,
+      responseReceipt,
+      threadReceipt,
     };
   }
 }

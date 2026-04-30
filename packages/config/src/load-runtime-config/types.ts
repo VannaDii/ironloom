@@ -30,6 +30,29 @@ export interface DiscordRuntimeConfig {
   threadBindingMode: 'inherit-parent';
 }
 
+export interface RepositoryRuntimeConfig {
+  owner: string;
+  repo: string;
+  defaultBranch: string;
+  repositoryKey: string;
+}
+
+export interface StorageRuntimeConfig {
+  rootDirectory: string;
+  layoutVersion: 1;
+}
+
+export interface WorktreeRuntimeConfig {
+  rootDirectory: string;
+  baseBranch: string;
+}
+
+export interface OpenClawGatewayConfig {
+  bind: 'loopback';
+  port: number;
+  authMode: 'token';
+}
+
 export interface OpenClawActionGateConfig {
   approveThis: boolean;
   mergeNow: boolean;
@@ -45,9 +68,13 @@ export interface DevplatConfig {
   updatedAt: string;
   githubOwner: string;
   githubRepo: string;
+  repository: RepositoryRuntimeConfig;
+  storage: StorageRuntimeConfig;
+  worktrees: WorktreeRuntimeConfig;
   discord: DiscordRuntimeConfig;
   openclaw: {
     pluginId: string;
+    gateway: OpenClawGatewayConfig;
     actionGates: OpenClawActionGateConfig;
   };
   sonar: {

@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import {
   canMergePullRequest,
+  createPullRequestProjection,
   createPullRequestRecord,
   describePullRequestRecord,
 } from './logic.js';
+import type { PullRequestRecord } from './types.js';
 
 describe('PullRequestRecord logic', () => {
   it('normalizes labels and computes merge readiness', () => {
@@ -37,5 +39,45 @@ describe('PullRequestRecord logic', () => {
     });
 
     expect(canMergePullRequest(snapshot)).toBe(false);
+  });
+
+  it('projects PR body, validation, and artifact references', () => {
+    const cases = [
+      {
+        inputs: {
+          record: {
+            prNumber: 43,
+            branchName: 'feature/full-autonomy',
+            baseBranch: 'main',
+            title: 'feat: complete autonomous flow',
+            labels: ['platform', 'platform'],
+            reviewState: 'approved',
+            mergeReady: true,
+            updatedAt: '2026-04-05T00:00:00.000Z',
+            sourceArtifactIds: ['artifact-1', 'artifact-1'],
+          } satisfies PullRequestRecord,
+        },
+        mock: () => undefined,
+        assert: (record: ReturnType<typeof createPullRequestRecord>) => {
+          expect(record.projection).toEqual({
+            body: 'feat: complete autonomous flow',
+            checklist: ['Confirm platform'],
+            riskSummary: 'Ready for merge',
+            validationSummary: 'Review approved',
+            artifactIds: ['artifact-1'],
+          });
+          expect(record.sourceArtifactIds).toEqual(['artifact-1']);
+        },
+      },
+    ];
+
+    for (const testCase of cases) {
+      testCase.mock();
+      const record = createPullRequestRecord(testCase.inputs.record);
+      testCase.assert(record);
+      expect(createPullRequestProjection(record).artifactIds).toEqual([
+        'artifact-1',
+      ]);
+    }
   });
 });

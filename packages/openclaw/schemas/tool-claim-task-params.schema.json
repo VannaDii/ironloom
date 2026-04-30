@@ -18,12 +18,7 @@
           "type": "string"
         }
       },
-      "required": [
-        "taskId",
-        "sliceId",
-        "threadId",
-        "assigneeId"
-      ],
+      "required": ["taskId", "sliceId", "threadId", "assigneeId"],
       "additionalProperties": false
     }
   }

@@ -143,6 +143,12 @@ export const schemaRegistry = [
   ],
   [
     'discord',
+    'discord-control-plane',
+    'DiscordOperatorInteraction',
+    'schemas/discord-operator-interaction.schema.json',
+  ],
+  [
+    'discord',
     'interactive-approval',
     'DiscordApprovalRequest',
     'schemas/discord-approval-request.schema.json',

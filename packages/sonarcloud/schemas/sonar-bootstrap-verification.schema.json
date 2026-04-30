@@ -10,10 +10,7 @@
         },
         "status": {
           "type": "string",
-          "enum": [
-            "failed",
-            "passed"
-          ]
+          "enum": ["failed", "passed"]
         },
         "qualityGateStatus": {
           "$ref": "#/definitions/SonarApiQualityGateStatus"
@@ -51,11 +48,7 @@
     },
     "SonarApiQualityGateStatus": {
       "type": "string",
-      "enum": [
-        "ERROR",
-        "NONE",
-        "OK"
-      ]
+      "enum": ["ERROR", "NONE", "OK"]
     },
     "SonarBootstrapVerificationChecks": {
       "type": "object",

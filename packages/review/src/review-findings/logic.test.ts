@@ -5,6 +5,7 @@ import {
   describeReviewFinding,
   isBlockingReviewFinding,
 } from './logic.js';
+import type { ReviewFinding } from './types.js';
 
 describe('ReviewFinding logic', () => {
   it('elevates high-severity findings to blocking', () => {
@@ -37,5 +38,44 @@ describe('ReviewFinding logic', () => {
     });
 
     expect(isBlockingReviewFinding(snapshot)).toBe(false);
+  });
+
+  it('normalizes spec conformance summaries for review findings', () => {
+    const cases = [
+      {
+        inputs: {
+          finding: {
+            findingId: 'finding-003',
+            severity: 'medium',
+            path: ' packages/specs/src/spec-record/logic.ts ',
+            message: ' Missing acceptance criterion ',
+            rationale: ' One spec criterion is not implemented ',
+            fixRecommendation: ' Add the missing implementation path ',
+            blocking: false,
+            updatedAt: '2026-04-05T00:00:00.000Z',
+            source: 'automated',
+            specConformance: {
+              specId: ' spec-001 ',
+              satisfiedCriteria: ['Gate passes', 'Gate passes'],
+              missingCriteria: ['Audit artifact'],
+            },
+          } satisfies ReviewFinding,
+        },
+        mock: () => undefined,
+        assert: (finding: ReturnType<typeof createReviewFinding>) => {
+          expect(finding.source).toBe('automated');
+          expect(finding.specConformance).toEqual({
+            specId: 'spec-001',
+            satisfiedCriteria: ['Gate passes'],
+            missingCriteria: ['Audit artifact'],
+          });
+        },
+      },
+    ];
+
+    for (const testCase of cases) {
+      testCase.mock();
+      testCase.assert(createReviewFinding(testCase.inputs.finding));
+    }
   });
 });

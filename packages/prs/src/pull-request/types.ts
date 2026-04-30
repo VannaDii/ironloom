@@ -4,6 +4,14 @@ export type PullRequestReviewState =
   | 'approved'
   | 'changes-requested';
 
+export interface PullRequestProjection {
+  body: string;
+  checklist: string[];
+  riskSummary: string;
+  validationSummary: string;
+  artifactIds: string[];
+}
+
 export interface PullRequestRecord {
   prNumber: number;
   branchName: string;
@@ -13,4 +21,6 @@ export interface PullRequestRecord {
   reviewState: PullRequestReviewState;
   mergeReady: boolean;
   updatedAt: string;
+  projection?: PullRequestProjection;
+  sourceArtifactIds?: string[];
 }

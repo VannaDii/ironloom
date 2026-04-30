@@ -49,19 +49,11 @@
     },
     "MemoryKind": {
       "type": "string",
-      "enum": [
-        "decision",
-        "constraint",
-        "preference",
-        "trap"
-      ]
+      "enum": ["decision", "constraint", "preference", "trap"]
     },
     "MemoryStatus": {
       "type": "string",
-      "enum": [
-        "active",
-        "superseded"
-      ]
+      "enum": ["active", "superseded"]
     }
   }
 }

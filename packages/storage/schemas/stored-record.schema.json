@@ -32,6 +32,16 @@
         "updatedAt": {
           "type": "string"
         },
+        "layoutVersion": {
+          "type": "number",
+          "const": 1
+        },
+        "indexes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/StoreIndexName"
+          }
+        },
         "payload": {
           "type": "object",
           "additionalProperties": {}
@@ -51,12 +61,7 @@
     },
     "StoreScope": {
       "type": "string",
-      "enum": [
-        "artifacts",
-        "memory",
-        "state",
-        "telemetry"
-      ]
+      "enum": ["artifacts", "memory", "state", "telemetry"]
     },
     "LifecycleStatus": {
       "type": "string",
@@ -74,6 +79,10 @@
         "rebasing",
         "complete"
       ]
+    },
+    "StoreIndexName": {
+      "type": "string",
+      "enum": ["active-thread", "task", "pull-request", "branch", "artifact"]
     }
   }
 }

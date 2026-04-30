@@ -19,6 +19,7 @@ describe('FileStoreService', () => {
       status: 'complete',
       trace: [],
       updatedAt: '2026-04-04T00:00:00.000Z',
+      indexes: ['task'],
       payload: {
         state: 'queued',
       },
@@ -31,9 +32,21 @@ describe('FileStoreService', () => {
       ),
     );
     const loaded = await service.read('state', 'decision-001');
+    const indexContents = JSON.parse(
+      await readFile(
+        resolve(rootDirectory, 'indexes', 'task', 'decision-001.json'),
+        'utf8',
+      ),
+    );
 
     expect(stored.trace).toContain('storage:state');
+    expect(stored.layoutVersion).toBe(1);
     expect(fileContents.key).toBe('decision-001');
+    expect(indexContents).toMatchObject({
+      id: 'storage-001',
+      scope: 'state',
+      key: 'decision-001',
+    });
     expect(loaded.ok).toBe(true);
     if (loaded.ok) {
       expect(loaded.value.payload.state).toBe('queued');

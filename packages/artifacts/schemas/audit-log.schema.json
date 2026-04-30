@@ -34,6 +34,23 @@
         "updatedAt": {
           "type": "string"
         },
+        "migration": {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "type": "number",
+              "const": 1
+            },
+            "previousArtifactId": {
+              "type": "string"
+            },
+            "migratedAt": {
+              "type": "string"
+            }
+          },
+          "required": ["schemaVersion"],
+          "additionalProperties": false
+        },
         "payload": {
           "$ref": "#/definitions/AuditLogPayload"
         }
@@ -87,13 +104,7 @@
           "additionalProperties": {}
         }
       },
-      "required": [
-        "auditId",
-        "actorId",
-        "action",
-        "scope",
-        "details"
-      ],
+      "required": ["auditId", "actorId", "action", "scope", "details"],
       "additionalProperties": false
     }
   }

@@ -1,3 +1,11 @@
+export interface RemediationResult {
+  action: string;
+  success: boolean;
+  artifactId?: string;
+  detail: string;
+  completedAt: string;
+}
+
 export interface RemediationPlan {
   planId: string;
   findingIds: string[];
@@ -5,4 +13,7 @@ export interface RemediationPlan {
   autofix: boolean;
   approvalRequired: boolean;
   updatedAt: string;
+  results?: RemediationResult[];
+  unresolvedFindingIds?: string[];
+  nextAction?: string;
 }

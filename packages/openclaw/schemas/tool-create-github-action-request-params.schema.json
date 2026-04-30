@@ -26,6 +26,21 @@
         "branchName": {
           "type": "string"
         },
+        "baseBranch": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "commentBody": {
+          "type": "string"
+        },
+        "expectedHeadSha": {
+          "type": "string"
+        },
         "updatedAt": {
           "type": "string"
         }

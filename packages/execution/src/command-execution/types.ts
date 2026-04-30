@@ -6,10 +6,16 @@ export interface CommandResult {
   stdout: string;
   stderr: string;
   durationMs: number;
+  attempts?: number;
+  truncated?: boolean;
 }
 
 export interface CommandExecutionOptions {
   cwd?: string;
   env?: Record<string, string>;
   timeoutMs?: number;
+  maxOutputBytes?: number;
+  retry?: {
+    attempts: number;
+  };
 }

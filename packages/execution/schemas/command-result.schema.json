@@ -28,6 +28,12 @@
         },
         "durationMs": {
           "type": "number"
+        },
+        "attempts": {
+          "type": "number"
+        },
+        "truncated": {
+          "type": "boolean"
         }
       },
       "required": [

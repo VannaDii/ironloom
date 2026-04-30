@@ -12,10 +12,7 @@
           "type": "string"
         }
       },
-      "required": [
-        "request",
-        "actorId"
-      ],
+      "required": ["request", "actorId"],
       "additionalProperties": false
     },
     "GitHubActionRequest": {
@@ -37,6 +34,21 @@
           "type": "number"
         },
         "branchName": {
+          "type": "string"
+        },
+        "baseBranch": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "commentBody": {
+          "type": "string"
+        },
+        "expectedHeadSha": {
           "type": "string"
         },
         "updatedAt": {

@@ -56,6 +56,7 @@ export function parseDeepTestArgs(argv) {
       typeof args.get('--report-dir') === 'string'
         ? resolve(repoRootDirectory, args.get('--report-dir'))
         : undefined,
+    retainImage: args.get('--retain-image') === true,
     retainContainerOnFailure:
       args.get('--retain-container-on-failure') === true,
     skipBuild,
@@ -87,7 +88,7 @@ function sanitizeNameSegment(value) {
     }
   }
 
-  while (normalized.startsWith('-')) {
+  while (normalized.startsWith('-') || normalized.startsWith('.')) {
     normalized = normalized.slice(1);
   }
 
@@ -488,6 +489,20 @@ export function createDeepScenario(runtimeEnv) {
     updatedAt: fixedTimestamp,
     githubOwner: runtimeEnv.GITHUB_OWNER,
     githubRepo: runtimeEnv.GITHUB_REPO,
+    repository: {
+      owner: runtimeEnv.GITHUB_OWNER,
+      repo: runtimeEnv.GITHUB_REPO,
+      defaultBranch: 'main',
+      repositoryKey: `${runtimeEnv.GITHUB_OWNER}/${runtimeEnv.GITHUB_REPO}`,
+    },
+    storage: {
+      rootDirectory: 'devplat-state',
+      layoutVersion: 1,
+    },
+    worktrees: {
+      rootDirectory: 'devplat-worktrees',
+      baseBranch: 'main',
+    },
     discord: {
       apiBaseUrl: runtimeEnv.DISCORD_API_BASE_URL,
       apiVersion: 'v10',
@@ -515,6 +530,11 @@ export function createDeepScenario(runtimeEnv) {
     },
     openclaw: {
       pluginId: '@vannadii/devplat-openclaw',
+      gateway: {
+        bind: 'loopback',
+        port: defaultGatewayPort,
+        authMode: 'token',
+      },
       actionGates: {
         approveThis: true,
         mergeNow: false,
@@ -1420,6 +1440,8 @@ export async function runDeepTest(options, dependencies = {}) {
   };
 
   let containerStarted = false;
+  const removeBuiltImage =
+    !options.skipBuild && options.image === undefined && !options.retainImage;
 
   try {
     if (!options.skipBuild) {
@@ -1504,6 +1526,11 @@ export async function runDeepTest(options, dependencies = {}) {
         () => undefined,
       );
     }
+    await cleanupBuiltImage({
+      commandRunner,
+      imageTag,
+      removeBuiltImage,
+    });
     await writeArtifactGatewayConfig({
       gatewayConfig,
       runtimeDirectory,
@@ -1524,6 +1551,11 @@ export async function runDeepTest(options, dependencies = {}) {
   if (containerStarted) {
     await commandRunner('docker', ['rm', '-f', containerName]);
   }
+  await cleanupBuiltImage({
+    commandRunner,
+    imageTag,
+    removeBuiltImage,
+  });
   await writeArtifactGatewayConfig({
     gatewayConfig,
     runtimeDirectory,
@@ -1540,6 +1572,20 @@ export async function runDeepTest(options, dependencies = {}) {
   }
 
   return report;
+}
+
+async function cleanupBuiltImage({
+  commandRunner,
+  imageTag,
+  removeBuiltImage,
+}) {
+  if (!removeBuiltImage) {
+    return;
+  }
+
+  await commandRunner('docker', ['image', 'rm', '-f', imageTag]).catch(
+    () => undefined,
+  );
 }
 
 async function main() {

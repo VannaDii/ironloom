@@ -31,6 +31,12 @@
           "items": {
             "$ref": "#/definitions/GateCheckResult"
           }
+        },
+        "classification": {
+          "$ref": "#/definitions/GateFailureClassification"
+        },
+        "nextAction": {
+          "type": "string"
         }
       },
       "required": [
@@ -72,13 +78,36 @@
         },
         "detail": {
           "type": "string"
+        },
+        "failureKind": {
+          "type": "string",
+          "enum": ["command-failed", "timeout", "passed"]
+        },
+        "nextAction": {
+          "type": "string"
         }
       },
-      "required": [
-        "name",
-        "success",
-        "detail"
-      ],
+      "required": ["name", "success", "detail"],
+      "additionalProperties": false
+    },
+    "GateFailureClassification": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["passed", "retryable", "requires-remediation"]
+        },
+        "failedGateNames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "nextAction": {
+          "type": "string"
+        }
+      },
+      "required": ["kind", "failedGateNames", "nextAction"],
       "additionalProperties": false
     }
   }

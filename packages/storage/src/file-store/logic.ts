@@ -8,6 +8,7 @@ export function createStoredRecord<TPayload extends object>(
   return appendTrace(
     {
       ...input,
+      layoutVersion: input.layoutVersion ?? 1,
       summary: input.summary.trim(),
       updatedAt: new Date(input.updatedAt).toISOString(),
     },
@@ -17,6 +18,10 @@ export function createStoredRecord<TPayload extends object>(
 
 export function buildStoragePath(scope: StoreScope, key: string): string {
   return `${scope}/${key}.json`;
+}
+
+export function buildStorageIndexPath(indexName: string, key: string): string {
+  return `indexes/${indexName}/${key}.json`;
 }
 
 export function describeStoredRecord<TPayload extends object>(

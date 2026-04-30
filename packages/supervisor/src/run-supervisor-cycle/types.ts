@@ -1,5 +1,16 @@
 import type { LifecycleStatus } from '@vannadii/devplat-core';
 
+export type SupervisorPhase =
+  | 'research'
+  | 'spec'
+  | 'slicing'
+  | 'implementation'
+  | 'gates'
+  | 'review'
+  | 'remediation'
+  | 'merge'
+  | 'continuation';
+
 export interface SupervisorDecision {
   id: string;
   summary: string;
@@ -10,4 +21,6 @@ export interface SupervisorDecision {
   nextState: LifecycleStatus;
   approved: boolean;
   notes: string[];
+  phase?: SupervisorPhase;
+  routedTo?: string;
 }

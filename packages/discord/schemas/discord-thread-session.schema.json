@@ -141,10 +141,7 @@
           "const": "implementation"
         },
         "specId": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "sliceId": {
           "type": "string"
@@ -212,16 +209,10 @@
           "const": "pull-request"
         },
         "specId": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "sliceId": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "pullRequestNumber": {
           "type": "integer",

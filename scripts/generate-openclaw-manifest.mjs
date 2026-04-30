@@ -2,6 +2,8 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 
+import { format } from 'prettier';
+
 const rootDirectory = resolve(import.meta.dirname, '..');
 const packageJsonPath = resolve(
   rootDirectory,
@@ -30,7 +32,9 @@ export async function renderOpenClawManifest() {
       'DevPlat capability bridge for OpenClaw with Discord-first operational flows.',
   };
 
-  return `${JSON.stringify(manifest, null, 2)}\n`;
+  return format(`${JSON.stringify(manifest, null, 2)}\n`, {
+    parser: 'json',
+  });
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

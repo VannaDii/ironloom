@@ -37,6 +37,23 @@
         "updatedAt": {
           "type": "string"
         },
+        "migration": {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "type": "number",
+              "const": 1
+            },
+            "previousArtifactId": {
+              "type": "string"
+            },
+            "migratedAt": {
+              "type": "string"
+            }
+          },
+          "required": ["schemaVersion"],
+          "additionalProperties": false
+        },
         "payload": {
           "$ref": "#/definitions/ApprovalRecordPayload"
         }
@@ -104,20 +121,11 @@
     },
     "ApprovalSubjectType": {
       "type": "string",
-      "enum": [
-        "spec",
-        "slice",
-        "pull-request",
-        "merge"
-      ]
+      "enum": ["spec", "slice", "pull-request", "merge"]
     },
     "ApprovalDecision": {
       "type": "string",
-      "enum": [
-        "approved",
-        "rejected",
-        "needs-changes"
-      ]
+      "enum": ["approved", "rejected", "needs-changes"]
     }
   }
 }

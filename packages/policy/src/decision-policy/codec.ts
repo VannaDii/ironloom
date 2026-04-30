@@ -13,6 +13,13 @@ export const PolicyDecisionCodec = t.type({
   action: t.string,
   allowed: t.boolean,
   requiresApproval: t.boolean,
+  auditRequired: t.boolean,
+  privilegeLevel: t.union([
+    t.literal('automatic'),
+    t.literal('human-approval'),
+    t.literal('destructive'),
+    t.literal('external-publish'),
+  ]),
   reason: t.string,
 });
 

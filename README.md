@@ -11,6 +11,37 @@ DevPlat is a Discord-first autonomous software-delivery platform built as a stri
 - operator control through OpenClaw + Discord with auditable artifacts
 - publication through GitHub Packages npm packages, GHCR Docker, GHCR OCI Helm, and GitHub Pages
 
+```mermaid
+flowchart TD
+  Operator[Discord operator] --> OpenClaw[OpenClaw agent loop]
+  OpenClaw --> Adapter["@vannadii/devplat-openclaw adapter"]
+  Adapter --> Config[Repository runtime config]
+  Adapter --> Supervisor[Supervisor lifecycle routing]
+  Supervisor --> Policy[Policy allow deny and audit reason]
+  Policy --> Storage[Storage indexes and durable records]
+  Supervisor --> Research[Research briefs with sources]
+  Research --> Specs[Spec revisions and PR-ready body]
+  Specs --> GitHubSpec[GitHub spec pull request]
+  GitHubSpec --> Approval[Discord approval bound to thread]
+  Approval --> Slicing[Slice dependency graph and work packets]
+  Slicing --> Queue[Task queue transitions]
+  Queue --> Worktrees[Git worktree allocate sync release]
+  Worktrees --> Execution[Command execution retry timeout truncation]
+  Execution --> Gates[Gate classification and next action]
+  Gates --> Sonar[Sonar issue normalization]
+  Gates --> Review[Spec vs implementation review]
+  Sonar --> Review
+  Review --> Remediation[Remediation plan and result artifacts]
+  Remediation --> Execution
+  Review --> PRs[PR projection and merge readiness]
+  PRs --> GitHubPR[GitHub PR update merge workflow dispatch]
+  GitHubPR --> Branching[Dependent branch graph and rebase plan]
+  Branching --> Worktrees
+  GitHubPR --> Publishing[Docker Helm npm docs release surfaces]
+  Storage --> Artifacts[Versioned artifacts and audit logs]
+  Artifacts --> Operator
+```
+
 ## Runtime Baseline
 
 - Node.js `v24.14.1` from `.nvmrc`
@@ -34,7 +65,27 @@ npm run check:pre-push
 npm run test:coverage
 npm run test:openclaw:deep
 npm run docs:build
+npm run act:pr
 ```
+
+`npm run act:pr` runs the pull-request CI and TypeScript matrix workflows
+locally through Docker using `act`, `.actrc`, and
+`.github/act/pull_request.json`. The wrapper at `scripts/run-act.sh` cleans up
+`act-*` Docker containers and `.artifacts/act` before and after each workflow,
+then runs the hermetic OpenClaw deep test outside `act` so nested Docker volume
+paths resolve on the host. The fixture deliberately uses a secretless bot-style
+PR event so publish and Sonar upload paths stay skipped locally. The CI workflow
+also skips remote artifact upload/download actions under `ACT=true` and skips
+the nested-Docker deep-test job for the `devplat-local-act` actor while still
+executing repo, coverage, build, docs, generated artifact, and compatibility
+jobs.
+
+Runtime configuration is repository-scoped for the single-repo production path.
+Set `GITHUB_OWNER`, `GITHUB_REPO`, `GITHUB_DEFAULT_BRANCH`,
+`DEVPLAT_STORAGE_ROOT`, `DEVPLAT_WORKTREE_ROOT`, and the Discord/OpenClaw/Sonar
+variables documented in the configuration guide before running live operator
+flows. The storage package remains the only package that directly reads or
+writes the committed runtime state directory.
 
 ## Instruction Surfaces
 
@@ -46,6 +97,7 @@ npm run docs:build
 - [`site/guide-docs/guides/platform-lifecycle.md`](./site/guide-docs/guides/platform-lifecycle.md): end-to-end platform flow
 - [`site/guide-docs/guides/quality-performance-policy.md`](./site/guide-docs/guides/quality-performance-policy.md): complete-change and performance expectations
 - [`site/guide-docs/guides/live-test-lab.md`](./site/guide-docs/guides/live-test-lab.md): dispatchable live end-to-end test lane and setup references
+- `packages/*/README.md`: package-local ownership, boundary, and validation notes
 
 ## Distribution Surfaces
 

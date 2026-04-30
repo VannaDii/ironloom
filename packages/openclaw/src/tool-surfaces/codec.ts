@@ -13,26 +13,19 @@ import {
   DiscordControlRequestCodec,
   DiscordThreadSessionCodec,
 } from '@vannadii/devplat-discord';
-import {
-  ExecuteRebaseDependentsInputCodec,
-  RebasePlanCodec,
-} from '@vannadii/devplat-branching';
+import { ExecuteRebaseDependentsInputCodec } from '@vannadii/devplat-branching';
 import { GitHubActionRequestCodec } from '@vannadii/devplat-github';
 import { MemoryEntryCodec } from '@vannadii/devplat-memory';
 import { TelemetryEventCodec } from '@vannadii/devplat-observability';
 import { ResearchBriefCodec } from '@vannadii/devplat-research';
-import { RemediationPlanCodec } from '@vannadii/devplat-remediation';
 import { ReviewFindingCodec } from '@vannadii/devplat-review';
 import { SlicePlanCodec } from '@vannadii/devplat-slicing';
 import { DevplatConfigCodec } from '@vannadii/devplat-config';
-import {
-  SonarBootstrapVerificationInputCodec,
-  SonarQualityGateResultCodec,
-} from '@vannadii/devplat-sonarcloud';
+import { SonarBootstrapVerificationInputCodec } from '@vannadii/devplat-sonarcloud';
 import { SpecRecordCodec } from '@vannadii/devplat-specs';
 import { PullRequestRecordCodec } from '@vannadii/devplat-prs';
 import { TaskRecordCodec } from '@vannadii/devplat-queue';
-import { StoredRecordCodec } from '@vannadii/devplat-storage';
+import { StoredRecordCodec, StoreScopeCodec } from '@vannadii/devplat-storage';
 import {
   WorktreeAllocationCodec,
   WorktreeReleaseModeCodec,
@@ -206,10 +199,10 @@ export const VerifySonarBootstrapToolInputCodec: t.Type<VerifySonarBootstrapTool
 
 export const EvaluateSonarQualityGateToolInputCodec: t.Type<EvaluateSonarQualityGateToolInput> =
   t.type({
-    projectKey: SonarQualityGateResultCodec.props.projectKey,
-    overallCoverage: SonarQualityGateResultCodec.props.overallCoverage,
-    newCodeCoverage: SonarQualityGateResultCodec.props.newCodeCoverage,
-    blockingIssues: SonarQualityGateResultCodec.props.blockingIssues,
+    projectKey: t.string,
+    overallCoverage: t.number,
+    newCodeCoverage: t.number,
+    blockingIssues: t.number,
   });
 
 export const CreateReviewFindingToolInputCodec: t.Type<CreateReviewFindingToolInput> =
@@ -218,7 +211,7 @@ export const CreateReviewFindingToolInputCodec: t.Type<CreateReviewFindingToolIn
 export const CreateRemediationPlanToolInputCodec: t.Type<CreateRemediationPlanToolInput> =
   t.type({
     findings: t.array(ReviewFindingCodec),
-    autofix: RemediationPlanCodec.props.autofix,
+    autofix: t.boolean,
   });
 
 export const RememberMemoryEntryToolInputCodec: t.Type<RememberMemoryEntryToolInput> =
@@ -238,13 +231,13 @@ export const CreateTaskRecordToolInputCodec: t.Type<CreateTaskRecordToolInput> =
 
 export const ReadStoredRecordToolInputCodec: t.Type<ReadStoredRecordToolInput> =
   t.type({
-    scope: StoredRecordCodec.props.scope,
+    scope: StoreScopeCodec,
     key: t.string,
   });
 
 export const ListStoredRecordsToolInputCodec: t.Type<ListStoredRecordsToolInput> =
   t.type({
-    scope: StoredRecordCodec.props.scope,
+    scope: StoreScopeCodec,
   });
 
 export const StoreRecordToolInputCodec: t.Type<StoreRecordToolInput> = t.type({
@@ -271,7 +264,7 @@ export const SubmitPullRequestMergeToolInputCodec: t.Type<SubmitPullRequestMerge
 export const PlanRebaseDependentsToolInputCodec: t.Type<PlanRebaseDependentsToolInput> =
   t.type({
     record: PullRequestRecordCodec,
-    dependentBranches: RebasePlanCodec.props.dependentBranches,
+    dependentBranches: t.array(t.string),
   });
 
 export const ExecuteRebaseDependentsToolInputCodec: t.Type<ExecuteRebaseDependentsToolInput> =

@@ -9,5 +9,11 @@ export interface PolicyDecision {
   action: string;
   allowed: boolean;
   requiresApproval: boolean;
+  auditRequired: boolean;
+  privilegeLevel:
+    | 'automatic'
+    | 'human-approval'
+    | 'destructive'
+    | 'external-publish';
   reason: string;
 }

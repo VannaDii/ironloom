@@ -12,20 +12,12 @@
           "type": "string"
         }
       },
-      "required": [
-        "scope",
-        "key"
-      ],
+      "required": ["scope", "key"],
       "additionalProperties": false
     },
     "StoreScope": {
       "type": "string",
-      "enum": [
-        "artifacts",
-        "memory",
-        "state",
-        "telemetry"
-      ]
+      "enum": ["artifacts", "memory", "state", "telemetry"]
     }
   }
 }

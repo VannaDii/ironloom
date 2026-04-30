@@ -349,6 +349,20 @@ describe('tool surface service', () => {
         updatedAt: '2026-04-04T00:00:00.000Z',
         githubOwner: 'VannaDii',
         githubRepo: 'devplat',
+        repository: {
+          owner: 'VannaDii',
+          repo: 'devplat',
+          defaultBranch: 'main',
+          repositoryKey: 'VannaDii/devplat',
+        },
+        storage: {
+          rootDirectory: 'devplat-state',
+          layoutVersion: 1,
+        },
+        worktrees: {
+          rootDirectory: 'devplat-worktrees',
+          baseBranch: 'main',
+        },
         discord: {
           apiBaseUrl: 'https://discord.com/api/v10',
           apiVersion: 'v10',
@@ -375,6 +389,11 @@ describe('tool surface service', () => {
         },
         openclaw: {
           pluginId: '@vannadii/devplat-openclaw',
+          gateway: {
+            bind: 'loopback',
+            port: 18789,
+            authMode: 'token',
+          },
           actionGates: {
             approveThis: true,
             mergeNow: false,
@@ -1758,25 +1777,62 @@ describe('tool surface service', () => {
   });
 
   it('submits GitHub actions from valid tool input', async () => {
-    const result = await createSubmitGitHubActionTool().execute(
-      'tool-call-gh1',
+    const cases = [
       {
-        request: {
-          repoFullName: 'VannaDii/devplat',
-          action: 'sync-branch',
-          summary: 'Sync downstream branch',
-          privileged: false,
-          branchName: 'feature/downstream',
-          updatedAt: '2026-04-04T00:00:00.000Z',
+        inputs: {
+          params: {
+            request: {
+              repoFullName: 'VannaDii/devplat',
+              action: 'sync-branch',
+              summary: 'Sync downstream branch',
+              privileged: false,
+              branchName: 'feature/downstream',
+              updatedAt: '2026-04-04T00:00:00.000Z',
+            },
+            actorId: 'operator-1',
+          },
         },
-        actorId: 'operator-1',
+        mock: () =>
+          createSubmitGitHubActionTool({
+            async submit(request) {
+              return {
+                request,
+                allowed: true,
+                policyDecisionId: 'policy-sync-branch',
+                submitted: true,
+                receipt: {
+                  method: 'PUT',
+                  endpoint: '/repos/VannaDii/devplat/pulls/42/update-branch',
+                  statusCode: 202,
+                  responseBody: { ok: true },
+                },
+              };
+            },
+          }),
+        assert: (
+          result: Awaited<
+            ReturnType<
+              ReturnType<typeof createSubmitGitHubActionTool>['execute']
+            >
+          >,
+        ) => {
+          expect(result.details).toMatchObject({
+            allowed: true,
+            submitted: true,
+            request: { action: 'sync-branch' },
+          });
+        },
       },
-    );
+    ];
 
-    expect(result.details).toMatchObject({
-      allowed: true,
-      request: { action: 'sync-branch' },
-    });
+    for (const testCase of cases) {
+      const tool = testCase.mock();
+      const result = await tool.execute(
+        'tool-call-gh1',
+        testCase.inputs.params,
+      );
+      testCase.assert(result);
+    }
   });
 
   it('returns decode failures for invalid GitHub action input', async () => {

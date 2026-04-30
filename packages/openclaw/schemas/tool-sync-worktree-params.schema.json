@@ -15,10 +15,7 @@
           "$ref": "#/definitions/WorktreeSyncMode"
         }
       },
-      "required": [
-        "allocation",
-        "baseBranch"
-      ],
+      "required": ["allocation", "baseBranch"],
       "additionalProperties": false
     },
     "WorktreeAllocation": {
@@ -83,10 +80,7 @@
     },
     "WorktreeSyncMode": {
       "type": "string",
-      "enum": [
-        "fast-forward",
-        "rebase"
-      ]
+      "enum": ["fast-forward", "rebase"]
     }
   }
 }

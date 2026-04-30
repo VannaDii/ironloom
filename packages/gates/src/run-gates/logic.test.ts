@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { CommandResult } from '@vannadii/devplat-execution';
 
 import {
+  classifyGateRun,
+  createGateCheckResult,
   createGateRunReport,
   describeGateRunReport,
   getNpmCommand,
@@ -57,10 +59,13 @@ describe('GateRunReport logic', () => {
     }));
 
     expect(report.passed).toBe(false);
+    expect(report.nextAction).toBe('retry-gates');
+    expect(report.classification?.kind).toBe('retryable');
     expect(report.results[0]).toMatchObject({
       name: 'test',
       success: false,
       detail: expect.stringContaining('(timed out)'),
+      failureKind: 'timeout',
     });
   });
 
@@ -76,6 +81,38 @@ describe('GateRunReport logic', () => {
     });
 
     expect(report.trace).toContain('gates:failed');
+    expect(report.nextAction).toBe('create-remediation-plan');
     expect(describeGateRunReport(report)).toContain('failed');
+  });
+
+  it('classifies gate failures with next-action hints', () => {
+    const cases = [
+      {
+        inputs: {
+          result: createGateCheckResult('lint', {
+            command: 'npm',
+            args: ['run', 'lint'],
+            exitCode: 1,
+            timedOut: false,
+            stdout: '',
+            stderr: 'lint failed',
+            durationMs: 10,
+          }),
+        },
+        mock: () => undefined,
+        assert: (classification: ReturnType<typeof classifyGateRun>) => {
+          expect(classification).toEqual({
+            kind: 'requires-remediation',
+            failedGateNames: ['lint'],
+            nextAction: 'create-remediation-plan',
+          });
+        },
+      },
+    ];
+
+    for (const testCase of cases) {
+      testCase.mock();
+      testCase.assert(classifyGateRun([testCase.inputs.result]));
+    }
   });
 });

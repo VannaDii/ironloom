@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   appendTrace,
+  createDevplatError,
   createDomainSnapshot,
   describeDomainSnapshot,
 } from './logic.js';
@@ -36,5 +37,19 @@ describe('DomainSnapshot logic', () => {
 
     expect(record.trace).toEqual(['custom:trace']);
     expect(record.summary).toBe('demo');
+  });
+
+  it('creates structured platform errors with safe defaults', () => {
+    const error = createDevplatError({
+      kind: 'policy-denied',
+      message: '  merge requires approval  ',
+    });
+
+    expect(error).toEqual({
+      kind: 'policy-denied',
+      message: 'merge requires approval',
+      retryable: false,
+      details: {},
+    });
   });
 });

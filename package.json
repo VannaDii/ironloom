@@ -16,6 +16,10 @@
   "scripts": {
     "build:workspace": "turbo run build --output-logs=errors-only",
     "build": "npm run prepare:generated && npm run build:workspace",
+    "act:ci": "sh scripts/run-act.sh ci",
+    "act:cleanup": "sh scripts/run-act.sh cleanup",
+    "act:pr": "sh scripts/run-act.sh pr",
+    "act:typescript": "sh scripts/run-act.sh typescript",
     "changeset": "changeset",
     "check:changed-coverage": "node scripts/check-changed-coverage.mjs",
     "check:dependency-graph": "node scripts/check-dependency-graph.mjs",
@@ -62,8 +66,8 @@
   "devDependencies": {
     "@changesets/changelog-github": "0.6.0",
     "@changesets/cli": "2.31.0",
-    "@commitlint/cli": "20.5.2",
-    "@commitlint/config-conventional": "20.5.0",
+    "@commitlint/cli": "20.5.3",
+    "@commitlint/config-conventional": "20.5.3",
     "@discordjs/opus": "file:tools/npm-overrides/discordjs-opus",
     "@eslint/js": "10.0.1",
     "@types/node": "25.6.0",

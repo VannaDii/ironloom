@@ -11,6 +11,11 @@ export interface ArtifactEnvelope<
   status: LifecycleStatus;
   trace: string[];
   updatedAt: string;
+  migration?: {
+    schemaVersion: 1;
+    previousArtifactId?: string;
+    migratedAt?: string;
+  };
   payload: TPayload;
 }
 

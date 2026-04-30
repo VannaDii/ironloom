@@ -4,6 +4,25 @@ import { LifecycleStatusCodec, type Exact } from '@vannadii/devplat-core';
 
 import type { TaskRecord } from './types.js';
 
+export const TaskTransitionEventCodec = t.intersection([
+  t.type({
+    toStatus: LifecycleStatusCodec,
+    action: t.union([
+      t.literal('create'),
+      t.literal('claim'),
+      t.literal('status-update'),
+      t.literal('complete'),
+      t.literal('block'),
+    ]),
+    reason: t.string,
+    occurredAt: t.string,
+  }),
+  t.partial({
+    fromStatus: LifecycleStatusCodec,
+    actorId: t.string,
+  }),
+]);
+
 export const TaskRecordCodec = t.intersection([
   t.type({
     id: t.string,
@@ -17,6 +36,7 @@ export const TaskRecordCodec = t.intersection([
   }),
   t.partial({
     assigneeId: t.string,
+    transitions: t.array(TaskTransitionEventCodec),
   }),
 ]);
 

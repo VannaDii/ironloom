@@ -1,6 +1,6 @@
 import * as t from 'io-ts';
 
-import type { DomainSnapshot, Exact } from './types.js';
+import type { DevplatError, DomainSnapshot, Exact } from './types.js';
 
 export const LifecycleStatusCodec = t.union([
   t.literal('draft'),
@@ -24,6 +24,21 @@ export const DomainSnapshotCodec = t.type({
   trace: t.array(t.string),
   updatedAt: t.string,
   domain: t.string,
+});
+
+export const DevplatErrorCodec: t.Type<DevplatError> = t.type({
+  kind: t.union([
+    t.literal('configuration'),
+    t.literal('validation'),
+    t.literal('policy-denied'),
+    t.literal('not-found'),
+    t.literal('external-service'),
+    t.literal('execution'),
+    t.literal('unknown'),
+  ]),
+  message: t.string,
+  retryable: t.boolean,
+  details: t.UnknownRecord,
 });
 
 export type _DomainSnapshotExact = Exact<

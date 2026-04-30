@@ -21,6 +21,32 @@ const DISCORD_REQUIRED_PERMISSIONS: readonly DiscordPermission[] = [
   'ReadMessageHistory',
 ];
 
+function readEnvValue(
+  env: Record<string, string | undefined>,
+  key: string,
+  fallback: string,
+): string {
+  return env[key]?.trim() || fallback;
+}
+
+function readEnvNumber(
+  env: Record<string, string | undefined>,
+  key: string,
+  fallback: number,
+): number {
+  const rawValue = env[key]?.trim();
+  if (!rawValue) {
+    return fallback;
+  }
+
+  const parsed = Number.parseInt(rawValue, 10);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    throw new Error(`${key} must be a positive integer.`);
+  }
+
+  return parsed;
+}
+
 function requireEnvValue(
   env: Record<string, string | undefined>,
   key: 'DISCORD_APPLICATION_ID' | 'DISCORD_PUBLIC_KEY' | 'DISCORD_BOT_TOKEN',
@@ -47,14 +73,36 @@ export function createDevplatConfig(input: DevplatConfig): DevplatConfig {
 export function createDefaultDevplatConfig(
   env: Record<string, string | undefined>,
 ): DevplatConfig {
+  const githubOwner = readEnvValue(env, 'GITHUB_OWNER', 'VannaDii');
+  const githubRepo = readEnvValue(env, 'GITHUB_REPO', 'devplat');
+  const defaultBranch = readEnvValue(env, 'GITHUB_DEFAULT_BRANCH', 'main');
+
   return createDevplatConfig({
     id: 'devplat-config',
     summary: 'Resolved DevPlat runtime configuration',
     status: 'approved',
     trace: [],
     updatedAt: new Date().toISOString(),
-    githubOwner: env['GITHUB_OWNER'] ?? 'VannaDii',
-    githubRepo: env['GITHUB_REPO'] ?? 'devplat',
+    githubOwner,
+    githubRepo,
+    repository: {
+      owner: githubOwner,
+      repo: githubRepo,
+      defaultBranch,
+      repositoryKey: `${githubOwner}/${githubRepo}`,
+    },
+    storage: {
+      rootDirectory: readEnvValue(env, 'DEVPLAT_STORAGE_ROOT', 'devplat-state'),
+      layoutVersion: 1,
+    },
+    worktrees: {
+      rootDirectory: readEnvValue(
+        env,
+        'DEVPLAT_WORKTREE_ROOT',
+        'devplat-worktrees',
+      ),
+      baseBranch: defaultBranch,
+    },
     discord: {
       apiBaseUrl: env['DISCORD_API_BASE_URL'] ?? 'https://discord.com/api/v10',
       apiVersion: 'v10',
@@ -77,6 +125,11 @@ export function createDefaultDevplatConfig(
     },
     openclaw: {
       pluginId: env['OPENCLAW_PLUGIN_ID'] ?? '@vannadii/devplat-openclaw',
+      gateway: {
+        bind: 'loopback',
+        port: readEnvNumber(env, 'OPENCLAW_GATEWAY_PORT', 18789),
+        authMode: 'token',
+      },
       actionGates: {
         approveThis: true,
         mergeNow: false,

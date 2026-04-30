@@ -46,10 +46,7 @@
             "type": "array",
             "items": {
               "type": "string",
-              "enum": [
-                "bot",
-                "applications.commands"
-              ]
+              "enum": ["bot", "applications.commands"]
             }
           },
           "requiredPermissions": {

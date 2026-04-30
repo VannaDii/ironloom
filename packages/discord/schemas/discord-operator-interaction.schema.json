@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/DiscordOperatorInteraction",
+  "definitions": {
+    "DiscordOperatorInteraction": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string"
+        },
+        "actorId": {
+          "type": "string"
+        },
+        "channelId": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "commandName": {
+          "type": "string"
+        },
+        "customId": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "threadId": {
+          "type": "string"
+        },
+        "boundThreadId": {
+          "type": "string"
+        },
+        "privileged": {
+          "type": "boolean"
+        }
+      },
+      "required": ["id", "token", "actorId", "channelId", "updatedAt"],
+      "additionalProperties": false
+    }
+  }
+}

@@ -12,12 +12,18 @@ describe('ArtifactEnvelope logic', () => {
       status: 'complete',
       trace: [],
       updatedAt: '2026-04-04T00:00:00.000Z',
+      migration: {
+        schemaVersion: 1,
+        previousArtifactId: 'artifact-000',
+        migratedAt: '2026-04-04T00:01:00.000Z',
+      },
       payload: {
         passed: true,
       },
     });
 
     expect(envelope.summary).toBe('gate run completed');
+    expect(envelope.migration?.previousArtifactId).toBe('artifact-000');
     expect(envelope.trace).toContain('artifact:gate-run-report');
     expect(describeArtifactEnvelope(envelope)).toContain('gate-run-report');
   });

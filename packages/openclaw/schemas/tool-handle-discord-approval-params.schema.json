@@ -79,12 +79,7 @@
     },
     "DiscordApprovalAction": {
       "type": "string",
-      "enum": [
-        "approve",
-        "retry",
-        "merge",
-        "escalate"
-      ]
+      "enum": ["approve", "retry", "merge", "escalate"]
     }
   }
 }

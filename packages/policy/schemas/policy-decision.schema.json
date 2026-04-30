@@ -32,6 +32,18 @@
         "requiresApproval": {
           "type": "boolean"
         },
+        "auditRequired": {
+          "type": "boolean"
+        },
+        "privilegeLevel": {
+          "type": "string",
+          "enum": [
+            "automatic",
+            "human-approval",
+            "destructive",
+            "external-publish"
+          ]
+        },
         "reason": {
           "type": "string"
         }
@@ -45,6 +57,8 @@
         "action",
         "allowed",
         "requiresApproval",
+        "auditRequired",
+        "privilegeLevel",
         "reason"
       ],
       "additionalProperties": false

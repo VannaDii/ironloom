@@ -19,6 +19,7 @@ describe('PolicyDecision logic', () => {
 
       expect(decision.allowed).toBe(false);
       expect(decision.requiresApproval).toBe(true);
+      expect(decision.auditRequired).toBe(true);
       expect(decision.trace).toContain(`policy:${action}`);
     }
   });
@@ -27,6 +28,7 @@ describe('PolicyDecision logic', () => {
     const decision = evaluatePolicyDecision('merge-now', false);
     expect(decision.allowed).toBe(false);
     expect(decision.requiresApproval).toBe(true);
+    expect(decision.privilegeLevel).toBe('human-approval');
     expect(decision.trace).toContain('policy:merge-now');
     expect(describePolicyDecision(decision)).toContain('merge-now');
   });
@@ -41,6 +43,8 @@ describe('PolicyDecision logic', () => {
       action: 'retry-gates',
       allowed: true,
       requiresApproval: false,
+      auditRequired: false,
+      privilegeLevel: 'automatic',
       reason: 'safe',
     });
 
@@ -52,5 +56,16 @@ describe('PolicyDecision logic', () => {
 
     expect(decision.allowed).toBe(true);
     expect(decision.requiresApproval).toBe(false);
+    expect(decision.privilegeLevel).toBe('automatic');
+  });
+
+  it('classifies destructive and external publish actions', () => {
+    const release = evaluatePolicyDecision('release-worktree', false);
+    const publish = evaluatePolicyDecision('publish-release', false);
+
+    expect(release.privilegeLevel).toBe('destructive');
+    expect(publish.privilegeLevel).toBe('external-publish');
+    expect(release.auditRequired).toBe(true);
+    expect(publish.auditRequired).toBe(true);
   });
 });

@@ -31,6 +31,15 @@
         },
         "updatedAt": {
           "type": "string"
+        },
+        "projection": {
+          "$ref": "#/definitions/PullRequestProjection"
+        },
+        "sourceArtifactIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "required": [
@@ -47,12 +56,41 @@
     },
     "PullRequestReviewState": {
       "type": "string",
-      "enum": [
-        "draft",
-        "review",
-        "approved",
-        "changes-requested"
-      ]
+      "enum": ["draft", "review", "approved", "changes-requested"]
+    },
+    "PullRequestProjection": {
+      "type": "object",
+      "properties": {
+        "body": {
+          "type": "string"
+        },
+        "checklist": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "riskSummary": {
+          "type": "string"
+        },
+        "validationSummary": {
+          "type": "string"
+        },
+        "artifactIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "body",
+        "checklist",
+        "riskSummary",
+        "validationSummary",
+        "artifactIds"
+      ],
+      "additionalProperties": false
     }
   }
 }

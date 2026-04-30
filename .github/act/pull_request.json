@@ -1,0 +1,38 @@
+{
+  "action": "opened",
+  "number": 1,
+  "pull_request": {
+    "base": {
+      "ref": "main",
+      "sha": "0000000000000000000000000000000000000000",
+      "repo": {
+        "full_name": "VannaDii/devplat"
+      }
+    },
+    "body": "Local act validation event for the full autonomy runtime branch.",
+    "head": {
+      "ref": "feature/full-autonomy-runtime",
+      "sha": "0000000000000000000000000000000000000000",
+      "repo": {
+        "full_name": "VannaDii/devplat"
+      }
+    },
+    "merged": false,
+    "number": 1,
+    "title": "feat: complete full autonomy runtime foundations",
+    "user": {
+      "login": "dependabot[bot]"
+    }
+  },
+  "repository": {
+    "default_branch": "main",
+    "full_name": "VannaDii/devplat",
+    "name": "devplat",
+    "owner": {
+      "login": "VannaDii"
+    }
+  },
+  "sender": {
+    "login": "dependabot[bot]"
+  }
+}

@@ -29,6 +29,15 @@
         "githubRepo": {
           "type": "string"
         },
+        "repository": {
+          "$ref": "#/definitions/RepositoryRuntimeConfig"
+        },
+        "storage": {
+          "$ref": "#/definitions/StorageRuntimeConfig"
+        },
+        "worktrees": {
+          "$ref": "#/definitions/WorktreeRuntimeConfig"
+        },
         "discord": {
           "$ref": "#/definitions/DiscordRuntimeConfig"
         },
@@ -38,14 +47,14 @@
             "pluginId": {
               "type": "string"
             },
+            "gateway": {
+              "$ref": "#/definitions/OpenClawGatewayConfig"
+            },
             "actionGates": {
               "$ref": "#/definitions/OpenClawActionGateConfig"
             }
           },
-          "required": [
-            "pluginId",
-            "actionGates"
-          ],
+          "required": ["pluginId", "gateway", "actionGates"],
           "additionalProperties": false
         },
         "sonar": {
@@ -62,11 +71,7 @@
               "const": 90
             }
           },
-          "required": [
-            "organization",
-            "projectKey",
-            "minimumCoverage"
-          ],
+          "required": ["organization", "projectKey", "minimumCoverage"],
           "additionalProperties": false
         }
       },
@@ -78,6 +83,9 @@
         "updatedAt",
         "githubOwner",
         "githubRepo",
+        "repository",
+        "storage",
+        "worktrees",
         "discord",
         "openclaw",
         "sonar"
@@ -100,6 +108,52 @@
         "rebasing",
         "complete"
       ]
+    },
+    "RepositoryRuntimeConfig": {
+      "type": "object",
+      "properties": {
+        "owner": {
+          "type": "string"
+        },
+        "repo": {
+          "type": "string"
+        },
+        "defaultBranch": {
+          "type": "string"
+        },
+        "repositoryKey": {
+          "type": "string"
+        }
+      },
+      "required": ["owner", "repo", "defaultBranch", "repositoryKey"],
+      "additionalProperties": false
+    },
+    "StorageRuntimeConfig": {
+      "type": "object",
+      "properties": {
+        "rootDirectory": {
+          "type": "string"
+        },
+        "layoutVersion": {
+          "type": "number",
+          "const": 1
+        }
+      },
+      "required": ["rootDirectory", "layoutVersion"],
+      "additionalProperties": false
+    },
+    "WorktreeRuntimeConfig": {
+      "type": "object",
+      "properties": {
+        "rootDirectory": {
+          "type": "string"
+        },
+        "baseBranch": {
+          "type": "string"
+        }
+      },
+      "required": ["rootDirectory", "baseBranch"],
+      "additionalProperties": false
     },
     "DiscordRuntimeConfig": {
       "type": "object",
@@ -178,10 +232,7 @@
     },
     "DiscordInstallScope": {
       "type": "string",
-      "enum": [
-        "bot",
-        "applications.commands"
-      ]
+      "enum": ["bot", "applications.commands"]
     },
     "DiscordPermission": {
       "type": "string",
@@ -194,6 +245,24 @@
         "ManageThreads",
         "ReadMessageHistory"
       ]
+    },
+    "OpenClawGatewayConfig": {
+      "type": "object",
+      "properties": {
+        "bind": {
+          "type": "string",
+          "const": "loopback"
+        },
+        "port": {
+          "type": "number"
+        },
+        "authMode": {
+          "type": "string",
+          "const": "token"
+        }
+      },
+      "required": ["bind", "port", "authMode"],
+      "additionalProperties": false
     },
     "OpenClawActionGateConfig": {
       "type": "object",

@@ -42,3 +42,12 @@ export interface WorktreeReleaseResult {
   releaseMode: WorktreeReleaseMode;
   released: boolean;
 }
+
+export interface WorktreeGitCommandResult {
+  command: string;
+  args: string[];
+  cwd: string;
+  exitCode: number;
+  stdout: string;
+  stderr: string;
+}

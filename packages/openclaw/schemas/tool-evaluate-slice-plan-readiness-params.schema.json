@@ -15,10 +15,7 @@
           }
         }
       },
-      "required": [
-        "plan",
-        "completedSliceIds"
-      ],
+      "required": ["plan", "completedSliceIds"],
       "additionalProperties": false
     },
     "SlicePlan": {
@@ -56,6 +53,12 @@
         },
         "updatedAt": {
           "type": "string"
+        },
+        "dependencyGraph": {
+          "$ref": "#/definitions/SliceDependencyGraph"
+        },
+        "workPacket": {
+          "$ref": "#/definitions/SliceWorkPacket"
         }
       },
       "required": [
@@ -72,11 +75,61 @@
     },
     "SliceSize": {
       "type": "string",
-      "enum": [
-        "small",
-        "medium",
-        "large"
-      ]
+      "enum": ["small", "medium", "large"]
+    },
+    "SliceDependencyGraph": {
+      "type": "object",
+      "properties": {
+        "sliceId": {
+          "type": "string"
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/SliceDependencyEdge"
+          }
+        },
+        "blockedBy": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": ["sliceId", "edges", "blockedBy"],
+      "additionalProperties": false
+    },
+    "SliceDependencyEdge": {
+      "type": "object",
+      "properties": {
+        "fromSliceId": {
+          "type": "string"
+        },
+        "toSliceId": {
+          "type": "string"
+        }
+      },
+      "required": ["fromSliceId", "toSliceId"],
+      "additionalProperties": false
+    },
+    "SliceWorkPacket": {
+      "type": "object",
+      "properties": {
+        "branchName": {
+          "type": "string"
+        },
+        "taskIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "estimatedPullRequestCount": {
+          "type": "number"
+        }
+      },
+      "required": ["branchName", "taskIds", "estimatedPullRequestCount"],
+      "additionalProperties": false
     }
   }
 }

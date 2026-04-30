@@ -34,6 +34,21 @@
         },
         "updatedAt": {
           "type": "string"
+        },
+        "revisionHistory": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/SpecRevision"
+          }
+        },
+        "renderedPullRequestBody": {
+          "type": "string"
+        },
+        "sourceArtifactIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "required": [
@@ -50,11 +65,26 @@
     },
     "SpecApprovalState": {
       "type": "string",
-      "enum": [
-        "draft",
-        "review",
-        "approved"
-      ]
+      "enum": ["draft", "review", "approved"]
+    },
+    "SpecRevision": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "number"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "artifactId": {
+          "type": "string"
+        }
+      },
+      "required": ["version", "summary", "updatedAt"],
+      "additionalProperties": false
     }
   }
 }

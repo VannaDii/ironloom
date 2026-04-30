@@ -42,6 +42,7 @@ describe('openclaw-deep-test helpers', () => {
           '--skip-build',
           '--report-dir',
           'artifacts/openclaw-deep',
+          '--retain-image',
           '--retain-container-on-failure',
         ],
       },
@@ -51,10 +52,74 @@ describe('openclaw-deep-test helpers', () => {
         expect(parsed).toMatchObject({
           mode: 'live',
           image: 'ghcr.io/vannadii/devplat-openclaw:test',
-          skipBuild: true,
+          retainImage: true,
           retainContainerOnFailure: true,
+          skipBuild: true,
         });
         expect(parsed.reportDir).toContain('artifacts/openclaw-deep');
+      },
+    },
+    {
+      name: 'normalizes report paths into valid docker tag segments',
+      inputs: {
+        argv: ['--mode', 'hermetic', '--report-dir', '.artifacts/deep-test'],
+      },
+      mock: async () => {
+        temporaryRoots.push(resolve('.artifacts/deep-test'));
+      },
+      assert: async (_context, inputs) => {
+        const parsed = parseDeepTestArgs(inputs.argv);
+        const report = await runDeepTest(
+          {
+            ...parsed,
+            scenario: [
+              {
+                expected: { status: 'ok' },
+                params: { scope: 'state' },
+                phase: 'config',
+                tool: 'list_stored_records',
+              },
+            ],
+            skipBuild: true,
+            image: 'devplat:test',
+          },
+          {
+            collectStoredKeys: async () => ({
+              artifacts: ['artifact-1'],
+              memory: ['memory-1'],
+              state: ['state-1'],
+              telemetry: ['telemetry-1'],
+            }),
+            commandRunner: async (_command, args) => {
+              if (args[0] === 'run') {
+                return { stdout: 'container-1\n', stderr: '' };
+              }
+              if (args[0] === 'exec') {
+                return {
+                  stdout: JSON.stringify({
+                    status: 200,
+                    body: {
+                      ok: true,
+                      result: {
+                        details: { status: 'ok' },
+                      },
+                    },
+                  }),
+                  stderr: '',
+                };
+              }
+              if (args[0] === 'logs' || args[0] === 'rm') {
+                return { stdout: '', stderr: '' };
+              }
+
+              throw new Error(`Unexpected docker args: ${args.join(' ')}`);
+            },
+            onProgress: () => undefined,
+          },
+        );
+
+        expect(report.containerName).not.toContain('..');
+        expect(report.imageTag).toBe('devplat:test');
       },
     },
     {
@@ -339,6 +404,7 @@ describe('runDeepTest', () => {
             expect.arrayContaining(['docker', 'build']),
             expect.arrayContaining(['docker', 'run']),
             expect.arrayContaining(['docker', 'rm']),
+            expect.arrayContaining(['docker', 'image', 'rm', '-f']),
           ]),
         );
       },
@@ -395,7 +461,10 @@ describe('runDeepTest', () => {
         ).rejects.toThrow('Gateway readiness timed out');
 
         expect(context.invocations).toEqual(
-          expect.arrayContaining([expect.arrayContaining(['rm', '-f'])]),
+          expect.arrayContaining([
+            expect.arrayContaining(['rm', '-f']),
+            expect.arrayContaining(['image', 'rm', '-f']),
+          ]),
         );
       },
     },
@@ -484,6 +553,7 @@ describe('runDeepTest', () => {
               '--name',
               report.containerName,
             ]),
+            expect.arrayContaining(['image', 'rm', '-f']),
           ]),
         );
       },

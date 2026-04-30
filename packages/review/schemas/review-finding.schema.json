@@ -28,6 +28,12 @@
         },
         "updatedAt": {
           "type": "string"
+        },
+        "source": {
+          "$ref": "#/definitions/ReviewFindingSource"
+        },
+        "specConformance": {
+          "$ref": "#/definitions/SpecConformanceSummary"
         }
       },
       "required": [
@@ -44,12 +50,33 @@
     },
     "ReviewSeverity": {
       "type": "string",
-      "enum": [
-        "low",
-        "medium",
-        "high",
-        "critical"
-      ]
+      "enum": ["low", "medium", "high", "critical"]
+    },
+    "ReviewFindingSource": {
+      "type": "string",
+      "enum": ["automated", "sonar", "human"]
+    },
+    "SpecConformanceSummary": {
+      "type": "object",
+      "properties": {
+        "specId": {
+          "type": "string"
+        },
+        "satisfiedCriteria": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "missingCriteria": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": ["specId", "satisfiedCriteria", "missingCriteria"],
+      "additionalProperties": false
     }
   }
 }

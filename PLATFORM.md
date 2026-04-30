@@ -40,16 +40,19 @@ The current repository already includes the concrete surfaces that this phase is
 - Pre-commit enforcement is centralized through `scripts/check-pre-commit.mjs`, which verifies Node, regenerates schemas and the OpenClaw manifest twice around `lint-staged`, re-stages generated files, then runs workspace typecheck and repository validation.
 - SonarCloud analysis is wired into CI as a required path and is no longer guarded by a standalone pre-check step; a missing or misconfigured secret must fail the actual scan path rather than silently skipping analysis.
 
-## Remaining Gap
+## Full Autonomy Buildout
 
-The main remaining work is:
+The single-repo autonomous production path is implemented incrementally through
+the package responsibilities below. Current completion work focuses on:
 
-- complete the OpenClaw adapter surface so the tools match the intended platform operations, not just record normalization
-- keep Discord thread-aware and continue expanding operator behavior until all common development operations resolve directly from bound work-item context
-- harden hook and CI enforcement so schema, manifest, and Sonar requirements fail loudly
-- close documentation gaps, especially publishing/release guidance and current-vs-target implementation notes
-- continue normalizing packages toward the fuller per-package specs below
-- finish per-package README coverage and other remaining normalization backlog items that the repo does not yet machine-enforce
+- repository-scoped runtime configuration for GitHub, Discord, OpenClaw, Sonar,
+  storage, and worktrees
+- durable `.devplat` storage records with layout metadata and index materialization
+- versioned artifact envelopes with migration metadata for future schema changes
+- explicit policy decisions with approval, audit, and privilege-level outcomes
+- package-local README coverage enforced by repository validation
+- OpenClaw and Discord surfaces that delegate into platform packages while
+  preserving auditable state and fail-closed control behavior
 
 ## Goals
 
@@ -147,7 +150,7 @@ The main remaining work is:
 - `@vannadii/devplat-specs`: current code covers spec records, approval, and explicit revision updates; remaining gap is richer revision history and PR-ready spec rendering contracts.
 - `@vannadii/devplat-slicing`: current code covers slice plans and readiness checks; remaining gap is an explicit dependency-graph artifact and richer PR-sized work packet modeling.
 - `@vannadii/devplat-queue`: current code covers task creation, claim, and lifecycle updates; remaining gap is fuller queue abstractions including release/resume history and explicit transition-event outputs.
-- `@vannadii/devplat-worktrees`: current code covers allocation plus explicit sync and release result contracts; remaining gap is deeper branch-safety validation and real cleanup/sync execution semantics.
+- `@vannadii/devplat-worktrees`: current code covers pure allocation/sync/release records plus Git-backed worktree add, fetch/rebase or fast-forward sync, and archive/delete release methods; remaining gap is deeper branch-safety validation.
 - `@vannadii/devplat-execution`: current code covers structured subprocess execution and timeouts; remaining gap is explicit retry policy, truncation policy, and retry outcome contracts.
 - `@vannadii/devplat-gates`: current code covers gate execution and reports; remaining gap is richer failure classification, next-action hints, and remediation hooks.
 - `@vannadii/devplat-sonarcloud`: current code covers bootstrap verification and quality gate interpretation; remaining gap is fuller issue normalization into review/remediation inputs.
@@ -157,9 +160,9 @@ The main remaining work is:
 - `@vannadii/devplat-branching`: current code covers dependent rebase planning and explicit merge-triggered execution through worktree sync orchestration; remaining gap is a fuller branch dependency graph and deeper conflict classification.
 - `@vannadii/devplat-supervisor`: current code covers minimal next-step decision and telemetry; remaining gap is broader lifecycle routing across research, specs, slicing, implementation, review, remediation, merge, and continuation.
 - `@vannadii/devplat-observability`: current code covers telemetry events; remaining gap is richer audit-specific schemas, run metrics, and run summaries.
-- `@vannadii/devplat-github`: current code covers GitHub action requests and policy-aware submission semantics; remaining gap is richer normalized repo/PR state and issue/spec-PR contracts.
+- `@vannadii/devplat-github`: current code covers GitHub action requests, policy-aware submission semantics, and concrete REST request submission for PR create/update/comment/merge and branch sync; remaining gap is richer normalized repo/PR state and issue/spec-PR contracts.
 - `@vannadii/devplat-openclaw`: current code covers deterministic plugin config, broad tool validation, and adapter delegation; remaining gap is keeping tool inventory and handler depth aligned with the intended end-to-end platform surface as package behavior becomes more concrete.
-- `@vannadii/devplat-discord`: current code covers thread-aware bindings, approvals, expanded operator actions, and explicit `pull-request` thread sessions; remaining gap is richer response formatting and deeper command-to-work-item resolution.
+- `@vannadii/devplat-discord`: current code covers thread-aware bindings, approvals, expanded operator actions, explicit `pull-request` thread sessions, slash/button interaction routing, fail-closed thread ambiguity handling, and REST response posting; remaining gap is deeper command-to-work-item resolution.
 - `@vannadii/devplat-policy`: current code covers privileged-action decisions and explicit approval requirements for risky Discord actions; remaining gap is richer merge/autofix/escalation policy modeling.
 - `@vannadii/devplat-storage`: current code covers filesystem-backed record storage under `.devplat`; remaining gap is richer storage interfaces and explicit layout contracts for every domain surface.
 
@@ -391,7 +394,8 @@ Every package is expected to provide:
 - `README.md`
 - scripts for `build`, `clean`, `lint`, `typecheck`, and `test`
 
-The current repo already satisfies the structural/package metadata rules broadly, but package `README.md` coverage remains incomplete. Only `@vannadii/devplat-openclaw` currently has a package-local README, so the remaining packages stay on the normalization backlog until each publishable package has one.
+The current repo enforces these package completion rules, including package-local
+README coverage, through `npm run check:packages`.
 
 ## Cross-package Rules
 

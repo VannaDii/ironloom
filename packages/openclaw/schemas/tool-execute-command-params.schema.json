@@ -33,12 +33,7 @@
           "type": "number"
         }
       },
-      "required": [
-        "command",
-        "args",
-        "actorId",
-        "privileged"
-      ],
+      "required": ["command", "args", "actorId", "privileged"],
       "additionalProperties": false
     }
   }

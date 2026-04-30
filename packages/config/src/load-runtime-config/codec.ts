@@ -27,6 +27,20 @@ export const DevplatConfigCodec = t.type({
   updatedAt: t.string,
   githubOwner: t.string,
   githubRepo: t.string,
+  repository: t.type({
+    owner: t.string,
+    repo: t.string,
+    defaultBranch: t.string,
+    repositoryKey: t.string,
+  }),
+  storage: t.type({
+    rootDirectory: t.string,
+    layoutVersion: t.literal(1),
+  }),
+  worktrees: t.type({
+    rootDirectory: t.string,
+    baseBranch: t.string,
+  }),
   discord: t.type({
     apiBaseUrl: t.string,
     apiVersion: t.literal('v10'),
@@ -45,6 +59,11 @@ export const DevplatConfigCodec = t.type({
   }),
   openclaw: t.type({
     pluginId: t.string,
+    gateway: t.type({
+      bind: t.literal('loopback'),
+      port: t.number,
+      authMode: t.literal('token'),
+    }),
     actionGates: t.type({
       approveThis: t.boolean,
       mergeNow: t.boolean,

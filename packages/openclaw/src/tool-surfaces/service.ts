@@ -1354,7 +1354,12 @@ export function createExecuteRebaseDependentsTool(): AnyAgentTool {
   return tool;
 }
 
-export function createSubmitGitHubActionTool(): AnyAgentTool {
+export function createSubmitGitHubActionTool(
+  gitHubWorkflowService: Pick<
+    GitHubWorkflowService,
+    'submit'
+  > = new GitHubWorkflowService(),
+): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'submit_github_action',
     label: 'Submit GitHub Action',
@@ -1367,7 +1372,7 @@ export function createSubmitGitHubActionTool(): AnyAgentTool {
         return createTextResult({ status: 'failed', error: decoded.error });
       }
 
-      const result = await new GitHubWorkflowService().submit(
+      const result = await gitHubWorkflowService.submit(
         decoded.value.request,
         decoded.value.actorId,
       );

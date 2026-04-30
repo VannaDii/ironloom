@@ -1,6 +1,24 @@
-import type { ReviewFinding } from './types.js';
+import type { ReviewFinding, SpecConformanceSummary } from './types.js';
+
+function uniqueTrimmed(values: readonly string[]): string[] {
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+}
+
+function normalizeSpecConformance(
+  input: SpecConformanceSummary,
+): SpecConformanceSummary {
+  return {
+    specId: input.specId.trim(),
+    satisfiedCriteria: uniqueTrimmed(input.satisfiedCriteria),
+    missingCriteria: uniqueTrimmed(input.missingCriteria),
+  };
+}
 
 export function createReviewFinding(input: ReviewFinding): ReviewFinding {
+  const specConformance =
+    input.specConformance === undefined
+      ? undefined
+      : normalizeSpecConformance(input.specConformance);
   return {
     ...input,
     path: input.path.trim(),
@@ -12,6 +30,8 @@ export function createReviewFinding(input: ReviewFinding): ReviewFinding {
       input.severity === 'high' ||
       input.severity === 'critical',
     updatedAt: new Date(input.updatedAt).toISOString(),
+    ...(input.source === undefined ? {} : { source: input.source }),
+    ...(specConformance === undefined ? {} : { specConformance }),
   };
 }
 

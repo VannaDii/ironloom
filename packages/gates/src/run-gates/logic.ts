@@ -5,7 +5,14 @@ import {
   type CommandResult,
 } from '@vannadii/devplat-execution';
 
-import type { GateCheckResult, GateRunReport } from './types.js';
+import type {
+  GateCheckResult,
+  GateFailureClassification,
+  GateRunReport,
+} from './types.js';
+
+type GateFailureKind = 'command-failed' | 'timeout' | 'passed';
+type GateNextAction = 'retry-gates' | 'remediate-failure' | 'continue';
 
 export interface GateCommandSpec {
   command: string;
@@ -35,19 +42,80 @@ export function createGateCheckResult(
   gateName: string,
   commandResult: CommandResult,
 ): GateCheckResult {
+  const success = isSuccessfulCommandResult(commandResult);
+  const failureKind = resolveGateFailureKind(success, commandResult);
+  const nextAction = resolveGateNextAction(failureKind);
   return {
     name: gateName.trim(),
-    success: isSuccessfulCommandResult(commandResult),
+    success,
     detail: `${describeCommandResult(commandResult)}${commandResult.timedOut ? ' (timed out)' : ''}`,
+    failureKind,
+    nextAction,
+  };
+}
+
+function resolveGateFailureKind(
+  success: boolean,
+  commandResult: CommandResult,
+): GateFailureKind {
+  if (success) {
+    return 'passed';
+  }
+
+  if (commandResult.timedOut) {
+    return 'timeout';
+  }
+
+  return 'command-failed';
+}
+
+function resolveGateNextAction(failureKind: GateFailureKind): GateNextAction {
+  if (failureKind === 'timeout') {
+    return 'retry-gates';
+  }
+
+  if (failureKind === 'command-failed') {
+    return 'remediate-failure';
+  }
+
+  return 'continue';
+}
+
+export function classifyGateRun(
+  results: readonly GateCheckResult[],
+): GateFailureClassification {
+  const failedGateNames = results
+    .filter((result) => !result.success)
+    .map((result) => result.name);
+
+  if (failedGateNames.length === 0) {
+    return {
+      kind: 'passed',
+      failedGateNames,
+      nextAction: 'continue',
+    };
+  }
+
+  const onlyTimeouts = results
+    .filter((result) => !result.success)
+    .every((result) => result.failureKind === 'timeout');
+
+  return {
+    kind: onlyTimeouts ? 'retryable' : 'requires-remediation',
+    failedGateNames,
+    nextAction: onlyTimeouts ? 'retry-gates' : 'create-remediation-plan',
   };
 }
 
 export function createGateRunReport(input: GateRunReport): GateRunReport {
+  const classification = input.classification ?? classifyGateRun(input.results);
   return appendTrace(
     {
       ...input,
       summary: input.summary.trim(),
       updatedAt: new Date(input.updatedAt).toISOString(),
+      classification,
+      nextAction: input.nextAction ?? classification.nextAction,
     },
     `gates:${input.passed ? 'passed' : 'failed'}`,
   );

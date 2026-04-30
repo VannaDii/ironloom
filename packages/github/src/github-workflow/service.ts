@@ -3,15 +3,84 @@ import { DecisionPolicyService } from '@vannadii/devplat-policy';
 
 import {
   createGitHubActionRequest,
+  createGitHubRestRequest,
   describeGitHubActionRequest,
   isPrivilegedGitHubAction,
 } from './logic.js';
-import type { GitHubActionDecision, GitHubActionRequest } from './types.js';
+import type {
+  GitHubActionDecision,
+  GitHubActionRequest,
+  GitHubSubmissionMode,
+  GitHubSubmissionReceipt,
+} from './types.js';
+
+export interface GitHubRestTransport {
+  submit(input: GitHubActionRequest): Promise<GitHubSubmissionReceipt>;
+}
+
+export class GitHubRestApiTransport implements GitHubRestTransport {
+  public constructor(
+    private readonly token = process.env['GITHUB_TOKEN'] ?? '',
+    private readonly baseUrl = process.env['GITHUB_API_BASE_URL'] ??
+      'https://api.github.com',
+    private readonly fetchImpl = fetch,
+    private readonly mode: GitHubSubmissionMode = token.trim().length > 0
+      ? 'live'
+      : 'dry-run',
+  ) {}
+
+  public async submit(
+    input: GitHubActionRequest,
+  ): Promise<GitHubSubmissionReceipt> {
+    if (this.mode === 'dry-run') {
+      const request = createGitHubActionRequest(input);
+      return {
+        method: 'POST',
+        endpoint: `dry-run:${request.action}`,
+        statusCode: 0,
+        responseBody: {
+          dryRun: true,
+          repoFullName: request.repoFullName,
+          targetNumber: request.targetNumber ?? null,
+          branchName: request.branchName ?? null,
+        },
+      };
+    }
+
+    if (this.token.trim().length === 0) {
+      throw new Error('GITHUB_TOKEN is required for GitHub API submission.');
+    }
+
+    const request = createGitHubRestRequest(input);
+    const response = await this.fetchImpl(
+      `${this.baseUrl}${request.endpoint}`,
+      {
+        method: request.method,
+        headers: {
+          accept: 'application/vnd.github+json',
+          authorization: `Bearer ${this.token}`,
+          'content-type': 'application/json',
+          'x-github-api-version': '2022-11-28',
+        },
+        body: JSON.stringify(request.body),
+      },
+    );
+    const responseBody: unknown = await response.json().catch(() => null);
+
+    return {
+      method: request.method,
+      endpoint: request.endpoint,
+      statusCode: response.status,
+      responseBody,
+    };
+  }
+}
 
 export class GitHubWorkflowService {
   public constructor(
     private readonly policy = new DecisionPolicyService(),
     private readonly telemetry = new TelemetryEventService(),
+    private readonly transport: GitHubRestTransport = new GitHubRestApiTransport(),
   ) {}
 
   public prepare(input: GitHubActionRequest): GitHubActionRequest {
@@ -44,10 +113,23 @@ export class GitHubWorkflowService {
       },
     });
 
+    if (!decision.allowed) {
+      return {
+        request,
+        allowed: decision.allowed,
+        policyDecisionId: decision.id,
+        submitted: false,
+      };
+    }
+
+    const receipt = await this.transport.submit(request);
+
     return {
       request,
       allowed: decision.allowed,
       policyDecisionId: decision.id,
+      submitted: true,
+      receipt,
     };
   }
 

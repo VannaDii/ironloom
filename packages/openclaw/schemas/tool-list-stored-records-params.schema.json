@@ -9,19 +9,12 @@
           "$ref": "#/definitions/StoreScope"
         }
       },
-      "required": [
-        "scope"
-      ],
+      "required": ["scope"],
       "additionalProperties": false
     },
     "StoreScope": {
       "type": "string",
-      "enum": [
-        "artifacts",
-        "memory",
-        "state",
-        "telemetry"
-      ]
+      "enum": ["artifacts", "memory", "state", "telemetry"]
     }
   }
 }

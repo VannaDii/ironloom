@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { decodeWithCodec, type DevplatResult } from '@vannadii/devplat-core';
 
 import {
+  buildStorageIndexPath,
   buildStoragePath,
   createStoredRecord,
   describeStoredRecord,
@@ -36,6 +37,29 @@ export class FileStoreService {
       filePath,
       `${JSON.stringify(normalized, null, 2)}\n`,
       'utf8',
+    );
+    await Promise.all(
+      (normalized.indexes ?? []).map(async (indexName) => {
+        const indexPath = resolve(
+          this.rootDirectory,
+          buildStorageIndexPath(indexName, normalized.key),
+        );
+        await mkdir(resolve(indexPath, '..'), { recursive: true });
+        await writeFile(
+          indexPath,
+          `${JSON.stringify(
+            {
+              id: normalized.id,
+              scope: normalized.scope,
+              key: normalized.key,
+              updatedAt: normalized.updatedAt,
+            },
+            null,
+            2,
+          )}\n`,
+          'utf8',
+        );
+      }),
     );
     return normalized;
   }
