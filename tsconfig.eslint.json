@@ -3,12 +3,18 @@
   "include": [
     "packages/*/src/**/*.ts",
     "packages/*/src/**/*.mts",
-    "scripts/**/*.ts"
+    "packages/*/src/**/*.cts",
+    "scripts/**/*.ts",
+    "scripts/**/*.mts",
+    "scripts/**/*.cts"
   ],
   "exclude": [
     "packages/*/src/**/*.test.ts",
     "packages/*/src/**/*.test.mts",
+    "packages/*/src/**/*.test.cts",
     "scripts/**/*.test.ts",
-    "scripts/**/*.test.mts"
+    "scripts/**/*.test.mts",
+    "scripts/**/*.test.cts",
+    "vitest.config.mts"
   ]
 }

@@ -96,7 +96,7 @@ jobs:
           NPM_CONFIG_REGISTRY: https://npm.pkg.github.com
 
       - name: Push Changesets package tags
-        run: git push --follow-tags
+        run: git push origin --tags
 
       - name: Publish missing stable packages to GitHub Packages
         run: node scripts/publish-unpublished-packages.mjs

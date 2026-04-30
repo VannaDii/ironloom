@@ -183,6 +183,11 @@ runs:
         test -f "${{ steps.stage.outputs.chart_dir }}/LICENSE"
         test -f "${{ steps.stage.outputs.chart_dir }}/values.schema.json"
 
+    - name: Verify Artifact Hub runtime image
+      shell: bash
+      run: |
+        docker manifest inspect "${{ steps.publish_meta.outputs.artifacthub_image }}" >/dev/null
+
     - name: Prepare Helm signing material
       id: signing
       shell: bash
