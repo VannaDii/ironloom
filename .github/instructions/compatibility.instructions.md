@@ -10,6 +10,7 @@
 
 - Primary authoring targets TypeScript `6.0.3`.
 - Keep strict TypeScript settings enabled across the repository.
+- Do not use TypeScript type assertions or casts anywhere in authored code; banned forms include `as`, `as unknown`, angle-bracket casts, non-null assertions, and double assertions.
 - Do not weaken typing rules, emitted-specifier rules, or package-boundary checks to accommodate convenience changes.
 
 ## Compatibility Matrix

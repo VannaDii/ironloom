@@ -59,14 +59,20 @@ import {
   createExecuteRebaseDependentsTool,
 } from './tool-surfaces/service.js';
 
-function readSchema(fileName: string): Record<string, unknown> {
+type PluginJsonSchema = NonNullable<OpenClawPluginConfigSchema['jsonSchema']>;
+
+function isPluginJsonSchema(value: unknown): value is PluginJsonSchema {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function readSchema(fileName: string): PluginJsonSchema {
   const filePath = resolve(import.meta.dirname, '..', 'schemas', fileName);
   const parsed: unknown = JSON.parse(readFileSync(filePath, 'utf8'));
-  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+  if (!isPluginJsonSchema(parsed)) {
     throw new Error(`Schema ${fileName} must contain a JSON object.`);
   }
 
-  return parsed as Record<string, unknown>;
+  return parsed;
 }
 
 function validatePluginConfig(value: unknown):

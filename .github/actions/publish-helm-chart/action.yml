@@ -20,6 +20,10 @@ inputs:
     description: Change body used for Artifact Hub metadata.
     required: false
     default: ''
+  image_tag:
+    description: Runtime image tag to write into chart values. Defaults to metadata-derived tag.
+    required: false
+    default: ''
   github_token:
     description: GitHub token with package write access.
     required: true
@@ -48,12 +52,12 @@ runs:
   using: composite
   steps:
     - name: Checkout publish ref
-      uses: actions/checkout@v6.0.2
+      uses: actions/checkout@v6
       with:
         ref: ${{ inputs.ref }}
 
     - name: Setup Node
-      uses: actions/setup-node@v6.3.0
+      uses: actions/setup-node@v6
       with:
         node-version-file: .nvmrc
         cache: npm
@@ -73,6 +77,7 @@ runs:
       env:
         CHANGE_BODY: ${{ inputs.change_body }}
         CHANGE_TITLE: ${{ inputs.change_title }}
+        INPUT_IMAGE_TAG: ${{ inputs.image_tag }}
         PR_NUMBER: ${{ inputs.pr_number }}
         PUBLISH_MODE: ${{ inputs.publish_mode }}
       run: |
@@ -104,6 +109,10 @@ runs:
             exit 1
             ;;
         esac
+
+        if [[ -n "$INPUT_IMAGE_TAG" ]]; then
+          image_tag="$INPUT_IMAGE_TAG"
+        fi
 
         if [[ -n "$PR_NUMBER" && -n "$summary_title" ]]; then
           artifacthub_change_description="PR #${PR_NUMBER}: ${summary_title}"
@@ -158,10 +167,10 @@ runs:
         echo "chart_dir=${RUNNER_TEMP}/helm-chart" >> "$GITHUB_OUTPUT"
 
     - name: Set up Helm
-      uses: azure/setup-helm@v5.0.0
+      uses: azure/setup-helm@v5
 
     - name: Set up ORAS
-      uses: oras-project/setup-oras@v2.0.0
+      uses: oras-project/setup-oras@v2
 
     - name: Lint chart
       shell: bash
@@ -173,6 +182,11 @@ runs:
         test -f "${{ steps.stage.outputs.chart_dir }}/README.md"
         test -f "${{ steps.stage.outputs.chart_dir }}/LICENSE"
         test -f "${{ steps.stage.outputs.chart_dir }}/values.schema.json"
+
+    - name: Verify Artifact Hub runtime image
+      shell: bash
+      run: |
+        docker manifest inspect "${{ steps.publish_meta.outputs.artifacthub_image }}" >/dev/null
 
     - name: Prepare Helm signing material
       id: signing
@@ -258,7 +272,9 @@ runs:
 
     - name: Log in to GHCR OCI registry
       shell: bash
-      run: echo "${{ inputs.github_token }}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
+      run:
+        echo "${{ inputs.github_token }}" | helm registry login ghcr.io -u "${{
+        github.actor }}" --password-stdin
 
     - name: Publish chart
       shell: bash
@@ -394,7 +410,9 @@ runs:
 
     - name: Log in to GHCR for ORAS
       shell: bash
-      run: echo "${{ inputs.github_token }}" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
+      run:
+        echo "${{ inputs.github_token }}" | oras login ghcr.io -u "${{ github.actor
+        }}" --password-stdin
 
     - name: Publish Artifact Hub metadata
       shell: bash

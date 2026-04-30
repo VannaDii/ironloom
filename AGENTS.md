@@ -4,6 +4,7 @@
 
 - Run `nvm use` before installs or development commands.
 - Do not weaken TypeScript, ESLint, coverage, schema, Sonar, policy, or audit requirements.
+- Do not use TypeScript type assertions or casts anywhere in authored code; banned forms include `as`, `as unknown`, angle-bracket casts, non-null assertions, and double assertions.
 - Do not bypass schema generation or the generated OpenClaw manifest workflow.
 - Use `PLATFORM.md` as the authoritative foundation-scope document for required packages, surfaces, workflows, and acceptance criteria.
 - Branch names and pull request titles must not include any registered tool name.

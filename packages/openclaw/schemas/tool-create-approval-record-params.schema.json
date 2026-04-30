@@ -6,16 +6,17 @@
       "$ref": "#/definitions/ApprovalRecordArtifact"
     },
     "ApprovalRecordArtifact": {
-      "$ref": "#/definitions/ArtifactEnvelope%3CApprovalRecordPayload%3E"
+      "$ref": "#/definitions/ArtifactEnvelope%3CApprovalRecordPayload%2C%22approval-record%22%3E"
     },
-    "ArtifactEnvelope<ApprovalRecordPayload>": {
+    "ArtifactEnvelope<ApprovalRecordPayload,\"approval-record\">": {
       "type": "object",
       "properties": {
         "id": {
           "type": "string"
         },
         "artifactType": {
-          "type": "string"
+          "type": "string",
+          "const": "approval-record"
         },
         "version": {
           "type": "number",

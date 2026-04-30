@@ -74,6 +74,7 @@ The main remaining work is:
 - npm: `>= 11`
 - TypeScript authoring baseline: stable `6.x`
 - TypeScript compatibility matrix: stable `5.x` and `6.x`
+- TypeScript type assertions and casts are banned in authored code, including `as`, `as unknown`, angle-bracket casts, non-null assertions, and double assertions.
 - Module system: ESM with `NodeNext`
 - Runtime target: Linux containers
 - Container base: stable Alpine Linux
@@ -327,7 +328,9 @@ The primary CI workflow must continue to cover:
 ### Release and Distribution
 
 - Changesets manages release pull request flow
+- public DevPlat packages release together through one Changesets fixed group
 - npm publication goes to GitHub Packages
+- stable releases publish `vN`, `vN.N`, and immutable `vN.N.N` Git tags
 - Docker publication goes to GHCR
 - Helm OCI publication goes to GHCR
 - docs build and deploy through GitHub Pages

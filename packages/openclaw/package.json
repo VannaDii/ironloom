@@ -8,12 +8,17 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "source": {
+        "types": "./src/index.ts",
+        "import": "./src/index.ts"
+      },
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     }
   },
   "files": [
     "dist",
+    "src",
     "schemas",
     "openclaw.plugin.json"
   ],
@@ -48,7 +53,7 @@
     "@vannadii/devplat-supervisor": "0.0.1",
     "@vannadii/devplat-worktrees": "0.1.0",
     "io-ts": "2.2.22",
-    "openclaw": "2026.4.15"
+    "openclaw": "2026.4.27"
   },
   "openclaw": {
     "extensions": [

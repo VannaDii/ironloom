@@ -464,6 +464,7 @@ function buildRequiredTextRules({
       path: 'AGENTS.md',
       requiredText: [
         'Use `PLATFORM.md` as the authoritative foundation-scope document for required packages, surfaces, workflows, and acceptance criteria.',
+        'Do not use TypeScript type assertions or casts anywhere in authored code; banned forms include `as`, `as unknown`, angle-bracket casts, non-null assertions, and double assertions.',
         'Branch names and pull request titles must not include any registered tool name.',
         'Treat `codex` as a reserved tool name and never use it in branch names or pull request titles.',
         'Pull request titles must use conventional commit format.',
@@ -483,6 +484,7 @@ function buildRequiredTextRules({
       path: '.github/copilot-instructions.md',
       requiredText: [
         'Use `PLATFORM.md` as the authoritative foundation-scope document for required packages, workflows, delivery surfaces, and acceptance criteria.',
+        'Do not use TypeScript type assertions or casts anywhere in authored code; banned forms include `as`, `as unknown`, angle-bracket casts, non-null assertions, and double assertions.',
         'Keep branch names and pull request titles free of registered tool names.',
         'Treat `codex` as a reserved tool name and keep it out of branch names and pull request titles.',
         'Keep pull request titles in conventional commit form.',
@@ -640,6 +642,7 @@ function buildRequiredTextRules({
         `Node \`${normalizedNodeVersion}\``,
         `\`${expectedPackageManager}\``,
         `TypeScript \`${expectedTypeScriptVersion}\``,
+        'Do not use TypeScript type assertions or casts anywhere in authored code; banned forms include `as`, `as unknown`, angle-bracket casts, non-null assertions, and double assertions.',
         LINUX_COMPATIBILITY_SENTENCE,
       ],
     },
@@ -656,6 +659,7 @@ function buildRequiredTextRules({
       path: 'PLATFORM.md',
       requiredText: [
         'All interactions MUST be thread-aware.',
+        'TypeScript type assertions and casts are banned in authored code, including `as`, `as unknown`, angle-bracket casts, non-null assertions, and double assertions.',
         'thread == unit of work',
         'adapter only, registers all platform tools, no business logic',
       ],

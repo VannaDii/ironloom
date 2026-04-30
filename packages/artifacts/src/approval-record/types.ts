@@ -13,4 +13,7 @@ export interface ApprovalRecordPayload {
   rationale: string;
 }
 
-export type ApprovalRecordArtifact = ArtifactEnvelope<ApprovalRecordPayload>;
+export type ApprovalRecordArtifact = ArtifactEnvelope<
+  ApprovalRecordPayload,
+  'approval-record'
+>;

@@ -10,6 +10,7 @@
 
 - primary authoring target: TypeScript `6.0.3`
 - Compatibility validation runs on Linux only against the latest stable TypeScript `5.x` and `6.x` releases.
+- Do not use TypeScript type assertions or casts anywhere in authored code; banned forms include `as`, `as unknown`, angle-bracket casts, non-null assertions, and double assertions.
 - source packages compile under `NodeNext` module settings
 
 ## Operator and Adapter Configuration

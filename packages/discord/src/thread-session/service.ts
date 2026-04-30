@@ -1,7 +1,4 @@
-import {
-  ArtifactEnvelopeService,
-  type ArtifactEnvelope,
-} from '@vannadii/devplat-artifacts';
+import { ArtifactEnvelopeService } from '@vannadii/devplat-artifacts';
 import { TelemetryEventService } from '@vannadii/devplat-observability';
 import { FileStoreService } from '@vannadii/devplat-storage';
 
@@ -100,7 +97,7 @@ export class DiscordThreadSessionService {
       status: artifact.status,
       trace: artifact.trace,
       updatedAt: artifact.updatedAt,
-      payload: artifact as ArtifactEnvelope,
+      payload: artifact,
     });
 
     await this.telemetry.record({

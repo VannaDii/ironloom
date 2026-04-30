@@ -14,10 +14,12 @@ function parsePropertiesFile(content: string): Map<string, string> {
         throw new Error(`Invalid sonar-project.properties line: ${line}`);
       }
 
-      return [
+      const entry: readonly [string, string] = [
         line.slice(0, separatorIndex).trim(),
         line.slice(separatorIndex + 1).trim(),
-      ] as const;
+      ];
+
+      return entry;
     });
 
   return new Map(entries);
@@ -43,12 +45,20 @@ function resolveSonarBaseUrl(region: string | undefined): string {
   return 'https://sonarcloud.io';
 }
 
-function readStringRecord(value: unknown): Record<string, unknown> {
+function readObject(value: unknown): object {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     throw new Error('Expected a JSON object from the Sonar API.');
   }
 
-  return value as Record<string, unknown>;
+  return value;
+}
+
+function readObjectProperty(value: object, key: string): unknown {
+  if (!Object.prototype.hasOwnProperty.call(value, key)) {
+    return undefined;
+  }
+
+  return Reflect.get(value, key);
 }
 
 function readConditions(value: unknown): Array<{
@@ -62,11 +72,11 @@ function readConditions(value: unknown): Array<{
   }
 
   return value.map((entry) => {
-    const condition = readStringRecord(entry);
-    const metricKey = condition['metricKey'];
-    const comparator = condition['comparator'];
-    const errorThreshold = condition['errorThreshold'];
-    const actualValue = condition['actualValue'];
+    const condition = readObject(entry);
+    const metricKey = readObjectProperty(condition, 'metricKey');
+    const comparator = readObjectProperty(condition, 'comparator');
+    const errorThreshold = readObjectProperty(condition, 'errorThreshold');
+    const actualValue = readObjectProperty(condition, 'actualValue');
 
     if (
       typeof metricKey !== 'string' ||
@@ -122,9 +132,9 @@ if (!response.ok) {
   );
 }
 
-const body = readStringRecord(await response.json());
-const projectStatus = readStringRecord(body['projectStatus']);
-const qualityGateStatus = projectStatus['status'];
+const body = readObject(await response.json());
+const projectStatus = readObject(readObjectProperty(body, 'projectStatus'));
+const qualityGateStatus = readObjectProperty(projectStatus, 'status');
 if (
   qualityGateStatus !== 'ERROR' &&
   qualityGateStatus !== 'NONE' &&
@@ -136,7 +146,7 @@ if (
 const result = new SonarBootstrapVerificationService().execute({
   projectKey,
   qualityGateStatus,
-  conditions: readConditions(projectStatus['conditions']),
+  conditions: readConditions(readObjectProperty(projectStatus, 'conditions')),
   evaluatedAt: new Date().toISOString(),
 });
 

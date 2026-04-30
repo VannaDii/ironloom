@@ -1,10 +1,17 @@
 import { appendTrace } from '@vannadii/devplat-core';
 
-import type { DevplatConfig } from './types.js';
+import type {
+  DevplatConfig,
+  DiscordInstallScope,
+  DiscordPermission,
+} from './types.js';
 
-const DISCORD_INSTALL_SCOPES = ['bot', 'applications.commands'] as const;
+const DISCORD_INSTALL_SCOPES: readonly DiscordInstallScope[] = [
+  'bot',
+  'applications.commands',
+];
 
-const DISCORD_REQUIRED_PERMISSIONS = [
+const DISCORD_REQUIRED_PERMISSIONS: readonly DiscordPermission[] = [
   'ViewChannel',
   'SendMessages',
   'CreatePublicThreads',
@@ -12,7 +19,7 @@ const DISCORD_REQUIRED_PERMISSIONS = [
   'SendMessagesInThreads',
   'ManageThreads',
   'ReadMessageHistory',
-] as const;
+];
 
 function requireEnvValue(
   env: Record<string, string | undefined>,

@@ -2,9 +2,12 @@ import { appendTrace } from '@vannadii/devplat-core';
 
 import type { ArtifactEnvelope } from './types.js';
 
-export function createArtifactEnvelope<TPayload extends object>(
-  input: ArtifactEnvelope<TPayload>,
-): ArtifactEnvelope<TPayload> {
+export function createArtifactEnvelope<
+  TPayload extends object,
+  TArtifactType extends string,
+>(
+  input: ArtifactEnvelope<TPayload, TArtifactType>,
+): ArtifactEnvelope<TPayload, TArtifactType> {
   return appendTrace(
     {
       ...input,
@@ -15,8 +18,9 @@ export function createArtifactEnvelope<TPayload extends object>(
   );
 }
 
-export function describeArtifactEnvelope<TPayload extends object>(
-  input: ArtifactEnvelope<TPayload>,
-): string {
+export function describeArtifactEnvelope<
+  TPayload extends object,
+  TArtifactType extends string,
+>(input: ArtifactEnvelope<TPayload, TArtifactType>): string {
   return `${input.artifactType}@v${String(input.version)} -> ${input.summary}`;
 }

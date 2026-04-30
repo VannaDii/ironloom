@@ -6,12 +6,15 @@
 - Publish the runtime image through GHCR Docker.
 - Publish the chart through GHCR OCI Helm.
 - Publish the documentation site through GitHub Pages.
+- Keep public DevPlat packages in a single Changesets fixed release group.
+- Tag stable releases with `vN`, `vN.N`, and `vN.N.N` release-line tags.
 
 ## Publication Guardrails
 
 - Keep release surfaces aligned with GitHub state, generated artifacts, and validated build outputs.
 - Do not publish a release surface from stale docs, stale schemas, or stale manifests.
 - Keep release-facing artifact names and metadata attributable to the commit and workflow that produced them.
+- Treat `vN.N.N` tags as immutable release points; only move `vN` and `vN.N` tags to the latest release in that line.
 
 ## Manual Dispatch
 

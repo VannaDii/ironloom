@@ -25,12 +25,12 @@ jobs:
           private-key: ${{ secrets.BOT_PRIVATE_KEY }}
           repositories: ${{ github.event.repository.name }}
 
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v6
         with:
           token: ${{ steps.devplat_bot_token.outputs.token }}
 
       - name: Setup Node
-        uses: actions/setup-node@v6.3.0
+        uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -48,7 +48,7 @@ jobs:
           git config user.email "${{ steps.devplat_bot_token.outputs.app-slug }}[bot]@users.noreply.github.com"
 
       - name: Create or update release PR
-        uses: changesets/action@v1.7.0
+        uses: changesets/action@v1
         with:
           title: 'chore(release): version packages'
           commit: 'chore(release): version packages'
