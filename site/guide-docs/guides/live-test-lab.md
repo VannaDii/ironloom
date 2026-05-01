@@ -11,6 +11,9 @@ CI.
 - reuses one shared set of five live-lab Discord channels
 - reports lifecycle status and progress into those shared channels for the
   duration of the run
+- registers Discord command contracts and posts a simulated operator
+  interaction acknowledgement plus bound-thread status through the same
+  response transport used by the runtime
 - waits for SonarQube Cloud to auto-import the repository
 - runs the OpenClaw live deep test against the real container with network
   access enabled

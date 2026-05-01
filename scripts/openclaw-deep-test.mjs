@@ -853,6 +853,60 @@ export function createDeepScenario(runtimeEnv) {
       'control',
     ),
     createStep(
+      'handle_discord_control',
+      {
+        id: 'discord-interaction-allow-1',
+        token: 'discord-interaction-token-1',
+        actorId: 'operator-1',
+        channelId: 'channel-1',
+        boundThreadId: 'thread-1',
+        commandName: 'retry-gates',
+        summary: 'Retry gates from interaction callback',
+        privileged: false,
+        updatedAt: fixedTimestamp,
+        boundSession: {
+          id: 'session-openclaw-1',
+          summary: 'Implementation thread',
+          status: 'running',
+          trace: [],
+          updatedAt: fixedTimestamp,
+          guildId: 'guild-1',
+          channelId: 'channel-1',
+          parentChannelId: 'parent-1',
+          threadId: 'thread-1',
+          kind: 'implementation',
+          specId: 'spec-1',
+          sliceId: 'slice-1',
+          pullRequestNumber: null,
+          artifactId: 'artifact-1',
+        },
+      },
+      {
+        allowed: true,
+        failedClosed: false,
+        policyDecisionId: 'policy-retry-gates',
+        responseReceipt: {
+          endpoint:
+            '/interactions/discord-interaction-allow-1/discord-interaction-token-1/callback',
+          responseBody: {
+            mode: 'loopback',
+          },
+        },
+        threadReceipt: {
+          endpoint: '/channels/thread-1/messages',
+          responseBody: {
+            mode: 'loopback',
+          },
+        },
+        workItem: {
+          threadKind: 'implementation',
+          specId: 'spec-1',
+          sliceId: 'slice-1',
+        },
+      },
+      'control',
+    ),
+    createStep(
       'handle_discord_approval',
       {
         id: 'approval-1',

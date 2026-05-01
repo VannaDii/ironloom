@@ -12,7 +12,9 @@ interaction acknowledgements and thread status messages through the Discord REST
 transport. The exported command contract registry is the source for guild
 slash-command registration. The live lab registers those commands and includes a
 simulated interaction probe so this response path is validated with
-operator-visible Discord messages, not only local unit tests.
+operator-visible Discord messages, not only local unit tests. Hermetic OpenClaw
+deep tests use the exported loopback response transport to verify the same
+callback-shaped interaction flow without external Discord access.
 
 ## Real-World Flow
 

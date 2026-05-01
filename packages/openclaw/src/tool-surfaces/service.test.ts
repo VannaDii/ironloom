@@ -1,4 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import {
   createApproveSpecRecordTool,
@@ -1239,6 +1242,112 @@ describe('tool surface service', () => {
 
     for (const testCase of cases) {
       const context = testCase.mock();
+      await testCase.assert(context, testCase.inputs);
+    }
+  });
+
+  it('uses hermetic Discord response transport for callback-shaped control input', async () => {
+    const cases = [
+      {
+        inputs: {
+          params: {
+            id: 'interaction-hermetic-1',
+            token: 'token-hermetic-1',
+            actorId: 'operator-1',
+            channelId: 'channel-1',
+            boundThreadId: 'thread-1',
+            commandName: 'retry-gates',
+            summary: 'Retry gates from slash command',
+            privileged: false,
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            boundSession: {
+              id: 'session-hermetic-1',
+              summary: 'Implementation thread',
+              status: 'running',
+              trace: [],
+              updatedAt: '2026-04-04T00:00:00.000Z',
+              guildId: 'guild-1',
+              channelId: 'channel-1',
+              parentChannelId: 'implementation-parent-1',
+              threadId: 'thread-1',
+              kind: 'implementation',
+              specId: 'spec-1',
+              sliceId: 'slice-1',
+              pullRequestNumber: null,
+              artifactId: 'session-artifact-1',
+            },
+          },
+        },
+        mock: async () => {
+          const storageRoot = await mkdtemp(
+            join(tmpdir(), 'devplat-openclaw-hermetic-'),
+          );
+          const previousTestMode = process.env['DEVPLAT_TEST_MODE'];
+          const previousStorageRoot = process.env['DEVPLAT_STORAGE_ROOT'];
+
+          return {
+            previousStorageRoot,
+            previousTestMode,
+            storageRoot,
+          };
+        },
+        assert: async (
+          context: {
+            previousStorageRoot: string | undefined;
+            previousTestMode: string | undefined;
+            storageRoot: string;
+          },
+          inputs: {
+            params: Record<string, unknown>;
+          },
+        ) => {
+          try {
+            process.env['DEVPLAT_TEST_MODE'] = 'hermetic';
+            process.env['DEVPLAT_STORAGE_ROOT'] = context.storageRoot;
+
+            const tool = createHandleDiscordControlTool();
+            const result = await tool.execute(
+              'tool-call-dc-hermetic',
+              inputs.params,
+            );
+
+            expect(result.details).toMatchObject({
+              allowed: true,
+              failedClosed: false,
+              policyDecisionId: 'policy-retry-gates',
+              responseReceipt: {
+                endpoint:
+                  '/interactions/interaction-hermetic-1/token-hermetic-1/callback',
+                responseBody: {
+                  mode: 'loopback',
+                },
+              },
+              threadReceipt: {
+                endpoint: '/channels/thread-1/messages',
+                responseBody: {
+                  mode: 'loopback',
+                },
+              },
+            });
+          } finally {
+            if (context.previousTestMode === undefined) {
+              delete process.env['DEVPLAT_TEST_MODE'];
+            } else {
+              process.env['DEVPLAT_TEST_MODE'] = context.previousTestMode;
+            }
+            if (context.previousStorageRoot === undefined) {
+              delete process.env['DEVPLAT_STORAGE_ROOT'];
+            } else {
+              process.env['DEVPLAT_STORAGE_ROOT'] = context.previousStorageRoot;
+            }
+            await rm(context.storageRoot, { force: true, recursive: true });
+          }
+        },
+      },
+    ];
+
+    for (const testCase of cases) {
+      const context = await testCase.mock();
       await testCase.assert(context, testCase.inputs);
     }
   });

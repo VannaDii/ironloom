@@ -53,6 +53,8 @@ Keep required tool names documented in `packages/openclaw/README.md`, keep the m
 `handle_discord_control` accepts both normalized Discord control requests and
 operator interaction callback payloads, then delegates to the Discord package so
 OpenClaw can drive the same fail-closed slash/button path used by the live lab.
+Hermetic deep tests exercise that callback-shaped input with loopback Discord
+receipts; live-lab runs exercise the real Discord response transport.
 
 ## Related Guides
 

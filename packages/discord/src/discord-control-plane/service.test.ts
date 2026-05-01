@@ -10,6 +10,7 @@ import { FileStoreService } from '@vannadii/devplat-storage';
 
 import {
   DiscordControlPlaneService,
+  DiscordLoopbackResponseTransport,
   DiscordRestResponseTransport,
   type DiscordControlResponseTransport,
 } from './service.js';
@@ -436,6 +437,64 @@ describe('DiscordControlPlaneService', () => {
 
     for (const testCase of cases) {
       await testCase.assert(testCase.mock());
+    }
+  });
+
+  it('returns loopback receipts for hermetic interaction probes', async () => {
+    const cases = [
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-006',
+            token: 'token-6',
+            actorId: 'user-10',
+            channelId: 'channel-10',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'show status',
+            threadId: 'thread-10',
+          },
+          threadId: 'thread/10',
+        },
+        mock: () => new DiscordLoopbackResponseTransport(),
+        assert: async (
+          transport: DiscordLoopbackResponseTransport,
+          inputs: {
+            interaction: DiscordOperatorInteraction;
+            threadId: string;
+          },
+        ) => {
+          const responseReceipt = await transport.postInteractionResponse(
+            inputs.interaction,
+            'Accepted.',
+          );
+          const threadReceipt = await transport.postThreadMessage(
+            inputs.threadId,
+            'DevPlat accepted.',
+          );
+
+          expect(responseReceipt).toMatchObject({
+            endpoint: '/interactions/interaction-006/token-6/callback',
+            statusCode: 200,
+            responseBody: {
+              mode: 'loopback',
+              content: 'Accepted.',
+              interactionId: 'interaction-006',
+            },
+          });
+          expect(threadReceipt).toMatchObject({
+            endpoint: '/channels/thread%2F10/messages',
+            responseBody: {
+              mode: 'loopback',
+              content: 'DevPlat accepted.',
+              threadId: 'thread/10',
+            },
+          });
+        },
+      },
+    ];
+
+    for (const testCase of cases) {
+      await testCase.assert(testCase.mock(), testCase.inputs);
     }
   });
 

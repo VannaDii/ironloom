@@ -96,6 +96,38 @@ export class DiscordRestResponseTransport implements DiscordControlResponseTrans
   }
 }
 
+export class DiscordLoopbackResponseTransport implements DiscordControlResponseTransport {
+  public postInteractionResponse(
+    input: DiscordOperatorInteraction,
+    content: string,
+  ): Promise<DiscordResponseReceipt> {
+    return Promise.resolve({
+      endpoint: `/interactions/${encodeURIComponent(input.id)}/${encodeURIComponent(input.token)}/callback`,
+      statusCode: 200,
+      responseBody: {
+        mode: 'loopback',
+        content,
+        interactionId: input.id,
+      },
+    });
+  }
+
+  public postThreadMessage(
+    threadId: string,
+    content: string,
+  ): Promise<DiscordResponseReceipt> {
+    return Promise.resolve({
+      endpoint: `/channels/${encodeURIComponent(threadId)}/messages`,
+      statusCode: 200,
+      responseBody: {
+        mode: 'loopback',
+        content,
+        threadId,
+      },
+    });
+  }
+}
+
 export class DiscordControlPlaneService {
   public constructor(
     private readonly policy = new DecisionPolicyService(),

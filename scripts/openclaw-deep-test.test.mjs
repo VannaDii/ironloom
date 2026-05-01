@@ -205,6 +205,18 @@ describe('openclaw-deep-test helpers', () => {
             expect.objectContaining({
               tool: 'handle_discord_control',
               phase: 'control',
+              params: expect.objectContaining({
+                id: 'discord-interaction-allow-1',
+                token: 'discord-interaction-token-1',
+              }),
+              expected: expect.objectContaining({
+                failedClosed: false,
+                responseReceipt: expect.objectContaining({
+                  responseBody: expect.objectContaining({
+                    mode: 'loopback',
+                  }),
+                }),
+              }),
             }),
             expect.objectContaining({
               tool: 'validate_artifact',

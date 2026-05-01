@@ -43,7 +43,9 @@ flowchart LR
 - `open_discord_thread`: normalize Discord thread session state
 - `handle_discord_approval`: process Discord approval input
 - `handle_discord_control`: process Discord control requests or operator
-  interaction callbacks through the Discord control plane
+  interaction callbacks through the Discord control plane; hermetic deep-test
+  runs use the Discord loopback response transport so callback-shaped input is
+  validated without network access
 - `verify_sonar_bootstrap`: validate Sonar bootstrap requirements
 - `evaluate_sonar_quality_gate`: interpret Sonar quality gate results
 - `create_review_finding`: create a review finding artifact

@@ -3,7 +3,9 @@ import { isAbsolute, normalize, resolve, sep } from 'node:path';
 
 import type { AnyAgentTool } from 'openclaw/plugin-sdk/plugin-entry';
 import type {
+  DiscordControlResponseTransport,
   DiscordOperatorInteraction,
+  DiscordResponseReceipt,
   DiscordThreadSession,
 } from '@vannadii/devplat-discord';
 
@@ -149,6 +151,58 @@ function isDiscordOperatorInteraction(
     | Parameters<DiscordControlPlaneService['handleAction']>[0],
 ): input is DiscordOperatorInteraction {
   return 'token' in input;
+}
+
+function createLoopbackDiscordResponseTransport(): DiscordControlResponseTransport {
+  return {
+    postInteractionResponse(input, content): Promise<DiscordResponseReceipt> {
+      return Promise.resolve({
+        endpoint: `/interactions/${encodeURIComponent(input.id)}/${encodeURIComponent(input.token)}/callback`,
+        statusCode: 200,
+        responseBody: {
+          mode: 'loopback',
+          content,
+          interactionId: input.id,
+        },
+      });
+    },
+    postThreadMessage(threadId, content): Promise<DiscordResponseReceipt> {
+      return Promise.resolve({
+        endpoint: `/channels/${encodeURIComponent(threadId)}/messages`,
+        statusCode: 200,
+        responseBody: {
+          mode: 'loopback',
+          content,
+          threadId,
+        },
+      });
+    },
+  };
+}
+
+function createDefaultDiscordControlPlaneService(): DiscordControlPlaneService {
+  const storageRoot = process.env['DEVPLAT_STORAGE_ROOT'];
+  const store =
+    storageRoot === undefined || storageRoot.trim().length === 0
+      ? undefined
+      : new FileStoreService(storageRoot);
+  const telemetry =
+    store === undefined ? undefined : new TelemetryEventService(store);
+  const transport =
+    process.env['DEVPLAT_TEST_MODE'] === 'hermetic'
+      ? createLoopbackDiscordResponseTransport()
+      : undefined;
+
+  if (store !== undefined || transport !== undefined) {
+    return new DiscordControlPlaneService(
+      undefined,
+      telemetry,
+      store,
+      transport,
+    );
+  }
+
+  return new DiscordControlPlaneService();
 }
 
 function normalizeExecutionCwd(cwd: string | undefined):
@@ -857,7 +911,8 @@ export function createHandleDiscordControlTool(
   } = {},
 ): AnyAgentTool {
   const discordControlPlaneService =
-    dependencies.discordControlPlaneService ?? new DiscordControlPlaneService();
+    dependencies.discordControlPlaneService ??
+    createDefaultDiscordControlPlaneService();
   const tool: AnyAgentTool = {
     name: 'handle_discord_control',
     label: 'Handle Discord Control',
