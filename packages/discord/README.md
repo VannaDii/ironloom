@@ -7,7 +7,9 @@ Discord control plane workflows.
 This package owns Discord thread sessions, channel bindings, interactive approval requests, and operator control actions. Runtime behavior must resolve bound thread context and fail closed when a lifecycle-changing action is ambiguous.
 Slash command and button interactions are routed into control actions, must
 resolve exactly one bound thread, and post both interaction acknowledgements and
-thread status messages through the Discord REST transport.
+thread status messages through the Discord REST transport. The live lab includes
+a simulated interaction probe so this response path is validated with
+operator-visible Discord messages, not only local unit tests.
 
 ## Real-World Flow
 

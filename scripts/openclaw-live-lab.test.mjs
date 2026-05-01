@@ -23,6 +23,7 @@ import {
   mapProgressToChannel,
   parseLiveLabArgs,
   resolveGitHubOwnerKind,
+  runDiscordInteractionProbe,
   runLiveLab,
 } from './openclaw-live-lab.mjs';
 
@@ -65,6 +66,103 @@ function createTrackedRouteHandler(label, calls, routes) {
 
 describe('openclaw-live-lab helpers', () => {
   const cases = [
+    {
+      name: 'exercises simulated Discord interaction callbacks through the response transport',
+      inputs: {
+        runLabel: '200-1',
+      },
+      mock: async () => {
+        const discordMessages = [];
+        const serviceCalls = [];
+        const discordRequest = async (path, options = {}) => {
+          discordMessages.push([path, options.body?.content ?? '']);
+          return { id: `message-${discordMessages.length}` };
+        };
+        const createDiscordControlPlaneService = async ({ transport }) => ({
+          async handleInteraction(input) {
+            serviceCalls.push(input);
+            const responseReceipt = await transport.postInteractionResponse(
+              input,
+              'Accepted retry-gates.',
+            );
+            const threadReceipt = await transport.postThreadMessage(
+              input.boundThreadId,
+              'DevPlat accepted retry-gates.',
+            );
+
+            return {
+              allowed: true,
+              failedClosed: false,
+              persistedKey: input.id,
+              policyDecisionId: 'policy-retry-gates',
+              request: {
+                action: 'retry-gates',
+                actorId: input.actorId,
+                channelId: input.channelId,
+                id: input.id,
+                privileged: false,
+                status: 'approved',
+                summary: input.summary,
+                threadId: input.boundThreadId,
+                trace: [],
+                updatedAt: input.updatedAt,
+              },
+              responseReceipt,
+              threadReceipt,
+            };
+          },
+        });
+
+        return {
+          createDiscordControlPlaneService,
+          discordMessages,
+          discordRequest,
+          serviceCalls,
+        };
+      },
+      assert: async (context, inputs) => {
+        const result = await runDiscordInteractionProbe(
+          {
+            discordChannels: {
+              audit: { id: 'audit-1' },
+              implementation: { id: 'implementation-1' },
+            },
+            discordRequest: context.discordRequest,
+            reportDirectory: resolve(tmpdir(), 'devplat-live-lab-probe'),
+            runLabel: inputs.runLabel,
+            updatedAt: '2026-04-30T00:00:00.000Z',
+          },
+          {
+            createDiscordControlPlaneService:
+              context.createDiscordControlPlaneService,
+          },
+        );
+
+        expect(result).toMatchObject({
+          action: 'retry-gates',
+          allowed: true,
+          commandName: 'retry-gates',
+          failedClosed: false,
+          interactionEndpoint:
+            '/interactions/live-lab-200-1-retry-gates/simulated-token-200-1/callback',
+          threadEndpoint: '/channels/implementation-1/messages',
+        });
+        expect(context.serviceCalls[0]).toMatchObject({
+          boundThreadId: 'implementation-1',
+          commandName: 'retry-gates',
+        });
+        expect(context.discordMessages).toEqual([
+          [
+            '/channels/audit-1/messages',
+            'simulated interaction callback: Accepted retry-gates.',
+          ],
+          [
+            '/channels/implementation-1/messages',
+            'DevPlat accepted retry-gates.',
+          ],
+        ]);
+      },
+    },
     {
       name: 'parses CLI flags and derives run metadata',
       inputs: {
@@ -891,6 +989,16 @@ describe('runLiveLab', () => {
             ],
           };
         };
+        const runDiscordInteractionProbeMock = async () => ({
+          action: 'retry-gates',
+          allowed: true,
+          commandName: 'retry-gates',
+          failedClosed: false,
+          interactionEndpoint: '/interactions/live-lab/token/callback',
+          policyDecisionId: 'policy-retry-gates',
+          threadEndpoint: '/channels/implementation-1/messages',
+          threadId: 'implementation-1',
+        });
 
         return {
           collectFixtureFiles: async () => fixtureFiles,
@@ -901,6 +1009,7 @@ describe('runLiveLab', () => {
           githubRequest,
           reportDir,
           runDeepTestMock,
+          runDiscordInteractionProbeMock,
           sonarCalls,
           sonarRequest,
           summaryEntries,
@@ -924,6 +1033,7 @@ describe('runLiveLab', () => {
             discordRequest: context.discordRequest,
             githubRequest: context.githubRequest,
             runDeepTest: context.runDeepTestMock,
+            runDiscordInteractionProbe: context.runDiscordInteractionProbeMock,
             sonarRequest: context.sonarRequest,
           },
         );
@@ -945,6 +1055,11 @@ describe('runLiveLab', () => {
           'sandbox-org/devplat-test-200-1',
         );
         expect(savedReport.deepTest.steps).toBe(2);
+        expect(savedReport.discord.interactionProbe).toMatchObject({
+          action: 'retry-gates',
+          failedClosed: false,
+          threadId: 'implementation-1',
+        });
         expect(context.githubCalls).toEqual(
           expect.arrayContaining([
             ['/orgs/sandbox-org/repos', 'POST'],
@@ -1189,6 +1304,16 @@ describe('runLiveLab', () => {
           githubCalls,
           githubRequest,
           reportDir,
+          runDiscordInteractionProbeMock: async () => ({
+            action: 'retry-gates',
+            allowed: true,
+            commandName: 'retry-gates',
+            failedClosed: false,
+            interactionEndpoint: '/interactions/live-lab/token/callback',
+            policyDecisionId: 'policy-retry-gates',
+            threadEndpoint: '/channels/implementation-1/messages',
+            threadId: 'implementation-1',
+          }),
           runDeepTestMock: async () => ({
             reportDirectory: resolve(reportDir, 'deep-test'),
             steps: [{ tool: 'verify_sonar_bootstrap' }],
@@ -1228,11 +1353,16 @@ describe('runLiveLab', () => {
             discordRequest: context.discordRequest,
             githubRequest: context.githubRequest,
             runDeepTest: context.runDeepTestMock,
+            runDiscordInteractionProbe: context.runDiscordInteractionProbeMock,
             sonarRequest: context.sonarRequest,
           },
         );
 
         expect(report.status).toBe('passed');
+        expect(report.discord.interactionProbe).toMatchObject({
+          action: 'retry-gates',
+          failedClosed: false,
+        });
         expect(report.sonar).toEqual({
           projectKey: 'sandbox-user_devplat-test-200-1',
           projectName: 'devplat-test-200-1',
@@ -1422,6 +1552,16 @@ describe('runLiveLab', () => {
             reportDirectory: resolve(reportDir, 'deep-test'),
             steps: [{ tool: 'resolve_runtime_config' }],
           }),
+          runDiscordInteractionProbeMock: async () => ({
+            action: 'retry-gates',
+            allowed: true,
+            commandName: 'retry-gates',
+            failedClosed: false,
+            interactionEndpoint: '/interactions/live-lab/token/callback',
+            policyDecisionId: 'policy-retry-gates',
+            threadEndpoint: '/channels/implementation-1/messages',
+            threadId: 'implementation-1',
+          }),
           sonarRequest: async (path, options = {}) => {
             if (
               path === '/api/projects/search?organization=sandbox-sonar&ps=1' &&
@@ -1479,6 +1619,8 @@ describe('runLiveLab', () => {
               discordRequest: context.discordRequest,
               githubRequest: context.githubRequest,
               runDeepTest: context.runDeepTestMock,
+              runDiscordInteractionProbe:
+                context.runDiscordInteractionProbeMock,
               sonarRequest: context.sonarRequest,
             },
           ),

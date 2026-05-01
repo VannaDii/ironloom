@@ -167,7 +167,7 @@ the package responsibilities below. Current completion work focuses on:
 - `@vannadii/devplat-observability`: current code covers telemetry events and run summaries; remaining gap is richer audit-specific schemas and run metrics.
 - `@vannadii/devplat-github`: current code covers GitHub action requests, policy-aware submission semantics, and concrete REST request submission for PR create/update/comment/merge and branch sync; remaining gap is richer normalized repo/PR state and issue/spec-PR contracts.
 - `@vannadii/devplat-openclaw`: current code covers deterministic plugin config, broad tool validation, and adapter delegation; remaining gap is keeping tool inventory and handler depth aligned with the intended end-to-end platform surface as package behavior becomes more concrete.
-- `@vannadii/devplat-discord`: current code covers thread-aware bindings, approvals, expanded operator actions, explicit `pull-request` thread sessions, slash/button interaction routing, fail-closed thread ambiguity handling, and REST response posting; remaining gap is deeper command-to-work-item resolution.
+- `@vannadii/devplat-discord`: current code covers thread-aware bindings, approvals, expanded operator actions, explicit `pull-request` thread sessions, slash/button interaction routing, fail-closed thread ambiguity handling, REST response posting, and a live-lab interaction probe that routes a simulated operator command through the Discord response path; remaining gap is deeper command-to-work-item resolution and real user-driven slash/button invocation in the sandbox guild.
 - `@vannadii/devplat-policy`: current code covers privileged-action decisions and explicit approval requirements for risky Discord actions; remaining gap is richer merge/autofix/escalation policy modeling.
 - `@vannadii/devplat-storage`: current code covers filesystem-backed record storage under `.devplat`, explicit layout contracts, and active thread/task/PR/branch/artifact indexes.
 
@@ -451,6 +451,8 @@ This phase is complete when:
 - GitHub Pages docs deploys successfully through artifact-based publishing
 - `@vannadii/devplat-openclaw` exposes the intended foundation tool surface
 - Discord interactions are thread-aware and auditable
+- the dispatchable live lab records Discord interaction-response probing through
+  operator-visible Discord messages
 - docs are sufficient for operators and contributors to install and use the platform without private guidance
 
 ## Recommended First Vertical Slice
@@ -465,6 +467,14 @@ Prioritize an end-to-end thread-aware operator path before broadening deeper pac
 6. the operator can retry or approve in-thread
 
 That slice proves the core architecture: thread-aware control, adapter correctness, artifact handling, and operator UX.
+
+Live-lab acceptance must also verify the Discord interactive UX path directly:
+
+1. register or simulate a Discord slash/button interaction
+2. route it through the Discord control-plane service
+3. post an interaction acknowledgement and bound-thread status through the Discord response transport
+4. record callback and thread-message receipts in the live-lab report
+5. fail the live lab if the interaction fails closed or does not resolve to one bound thread
 
 ## Implementation Phases
 

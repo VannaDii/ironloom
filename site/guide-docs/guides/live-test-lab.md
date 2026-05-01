@@ -64,13 +64,20 @@ Run `.github/workflows/openclaw-live-lab.yml` with:
 The workflow writes a report bundle under `$RUNNER_TEMP/openclaw-live-lab` and
 uploads it as a workflow artifact.
 
+The workflow builds the workspace before running the live lab so the networked
+runner can load the same package services that production uses for Discord
+interaction routing.
+
 The matching local invocation is:
 
 ```sh
+npm run build:workspace
 npm run test:openclaw:live-lab:local -- --ref main
 ```
 
-That command uses `.env` and the same GitHub App bootstrap path as the workflow.
+The local command uses `.env` and the same GitHub App bootstrap path as the
+workflow. Build first so the Discord interaction probe can load the package
+services from `dist`.
 
 ## Discord Reporting Layout
 
@@ -92,6 +99,12 @@ Use them this way:
 
 Every message is labeled with the run metadata, so operators can correlate
 activity without per-run channel trees.
+
+The live lab also runs a Discord interaction probe. The probe simulates the
+operator `/retry-gates` path, routes it through the Discord control-plane
+service, posts the interaction acknowledgement into the audit channel, posts the
+bound-thread status into the implementation channel, and records both receipt
+endpoints in `live-lab-report.json`.
 
 ## Public Repo Safety Model
 

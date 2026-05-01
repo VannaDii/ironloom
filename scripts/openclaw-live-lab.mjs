@@ -9,7 +9,7 @@ import {
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import {
   createGitHubAppJwt,
@@ -1140,6 +1140,121 @@ async function postStatusSafe(options) {
   return true;
 }
 
+class LiveLabDiscordInteractionTransport {
+  constructor({ auditChannelId, discordRequest }) {
+    this.auditChannelId = auditChannelId;
+    this.discordRequest = discordRequest;
+  }
+
+  async postInteractionResponse(input, content) {
+    const endpoint = `/interactions/${encodeURIComponent(input.id)}/${encodeURIComponent(input.token)}/callback`;
+    const responseBody = await sendDiscordMessage(
+      this.auditChannelId,
+      `simulated interaction callback: ${content}`,
+      this.discordRequest,
+    );
+
+    return {
+      endpoint,
+      statusCode: 201,
+      responseBody,
+    };
+  }
+
+  async postThreadMessage(threadId, content) {
+    const endpoint = `/channels/${encodeURIComponent(threadId)}/messages`;
+    const responseBody = await sendDiscordMessage(
+      threadId,
+      content,
+      this.discordRequest,
+    );
+
+    return {
+      endpoint,
+      statusCode: 201,
+      responseBody,
+    };
+  }
+}
+
+async function createDiscordControlPlaneService({
+  reportDirectory,
+  transport,
+}) {
+  const discordModule = await import(
+    pathToFileURL(resolve(repoRootDirectory, 'packages/discord/dist/index.js'))
+      .href
+  );
+  const storageModule = await import(
+    pathToFileURL(resolve(repoRootDirectory, 'packages/storage/dist/index.js'))
+      .href
+  );
+  const store = new storageModule.FileStoreService(
+    resolve(reportDirectory, 'discord-interactions'),
+  );
+
+  return new discordModule.DiscordControlPlaneService(
+    undefined,
+    undefined,
+    store,
+    transport,
+  );
+}
+
+export async function runDiscordInteractionProbe(
+  {
+    discordChannels,
+    discordRequest,
+    reportDirectory,
+    runLabel,
+    updatedAt = new Date().toISOString(),
+  },
+  dependencies = {},
+) {
+  const serviceFactory =
+    dependencies.createDiscordControlPlaneService ??
+    createDiscordControlPlaneService;
+  const threadId = discordChannels.implementation.id;
+  const transport = new LiveLabDiscordInteractionTransport({
+    auditChannelId: discordChannels.audit.id,
+    discordRequest,
+  });
+  const interaction = {
+    id: `live-lab-${runLabel}-retry-gates`,
+    token: `simulated-token-${runLabel}`,
+    actorId: 'live-lab-operator',
+    channelId: threadId,
+    threadId,
+    boundThreadId: threadId,
+    commandName: 'retry-gates',
+    summary: 'Live-lab simulated retry gates interaction',
+    privileged: false,
+    updatedAt,
+  };
+  const service = await serviceFactory({
+    auditChannelId: discordChannels.audit.id,
+    discordRequest,
+    reportDirectory,
+    transport,
+  });
+  const result = await service.handleInteraction(interaction);
+
+  if (result.allowed !== true || result.failedClosed === true) {
+    throw new Error('Discord interaction probe failed closed.');
+  }
+
+  return {
+    action: result.request.action,
+    allowed: result.allowed,
+    commandName: interaction.commandName,
+    failedClosed: result.failedClosed,
+    interactionEndpoint: result.responseReceipt?.endpoint ?? null,
+    policyDecisionId: result.policyDecisionId,
+    threadEndpoint: result.threadReceipt?.endpoint ?? null,
+    threadId: result.request.threadId,
+  };
+}
+
 async function cleanupLiveLabResources({
   githubOrganization,
   githubRequest,
@@ -1369,6 +1484,8 @@ export async function runLiveLab(options, dependencies = {}) {
   const makeDirectory = dependencies.makeDirectory ?? mkdir;
   const removeDirectory = dependencies.removeDirectory ?? rm;
   const runDeepTestFn = dependencies.runDeepTest ?? runDeepTest;
+  const runDiscordInteractionProbeFn =
+    dependencies.runDiscordInteractionProbe ?? runDiscordInteractionProbe;
   const writeTextFile = dependencies.writeTextFile ?? writeFile;
 
   const identifiers = createRunIdentifiers({
@@ -1657,6 +1774,12 @@ export async function runLiveLab(options, dependencies = {}) {
       reportDirectory: deepTestReport.reportDirectory,
       steps: deepTestReport.steps.length,
     };
+    report.discord.interactionProbe = await runDiscordInteractionProbeFn({
+      discordChannels: discordChannels.channels,
+      discordRequest,
+      reportDirectory,
+      runLabel: identifiers.runLabel,
+    });
 
     report.status = 'passed';
   } catch (error) {

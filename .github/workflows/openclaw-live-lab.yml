@@ -47,6 +47,10 @@ jobs:
         name: Verify Node Alignment
         run: npm run verify:node
 
+      - id: build_workspace
+        name: Build Workspace
+        run: npm run build:workspace
+
       - id: run_live_lab
         name: Run Live Lab
         env:
