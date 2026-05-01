@@ -2,7 +2,10 @@ import { readFileSync } from 'node:fs';
 import { isAbsolute, normalize, resolve, sep } from 'node:path';
 
 import type { AnyAgentTool } from 'openclaw/plugin-sdk/plugin-entry';
-import type { DiscordThreadSession } from '@vannadii/devplat-discord';
+import type {
+  DiscordOperatorInteraction,
+  DiscordThreadSession,
+} from '@vannadii/devplat-discord';
 
 import { RebaseDependentsService } from '@vannadii/devplat-branching';
 import {
@@ -138,6 +141,14 @@ function toDiscordThreadSession(
   input: OpenDiscordThreadToolInput,
 ): DiscordThreadSession {
   return input;
+}
+
+function isDiscordOperatorInteraction(
+  input:
+    | DiscordOperatorInteraction
+    | Parameters<DiscordControlPlaneService['handleAction']>[0],
+): input is DiscordOperatorInteraction {
+  return 'token' in input;
 }
 
 function normalizeExecutionCwd(cwd: string | undefined):
@@ -837,12 +848,21 @@ export function createHandleDiscordApprovalTool(): AnyAgentTool {
   return tool;
 }
 
-export function createHandleDiscordControlTool(): AnyAgentTool {
+export function createHandleDiscordControlTool(
+  dependencies: {
+    discordControlPlaneService?: Pick<
+      DiscordControlPlaneService,
+      'handleAction' | 'handleInteraction'
+    >;
+  } = {},
+): AnyAgentTool {
+  const discordControlPlaneService =
+    dependencies.discordControlPlaneService ?? new DiscordControlPlaneService();
   const tool: AnyAgentTool = {
     name: 'handle_discord_control',
     label: 'Handle Discord Control',
     description:
-      'Process a thread-scoped Discord control action with policy checks and telemetry.',
+      'Process a thread-scoped Discord control action or operator interaction with policy checks and telemetry.',
     parameters: readSchema('tool-handle-discord-control-params.schema.json'),
     async execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(
@@ -853,9 +873,9 @@ export function createHandleDiscordControlTool(): AnyAgentTool {
         return createTextResult({ status: 'failed', error: decoded.error });
       }
 
-      const result = await new DiscordControlPlaneService().handleAction(
-        decoded.value,
-      );
+      const result = isDiscordOperatorInteraction(decoded.value)
+        ? await discordControlPlaneService.handleInteraction(decoded.value)
+        : await discordControlPlaneService.handleAction(decoded.value);
       return createTextResult(result);
     },
   };

@@ -11,6 +11,7 @@ import {
   DiscordApprovalRequestCodec,
   DiscordChannelBindingCodec,
   DiscordControlRequestCodec,
+  DiscordOperatorInteractionCodec,
   DiscordThreadSessionCodec,
 } from '@vannadii/devplat-discord';
 import { ExecuteRebaseDependentsInputCodec } from '@vannadii/devplat-branching';
@@ -125,7 +126,10 @@ export const OpenDiscordThreadToolInputCodec = t.intersection([
 
 export const HandleDiscordApprovalToolInputCodec = DiscordApprovalRequestCodec;
 
-export const HandleDiscordControlToolInputCodec = DiscordControlRequestCodec;
+export const HandleDiscordControlToolInputCodec = t.union([
+  DiscordControlRequestCodec,
+  DiscordOperatorInteractionCodec,
+]);
 
 export const VerifySonarBootstrapToolInputCodec =
   SonarBootstrapVerificationInputCodec;

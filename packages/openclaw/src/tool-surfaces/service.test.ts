@@ -1079,27 +1079,168 @@ describe('tool surface service', () => {
     expect(result.details).toMatchObject({ status: 'failed' });
   });
 
-  it('handles Discord control actions from valid tool input', async () => {
-    const result = await createHandleDiscordControlTool().execute(
-      'tool-call-dc1',
+  it('handles Discord control requests and operator interactions from valid tool input', async () => {
+    const cases = [
       {
-        id: 'control-1',
-        summary: 'Retry gates',
-        status: 'review',
-        trace: [],
-        updatedAt: '2026-04-04T00:00:00.000Z',
-        actorId: 'operator-1',
-        threadId: 'thread-1',
-        channelId: 'channel-1',
-        action: 'retry-gates',
-        privileged: false,
-      },
-    );
+        name: 'delegates normalized control requests to the action handler',
+        inputs: {
+          params: {
+            id: 'control-1',
+            summary: 'Retry gates',
+            status: 'review',
+            trace: [],
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            actorId: 'operator-1',
+            threadId: 'thread-1',
+            channelId: 'channel-1',
+            action: 'retry-gates',
+            privileged: false,
+          },
+        },
+        mock: () => ({
+          tool: createHandleDiscordControlTool({
+            discordControlPlaneService: {
+              async handleAction(input) {
+                return {
+                  request: input,
+                  policyDecisionId: 'policy-retry-gates',
+                  allowed: true,
+                  persistedKey: input.id,
+                  failedClosed: false,
+                };
+              },
+              async handleInteraction() {
+                throw new Error('Unexpected interaction handler call.');
+              },
+            },
+          }),
+        }),
+        assert: async (context, inputs) => {
+          const result = await context.tool.execute(
+            'tool-call-dc1',
+            inputs.params,
+          );
 
-    expect(result.details).toMatchObject({
-      allowed: true,
-      policyDecisionId: 'policy-retry-gates',
-    });
+          expect(result.details).toMatchObject({
+            allowed: true,
+            failedClosed: false,
+            policyDecisionId: 'policy-retry-gates',
+          });
+        },
+      },
+      {
+        name: 'delegates operator interactions to the interaction handler',
+        inputs: {
+          params: {
+            id: 'interaction-1',
+            token: 'interaction-token-1',
+            actorId: 'operator-1',
+            channelId: 'channel-1',
+            boundThreadId: 'thread-1',
+            commandName: 'retry-gates',
+            summary: 'Retry gates from slash command',
+            privileged: false,
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            boundSession: {
+              id: 'session-1',
+              summary: 'Implementation thread',
+              status: 'running',
+              trace: [],
+              updatedAt: '2026-04-04T00:00:00.000Z',
+              guildId: 'guild-1',
+              channelId: 'channel-1',
+              parentChannelId: 'implementation-parent-1',
+              threadId: 'thread-1',
+              kind: 'implementation',
+              specId: 'spec-1',
+              sliceId: 'slice-1',
+              pullRequestNumber: null,
+              artifactId: 'session-artifact-1',
+            },
+          },
+        },
+        mock: () => ({
+          tool: createHandleDiscordControlTool({
+            discordControlPlaneService: {
+              async handleAction() {
+                throw new Error('Unexpected action handler call.');
+              },
+              async handleInteraction(input) {
+                const workItem = {
+                  threadKind: 'implementation',
+                  threadId: input.boundThreadId,
+                  artifactId: 'session-artifact-1',
+                  specId: 'spec-1',
+                  sliceId: 'slice-1',
+                };
+
+                return {
+                  request: {
+                    id: input.id,
+                    summary: input.summary ?? 'retry-gates',
+                    status: 'running',
+                    trace: [],
+                    updatedAt: input.updatedAt,
+                    actorId: input.actorId,
+                    threadId: input.boundThreadId,
+                    channelId: input.channelId,
+                    action: 'retry-gates',
+                    privileged: input.privileged ?? false,
+                    workItem,
+                  },
+                  policyDecisionId: 'policy-retry-gates',
+                  allowed: true,
+                  persistedKey: input.id,
+                  failedClosed: false,
+                  workItem,
+                  responseReceipt: {
+                    endpoint:
+                      '/interactions/interaction-1/interaction-token-1/callback',
+                    statusCode: 200,
+                    responseBody: { ok: true },
+                  },
+                  threadReceipt: {
+                    endpoint: '/channels/thread-1/messages',
+                    statusCode: 200,
+                    responseBody: { ok: true },
+                  },
+                };
+              },
+            },
+          }),
+        }),
+        assert: async (context, inputs) => {
+          const result = await context.tool.execute(
+            'tool-call-dc2',
+            inputs.params,
+          );
+
+          expect(result.details).toMatchObject({
+            allowed: true,
+            failedClosed: false,
+            policyDecisionId: 'policy-retry-gates',
+            responseReceipt: {
+              endpoint:
+                '/interactions/interaction-1/interaction-token-1/callback',
+            },
+            threadReceipt: {
+              endpoint: '/channels/thread-1/messages',
+            },
+            workItem: {
+              sliceId: 'slice-1',
+              specId: 'spec-1',
+              threadId: 'thread-1',
+              threadKind: 'implementation',
+            },
+          });
+        },
+      },
+    ];
+
+    for (const testCase of cases) {
+      const context = testCase.mock();
+      await testCase.assert(context, testCase.inputs);
+    }
   });
 
   it('returns decode failures for invalid Discord control input', async () => {

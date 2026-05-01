@@ -50,6 +50,9 @@ Required foundation-phase tool coverage includes:
 - pull request update, merge, and dependent rebase execution semantics
 
 Keep required tool names documented in `packages/openclaw/README.md`, keep the manifest deterministic, and keep Discord-related tools thread-aware.
+`handle_discord_control` accepts both normalized Discord control requests and
+operator interaction callback payloads, then delegates to the Discord package so
+OpenClaw can drive the same fail-closed slash/button path used by the live lab.
 
 ## Related Guides
 
