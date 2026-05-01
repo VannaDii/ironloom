@@ -7,6 +7,9 @@ export const SpecRevisionCodec = t.intersection([
     updatedAt: t.string,
   }),
   t.partial({
+    revisionId: t.string,
+    previousVersion: t.number,
+    approvalStateBeforeUpdate: t.string,
     artifactId: t.string,
   }),
 ]);

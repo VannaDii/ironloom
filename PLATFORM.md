@@ -152,7 +152,7 @@ the package responsibilities below. Current completion work focuses on:
 - `@vannadii/devplat-artifacts`: current code covers artifact envelopes, the default lifecycle artifact registry, explicit migration records, approval, audit, merge, rebase, validation, and registered research/spec/slice/task/review handoff contracts.
 - `@vannadii/devplat-memory`: current code covers memory-entry persistence plus decision-log, known-trap, and reusable context-bundle modeling.
 - `@vannadii/devplat-research`: current code covers structured research briefs, capability comparisons, feasibility structure, and source attribution.
-- `@vannadii/devplat-specs`: current code covers spec records, approval, and explicit revision updates; remaining gap is richer revision history and PR-ready spec rendering contracts.
+- `@vannadii/devplat-specs`: current code covers spec records, approval, explicit revision metadata, source artifact references, and PR-ready spec rendering with metadata, criteria, sources, and revision history.
 - `@vannadii/devplat-slicing`: current code covers slice plans, readiness checks, explicit dependency-graph artifacts, and PR-sized work packets with task counts, PR title hints, and review focus.
 - `@vannadii/devplat-queue`: current code covers task creation, claim, lifecycle updates, release/resume transitions, and explicit transition-event history.
 - `@vannadii/devplat-worktrees`: current code covers pure allocation/sync/release records plus Git-backed worktree add, fetch/rebase or fast-forward sync, and archive/delete release methods; remaining gap is deeper branch-safety validation.

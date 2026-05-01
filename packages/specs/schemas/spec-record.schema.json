@@ -46,6 +46,15 @@
               "updatedAt": {
                 "type": "string"
               },
+              "revisionId": {
+                "type": "string"
+              },
+              "previousVersion": {
+                "type": "number"
+              },
+              "approvalStateBeforeUpdate": {
+                "type": "string"
+              },
               "artifactId": {
                 "type": "string"
               }
