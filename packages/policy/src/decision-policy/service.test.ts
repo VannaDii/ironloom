@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { DecisionPolicyService } from './service.js';
-import type { PolicyActionCategory, PolicyDecision } from './types.js';
+import type { PolicyActionCategory, PolicyDecision } from './codec.js';
 
 type DecisionPolicyServiceInputs =
   | {

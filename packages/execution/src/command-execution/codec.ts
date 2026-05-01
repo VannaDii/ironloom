@@ -42,3 +42,24 @@ export const CommandExecutionOptionsCodec = t.partial({
     attempts: t.number,
   }),
 });
+
+/** Policy for retries, truncation, and timeout handling. */
+export type CommandExecutionPolicy = t.TypeOf<
+  typeof CommandExecutionPolicyCodec
+>;
+
+/** Retry policy used by command execution. */
+export type CommandRetryPolicy = CommandExecutionPolicy['retry'];
+
+/** Truncation policy used by command execution. */
+export type CommandTruncationPolicy = NonNullable<
+  CommandExecutionPolicy['truncation']
+>;
+
+/** Result returned by command execution. */
+export type CommandResult = t.TypeOf<typeof CommandResultCodec>;
+
+/** Options accepted by command execution. */
+export type CommandExecutionOptions = t.TypeOf<
+  typeof CommandExecutionOptionsCodec
+>;

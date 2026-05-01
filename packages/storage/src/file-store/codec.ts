@@ -93,3 +93,23 @@ export const StorageLayoutContractCodec = t.type({
   scopes: t.readonlyArray(StoreScopeCodec),
   indexes: t.readonlyArray(StoreIndexNameCodec),
 });
+
+/** Valid `.devplat` storage scope. */
+export type StoreScope = t.TypeOf<typeof StoreScopeCodec>;
+
+/** Valid secondary storage index name. */
+export type StoreIndexName = t.TypeOf<typeof StoreIndexNameCodec>;
+
+/** Persisted file store record with a typed payload. */
+export type StoredRecord<TPayload extends object = Record<string, unknown>> =
+  Omit<t.TypeOf<typeof StoredRecordCodec>, 'payload'> & {
+    payload: TPayload;
+  };
+
+/** Persisted secondary index entry. */
+export type StoredRecordIndexEntry = t.TypeOf<
+  typeof StoredRecordIndexEntryCodec
+>;
+
+/** Storage layout contract. */
+export type StorageLayoutContract = t.TypeOf<typeof StorageLayoutContractCodec>;

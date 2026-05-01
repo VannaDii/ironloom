@@ -2,7 +2,7 @@ import type {
   RemediationPlan,
   RemediationResult,
   RemediationResultSummary,
-} from './types.js';
+} from './codec.js';
 
 type RemediationNextAction =
   | 'apply-remediation'

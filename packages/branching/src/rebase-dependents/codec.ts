@@ -79,3 +79,25 @@ export const RebaseExecutionResultCodec = t.type({
   executed: t.boolean,
   conflictsDetected: t.boolean,
 });
+
+/** Dependent-branch rebase plan. */
+export type RebasePlan = t.TypeOf<typeof RebasePlanCodec>;
+
+/** Graph describing branch dependencies after a merge. */
+export type BranchDependencyGraph = t.TypeOf<typeof BranchDependencyGraphCodec>;
+
+/** Directed branch dependency edge. */
+export type BranchDependencyEdge = BranchDependencyGraph['edges'][number];
+
+/** Conflict classification for dependent branch rebases. */
+export type BranchConflictClassification = t.TypeOf<
+  typeof BranchConflictClassificationCodec
+>;
+
+/** Input for executing dependent branch rebases. */
+export type ExecuteRebaseDependentsInput = t.TypeOf<
+  typeof ExecuteRebaseDependentsInputCodec
+>;
+
+/** Result of dependent branch rebase execution. */
+export type RebaseExecutionResult = t.TypeOf<typeof RebaseExecutionResultCodec>;

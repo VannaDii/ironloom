@@ -16,3 +16,18 @@ export const DiscordCommandContractRegistryCodec = t.type({
   version: t.literal(1),
   contracts: t.readonlyArray(DiscordCommandContractCodec),
 });
+
+/** Discord application command type supported by DevPlat. */
+export type DiscordApplicationCommandType = t.TypeOf<
+  typeof DiscordApplicationCommandTypeCodec
+>;
+
+/** Command contract that maps a Discord command to a DevPlat action. */
+export type DiscordCommandContract = t.TypeOf<
+  typeof DiscordCommandContractCodec
+>;
+
+/** Versioned registry of Discord operator command contracts. */
+export type DiscordCommandContractRegistry = t.TypeOf<
+  typeof DiscordCommandContractRegistryCodec
+>;

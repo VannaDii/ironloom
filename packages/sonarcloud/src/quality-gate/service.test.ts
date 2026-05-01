@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { SonarQualityGateService } from './service.js';
-import type { SonarQualityGateResult } from './types.js';
+import type { SonarQualityGateResult } from './codec.js';
 
 type SonarQualityGateServiceInputs =
   | {

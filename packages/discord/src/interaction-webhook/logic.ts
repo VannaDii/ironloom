@@ -7,7 +7,7 @@ import { DiscordInteractionCallbackCodec } from '../discord-control-plane/codec.
 import type {
   DiscordInteractionWebhookParseResult,
   DiscordInteractionWebhookRequest,
-} from './types.js';
+} from './codec.js';
 import {
   DISCORD_ED25519_SPKI_PREFIX_HEX,
   DISCORD_HEX_SIGNATURE_FIELD_PATTERN,

@@ -98,7 +98,7 @@ import {
   formatToolPayloadText,
   sanitizeToolPayloadForDisplay,
 } from './logic.js';
-import type { OpenDiscordThreadToolInput } from './types.js';
+import type { OpenDiscordThreadToolInput } from './codec.js';
 
 type ToolParameterSchema = AnyAgentTool['parameters'] & Record<string, unknown>;
 

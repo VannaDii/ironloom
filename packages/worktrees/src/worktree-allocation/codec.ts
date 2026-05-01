@@ -87,3 +87,33 @@ export const WorktreeGitCommandResultCodec = t.type({
   stdout: t.string,
   stderr: t.string,
 });
+
+/** Allocated git worktree record. */
+export type WorktreeAllocation = t.TypeOf<typeof WorktreeAllocationCodec>;
+
+/** Safety status for a branch name before worktree operations. */
+export type WorktreeBranchSafetyStatus = t.TypeOf<
+  typeof WorktreeBranchSafetyStatusCodec
+>;
+
+/** Branch safety check result for worktree operations. */
+export type WorktreeBranchSafetyCheck = t.TypeOf<
+  typeof WorktreeBranchSafetyCheckCodec
+>;
+
+/** Worktree synchronization mode. */
+export type WorktreeSyncMode = t.TypeOf<typeof WorktreeSyncModeCodec>;
+
+/** Worktree synchronization result. */
+export type WorktreeSyncResult = t.TypeOf<typeof WorktreeSyncResultCodec>;
+
+/** Worktree release mode. */
+export type WorktreeReleaseMode = t.TypeOf<typeof WorktreeReleaseModeCodec>;
+
+/** Worktree release result. */
+export type WorktreeReleaseResult = t.TypeOf<typeof WorktreeReleaseResultCodec>;
+
+/** Result from a git command invoked for worktree lifecycle operations. */
+export type WorktreeGitCommandResult = t.TypeOf<
+  typeof WorktreeGitCommandResultCodec
+>;

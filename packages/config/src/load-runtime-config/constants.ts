@@ -2,7 +2,7 @@ import type {
   DeploymentTarget,
   DiscordInstallScope,
   DiscordPermission,
-} from './types.js';
+} from './codec.js';
 
 /**
  * Discord OAuth scopes required for command registration and bot messaging.

@@ -5,7 +5,7 @@ import {
   WorktreeAllocationService,
   type WorktreeGitRunner,
 } from './service.js';
-import type { WorktreeGitCommandResult } from './types.js';
+import type { WorktreeGitCommandResult } from './codec.js';
 
 function createRunner(exitCodes: readonly number[]): {
   runner: WorktreeGitRunner;

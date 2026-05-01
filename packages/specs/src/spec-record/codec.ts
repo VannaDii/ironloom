@@ -37,3 +37,12 @@ export const SpecRecordCodec = t.intersection([
     sourceArtifactIds: t.array(t.string),
   }),
 ]);
+
+/** Approval state for a specification. */
+export type SpecApprovalState = t.TypeOf<typeof SpecApprovalStateCodec>;
+
+/** Versioned spec revision metadata. */
+export type SpecRevision = t.TypeOf<typeof SpecRevisionCodec>;
+
+/** Durable specification record used by planning and PR rendering. */
+export type SpecRecord = t.TypeOf<typeof SpecRecordCodec>;

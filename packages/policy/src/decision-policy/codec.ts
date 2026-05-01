@@ -75,3 +75,25 @@ export const PolicyActionEvaluationCodec = t.type({
   nextAction: t.string,
   updatedAt: t.string,
 });
+
+/** Privilege required by a policy-controlled action. */
+export type PolicyPrivilegeLevel = t.TypeOf<typeof PolicyPrivilegeLevelCodec>;
+
+/** Lifecycle category evaluated by policy. */
+export type PolicyActionCategory = t.TypeOf<typeof PolicyActionCategoryCodec>;
+
+/** Risk level assigned to a policy-controlled action. */
+export type PolicyRiskLevel = t.TypeOf<typeof PolicyRiskLevelCodec>;
+
+/** Human escalation target for a denied or risky action. */
+export type PolicyEscalationTarget = t.TypeOf<
+  typeof PolicyEscalationTargetCodec
+>;
+
+/** Policy decision returned for a lifecycle action. */
+export type PolicyDecision = t.TypeOf<typeof PolicyDecisionCodec>;
+
+/** Fully normalized policy action evaluation. */
+export type PolicyActionEvaluation = t.TypeOf<
+  typeof PolicyActionEvaluationCodec
+>;

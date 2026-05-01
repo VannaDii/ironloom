@@ -7,7 +7,7 @@ import type {
   WorktreeReleaseResult,
   WorktreeSyncMode,
   WorktreeSyncResult,
-} from './types.js';
+} from './codec.js';
 
 function trimWorktreeValue(value: string): string {
   return value.trim();

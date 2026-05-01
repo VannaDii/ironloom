@@ -3,7 +3,7 @@ import { appendTrace } from '@vannadii/devplat-core';
 import type {
   DiscordChannelBinding,
   DiscordThreadBindingResult,
-} from './types.js';
+} from './codec.js';
 
 function assertIdentifier(name: string, value: string): void {
   if (value.trim().length === 0) {

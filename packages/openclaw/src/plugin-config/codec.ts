@@ -47,3 +47,16 @@ export const OpenClawPluginConfigCodec = t.type({
     rebaseAllDependents: t.boolean,
   }),
 });
+
+/** Discord OAuth install scope required by the OpenClaw plugin. */
+export type OpenClawPluginConfigDiscordInstallScope = t.TypeOf<
+  typeof OpenClawPluginConfigDiscordInstallScopeCodec
+>;
+
+/** Discord permission required by the OpenClaw plugin. */
+export type OpenClawPluginConfigDiscordPermission = t.TypeOf<
+  typeof OpenClawPluginConfigDiscordPermissionCodec
+>;
+
+/** Runtime plugin configuration loaded for OpenClaw. */
+export type OpenClawPluginConfig = t.TypeOf<typeof OpenClawPluginConfigCodec>;

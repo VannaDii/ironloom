@@ -190,3 +190,53 @@ export const GitHubIssueSpecLinkCodec = t.intersection([
     threadId: t.string,
   }),
 ]);
+
+/** GitHub workflow action DevPlat may submit. */
+export type GitHubAction = t.TypeOf<typeof GitHubActionCodec>;
+
+/** HTTP method used by GitHub REST calls. */
+export type GitHubHttpMethod = t.TypeOf<typeof GitHubHttpMethodCodec>;
+
+/** Submission mode for a GitHub workflow operation. */
+export type GitHubSubmissionMode = t.TypeOf<typeof GitHubSubmissionModeCodec>;
+
+/** Requested GitHub workflow operation. */
+export type GitHubActionRequest = t.TypeOf<typeof GitHubActionRequestCodec>;
+
+/** Concrete GitHub REST request. */
+export type GitHubRestRequest = t.TypeOf<typeof GitHubRestRequestCodec>;
+
+/** Receipt returned after a GitHub REST submission. */
+export type GitHubSubmissionReceipt = t.TypeOf<
+  typeof GitHubSubmissionReceiptCodec
+>;
+
+/** Policy and submission decision for a GitHub action. */
+export type GitHubActionDecision = t.TypeOf<typeof GitHubActionDecisionCodec>;
+
+/** Pull request lifecycle state from GitHub. */
+export type GitHubPullRequestLifecycleState = t.TypeOf<
+  typeof GitHubPullRequestLifecycleStateCodec
+>;
+
+/** Normalized GitHub check state. */
+export type GitHubCheckState = t.TypeOf<typeof GitHubCheckStateCodec>;
+
+/** Normalized GitHub review decision. */
+export type GitHubReviewDecision = t.TypeOf<typeof GitHubReviewDecisionCodec>;
+
+/** Link status between a GitHub issue and DevPlat spec. */
+export type GitHubIssueSpecLinkStatus = t.TypeOf<
+  typeof GitHubIssueSpecLinkStatusCodec
+>;
+
+/** Repository state snapshot from GitHub. */
+export type GitHubRepositoryState = t.TypeOf<typeof GitHubRepositoryStateCodec>;
+
+/** Pull request state snapshot from GitHub. */
+export type GitHubPullRequestState = t.TypeOf<
+  typeof GitHubPullRequestStateCodec
+>;
+
+/** Link record joining GitHub issues, specs, and pull requests. */
+export type GitHubIssueSpecLink = t.TypeOf<typeof GitHubIssueSpecLinkCodec>;

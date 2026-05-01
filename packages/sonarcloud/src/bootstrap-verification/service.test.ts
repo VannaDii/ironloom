@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { SonarBootstrapVerificationService } from './service.js';
-import type { SonarBootstrapVerificationInput } from './types.js';
+import type { SonarBootstrapVerificationInput } from './codec.js';
 
 type SonarBootstrapVerificationServiceCase = {
   name: string;

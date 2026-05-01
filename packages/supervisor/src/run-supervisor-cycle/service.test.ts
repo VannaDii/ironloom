@@ -9,7 +9,7 @@ import { DecisionPolicyService } from '@vannadii/devplat-policy';
 import { FileStoreService } from '@vannadii/devplat-storage';
 
 import { SupervisorCycleService } from './service.js';
-import type { SupervisorDecision } from './types.js';
+import type { SupervisorDecision } from './codec.js';
 
 type SupervisorRunStepInput = {
   action: string;

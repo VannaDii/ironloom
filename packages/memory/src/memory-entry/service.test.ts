@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { FileStoreService } from '@vannadii/devplat-storage';
 
 import { MemoryEntryService } from './service.js';
-import type { MemoryEntry } from './types.js';
+import type { MemoryEntry } from './codec.js';
 
 type MemoryEntryServiceContext = {
   rootDirectory: string;

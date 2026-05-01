@@ -10,7 +10,7 @@ import type {
   DeploymentTarget,
   DevplatConfig,
   RuntimeConfigValidationIssue,
-} from './types.js';
+} from './codec.js';
 
 /**
  * Reads an environment value with whitespace trimming and fallback support.

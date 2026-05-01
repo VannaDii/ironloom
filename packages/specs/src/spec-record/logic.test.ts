@@ -7,7 +7,7 @@ import {
   renderSpecPullRequestBody,
   updateSpecRecord,
 } from './logic.js';
-import type { SpecRecord } from './types.js';
+import type { SpecRecord } from './codec.js';
 
 describe('SpecRecord logic', () => {
   const cases = [

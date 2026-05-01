@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { DevplatConfig } from '@vannadii/devplat-config';
 
 import { PluginConfigService } from './service.js';
-import type { OpenClawPluginConfig } from './types.js';
+import type { OpenClawPluginConfig } from './codec.js';
 
 type PluginConfigServiceInputs =
   | {

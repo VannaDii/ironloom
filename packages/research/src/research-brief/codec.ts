@@ -40,3 +40,19 @@ export const ResearchBriefCodec = t.intersection([
     feasibility: ResearchFeasibilityCodec,
   }),
 ]);
+
+/** Source attribution supporting a research finding. */
+export type ResearchSourceAttribution = t.TypeOf<
+  typeof ResearchSourceAttributionCodec
+>;
+
+/** Capability comparison captured during research. */
+export type ResearchCapabilityComparison = t.TypeOf<
+  typeof ResearchCapabilityComparisonCodec
+>;
+
+/** Feasibility assessment for a research topic. */
+export type ResearchFeasibility = t.TypeOf<typeof ResearchFeasibilityCodec>;
+
+/** Durable research brief used by planning. */
+export type ResearchBrief = t.TypeOf<typeof ResearchBriefCodec>;

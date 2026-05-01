@@ -30,3 +30,14 @@ export const DiscordApprovalResultCodec = t.type({
   artifactId: t.string,
   persistedKey: t.string,
 });
+
+/** Operator approval action requested from Discord. */
+export type DiscordApprovalAction = t.TypeOf<typeof DiscordApprovalActionCodec>;
+
+/** Thread-aware approval request received from Discord. */
+export type DiscordApprovalRequest = t.TypeOf<
+  typeof DiscordApprovalRequestCodec
+>;
+
+/** Auditable result of a Discord approval request. */
+export type DiscordApprovalResult = t.TypeOf<typeof DiscordApprovalResultCodec>;

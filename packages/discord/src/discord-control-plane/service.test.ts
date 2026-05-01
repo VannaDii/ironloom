@@ -18,7 +18,7 @@ import type {
   DiscordMessagePayload,
   DiscordOperatorInteraction,
   DiscordResponseReceipt,
-} from './types.js';
+} from './codec.js';
 
 function createReceipt(endpoint: string): DiscordResponseReceipt {
   return {

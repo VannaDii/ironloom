@@ -9,7 +9,7 @@ import {
   resumeTask,
   updateTaskStatus,
 } from './logic.js';
-import type { TaskRecord } from './types.js';
+import type { TaskRecord } from './codec.js';
 
 const baseTask: TaskRecord = {
   id: 'queue-001',

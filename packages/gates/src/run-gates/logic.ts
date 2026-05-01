@@ -11,7 +11,7 @@ import type {
   GateFailureKind,
   GateRemediationHook,
   GateRunReport,
-} from './types.js';
+} from './codec.js';
 
 type GateNextAction = 'retry-gates' | 'remediate-failure' | 'continue';
 

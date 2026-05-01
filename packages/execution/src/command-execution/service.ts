@@ -7,7 +7,7 @@ import {
   isSuccessfulCommandResult,
   truncateCommandOutput,
 } from './logic.js';
-import type { CommandExecutionOptions, CommandResult } from './types.js';
+import type { CommandExecutionOptions, CommandResult } from './codec.js';
 
 export class CommandExecutionService {
   public async execute(

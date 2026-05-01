@@ -37,3 +37,14 @@ export const RemediationResultSummaryCodec = t.type({
   complete: t.boolean,
   updatedAt: t.string,
 });
+
+/** Result of one remediation action. */
+export type RemediationResult = t.TypeOf<typeof RemediationResultCodec>;
+
+/** Durable remediation plan for review or gate failures. */
+export type RemediationPlan = t.TypeOf<typeof RemediationPlanCodec>;
+
+/** Aggregate remediation result for PR and supervisor routing. */
+export type RemediationResultSummary = t.TypeOf<
+  typeof RemediationResultSummaryCodec
+>;

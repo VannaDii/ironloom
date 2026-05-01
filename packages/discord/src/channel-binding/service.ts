@@ -9,7 +9,7 @@ import {
 import type {
   DiscordChannelBinding,
   DiscordThreadBindingResult,
-} from './types.js';
+} from './codec.js';
 
 export class DiscordChannelBindingService {
   public constructor(

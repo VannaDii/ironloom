@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { JSON_FILE_EXTENSION_PATTERN } from './constants.js';
 import { FileStoreService } from './service.js';
-import type { StoredRecord } from './types.js';
+import type { StoredRecord } from './codec.js';
 
 type FileStorePayload = {
   state: string;

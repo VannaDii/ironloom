@@ -15,7 +15,7 @@ import type {
   GitHubPullRequestState,
   GitHubRepositoryState,
   GitHubRestRequest,
-} from './types.js';
+} from './codec.js';
 
 /**
  * Trims optional text and drops blank optional fields.

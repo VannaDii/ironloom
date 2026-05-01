@@ -4,7 +4,7 @@ import type { GateRemediationHook } from '@vannadii/devplat-gates';
 import type { ReviewFinding } from '@vannadii/devplat-review';
 
 import { RemediationPlanService } from './service.js';
-import type { RemediationPlan } from './types.js';
+import type { RemediationPlan } from './codec.js';
 
 type RemediationPlanServiceInputs =
   | {

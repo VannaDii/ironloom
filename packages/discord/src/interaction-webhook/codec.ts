@@ -64,3 +64,23 @@ export const DiscordInteractionWebhookResultCodec = t.intersection([
     error: t.string,
   }),
 ]);
+
+/** Discord interaction webhook request before signature verification. */
+export type DiscordInteractionWebhookRequest = t.TypeOf<
+  typeof DiscordInteractionWebhookRequestCodec
+>;
+
+/** Discord interaction response body returned by the webhook. */
+export type DiscordInteractionWebhookResponseBody = t.TypeOf<
+  typeof DiscordInteractionWebhookResponseBodyCodec
+>;
+
+/** Parsed interaction payload result after signature validation. */
+export type DiscordInteractionWebhookParseResult = t.TypeOf<
+  typeof DiscordInteractionWebhookParseResultCodec
+>;
+
+/** Complete webhook handling result with audit routing metadata. */
+export type DiscordInteractionWebhookResult = t.TypeOf<
+  typeof DiscordInteractionWebhookResultCodec
+>;

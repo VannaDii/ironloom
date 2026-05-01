@@ -6,7 +6,7 @@ import {
 
 import { getNpmCommand } from './logic.js';
 import { RunGatesService } from './service.js';
-import type { GateRunReport } from './types.js';
+import type { GateRunReport } from './codec.js';
 
 type RunGatesServiceInputs =
   | {

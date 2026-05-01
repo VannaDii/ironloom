@@ -34,3 +34,21 @@ export const MemoryContextBundleCodec = t.type({
   sourceMemoryIds: t.array(t.string),
   updatedAt: t.string,
 });
+
+/** Durable memory entry captured for future planning context. */
+export type MemoryEntry = t.TypeOf<typeof MemoryEntryCodec>;
+
+/** Memory entry kind. */
+export type MemoryKind = MemoryEntry['kind'];
+
+/** Memory lifecycle status. */
+export type MemoryStatus = MemoryEntry['status'];
+
+/** Bundle of remembered decisions and known traps. */
+export type MemoryContextBundle = t.TypeOf<typeof MemoryContextBundleCodec>;
+
+/** Decision log extracted from a memory context bundle. */
+export type MemoryDecisionLog = MemoryContextBundle['decisions'];
+
+/** Known-trap bundle extracted from a memory context bundle. */
+export type KnownTrapBundle = MemoryContextBundle['knownTraps'];

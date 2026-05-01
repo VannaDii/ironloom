@@ -36,3 +36,19 @@ export const SonarQualityGateResultCodec = t.intersection([
     nextAction: t.string,
   }),
 ]);
+
+/** Normalized Sonar quality gate status. */
+export type QualityGateStatus = t.TypeOf<typeof QualityGateStatusCodec>;
+
+/** Normalized Sonar issue severity. */
+export type NormalizedSonarIssueSeverity = t.TypeOf<
+  typeof NormalizedSonarIssueSeverityCodec
+>;
+
+/** Normalized Sonar issue used by review and gate summaries. */
+export type NormalizedSonarIssue = t.TypeOf<typeof NormalizedSonarIssueCodec>;
+
+/** Normalized Sonar quality gate result. */
+export type SonarQualityGateResult = t.TypeOf<
+  typeof SonarQualityGateResultCodec
+>;

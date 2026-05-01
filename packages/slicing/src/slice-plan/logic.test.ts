@@ -8,7 +8,7 @@ import {
   describeSlicePlan,
   isSliceReady,
 } from './logic.js';
-import type { SlicePlan } from './types.js';
+import type { SlicePlan } from './codec.js';
 
 describe('SlicePlan logic', () => {
   const cases = [

@@ -6,7 +6,7 @@ import {
   evaluateLifecyclePolicyAction,
   evaluatePolicyDecision,
 } from './logic.js';
-import type { PolicyActionCategory, PolicyDecision } from './types.js';
+import type { PolicyActionCategory, PolicyDecision } from './codec.js';
 
 type PolicyDecisionLogicInputs =
   | {

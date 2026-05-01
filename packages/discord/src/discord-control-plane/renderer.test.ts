@@ -14,7 +14,7 @@ import type {
   DiscordControlAction,
   DiscordControlRequest,
   DiscordOperatorInteraction,
-} from './types.js';
+} from './codec.js';
 
 describe('Discord control-plane renderer', () => {
   const allActions: readonly DiscordControlAction[] = [

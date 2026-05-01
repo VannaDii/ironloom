@@ -10,7 +10,7 @@ import type {
   TelemetryAuditRecord,
   TelemetryEvent,
   TelemetryRunSummary,
-} from './types.js';
+} from './codec.js';
 
 function statusForAuditRecord(
   input: TelemetryAuditRecord,

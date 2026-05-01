@@ -2,7 +2,7 @@ import type {
   CommandExecutionOptions,
   CommandExecutionPolicy,
   CommandResult,
-} from './types.js';
+} from './codec.js';
 
 export function truncateCommandOutput(
   value: string,

@@ -6,7 +6,7 @@ import {
   describeReviewFinding,
   isBlockingReviewFinding,
 } from './logic.js';
-import type { ReviewFinding } from './types.js';
+import type { ReviewFinding } from './codec.js';
 
 describe('ReviewFinding logic', () => {
   const cases = [

@@ -22,7 +22,7 @@ import type {
   DiscordMessagePayload,
   DiscordOperatorInteraction,
   DiscordResponseReceipt,
-} from './types.js';
+} from './codec.js';
 
 export interface DiscordControlResponseTransport {
   postInteractionResponse(

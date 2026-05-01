@@ -59,3 +59,20 @@ export const GateRunReportCodec = t.intersection([
     nextAction: t.string,
   }),
 ]);
+
+/** Gate failure class used for retry and remediation routing. */
+export type GateFailureKind = t.TypeOf<typeof GateFailureKindCodec>;
+
+/** Result for one quality gate command. */
+export type GateCheckResult = t.TypeOf<typeof GateCheckResultCodec>;
+
+/** Aggregate gate failure classification and next action hint. */
+export type GateFailureClassification = t.TypeOf<
+  typeof GateFailureClassificationCodec
+>;
+
+/** Remediation hook generated from a failed gate run. */
+export type GateRemediationHook = t.TypeOf<typeof GateRemediationHookCodec>;
+
+/** Persisted report for a quality gate run. */
+export type GateRunReport = t.TypeOf<typeof GateRunReportCodec>;

@@ -10,8 +10,8 @@ import type {
   DiscordInteractionRoute,
   DiscordOperatorInteraction,
   DiscordWorkItemBinding,
-} from './types.js';
-import type { DiscordThreadSession } from '../thread-session/types.js';
+} from './codec.js';
+import type { DiscordThreadSession } from '../thread-session/codec.js';
 
 /**
  * Parsed DevPlat component custom-id context.

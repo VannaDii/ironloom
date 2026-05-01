@@ -19,7 +19,7 @@ import type {
   IsoTimestamp,
   RepositoryKey,
   TraceRecord,
-} from './types.js';
+} from './codec.js';
 
 /**
  * Trims a value and rejects empty strings for value-object constructors.

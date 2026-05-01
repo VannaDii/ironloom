@@ -10,7 +10,7 @@ import { DecisionPolicyService } from '@vannadii/devplat-policy';
 import { FileStoreService } from '@vannadii/devplat-storage';
 
 import { PullRequestService } from './service.js';
-import type { PullRequestRecord } from './types.js';
+import type { PullRequestRecord } from './codec.js';
 
 type PullRequestServiceInputs =
   | {

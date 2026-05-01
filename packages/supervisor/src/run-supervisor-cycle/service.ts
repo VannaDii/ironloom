@@ -6,7 +6,7 @@ import {
   decideNextState,
   describeSupervisorDecision,
 } from './logic.js';
-import type { SupervisorDecision } from './types.js';
+import type { SupervisorDecision } from './codec.js';
 
 export class SupervisorCycleService {
   public constructor(

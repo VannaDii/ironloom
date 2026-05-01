@@ -58,3 +58,20 @@ export const SupervisorDecisionCodec = t.intersection([
     lifecycleSignals: t.array(SupervisorLifecycleSignalCodec),
   }),
 ]);
+
+/** Supervisor lifecycle phase. */
+export type SupervisorPhase = t.TypeOf<typeof SupervisorPhaseCodec>;
+
+/** Routing status for the next supervisor step. */
+export type SupervisorRouteStatus = t.TypeOf<typeof SupervisorRouteStatusCodec>;
+
+/** Signal emitted by a lifecycle package for supervisor routing. */
+export type SupervisorLifecycleSignal = t.TypeOf<
+  typeof SupervisorLifecycleSignalCodec
+>;
+
+/** Supervisor route plan for the next lifecycle step. */
+export type SupervisorRoutePlan = t.TypeOf<typeof SupervisorRoutePlanCodec>;
+
+/** Durable supervisor decision. */
+export type SupervisorDecision = t.TypeOf<typeof SupervisorDecisionCodec>;

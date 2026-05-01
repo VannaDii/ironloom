@@ -5,7 +5,7 @@ import {
   isQualityGatePassing,
 } from './logic.js';
 import type { ReviewFinding } from '@vannadii/devplat-review';
-import type { SonarQualityGateResult } from './types.js';
+import type { SonarQualityGateResult } from './codec.js';
 
 export class SonarQualityGateService {
   public evaluate(

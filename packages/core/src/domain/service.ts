@@ -3,7 +3,7 @@ import { isLeft } from 'fp-ts/lib/Either.js';
 import type * as t from 'io-ts';
 
 import { createDomainSnapshot, describeDomainSnapshot } from './logic.js';
-import type { DevplatResult, DomainSnapshot } from './types.js';
+import type { DevplatResult, DomainSnapshot } from './codec.js';
 
 /**
  * Service shell for domain snapshot normalization.

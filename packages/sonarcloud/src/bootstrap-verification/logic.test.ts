@@ -5,7 +5,7 @@ import {
   describeSonarBootstrapVerificationResult,
   isSonarBootstrapVerificationPassing,
 } from './logic.js';
-import type { SonarBootstrapVerificationInput } from './types.js';
+import type { SonarBootstrapVerificationInput } from './codec.js';
 
 type SonarBootstrapVerificationLogicCase = {
   name: string;
@@ -118,6 +118,43 @@ describe('Sonar bootstrap verification logic', () => {
         );
         expect(result.issues).toContain(
           'Sonar quality gate status is NONE, expected OK.',
+        );
+      },
+    },
+    {
+      name: 'fails closed when Sonar returns non-numeric coverage thresholds',
+      inputs: {
+        verification: {
+          projectKey: 'vannadii_devplat',
+          qualityGateStatus: 'OK',
+          conditions: [
+            {
+              metricKey: 'coverage',
+              comparator: 'LESS_THAN',
+              errorThreshold: 'not-a-number',
+              actualValue: '96.0',
+            },
+            {
+              metricKey: 'new_coverage',
+              comparator: 'LESS_THAN',
+              errorThreshold: '90',
+              actualValue: '97.0',
+            },
+          ],
+          evaluatedAt: '2026-04-04T00:00:00.000Z',
+        },
+      },
+      mock: () => ({}),
+      assert: (context, inputs) => {
+        const result = createSonarBootstrapVerificationResult(
+          inputs.verification,
+        );
+
+        expect(result.status).toBe('failed');
+        expect(result.overallCoverageThreshold).toBe(0);
+        expect(result.newCodeCoverageThreshold).toBe(90);
+        expect(result.issues).toContain(
+          'Sonar overall coverage threshold is 0, expected at least 90.',
         );
       },
     },

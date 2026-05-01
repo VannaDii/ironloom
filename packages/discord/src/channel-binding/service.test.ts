@@ -8,7 +8,7 @@ import { TelemetryEventService } from '@vannadii/devplat-observability';
 import { FileStoreService } from '@vannadii/devplat-storage';
 
 import { DiscordChannelBindingService } from './service.js';
-import type { DiscordChannelBinding } from './types.js';
+import type { DiscordChannelBinding } from './codec.js';
 
 type DiscordChannelBindingServiceInputs =
   | {

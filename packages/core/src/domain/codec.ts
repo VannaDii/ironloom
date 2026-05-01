@@ -256,3 +256,52 @@ export const DevplatErrorCodec = t.intersection([
     source: t.string,
   }),
 ]);
+
+/** High-level lifecycle status shared across DevPlat records. */
+export type LifecycleStatus = t.TypeOf<typeof LifecycleStatusCodec>;
+
+/** Traceable lifecycle record. */
+export type TraceRecord = t.TypeOf<typeof TraceRecordCodec>;
+
+/** DevPlat identifier matching the shared ID pattern. */
+export type DevplatId = t.TypeOf<typeof DevplatIdCodec>;
+
+/** Repository-scoped runtime key. */
+export type RepositoryKey = t.TypeOf<typeof RepositoryKeyCodec>;
+
+/** ISO-8601 timestamp string. */
+export type IsoTimestamp = t.TypeOf<typeof IsoTimestampCodec>;
+
+/** Valid Git branch name. */
+export type GitBranchName = t.TypeOf<typeof GitBranchNameCodec>;
+
+/** Supported lifecycle artifact type. */
+export type SupportedArtifactType = t.TypeOf<typeof SupportedArtifactTypeCodec>;
+
+/** Structured platform error kind. */
+export type DevplatErrorKind = t.TypeOf<typeof DevplatErrorKindCodec>;
+
+/** Structured platform error severity. */
+export type DevplatErrorSeverity = t.TypeOf<typeof DevplatErrorSeverityCodec>;
+
+/** Structured platform error returned through service boundaries. */
+export type DevplatError = t.TypeOf<typeof DevplatErrorCodec>;
+
+/** Traceable snapshot owned by one package domain. */
+export type DomainSnapshot = t.TypeOf<typeof DomainSnapshotCodec>;
+
+/** Successful DevPlat operation result. */
+export type DevplatSuccess<T> = {
+  ok: true;
+  value: T;
+};
+
+/** Failed DevPlat operation result. */
+export type DevplatFailure = {
+  ok: false;
+  error: string;
+  diagnostic?: DevplatError;
+};
+
+/** Discriminated DevPlat operation result. */
+export type DevplatResult<T> = DevplatSuccess<T> | DevplatFailure;

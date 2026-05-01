@@ -11,7 +11,7 @@ import type {
   SupervisorDecision,
   SupervisorLifecycleSignal,
   SupervisorPhase,
-} from './types.js';
+} from './codec.js';
 
 type SupervisorLogicInputs =
   | {

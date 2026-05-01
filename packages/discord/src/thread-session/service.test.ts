@@ -9,7 +9,7 @@ import { TelemetryEventService } from '@vannadii/devplat-observability';
 import { FileStoreService } from '@vannadii/devplat-storage';
 
 import { DiscordThreadSessionService } from './service.js';
-import type { DiscordThreadSessionInput } from './types.js';
+import type { DiscordThreadSessionInput } from './codec.js';
 
 type DiscordThreadSessionServiceInputs =
   | {

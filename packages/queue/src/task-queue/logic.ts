@@ -4,7 +4,7 @@ import type {
   TaskRecord,
   TaskTransitionAction,
   TaskTransitionEvent,
-} from './types.js';
+} from './codec.js';
 
 export function createTaskTransitionEvent(
   input: TaskTransitionEvent,

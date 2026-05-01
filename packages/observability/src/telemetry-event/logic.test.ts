@@ -7,7 +7,7 @@ import {
   createTelemetryRunSummary,
   describeTelemetryEvent,
 } from './logic.js';
-import type { TelemetryAuditRecord, TelemetryEvent } from './types.js';
+import type { TelemetryAuditRecord, TelemetryEvent } from './codec.js';
 
 describe('TelemetryEvent logic', () => {
   const baseEvent: TelemetryEvent = {

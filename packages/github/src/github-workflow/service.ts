@@ -26,7 +26,7 @@ import type {
   GitHubRepositoryState,
   GitHubSubmissionMode,
   GitHubSubmissionReceipt,
-} from './types.js';
+} from './codec.js';
 
 /**
  * Transport boundary for GitHub REST submissions.

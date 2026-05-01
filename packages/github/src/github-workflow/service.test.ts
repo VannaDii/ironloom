@@ -19,7 +19,7 @@ import type {
   GitHubPullRequestState,
   GitHubRepositoryState,
   GitHubSubmissionReceipt,
-} from './types.js';
+} from './codec.js';
 
 /**
  * Creates a deterministic GitHub transport for service tests.

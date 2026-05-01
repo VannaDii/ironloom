@@ -6,7 +6,7 @@ import {
   createPullRequestRecord,
   describePullRequestRecord,
 } from './logic.js';
-import type { PullRequestRecord } from './types.js';
+import type { PullRequestRecord } from './codec.js';
 
 type PullRequestLogicInputs = {
   record: PullRequestRecord;

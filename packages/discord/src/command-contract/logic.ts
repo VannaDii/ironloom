@@ -1,9 +1,9 @@
-import type { DiscordControlAction } from '../discord-control-plane/types.js';
+import type { DiscordControlAction } from '../discord-control-plane/codec.js';
 import type {
   DiscordApplicationCommandType,
   DiscordCommandContract,
   DiscordCommandContractRegistry,
-} from './types.js';
+} from './codec.js';
 
 const applicationCommandType: DiscordApplicationCommandType = 1;
 

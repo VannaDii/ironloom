@@ -55,3 +55,24 @@ export const PullRequestRecordCodec = t.intersection([
     sourceArtifactIds: t.array(t.string),
   }),
 ]);
+
+/** Review state tracked for a pull request. */
+export type PullRequestReviewState = t.TypeOf<
+  typeof PullRequestReviewStateCodec
+>;
+
+/** Rendered pull request body and validation projection. */
+export type PullRequestProjection = t.TypeOf<typeof PullRequestProjectionCodec>;
+
+/** Review summary projection attached to a pull request. */
+export type PullRequestReviewProjection = t.TypeOf<
+  typeof PullRequestReviewProjectionCodec
+>;
+
+/** Remediation summary projection attached to a pull request. */
+export type PullRequestRemediationProjection = t.TypeOf<
+  typeof PullRequestRemediationProjectionCodec
+>;
+
+/** Durable pull request lifecycle record. */
+export type PullRequestRecord = t.TypeOf<typeof PullRequestRecordCodec>;

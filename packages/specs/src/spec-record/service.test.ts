@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { SpecRecordService } from './service.js';
-import type { SpecRecord } from './types.js';
+import type { SpecRecord } from './codec.js';
 
 type SpecRecordServiceInputs = {
   record: SpecRecord;

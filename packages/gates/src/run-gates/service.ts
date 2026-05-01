@@ -9,7 +9,7 @@ import {
   type GateExecutor,
   runGates,
 } from './logic.js';
-import type { GateRunReport } from './types.js';
+import type { GateRunReport } from './codec.js';
 
 export class RunGatesService {
   public constructor(

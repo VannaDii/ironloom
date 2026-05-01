@@ -5,7 +5,7 @@ import {
   describeDiscordApprovalRequest,
   mapApprovalActionToPolicyAction,
 } from './logic.js';
-import type { DiscordApprovalRequest } from './types.js';
+import type { DiscordApprovalRequest } from './codec.js';
 
 type DiscordInteractiveApprovalLogicCase = {
   name: string;

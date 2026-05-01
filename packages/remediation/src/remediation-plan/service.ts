@@ -2,7 +2,7 @@ import type { GateRemediationHook } from '@vannadii/devplat-gates';
 import type { ReviewFinding } from '@vannadii/devplat-review';
 
 import { createRemediationPlan, describeRemediationPlan } from './logic.js';
-import type { RemediationPlan } from './types.js';
+import type { RemediationPlan } from './codec.js';
 
 export class RemediationPlanService {
   public create(input: RemediationPlan): RemediationPlan {

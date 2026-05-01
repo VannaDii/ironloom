@@ -11,7 +11,7 @@ import type {
   StorageLayoutContract,
   StoreIndexName,
   StoreScope,
-} from './types.js';
+} from './codec.js';
 
 /**
  * Validates a storage key before it is interpolated into a file path.

@@ -4,7 +4,7 @@ import {
   evaluateLifecyclePolicyAction,
   evaluatePolicyDecision,
 } from './logic.js';
-import type { PolicyActionEvaluation, PolicyDecision } from './types.js';
+import type { PolicyActionEvaluation, PolicyDecision } from './codec.js';
 
 export class DecisionPolicyService {
   public execute(input: PolicyDecision): PolicyDecision {

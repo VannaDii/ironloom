@@ -13,9 +13,9 @@ import {
   DiscordControlPlaneService,
   DiscordLoopbackResponseTransport,
 } from '../discord-control-plane/service.js';
-import type { DiscordInteractionCallbackOptions } from '../discord-control-plane/types.js';
+import type { DiscordInteractionCallbackOptions } from '../discord-control-plane/codec.js';
 import { DiscordInteractionWebhookService } from './service.js';
-import type { DiscordInteractionWebhookRequest } from './types.js';
+import type { DiscordInteractionWebhookRequest } from './codec.js';
 
 function createSignedWebhookRequest(
   body: string,

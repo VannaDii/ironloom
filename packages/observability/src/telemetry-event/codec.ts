@@ -82,3 +82,21 @@ export const TelemetryRunSummaryCodec = t.type({
   startedAt: t.string,
   completedAt: t.string,
 });
+
+/** Area of the platform that emitted telemetry. */
+export type TelemetryScope = t.TypeOf<typeof TelemetryScopeCodec>;
+
+/** Operational event emitted by a DevPlat service. */
+export type TelemetryEvent = t.TypeOf<typeof TelemetryEventCodec>;
+
+/** Audit outcome recorded for a policy-relevant event. */
+export type TelemetryAuditOutcome = t.TypeOf<typeof TelemetryAuditOutcomeCodec>;
+
+/** Persisted audit record for a lifecycle-changing action. */
+export type TelemetryAuditRecord = t.TypeOf<typeof TelemetryAuditRecordCodec>;
+
+/** Aggregated metrics for one telemetry run. */
+export type TelemetryRunMetrics = t.TypeOf<typeof TelemetryRunMetricsCodec>;
+
+/** Summary of telemetry captured for one run. */
+export type TelemetryRunSummary = t.TypeOf<typeof TelemetryRunSummaryCodec>;

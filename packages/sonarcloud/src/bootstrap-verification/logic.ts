@@ -2,7 +2,7 @@ import type {
   SonarBootstrapVerificationInput,
   SonarBootstrapVerificationResult,
   SonarQualityGateConditionSnapshot,
-} from './types.js';
+} from './codec.js';
 
 function isLessThanComparator(comparator: string): boolean {
   return comparator === 'LESS_THAN' || comparator === 'LT';

@@ -12,7 +12,7 @@ import {
   describeStoredRecord,
 } from './logic.js';
 import { StoredRecordCodec } from './codec.js';
-import type { StoredRecord, StoreScope } from './types.js';
+import type { StoredRecord, StoreScope } from './codec.js';
 
 /**
  * File-backed implementation of the `.devplat` storage contract.

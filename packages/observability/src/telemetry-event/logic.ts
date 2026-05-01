@@ -5,7 +5,7 @@ import type {
   TelemetryEvent,
   TelemetryRunMetrics,
   TelemetryRunSummary,
-} from './types.js';
+} from './codec.js';
 
 export function createTelemetryEvent(input: TelemetryEvent): TelemetryEvent {
   return appendTrace(

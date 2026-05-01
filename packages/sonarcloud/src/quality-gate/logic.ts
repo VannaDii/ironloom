@@ -3,7 +3,7 @@ import {
   type ReviewFinding,
 } from '@vannadii/devplat-review';
 
-import type { NormalizedSonarIssue, SonarQualityGateResult } from './types.js';
+import type { NormalizedSonarIssue, SonarQualityGateResult } from './codec.js';
 
 export function normalizeSonarIssue(
   input: NormalizedSonarIssue,

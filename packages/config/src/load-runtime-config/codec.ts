@@ -127,3 +127,53 @@ export const DevplatConfigCodec = t.type({
     minimumCoverage: t.literal(90),
   }),
 });
+
+/** Discord REST API version supported by DevPlat. */
+export type DiscordApiVersion = t.TypeOf<typeof DiscordApiVersionCodec>;
+
+/** Discord OAuth install scope required by DevPlat. */
+export type DiscordInstallScope = t.TypeOf<typeof DiscordInstallScopeCodec>;
+
+/** Discord permission required by DevPlat. */
+export type DiscordPermission = t.TypeOf<typeof DiscordPermissionCodec>;
+
+/** Runtime Discord configuration. */
+export type DiscordRuntimeConfig = t.TypeOf<typeof DiscordRuntimeConfigCodec>;
+
+/** Repository identity and branch configuration. */
+export type RepositoryRuntimeConfig = t.TypeOf<
+  typeof RepositoryRuntimeConfigCodec
+>;
+
+/** Runtime GitHub API configuration. */
+export type GitHubRuntimeConfig = t.TypeOf<typeof GitHubRuntimeConfigCodec>;
+
+/** Runtime storage layout configuration. */
+export type StorageRuntimeConfig = t.TypeOf<typeof StorageRuntimeConfigCodec>;
+
+/** Runtime worktree allocation configuration. */
+export type WorktreeRuntimeConfig = t.TypeOf<typeof WorktreeRuntimeConfigCodec>;
+
+/** Supported deployment target. */
+export type DeploymentTarget = t.TypeOf<typeof DeploymentTargetCodec>;
+
+/** Runtime deployment configuration. */
+export type DeploymentRuntimeConfig = t.TypeOf<
+  typeof DeploymentRuntimeConfigCodec
+>;
+
+/** Runtime OpenClaw gateway configuration. */
+export type OpenClawGatewayConfig = t.TypeOf<typeof OpenClawGatewayConfigCodec>;
+
+/** Runtime OpenClaw action gate configuration. */
+export type OpenClawActionGateConfig = t.TypeOf<
+  typeof OpenClawActionGateConfigCodec
+>;
+
+/** Runtime config validation issue. */
+export type RuntimeConfigValidationIssue = t.TypeOf<
+  typeof RuntimeConfigValidationIssueCodec
+>;
+
+/** Complete DevPlat runtime configuration. */
+export type DevplatConfig = t.TypeOf<typeof DevplatConfigCodec>;

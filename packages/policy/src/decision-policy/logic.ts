@@ -7,7 +7,7 @@ import type {
   PolicyEscalationTarget,
   PolicyPrivilegeLevel,
   PolicyRiskLevel,
-} from './types.js';
+} from './codec.js';
 
 const sensitiveActions = new Set([
   'approve-this',

@@ -46,3 +46,18 @@ export const SlicePlanCodec = t.intersection([
     workPacket: SliceWorkPacketCodec,
   }),
 ]);
+
+/** T-shirt size used to keep slices PR-sized. */
+export type SliceSize = t.TypeOf<typeof SliceSizeCodec>;
+
+/** Directed dependency edge between slices. */
+export type SliceDependencyEdge = t.TypeOf<typeof SliceDependencyEdgeCodec>;
+
+/** Dependency graph for a slice plan. */
+export type SliceDependencyGraph = t.TypeOf<typeof SliceDependencyGraphCodec>;
+
+/** Work packet projected from a slice plan. */
+export type SliceWorkPacket = t.TypeOf<typeof SliceWorkPacketCodec>;
+
+/** Durable slice plan derived from a specification. */
+export type SlicePlan = t.TypeOf<typeof SlicePlanCodec>;

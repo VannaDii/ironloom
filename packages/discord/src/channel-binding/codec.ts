@@ -29,3 +29,14 @@ export const DiscordThreadBindingResultCodec = t.type({
   inherited: t.literal(true),
   persistedKey: t.string,
 });
+
+/** Discord channel role used by DevPlat routing. */
+export type DiscordBindingKind = t.TypeOf<typeof DiscordBindingKindCodec>;
+
+/** Persisted Discord channel binding for a DevPlat workspace. */
+export type DiscordChannelBinding = t.TypeOf<typeof DiscordChannelBindingCodec>;
+
+/** Result produced when a thread inherits a channel binding. */
+export type DiscordThreadBindingResult = t.TypeOf<
+  typeof DiscordThreadBindingResultCodec
+>;

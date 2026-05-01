@@ -1,7 +1,7 @@
 import type { DevplatConfig } from '@vannadii/devplat-config';
 import { appendTrace } from '@vannadii/devplat-core';
 
-import type { OpenClawPluginConfig } from './types.js';
+import type { OpenClawPluginConfig } from './codec.js';
 
 export function createOpenClawPluginConfig(
   input: OpenClawPluginConfig,

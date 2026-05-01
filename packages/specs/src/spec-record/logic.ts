@@ -1,4 +1,4 @@
-import type { SpecRecord, SpecRevision } from './types.js';
+import type { SpecRecord, SpecRevision } from './codec.js';
 
 function uniqueTrimmed(values: readonly string[]): string[] {
   return [...new Set(values.map((value) => value.trim()).filter(Boolean))];

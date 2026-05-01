@@ -10,7 +10,7 @@ import { DecisionPolicyService } from '@vannadii/devplat-policy';
 import { FileStoreService } from '@vannadii/devplat-storage';
 
 import { DiscordInteractiveApprovalService } from './service.js';
-import type { DiscordApprovalRequest } from './types.js';
+import type { DiscordApprovalRequest } from './codec.js';
 
 type DiscordInteractiveApprovalServiceContext = {
   service: DiscordInteractiveApprovalService;

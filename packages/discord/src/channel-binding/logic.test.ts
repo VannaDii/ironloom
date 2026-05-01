@@ -5,7 +5,7 @@ import {
   createDiscordThreadBindingResult,
   describeDiscordChannelBinding,
 } from './logic.js';
-import type { DiscordChannelBinding } from './types.js';
+import type { DiscordChannelBinding } from './codec.js';
 
 type DiscordChannelBindingLogicInputs =
   | {

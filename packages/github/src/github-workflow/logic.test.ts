@@ -15,7 +15,7 @@ import type {
   GitHubIssueSpecLink,
   GitHubPullRequestState,
   GitHubRepositoryState,
-} from './types.js';
+} from './codec.js';
 
 describe('GitHubActionRequest logic', () => {
   describe('normalizes GitHub action requests and privilege inference', () => {

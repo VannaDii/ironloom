@@ -42,3 +42,20 @@ export const ReviewSummaryCodec = t.type({
   implementationMatchesSpec: t.boolean,
   updatedAt: t.string,
 });
+
+/** Summary of implementation conformance to a spec. */
+export type SpecConformanceSummary = t.TypeOf<
+  typeof SpecConformanceSummaryCodec
+>;
+
+/** Durable review finding. */
+export type ReviewFinding = t.TypeOf<typeof ReviewFindingCodec>;
+
+/** Severity assigned to a review finding. */
+export type ReviewSeverity = ReviewFinding['severity'];
+
+/** Source of a review finding. */
+export type ReviewFindingSource = NonNullable<ReviewFinding['source']>;
+
+/** Durable review summary for PR projection. */
+export type ReviewSummary = t.TypeOf<typeof ReviewSummaryCodec>;

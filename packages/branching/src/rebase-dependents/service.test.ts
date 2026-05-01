@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { PullRequestRecord } from '@vannadii/devplat-prs';
 
 import { RebaseDependentsService } from './service.js';
-import type { ExecuteRebaseDependentsInput, RebasePlan } from './types.js';
+import type { ExecuteRebaseDependentsInput, RebasePlan } from './codec.js';
 
 type RebaseDependentsServiceInputs =
   | {

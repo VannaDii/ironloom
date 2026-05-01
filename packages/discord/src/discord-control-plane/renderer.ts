@@ -18,7 +18,7 @@ import type {
   DiscordControlRequest,
   DiscordMessagePayload,
   DiscordOperatorInteraction,
-} from './types.js';
+} from './codec.js';
 
 /**
  * User-facing display metadata for a Discord control action.

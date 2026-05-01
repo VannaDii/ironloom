@@ -87,3 +87,34 @@ export const DiscordThreadSessionResultCodec = t.type({
   artifactId: t.string,
   persistedKey: t.string,
 });
+
+/** Discord thread kind that can own a DevPlat lifecycle session. */
+export type DiscordThreadKind = t.TypeOf<typeof DiscordThreadKindCodec>;
+
+/** Input used to create or update a Discord thread session. */
+export type DiscordThreadSessionInput = t.TypeOf<
+  typeof DiscordThreadSessionInputCodec
+>;
+
+/** Session bound to a specification Discord thread. */
+export type DiscordSpecThreadSession = t.TypeOf<
+  typeof DiscordSpecThreadSessionCodec
+>;
+
+/** Session bound to an implementation Discord thread. */
+export type DiscordImplementationThreadSession = t.TypeOf<
+  typeof DiscordImplementationThreadSessionCodec
+>;
+
+/** Session bound to a pull request Discord thread. */
+export type DiscordPullRequestThreadSession = t.TypeOf<
+  typeof DiscordPullRequestThreadSessionCodec
+>;
+
+/** Bound Discord thread session for one DevPlat lifecycle item. */
+export type DiscordThreadSession = t.TypeOf<typeof DiscordThreadSessionCodec>;
+
+/** Persisted result for a Discord thread session. */
+export type DiscordThreadSessionResult = t.TypeOf<
+  typeof DiscordThreadSessionResultCodec
+>;

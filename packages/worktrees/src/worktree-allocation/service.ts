@@ -17,7 +17,7 @@ import type {
   WorktreeGitCommandResult,
   WorktreeSyncMode,
   WorktreeSyncResult,
-} from './types.js';
+} from './codec.js';
 
 const execFileAsync = promisify(execFile);
 

@@ -4,7 +4,7 @@ import {
   createDiscordThreadSession,
   describeDiscordThreadSession,
 } from './logic.js';
-import type { DiscordThreadSessionInput } from './types.js';
+import type { DiscordThreadSessionInput } from './codec.js';
 
 type DiscordThreadSessionLogicInputs =
   | {

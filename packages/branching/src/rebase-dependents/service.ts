@@ -10,7 +10,7 @@ import type {
   ExecuteRebaseDependentsInput,
   RebaseExecutionResult,
   RebasePlan,
-} from './types.js';
+} from './codec.js';
 
 export class RebaseDependentsService {
   public create(input: RebasePlan): RebasePlan {

@@ -6,7 +6,7 @@ import {
   createRemediationResultSummary,
   describeRemediationPlan,
 } from './logic.js';
-import type { RemediationPlan } from './types.js';
+import type { RemediationPlan } from './codec.js';
 
 describe('RemediationPlan logic', () => {
   const cases = [

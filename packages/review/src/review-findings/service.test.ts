@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { ReviewFindingsService } from './service.js';
-import type { ReviewFinding } from './types.js';
+import type { ReviewFinding } from './codec.js';
 
 type ReviewFindingsServiceCase = {
   name: string;

@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { FileStoreService } from '@vannadii/devplat-storage';
 
 import { TelemetryEventService } from './service.js';
-import type { TelemetryAuditRecord, TelemetryEvent } from './types.js';
+import type { TelemetryAuditRecord, TelemetryEvent } from './codec.js';
 
 type TelemetryEventServiceContext = {
   service: TelemetryEventService;

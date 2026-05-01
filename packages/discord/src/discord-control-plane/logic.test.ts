@@ -12,8 +12,8 @@ import type {
   DiscordInteractionCallback,
   DiscordOperatorInteraction,
   DiscordWorkItemBinding,
-} from './types.js';
-import type { DiscordThreadSession } from '../thread-session/types.js';
+} from './codec.js';
+import type { DiscordThreadSession } from '../thread-session/codec.js';
 
 describe('DiscordControlRequest logic', () => {
   it('keeps actions thread-scoped and auditable', () => {

@@ -19,7 +19,7 @@ import {
   STORE_SCOPE_WORKTREES,
 } from '@vannadii/devplat-core';
 
-import type { StoreIndexName, StoreScope } from './types.js';
+import type { StoreIndexName, StoreScope } from './codec.js';
 
 /**
  * Current storage layout version persisted with stored records.

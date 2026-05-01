@@ -8,7 +8,7 @@ import {
   isQualityGatePassing,
   normalizeSonarIssue,
 } from './logic.js';
-import type { NormalizedSonarIssue, SonarQualityGateResult } from './types.js';
+import type { NormalizedSonarIssue, SonarQualityGateResult } from './codec.js';
 
 type SonarQualityGateLogicInputs =
   | {

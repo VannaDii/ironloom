@@ -10,7 +10,7 @@ import {
   DiscordControlPlaneService,
   DiscordLoopbackResponseTransport,
 } from '../discord-control-plane/service.js';
-import type { DiscordInteractionCallbackOptions } from '../discord-control-plane/types.js';
+import type { DiscordInteractionCallbackOptions } from '../discord-control-plane/codec.js';
 import {
   parseDiscordInteractionWebhookBody,
   verifyDiscordInteractionSignature,
@@ -19,7 +19,7 @@ import type {
   DiscordInteractionWebhookRequest,
   DiscordInteractionWebhookResponseBody,
   DiscordInteractionWebhookResult,
-} from './types.js';
+} from './codec.js';
 
 export type DiscordInteractionWebhookBindingResolver = (
   input: Parameters<typeof createDiscordOperatorInteractionFromCallback>[0],

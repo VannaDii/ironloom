@@ -203,3 +203,73 @@ export const DiscordInteractionRouteCodec = t.union([
   DiscordInteractionRouteSuccessCodec,
   DiscordInteractionRouteFailureCodec,
 ]);
+
+/** Operator control action supported by Discord. */
+export type DiscordControlAction = t.TypeOf<typeof DiscordControlActionCodec>;
+
+/** Work item binding resolved from a Discord thread. */
+export type DiscordWorkItemBinding = t.TypeOf<
+  typeof DiscordWorkItemBindingCodec
+>;
+
+/** Control request routed from Discord to DevPlat. */
+export type DiscordControlRequest = t.TypeOf<typeof DiscordControlRequestCodec>;
+
+/** Result of handling a Discord control request. */
+export type DiscordControlResult = t.TypeOf<typeof DiscordControlResultCodec>;
+
+/** Operator interaction submitted through Discord. */
+export type DiscordOperatorInteraction = t.TypeOf<
+  typeof DiscordOperatorInteractionCodec
+>;
+
+/** Discord interaction callback payload. */
+export type DiscordInteractionCallback = t.TypeOf<
+  typeof DiscordInteractionCallbackCodec
+>;
+
+/** Context options used while converting callbacks to control requests. */
+export type DiscordInteractionCallbackOptions = t.TypeOf<
+  typeof DiscordInteractionCallbackOptionsCodec
+>;
+
+/** Successful interaction route. */
+export type DiscordInteractionRouteSuccess = t.TypeOf<
+  typeof DiscordInteractionRouteSuccessCodec
+>;
+
+/** Failed interaction route. */
+export type DiscordInteractionRouteFailure = t.TypeOf<
+  typeof DiscordInteractionRouteFailureCodec
+>;
+
+/** Result of routing a Discord interaction callback. */
+export type DiscordInteractionRoute = t.TypeOf<
+  typeof DiscordInteractionRouteCodec
+>;
+
+/** Receipt for a Discord response write. */
+export type DiscordResponseReceipt = t.TypeOf<
+  typeof DiscordResponseReceiptCodec
+>;
+
+/** Allowed mention configuration for Discord messages. */
+export type DiscordAllowedMentions = t.TypeOf<
+  typeof DiscordAllowedMentionsCodec
+>;
+
+/** Discord button style numeric value. */
+export type DiscordButtonStyle = t.TypeOf<typeof DiscordButtonStyleCodec>;
+
+/** Discord button component payload. */
+export type DiscordButtonComponent = t.TypeOf<
+  typeof DiscordButtonComponentCodec
+>;
+
+/** Discord action row component payload. */
+export type DiscordActionRowComponent = t.TypeOf<
+  typeof DiscordActionRowComponentCodec
+>;
+
+/** Structured Discord message payload. */
+export type DiscordMessagePayload = t.TypeOf<typeof DiscordMessagePayloadCodec>;

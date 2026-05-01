@@ -7,7 +7,7 @@ import type {
   SupervisorLifecycleSignal,
   SupervisorPhase,
   SupervisorRoutePlan,
-} from './types.js';
+} from './codec.js';
 
 const supervisorPhaseOrder = [
   'research',

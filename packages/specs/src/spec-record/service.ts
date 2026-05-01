@@ -9,7 +9,7 @@ import {
   describeSpecRecord,
   updateSpecRecord,
 } from './logic.js';
-import type { SpecRecord } from './types.js';
+import type { SpecRecord } from './codec.js';
 
 export class SpecRecordService {
   private readonly artifacts = new ArtifactEnvelopeService();

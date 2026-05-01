@@ -39,3 +39,12 @@ export const TaskRecordCodec = t.intersection([
     transitions: t.array(TaskTransitionEventCodec),
   }),
 ]);
+
+/** Durable task transition event. */
+export type TaskTransitionEvent = t.TypeOf<typeof TaskTransitionEventCodec>;
+
+/** Supported task transition action. */
+export type TaskTransitionAction = TaskTransitionEvent['action'];
+
+/** Durable task record. */
+export type TaskRecord = t.TypeOf<typeof TaskRecordCodec>;

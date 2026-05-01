@@ -3,7 +3,7 @@ import type {
   ResearchCapabilityComparison,
   ResearchFeasibility,
   ResearchSourceAttribution,
-} from './types.js';
+} from './codec.js';
 
 function uniqueTrimmed(values: readonly string[]): string[] {
   return [...new Set(values.map((value) => value.trim()).filter(Boolean))];

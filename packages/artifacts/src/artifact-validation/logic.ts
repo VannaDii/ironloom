@@ -10,24 +10,36 @@ import {
 import {
   ArtifactEnvelopeCodec,
   ArtifactEnvelopeService,
+  type ArtifactEnvelope,
 } from '../artifact-envelope/index.js';
 import {
   ApprovalRecordArtifactCodec,
   ApprovalRecordArtifactService,
+  type ApprovalRecordArtifact,
 } from '../approval-record/index.js';
 import {
   AuditLogArtifactCodec,
   AuditLogArtifactService,
+  type AuditLogArtifact,
 } from '../audit-log/index.js';
 import {
   MergeDecisionArtifactCodec,
   MergeDecisionArtifactService,
+  type MergeDecisionArtifact,
 } from '../merge-decision/index.js';
 import {
   RebaseResultArtifactCodec,
   RebaseResultArtifactService,
+  type RebaseResultArtifact,
 } from '../rebase-result/index.js';
-import type { KnownArtifact } from './types.js';
+
+/** Artifact type accepted by the validation dispatcher. */
+export type KnownArtifact =
+  | ApprovalRecordArtifact
+  | AuditLogArtifact
+  | MergeDecisionArtifact
+  | RebaseResultArtifact
+  | ArtifactEnvelope;
 
 /**
  * Validates a generic artifact and dispatches known artifact types to their
