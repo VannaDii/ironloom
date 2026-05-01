@@ -4,7 +4,14 @@ import type {
   GitHubActionCodec,
   GitHubActionDecisionCodec,
   GitHubActionRequestCodec,
+  GitHubCheckStateCodec,
   GitHubHttpMethodCodec,
+  GitHubIssueSpecLinkCodec,
+  GitHubIssueSpecLinkStatusCodec,
+  GitHubPullRequestLifecycleStateCodec,
+  GitHubPullRequestStateCodec,
+  GitHubRepositoryStateCodec,
+  GitHubReviewDecisionCodec,
   GitHubRestRequestCodec,
   GitHubSubmissionModeCodec,
   GitHubSubmissionReceiptCodec,
@@ -25,3 +32,23 @@ export type GitHubSubmissionReceipt = t.TypeOf<
 >;
 
 export type GitHubActionDecision = t.TypeOf<typeof GitHubActionDecisionCodec>;
+
+export type GitHubPullRequestLifecycleState = t.TypeOf<
+  typeof GitHubPullRequestLifecycleStateCodec
+>;
+
+export type GitHubCheckState = t.TypeOf<typeof GitHubCheckStateCodec>;
+
+export type GitHubReviewDecision = t.TypeOf<typeof GitHubReviewDecisionCodec>;
+
+export type GitHubIssueSpecLinkStatus = t.TypeOf<
+  typeof GitHubIssueSpecLinkStatusCodec
+>;
+
+export type GitHubRepositoryState = t.TypeOf<typeof GitHubRepositoryStateCodec>;
+
+export type GitHubPullRequestState = t.TypeOf<
+  typeof GitHubPullRequestStateCodec
+>;
+
+export type GitHubIssueSpecLink = t.TypeOf<typeof GitHubIssueSpecLinkCodec>;

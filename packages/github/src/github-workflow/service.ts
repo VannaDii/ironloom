@@ -3,6 +3,9 @@ import { DecisionPolicyService } from '@vannadii/devplat-policy';
 
 import {
   createGitHubActionRequest,
+  createGitHubIssueSpecLink,
+  createGitHubPullRequestState,
+  createGitHubRepositoryState,
   createGitHubRestRequest,
   describeGitHubActionRequest,
   isPrivilegedGitHubAction,
@@ -10,6 +13,9 @@ import {
 import type {
   GitHubActionDecision,
   GitHubActionRequest,
+  GitHubIssueSpecLink,
+  GitHubPullRequestState,
+  GitHubRepositoryState,
   GitHubSubmissionMode,
   GitHubSubmissionReceipt,
 } from './types.js';
@@ -85,6 +91,22 @@ export class GitHubWorkflowService {
 
   public prepare(input: GitHubActionRequest): GitHubActionRequest {
     return createGitHubActionRequest(input);
+  }
+
+  public normalizeRepositoryState(
+    input: GitHubRepositoryState,
+  ): GitHubRepositoryState {
+    return createGitHubRepositoryState(input);
+  }
+
+  public normalizePullRequestState(
+    input: GitHubPullRequestState,
+  ): GitHubPullRequestState {
+    return createGitHubPullRequestState(input);
+  }
+
+  public linkIssueToSpecPr(input: GitHubIssueSpecLink): GitHubIssueSpecLink {
+    return createGitHubIssueSpecLink(input);
   }
 
   public async submit(

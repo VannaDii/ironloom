@@ -13,7 +13,13 @@ import {
   GitHubWorkflowService,
   type GitHubRestTransport,
 } from './service.js';
-import type { GitHubActionRequest, GitHubSubmissionReceipt } from './types.js';
+import type {
+  GitHubActionRequest,
+  GitHubIssueSpecLink,
+  GitHubPullRequestState,
+  GitHubRepositoryState,
+  GitHubSubmissionReceipt,
+} from './types.js';
 
 function createTransport(
   receipt: GitHubSubmissionReceipt,
@@ -165,6 +171,78 @@ describe('GitHubWorkflowService', () => {
     for (const testCase of cases) {
       const context = await testCase.mock();
       await testCase.assert(context);
+    }
+  });
+
+  it('normalizes repository, pull request, and spec issue state through the service', () => {
+    const cases = [
+      {
+        inputs: {
+          repository: {
+            repoFullName: ' VannaDii/devplat ',
+            defaultBranch: ' main ',
+            protectedBranches: [' main ', 'main'],
+            openPullRequestNumbers: [55, 42, 55],
+            linkedIssueNumbers: [7],
+            updatedAt: '2026-04-04T00:00:00.000Z',
+          },
+          pullRequest: {
+            repoFullName: ' VannaDii/devplat ',
+            number: 55,
+            title: ' feat: complete runtime ',
+            state: 'open',
+            headBranch: ' feature/runtime ',
+            baseBranch: ' main ',
+            headSha: ' abc123 ',
+            issueNumbers: [7],
+            labels: [' platform ', 'platform'],
+            checkState: 'passing',
+            reviewDecision: 'approved',
+            mergeable: true,
+            updatedAt: '2026-04-04T00:00:00.000Z',
+          },
+          link: {
+            repoFullName: ' VannaDii/devplat ',
+            issueNumber: 7,
+            specId: ' spec-1 ',
+            pullRequestNumber: 55,
+            status: 'complete',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+          },
+        },
+        mock: () => {
+          return {
+            service: new GitHubWorkflowService(),
+          };
+        },
+        assert: (
+          context: {
+            service: GitHubWorkflowService;
+          },
+          inputs: {
+            repository: GitHubRepositoryState;
+            pullRequest: GitHubPullRequestState;
+            link: GitHubIssueSpecLink;
+          },
+        ) => {
+          const repository = context.service.normalizeRepositoryState(
+            inputs.repository,
+          );
+          const pullRequest = context.service.normalizePullRequestState(
+            inputs.pullRequest,
+          );
+          const link = context.service.linkIssueToSpecPr(inputs.link);
+
+          expect(repository.openPullRequestNumbers).toEqual([42, 55]);
+          expect(pullRequest.labels).toEqual(['platform']);
+          expect(link.specId).toBe('spec-1');
+        },
+      },
+    ];
+
+    for (const testCase of cases) {
+      const context = testCase.mock();
+      testCase.assert(context, testCase.inputs);
     }
   });
 

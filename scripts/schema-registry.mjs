@@ -142,6 +142,24 @@ export const schemaRegistry = [
     'schemas/github-action-request.schema.json',
   ],
   [
+    'github',
+    'github-workflow',
+    'GitHubRepositoryState',
+    'schemas/github-repository-state.schema.json',
+  ],
+  [
+    'github',
+    'github-workflow',
+    'GitHubPullRequestState',
+    'schemas/github-pull-request-state.schema.json',
+  ],
+  [
+    'github',
+    'github-workflow',
+    'GitHubIssueSpecLink',
+    'schemas/github-issue-spec-link.schema.json',
+  ],
+  [
     'policy',
     'decision-policy',
     'PolicyDecision',

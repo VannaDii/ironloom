@@ -2,11 +2,20 @@ import { describe, expect, it } from 'vitest';
 
 import {
   createGitHubActionRequest,
+  createGitHubIssueSpecLink,
+  createGitHubPullRequestState,
+  createGitHubRepositoryState,
   createGitHubRestRequest,
   describeGitHubActionRequest,
+  describeGitHubPullRequestState,
   isPrivilegedGitHubAction,
 } from './logic.js';
-import type { GitHubActionRequest } from './types.js';
+import type {
+  GitHubActionRequest,
+  GitHubIssueSpecLink,
+  GitHubPullRequestState,
+  GitHubRepositoryState,
+} from './types.js';
 
 describe('GitHubActionRequest logic', () => {
   it('normalizes GitHub action requests and privilege inference', () => {
@@ -335,6 +344,96 @@ describe('GitHubActionRequest logic', () => {
     for (const testCase of cases) {
       testCase.mock();
       testCase.assert(testCase.inputs.request);
+    }
+  });
+
+  it('normalizes GitHub repository and pull request state contracts', () => {
+    const cases = [
+      {
+        inputs: {
+          repository: {
+            repoFullName: ' VannaDii/devplat ',
+            defaultBranch: ' main ',
+            protectedBranches: [' main ', 'release', 'main'],
+            openPullRequestNumbers: [55, 42, 55],
+            linkedIssueNumbers: [7, 5, 7],
+            updatedAt: '2026-04-04T00:00:00.000Z',
+          },
+          pullRequest: {
+            repoFullName: ' VannaDii/devplat ',
+            number: 55,
+            title: ' feat: complete runtime ',
+            state: 'open',
+            headBranch: ' feature/runtime ',
+            baseBranch: ' main ',
+            headSha: ' abc123 ',
+            specId: ' spec-1 ',
+            issueNumbers: [7, 5, 7],
+            labels: [' autonomy ', 'autonomy', 'platform'],
+            checkState: 'pending',
+            reviewDecision: 'review-required',
+            mergeable: false,
+            updatedAt: '2026-04-04T00:00:00.000Z',
+          },
+        },
+        mock: () => undefined,
+        assert: (inputs: {
+          repository: GitHubRepositoryState;
+          pullRequest: GitHubPullRequestState;
+        }) => {
+          const repository = createGitHubRepositoryState(inputs.repository);
+          const pullRequest = createGitHubPullRequestState(inputs.pullRequest);
+
+          expect(repository.repoFullName).toBe('VannaDii/devplat');
+          expect(repository.protectedBranches).toEqual(['main', 'release']);
+          expect(repository.openPullRequestNumbers).toEqual([42, 55]);
+          expect(repository.linkedIssueNumbers).toEqual([5, 7]);
+          expect(pullRequest.title).toBe('feat: complete runtime');
+          expect(pullRequest.headBranch).toBe('feature/runtime');
+          expect(pullRequest.labels).toEqual(['autonomy', 'platform']);
+          expect(pullRequest.issueNumbers).toEqual([5, 7]);
+          expect(describeGitHubPullRequestState(pullRequest)).toContain(
+            '#55 open',
+          );
+        },
+      },
+    ];
+
+    for (const testCase of cases) {
+      testCase.mock();
+      testCase.assert(testCase.inputs);
+    }
+  });
+
+  it('normalizes issue/spec pull request links', () => {
+    const cases = [
+      {
+        inputs: {
+          link: {
+            repoFullName: ' VannaDii/devplat ',
+            issueNumber: 7,
+            specId: ' spec-1 ',
+            pullRequestNumber: 55,
+            status: 'in-progress',
+            threadId: ' thread-1 ',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+          },
+        },
+        mock: () => undefined,
+        assert: (inputs: { link: GitHubIssueSpecLink }) => {
+          const link = createGitHubIssueSpecLink(inputs.link);
+
+          expect(link.repoFullName).toBe('VannaDii/devplat');
+          expect(link.specId).toBe('spec-1');
+          expect(link.threadId).toBe('thread-1');
+          expect(link.pullRequestNumber).toBe(55);
+        },
+      },
+    ];
+
+    for (const testCase of cases) {
+      testCase.mock();
+      testCase.assert(testCase.inputs);
     }
   });
 });

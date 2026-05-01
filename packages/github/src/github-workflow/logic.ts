@@ -1,8 +1,26 @@
-import type { GitHubActionRequest, GitHubRestRequest } from './types.js';
+import type {
+  GitHubActionRequest,
+  GitHubIssueSpecLink,
+  GitHubPullRequestState,
+  GitHubRepositoryState,
+  GitHubRestRequest,
+} from './types.js';
 
 function optionalTrimmed(value: string | undefined): string | undefined {
   const trimmed = value?.trim();
   return trimmed === undefined || trimmed.length === 0 ? undefined : trimmed;
+}
+
+function uniqueTrimmed(values: readonly string[]): string[] {
+  return [
+    ...new Set(
+      values.map((value) => value.trim()).filter((value) => value.length > 0),
+    ),
+  ].sort((left, right) => left.localeCompare(right));
+}
+
+function uniqueNumbers(values: readonly number[]): number[] {
+  return [...new Set(values)].sort((left, right) => left - right);
 }
 
 function requirePullRequestNumber(input: GitHubActionRequest): number {
@@ -57,6 +75,59 @@ export function describeGitHubActionRequest(
   input: GitHubActionRequest,
 ): string {
   return `${input.action} -> ${input.repoFullName}`;
+}
+
+export function createGitHubRepositoryState(
+  input: GitHubRepositoryState,
+): GitHubRepositoryState {
+  return {
+    ...input,
+    repoFullName: input.repoFullName.trim(),
+    defaultBranch: input.defaultBranch.trim(),
+    protectedBranches: uniqueTrimmed(input.protectedBranches),
+    openPullRequestNumbers: uniqueNumbers(input.openPullRequestNumbers),
+    linkedIssueNumbers: uniqueNumbers(input.linkedIssueNumbers),
+    updatedAt: new Date(input.updatedAt).toISOString(),
+  };
+}
+
+export function createGitHubPullRequestState(
+  input: GitHubPullRequestState,
+): GitHubPullRequestState {
+  const specId = optionalTrimmed(input.specId);
+
+  return {
+    ...input,
+    repoFullName: input.repoFullName.trim(),
+    title: input.title.trim(),
+    headBranch: input.headBranch.trim(),
+    baseBranch: input.baseBranch.trim(),
+    headSha: input.headSha.trim(),
+    issueNumbers: uniqueNumbers(input.issueNumbers),
+    labels: uniqueTrimmed(input.labels),
+    updatedAt: new Date(input.updatedAt).toISOString(),
+    ...(specId === undefined ? {} : { specId }),
+  };
+}
+
+export function createGitHubIssueSpecLink(
+  input: GitHubIssueSpecLink,
+): GitHubIssueSpecLink {
+  const threadId = optionalTrimmed(input.threadId);
+
+  return {
+    ...input,
+    repoFullName: input.repoFullName.trim(),
+    specId: input.specId.trim(),
+    updatedAt: new Date(input.updatedAt).toISOString(),
+    ...(threadId === undefined ? {} : { threadId }),
+  };
+}
+
+export function describeGitHubPullRequestState(
+  input: GitHubPullRequestState,
+): string {
+  return `${input.repoFullName}#${String(input.number)} ${input.state} ${input.headBranch}->${input.baseBranch}`;
 }
 
 export function createGitHubRestRequest(

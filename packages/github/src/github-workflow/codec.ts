@@ -62,3 +62,74 @@ export const GitHubActionDecisionCodec = t.intersection([
     receipt: GitHubSubmissionReceiptCodec,
   }),
 ]);
+
+export const GitHubPullRequestLifecycleStateCodec = t.union([
+  t.literal('open'),
+  t.literal('closed'),
+  t.literal('merged'),
+]);
+
+export const GitHubCheckStateCodec = t.union([
+  t.literal('pending'),
+  t.literal('passing'),
+  t.literal('failing'),
+  t.literal('unknown'),
+]);
+
+export const GitHubReviewDecisionCodec = t.union([
+  t.literal('approved'),
+  t.literal('changes-requested'),
+  t.literal('review-required'),
+  t.literal('unknown'),
+]);
+
+export const GitHubIssueSpecLinkStatusCodec = t.union([
+  t.literal('planned'),
+  t.literal('in-progress'),
+  t.literal('blocked'),
+  t.literal('complete'),
+]);
+
+export const GitHubRepositoryStateCodec = t.type({
+  repoFullName: t.string,
+  defaultBranch: t.string,
+  protectedBranches: t.array(t.string),
+  openPullRequestNumbers: t.array(t.number),
+  linkedIssueNumbers: t.array(t.number),
+  updatedAt: t.string,
+});
+
+export const GitHubPullRequestStateCodec = t.intersection([
+  t.type({
+    repoFullName: t.string,
+    number: t.number,
+    title: t.string,
+    state: GitHubPullRequestLifecycleStateCodec,
+    headBranch: t.string,
+    baseBranch: t.string,
+    headSha: t.string,
+    issueNumbers: t.array(t.number),
+    labels: t.array(t.string),
+    checkState: GitHubCheckStateCodec,
+    reviewDecision: GitHubReviewDecisionCodec,
+    mergeable: t.boolean,
+    updatedAt: t.string,
+  }),
+  t.partial({
+    specId: t.string,
+  }),
+]);
+
+export const GitHubIssueSpecLinkCodec = t.intersection([
+  t.type({
+    repoFullName: t.string,
+    issueNumber: t.number,
+    specId: t.string,
+    pullRequestNumber: t.number,
+    status: GitHubIssueSpecLinkStatusCodec,
+    updatedAt: t.string,
+  }),
+  t.partial({
+    threadId: t.string,
+  }),
+]);
