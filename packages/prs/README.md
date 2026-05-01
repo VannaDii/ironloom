@@ -10,8 +10,11 @@ This package owns pull request records, update submission semantics, merge readi
 
 ```mermaid
 flowchart LR
-  Review[Review and gates complete] --> Projection[PR body checklist risk validation]
-  Projection --> Record[Pull request record]
+  Review[Review summary] --> Projection[Review projection]
+  Remediation[Remediation summary] --> Projection
+  Artifacts[Source artifacts] --> Projection
+  Projection --> Body[Rendered PR body]
+  Body --> Record[Pull request record]
   Record --> MergeReady[Merge readiness]
   MergeReady --> GitHub[GitHub update or merge request]
   GitHub --> Audit[Persisted PR artifact]
@@ -22,6 +25,7 @@ flowchart LR
 - Keep GitHub API transport in `@vannadii/devplat-github` where possible.
 - Use policy before merge or update submission.
 - Do not infer Discord thread context here.
+- Render review and remediation status into the PR body before GitHub update or merge submission.
 
 - Keep public TypeScript contracts derived from the exported codecs.
 

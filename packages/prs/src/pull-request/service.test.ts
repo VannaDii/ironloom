@@ -80,6 +80,7 @@ describe('PullRequestService', () => {
         const result = await context.service.submitUpdate(inputs.record);
 
         expect(result.request.action).toBe('update-pr');
+        expect(result.request.body).toContain('## Status');
         expect(
           await new FileStoreService(context.rootDirectory).list('telemetry'),
         ).toHaveLength(1);
@@ -140,6 +141,7 @@ describe('PullRequestService', () => {
         const result = await context.service.submitMerge(inputs.record);
 
         expect(result.request.action).toBe('merge-pr');
+        expect(result.request.body).toContain('## Checklist');
       },
     },
   ] satisfies PullRequestServiceCase[];

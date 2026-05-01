@@ -2,6 +2,7 @@ import { GitHubWorkflowService } from '@vannadii/devplat-github';
 
 import {
   canMergePullRequest,
+  createPullRequestProjection,
   createPullRequestRecord,
   describePullRequestRecord,
 } from './logic.js';
@@ -26,6 +27,7 @@ export class PullRequestService {
     actorId = 'prs-service',
   ): Promise<Awaited<ReturnType<GitHubWorkflowService['submit']>>> {
     const record = createPullRequestRecord(input);
+    const projection = createPullRequestProjection(record);
     return this.github.submit(
       {
         repoFullName: this.repoFullName,
@@ -34,6 +36,8 @@ export class PullRequestService {
         privileged: canMergePullRequest(record),
         targetNumber: record.prNumber,
         branchName: record.branchName,
+        title: record.title,
+        body: projection.body,
         updatedAt: record.updatedAt,
       },
       actorId,
@@ -45,6 +49,7 @@ export class PullRequestService {
     actorId = 'prs-service',
   ): Promise<Awaited<ReturnType<GitHubWorkflowService['submit']>>> {
     const record = createPullRequestRecord(input);
+    const projection = createPullRequestProjection(record);
     return this.github.submit(
       {
         repoFullName: this.repoFullName,
@@ -53,6 +58,8 @@ export class PullRequestService {
         privileged: canMergePullRequest(record),
         targetNumber: record.prNumber,
         branchName: record.branchName,
+        title: record.title,
+        body: projection.body,
         updatedAt: record.updatedAt,
       },
       actorId,
