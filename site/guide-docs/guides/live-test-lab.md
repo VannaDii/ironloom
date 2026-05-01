@@ -113,6 +113,13 @@ channel, posts the bound-thread status into the implementation channel, and
 records both the command registration and response receipt endpoints in
 `live-lab-report.json`.
 
+The Discord package also exposes a signature-verified interaction webhook
+service for production mounts. That service validates the Discord Ed25519
+signature headers, responds to Discord ping requests, decodes callback-shaped
+slash/button payloads through the package codecs, resolves live binding metadata
+through the supplied resolver, and delegates the normalized operator interaction
+into the same control-plane service used by the live-lab probe.
+
 ## Public Repo Safety Model
 
 The live lab intentionally uses public ephemeral repositories so SonarQube Cloud

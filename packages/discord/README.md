@@ -4,7 +4,10 @@ Discord control plane workflows.
 
 ## Responsibility
 
-This package owns Discord thread sessions, channel bindings, interactive approval requests, bound work-item projections, and operator control actions. Runtime behavior must resolve bound thread context and fail closed when a lifecycle-changing action is ambiguous.
+This package owns Discord thread sessions, channel bindings, interactive
+approval requests, signature-verified interaction webhooks, bound work-item
+projections, and operator control actions. Runtime behavior must resolve bound
+thread context and fail closed when a lifecycle-changing action is ambiguous.
 Slash command and button interactions are routed into control actions, must
 resolve exactly one bound thread or bound thread session, project that session
 into a typed spec/implementation/pull-request work item, and post both
@@ -23,7 +26,9 @@ interaction flow without external Discord access.
 flowchart LR
   Contract[Command contract registry] --> Register[Guild command registration]
   Register --> Command[Raw slash command or button callback]
-  Command --> Normalize[Normalize callback payload]
+  Command --> Verify[Verify Discord Ed25519 signature]
+  Verify -->|ping| Pong[Return Discord pong]
+  Verify -->|valid callback| Normalize[Normalize callback payload]
   Normalize --> Binding[Resolve bound thread session]
   Binding --> WorkItem[Project bound work item]
   WorkItem -->|unambiguous| Policy[Policy evaluation]

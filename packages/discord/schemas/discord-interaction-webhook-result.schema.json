@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/DiscordInteractionWebhookResult",
+  "definitions": {
+    "DiscordInteractionWebhookResult": {
+      "type": "object",
+      "properties": {
+        "statusCode": {
+          "type": "number"
+        },
+        "verified": {
+          "type": "boolean"
+        },
+        "handled": {
+          "type": "boolean"
+        },
+        "responseBody": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": 1
+                }
+              },
+              "required": ["type"],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": 4
+                },
+                "data": {
+                  "type": "object",
+                  "properties": {
+                    "content": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["content"],
+                  "additionalProperties": false
+                }
+              },
+              "required": ["type", "data"],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": 5
+                }
+              },
+              "required": ["type"],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "persistedKey": {
+          "type": "string"
+        },
+        "policyDecisionId": {
+          "type": "string"
+        },
+        "threadId": {
+          "type": "string"
+        },
+        "error": {
+          "type": "string"
+        }
+      },
+      "required": ["statusCode", "verified", "handled", "responseBody"],
+      "additionalProperties": false
+    }
+  }
+}

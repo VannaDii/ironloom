@@ -221,6 +221,18 @@ export const schemaRegistry = [
   ],
   [
     'discord',
+    'interaction-webhook',
+    'DiscordInteractionWebhookRequest',
+    'schemas/discord-interaction-webhook-request.schema.json',
+  ],
+  [
+    'discord',
+    'interaction-webhook',
+    'DiscordInteractionWebhookResult',
+    'schemas/discord-interaction-webhook-result.schema.json',
+  ],
+  [
+    'discord',
     'interactive-approval',
     'DiscordApprovalRequest',
     'schemas/discord-approval-request.schema.json',
