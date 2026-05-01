@@ -1,5 +1,9 @@
 import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
+/**
+ * Runs one command and rejects when it exits unsuccessfully.
+ */
 function runCommand(label, command, args) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
@@ -28,6 +32,9 @@ function runCommand(label, command, args) {
   });
 }
 
+/**
+ * Runs independent commands concurrently and terminates siblings on failure.
+ */
 async function runConcurrent(commands) {
   const running = commands.map(({ label, command, args }) => ({
     label,
@@ -79,26 +86,83 @@ async function runConcurrent(commands) {
   }
 }
 
-await runCommand('verify:node', 'npm', ['run', 'verify:node']);
-await runCommand('prepare:generated', 'npm', ['run', 'prepare:generated']);
-await runCommand('check:repo', 'npm', ['run', 'check:repo']);
-await runCommand('test:coverage:workspace', 'npm', [
-  'run',
-  'test:coverage:workspace',
-]);
-await runCommand('check:changed-coverage', 'npm', [
-  'run',
-  'check:changed-coverage',
-]);
-await runConcurrent([
-  {
-    label: 'build:workspace',
-    command: 'npm',
-    args: ['run', 'build:workspace'],
-  },
-  {
-    label: 'docs:build',
-    command: 'npm',
-    args: ['run', 'docs:build'],
-  },
-]);
+/**
+ * Creates the ordered local pre-push gate plan.
+ */
+export function createPrePushPlan() {
+  return [
+    {
+      mode: 'serial',
+      label: 'verify:node',
+      command: 'npm',
+      args: ['run', 'verify:node'],
+    },
+    {
+      mode: 'serial',
+      label: 'prepare:generated',
+      command: 'npm',
+      args: ['run', 'prepare:generated'],
+    },
+    {
+      mode: 'serial',
+      label: 'check:repo',
+      command: 'npm',
+      args: ['run', 'check:repo'],
+    },
+    {
+      mode: 'serial',
+      label: 'test:coverage:workspace',
+      command: 'npm',
+      args: ['run', 'test:coverage:workspace'],
+    },
+    {
+      mode: 'serial',
+      label: 'check:changed-coverage',
+      command: 'npm',
+      args: ['run', 'check:changed-coverage'],
+    },
+    {
+      mode: 'serial',
+      label: 'sonar:analyze:changed',
+      command: 'npm',
+      args: ['run', 'sonar:analyze:changed'],
+    },
+    {
+      mode: 'concurrent',
+      commands: [
+        {
+          label: 'build:workspace',
+          command: 'npm',
+          args: ['run', 'build:workspace'],
+        },
+        {
+          label: 'docs:build',
+          command: 'npm',
+          args: ['run', 'docs:build'],
+        },
+      ],
+    },
+  ];
+}
+
+/**
+ * Runs the complete local pre-push gate.
+ */
+export async function runPrePushPlan(plan = createPrePushPlan()) {
+  for (const step of plan) {
+    switch (step.mode) {
+      case 'serial':
+        await runCommand(step.label, step.command, step.args);
+        break;
+      case 'concurrent':
+        await runConcurrent(step.commands);
+        break;
+      default:
+        throw new Error(`Unsupported pre-push step mode: ${step.mode}`);
+    }
+  }
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  await runPrePushPlan();
+}

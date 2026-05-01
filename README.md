@@ -93,12 +93,13 @@ jobs.
 `npm run sonar:install-cli` installs the SonarQube CLI through the repo helper,
 which selects the documented SonarSource installer for macOS, Linux, or Windows.
 After authenticating with `sonar auth login`, run `npm run sonar:analyze:changed`
-to scan changed files with `sonar analyze secrets`. The wrapper runs configured
-analyses in parallel, prints a plain-text summary by default, and supports
-`--json` for agent-readable reports. SQAA/A3S analysis is intentionally disabled
-unless `SONAR_A3S_ENABLED=true`, `DEVPLAT_SONAR_A3S_ENABLED=true`, or
-`--sqaa enabled` is supplied; when enabled it runs per-file
-`sonar analyze sqaa --file` commands. If SQAA returns
+to scan changed files with `sonar analyze secrets` and per-file
+`sonar verify --file` commands. The wrapper runs configured analyses in
+parallel, prints a plain-text summary by default, and supports `--json` for
+agent-readable reports. SQAA/A3S analysis is intentionally disabled unless
+`SONAR_A3S_ENABLED=true`, `DEVPLAT_SONAR_A3S_ENABLED=true`, or `--sqaa enabled`
+is supplied; when enabled it also runs per-file `sonar analyze sqaa --file`
+commands. If SQAA returns
 `A3S analysis is not activated for this organization`, the helper reports that
 capability as skipped instead of allowing the whole analysis run to fail. The
 wrapper derives the current branch and defaults the project to `vannadii_devplat`;

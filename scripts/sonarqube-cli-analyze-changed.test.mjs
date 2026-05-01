@@ -10,6 +10,7 @@ import {
   parseSonarCliHelperArgs,
   parseSonarChangedFileArgs,
   resolveCurrentBranch,
+  resolveBaseRef,
   resolveSqaaEnabled,
   runSonarChangedFileAnalysis,
 } from './sonarqube-cli-analyze-changed.mjs';
@@ -23,20 +24,18 @@ describe('sonarqube-cli-analyze-changed', () => {
       assert: async () => {
         expect(createSonarCliInstallCommand('darwin')).toEqual({
           args: [
-            '-o-',
-            'https://raw.githubusercontent.com/SonarSource/sonarqube-cli/refs/heads/master/user-scripts/install.sh',
+            '-c',
+            'curl -fsSL https://raw.githubusercontent.com/SonarSource/sonarqube-cli/refs/heads/master/user-scripts/install.sh | bash',
           ],
-          command: 'curl',
-          inputCommand: 'bash',
+          command: 'bash',
           label: 'SonarQube CLI installer',
         });
         expect(createSonarCliInstallCommand('linux')).toEqual({
           args: [
-            '-o-',
-            'https://raw.githubusercontent.com/SonarSource/sonarqube-cli/refs/heads/master/user-scripts/install.sh',
+            '-c',
+            'curl -fsSL https://raw.githubusercontent.com/SonarSource/sonarqube-cli/refs/heads/master/user-scripts/install.sh | bash',
           ],
-          command: 'curl',
-          inputCommand: 'bash',
+          command: 'bash',
           label: 'SonarQube CLI installer',
         });
         expect(createSonarCliInstallCommand('win32')).toEqual({
@@ -74,16 +73,16 @@ describe('sonarqube-cli-analyze-changed', () => {
           runCommand: context.runCommand,
         });
 
-        expect(command.command).toBe('curl');
+        expect(command.command).toBe('bash');
         expect(context.runs).toEqual([
           {
             args: [
-              '-o-',
-              'https://raw.githubusercontent.com/SonarSource/sonarqube-cli/refs/heads/master/user-scripts/install.sh',
+              '-c',
+              'curl -fsSL https://raw.githubusercontent.com/SonarSource/sonarqube-cli/refs/heads/master/user-scripts/install.sh | bash',
             ],
-            command: 'curl',
+            command: 'bash',
             options: {
-              inputCommand: 'bash',
+              inputCommand: undefined,
               rootDirectory: '/repo',
             },
           },
@@ -91,7 +90,7 @@ describe('sonarqube-cli-analyze-changed', () => {
       },
     },
     {
-      name: 'creates one secrets scan and one SQAA scan per changed file',
+      name: 'creates secrets verification and gated SQAA scans for changed files',
       inputs: {
         branch: 'feature/runtime',
         changedFiles: [
@@ -108,14 +107,40 @@ describe('sonarqube-cli-analyze-changed', () => {
 
         expect(commands).toEqual([
           {
+            args: ['analyze', 'secrets', 'packages/openclaw/src/index.ts'],
+            command: 'sonar',
+            label: 'sonar analyze secrets packages/openclaw/src/index.ts',
+          },
+          {
+            args: ['analyze', 'secrets', 'scripts/openclaw-live-lab.mjs'],
+            command: 'sonar',
+            label: 'sonar analyze secrets scripts/openclaw-live-lab.mjs',
+          },
+          {
             args: [
-              'analyze',
-              'secrets',
+              'verify',
+              '--file',
               'packages/openclaw/src/index.ts',
-              'scripts/openclaw-live-lab.mjs',
+              '--branch',
+              'feature/runtime',
+              '--project',
+              'vannadii_devplat',
             ],
             command: 'sonar',
-            label: 'sonar analyze secrets',
+            label: 'sonar verify packages/openclaw/src/index.ts',
+          },
+          {
+            args: [
+              'verify',
+              '--file',
+              'scripts/openclaw-live-lab.mjs',
+              '--branch',
+              'feature/runtime',
+              '--project',
+              'vannadii_devplat',
+            ],
+            command: 'sonar',
+            label: 'sonar verify scripts/openclaw-live-lab.mjs',
           },
           {
             args: [
@@ -238,14 +263,43 @@ describe('sonarqube-cli-analyze-changed', () => {
           {
             args: ['analyze', 'secrets', 'packages/core/src/domain/logic.ts'],
             command: 'sonar',
-            label: 'sonar analyze secrets',
+            label: 'sonar analyze secrets packages/core/src/domain/logic.ts',
+          },
+          {
+            args: [
+              'verify',
+              '--file',
+              'packages/core/src/domain/logic.ts',
+              '--branch',
+              'feature/runtime',
+              '--project',
+              'vannadii_devplat',
+            ],
+            command: 'sonar',
+            label: 'sonar verify packages/core/src/domain/logic.ts',
           },
         ]);
         expect(report.results).toEqual([
           {
             args: ['analyze', 'secrets', 'packages/core/src/domain/logic.ts'],
             command: 'sonar',
-            label: 'sonar analyze secrets',
+            label: 'sonar analyze secrets packages/core/src/domain/logic.ts',
+            status: 'passed',
+            stderr: '',
+            stdout: '',
+          },
+          {
+            args: [
+              'verify',
+              '--file',
+              'packages/core/src/domain/logic.ts',
+              '--branch',
+              'feature/runtime',
+              '--project',
+              'vannadii_devplat',
+            ],
+            command: 'sonar',
+            label: 'sonar verify packages/core/src/domain/logic.ts',
             status: 'passed',
             stderr: '',
             stdout: '',
@@ -322,6 +376,7 @@ describe('sonarqube-cli-analyze-changed', () => {
         const report = await runSonarChangedFileAnalysis({
           branch: 'feature/runtime',
           changedFiles: inputs.changedFiles,
+          maxParallel: 6,
           project: 'vannadii_devplat',
           rootDirectory: '/repo',
           runCommand: context.runCommand,
@@ -329,12 +384,28 @@ describe('sonarqube-cli-analyze-changed', () => {
           sqaaMode: 'enabled',
         });
 
-        expect(report.commands).toHaveLength(2);
+        expect(report.commands).toHaveLength(3);
         expect(report.results).toEqual([
           {
             args: ['analyze', 'secrets', 'packages/core/src/domain/logic.ts'],
             command: 'sonar',
-            label: 'sonar analyze secrets',
+            label: 'sonar analyze secrets packages/core/src/domain/logic.ts',
+            status: 'passed',
+            stderr: '',
+            stdout: '',
+          },
+          {
+            args: [
+              'verify',
+              '--file',
+              'packages/core/src/domain/logic.ts',
+              '--branch',
+              'feature/runtime',
+              '--project',
+              'vannadii_devplat',
+            ],
+            command: 'sonar',
+            label: 'sonar verify packages/core/src/domain/logic.ts',
             status: 'passed',
             stderr: '',
             stdout: '',
@@ -360,6 +431,19 @@ describe('sonarqube-cli-analyze-changed', () => {
         expect(context.runs).toEqual([
           {
             args: ['analyze', 'secrets', 'packages/core/src/domain/logic.ts'],
+            command: 'sonar',
+            options: { rootDirectory: '/repo' },
+          },
+          {
+            args: [
+              'verify',
+              '--file',
+              'packages/core/src/domain/logic.ts',
+              '--branch',
+              'feature/runtime',
+              '--project',
+              'vannadii_devplat',
+            ],
             command: 'sonar',
             options: { rootDirectory: '/repo' },
           },
@@ -411,6 +495,48 @@ describe('sonarqube-cli-analyze-changed', () => {
       },
     },
     {
+      name: 'resolves upstream branch before remote default',
+      inputs: {},
+      mock: async () => {
+        const calls = [];
+        const execFileImpl = async (command, args, options) => {
+          calls.push({ args, command, options });
+
+          if (args[0] === 'rev-parse') {
+            return {
+              stdout: 'origin/feature/full-autonomy-runtime\n',
+              stderr: '',
+            };
+          }
+
+          throw new Error(`Unexpected command: ${command} ${args.join(' ')}`);
+        };
+
+        return { calls, execFileImpl };
+      },
+      assert: async (context) => {
+        await expect(
+          resolveBaseRef({
+            env: {},
+            execFileImpl: context.execFileImpl,
+            rootDirectory: '/repo',
+          }),
+        ).resolves.toBe('origin/feature/full-autonomy-runtime');
+        expect(context.calls).toEqual([
+          {
+            args: [
+              'rev-parse',
+              '--abbrev-ref',
+              '--symbolic-full-name',
+              '@{upstream}',
+            ],
+            command: 'git',
+            options: { cwd: '/repo' },
+          },
+        ]);
+      },
+    },
+    {
       name: 'parses top-level install and analyze helper commands',
       inputs: {},
       mock: async () => undefined,
@@ -426,6 +552,7 @@ describe('sonarqube-cli-analyze-changed', () => {
           options: {
             baseRef: 'origin/main',
             headRef: 'HEAD',
+            maxParallel: 4,
             outputFormat: 'text',
             project: 'vannadii_devplat',
             sonarCommand: 'sonar',
@@ -436,6 +563,7 @@ describe('sonarqube-cli-analyze-changed', () => {
           command: 'analyze',
           options: {
             headRef: 'HEAD',
+            maxParallel: 4,
             outputFormat: 'text',
             project: 'vannadii_devplat',
             sonarCommand: 'sonar',
@@ -459,6 +587,8 @@ describe('sonarqube-cli-analyze-changed', () => {
           '--sonar-command',
           '/usr/local/bin/sonar',
           '--json',
+          '--max-parallel',
+          '2',
           '--sqaa',
           'enabled',
         ],
@@ -469,6 +599,7 @@ describe('sonarqube-cli-analyze-changed', () => {
           baseRef: 'origin/main',
           branch: 'feature/runtime',
           headRef: 'HEAD',
+          maxParallel: 2,
           outputFormat: 'json',
           project: 'vannadii_devplat',
           sonarCommand: '/usr/local/bin/sonar',
@@ -485,6 +616,7 @@ describe('sonarqube-cli-analyze-changed', () => {
       assert: async (_context, inputs) => {
         expect(parseSonarChangedFileArgs(inputs.argv)).toEqual({
           headRef: 'HEAD',
+          maxParallel: 4,
           outputFormat: 'text',
           project: 'vannadii_devplat',
           sonarCommand: 'sonar',
@@ -537,7 +669,7 @@ describe('sonarqube-cli-analyze-changed', () => {
           runCommand: async (command, args) => {
             started.push({ args, command });
 
-            if (started.length === 3) {
+            if (started.length === 6) {
               releaseCommands();
             }
 
@@ -552,13 +684,17 @@ describe('sonarqube-cli-analyze-changed', () => {
         const report = await runSonarChangedFileAnalysis({
           branch: 'feature/runtime',
           changedFiles: inputs.changedFiles,
+          maxParallel: 6,
           project: 'vannadii_devplat',
           runCommand: context.runCommand,
           sqaaMode: 'enabled',
         });
 
-        expect(context.started).toHaveLength(3);
+        expect(context.started).toHaveLength(6);
         expect(report.results.map((result) => result.status)).toEqual([
+          'passed',
+          'passed',
+          'passed',
           'passed',
           'passed',
           'passed',
@@ -593,7 +729,7 @@ describe('sonarqube-cli-analyze-changed', () => {
             {
               args: ['analyze', 'secrets'],
               command: 'sonar',
-              label: 'sonar analyze secrets',
+              label: 'sonar analyze secrets packages/core/src/domain/logic.ts',
               status: 'passed',
               stderr: '',
               stdout: '',
@@ -619,7 +755,10 @@ describe('sonarqube-cli-analyze-changed', () => {
           'SQAA/A3S enabled: true',
         );
         expect(formatSonarChangedFileReport(inputs.report)).toContain(
-          'SKIP skipped: sonar analyze sqaa packages/core/src/domain/logic.ts',
+          'Results: passed 1, skipped 1, failed 0',
+        );
+        expect(formatSonarChangedFileReport(inputs.report)).toContain(
+          'SKIP skipped: 1 command(s)',
         );
         expect(
           JSON.parse(formatSonarChangedFileReport(inputs.report, 'json')),

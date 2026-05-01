@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
 import { resolve } from 'node:path';
+import { delimiter } from 'node:path';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 
@@ -11,6 +12,7 @@ const defaultProjectKey = 'vannadii_devplat';
 const defaultSonarCommand = 'sonar';
 const defaultOutputFormat = 'text';
 const defaultSqaaMode = 'disabled';
+const defaultMaxParallel = 4;
 const installScriptUrl =
   'https://raw.githubusercontent.com/SonarSource/sonarqube-cli/refs/heads/master/user-scripts/install.sh';
 const windowsInstallScriptUrl =
@@ -20,6 +22,10 @@ const a3sInactiveMessage =
 const sqaaDisabledReason =
   'SQAA/A3S analysis is not enabled for this run. Set SONAR_A3S_ENABLED=true or pass --sqaa enabled to run it.';
 const truthyEnvValues = ['1', 'true', 'yes', 'enabled'];
+const localSonarBinDirectory = resolve(
+  process.env.HOME ?? '',
+  '.local/share/sonarqube-cli/bin',
+);
 
 /**
  * Splits command output into non-empty lines without using platform-specific parsing.
@@ -63,11 +69,27 @@ export function createSonarChangedFileCommands({
     return commands;
   }
 
-  commands.push({
-    args: ['analyze', 'secrets', ...normalizedFiles],
-    label: 'sonar analyze secrets',
-    command: sonarCommand,
-  });
+  for (const file of normalizedFiles) {
+    commands.push({
+      args: ['analyze', 'secrets', file],
+      label: `sonar analyze secrets ${file}`,
+      command: sonarCommand,
+    });
+  }
+
+  for (const file of normalizedFiles) {
+    commands.push({
+      args: [
+        'verify',
+        '--file',
+        file,
+        ...(branch === undefined ? [] : ['--branch', branch]),
+        ...(project === undefined ? [] : ['--project', project]),
+      ],
+      label: `sonar verify ${file}`,
+      command: sonarCommand,
+    });
+  }
 
   if (sqaaEnabled) {
     for (const file of normalizedFiles) {
@@ -108,6 +130,21 @@ export async function resolveBaseRef({
 
   if (typeof env.GITHUB_BASE_REF === 'string' && env.GITHUB_BASE_REF.trim()) {
     return `origin/${env.GITHUB_BASE_REF.trim()}`;
+  }
+
+  try {
+    const { stdout } = await execFileImpl(
+      'git',
+      ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}'],
+      { cwd: rootDirectory },
+    );
+    const resolved = stdout.trim();
+
+    if (resolved.length > 0) {
+      return resolved;
+    }
+  } catch {
+    // Fall through to the repository default branch when the branch has no upstream.
   }
 
   try {
@@ -214,9 +251,19 @@ export async function resolveCurrentBranch({
 async function runExternalCommand(command, args, { rootDirectory }) {
   return execFileAsync(command, args, {
     cwd: rootDirectory,
-    env: process.env,
+    env: createCommandEnv(process.env),
     maxBuffer: 32 * 1024 * 1024,
   });
+}
+
+/**
+ * Creates an execution environment that can find the documented local CLI install.
+ */
+function createCommandEnv(env) {
+  return {
+    ...env,
+    PATH: [localSonarBinDirectory, env.PATH ?? ''].join(delimiter),
+  };
 }
 
 /**
@@ -329,9 +376,8 @@ export function createSonarCliInstallCommand(platform = process.platform) {
     case 'darwin':
     case 'linux':
       return {
-        args: ['-o-', installScriptUrl],
-        command: 'curl',
-        inputCommand: 'bash',
+        args: ['-c', `curl -fsSL ${installScriptUrl} | bash`],
+        command: 'bash',
         label: 'SonarQube CLI installer',
       };
     case 'win32':
@@ -354,24 +400,6 @@ export function createSonarCliInstallCommand(platform = process.platform) {
 }
 
 /**
- * Runs a shell-pipeline command while keeping platform branching testable.
- */
-async function runPipelineInstallCommand(command, { rootDirectory }) {
-  const first = await execFileAsync(command.command, command.args, {
-    cwd: rootDirectory,
-    env: process.env,
-    maxBuffer: 32 * 1024 * 1024,
-  });
-
-  await execFileAsync(command.inputCommand, [], {
-    cwd: rootDirectory,
-    env: process.env,
-    input: first.stdout,
-    maxBuffer: 32 * 1024 * 1024,
-  });
-}
-
-/**
  * Runs the SonarQube CLI installer for the current platform.
  */
 export async function installSonarCli({
@@ -380,11 +408,7 @@ export async function installSonarCli({
   runCommand,
 } = {}) {
   const command = createSonarCliInstallCommand(platform);
-  const resolvedRunner =
-    runCommand ??
-    (command.inputCommand === undefined
-      ? runExternalCommand
-      : runPipelineInstallCommand);
+  const resolvedRunner = runCommand ?? runExternalCommand;
 
   console.log(`Running ${command.label}`);
   await resolvedRunner(command.command, command.args, {
@@ -396,7 +420,7 @@ export async function installSonarCli({
 }
 
 /**
- * Runs SonarQube CLI security and SQAA analysis for changed files.
+ * Runs SonarQube CLI security, verification, and optional SQAA analysis for changed files.
  */
 export async function runSonarChangedFileAnalysis({
   baseRef,
@@ -410,6 +434,7 @@ export async function runSonarChangedFileAnalysis({
   runCommand = runExternalCommand,
   sonarCommand = defaultSonarCommand,
   sqaaMode,
+  maxParallel = defaultMaxParallel,
 } = {}) {
   const resolvedChangedFiles =
     changedFiles ??
@@ -435,11 +460,11 @@ export async function runSonarChangedFileAnalysis({
     sonarCommand,
     sqaaEnabled,
   });
-  const results = await Promise.all(
-    commands.map((command) =>
-      runSonarAnalysisCommand(command, { rootDirectory, runCommand }),
-    ),
-  );
+  const results = await runSonarAnalysisCommands(commands, {
+    maxParallel,
+    rootDirectory,
+    runCommand,
+  });
   const resolvedResults =
     resolvedChangedFiles.length === 0 || sqaaEnabled
       ? results
@@ -454,6 +479,37 @@ export async function runSonarChangedFileAnalysis({
     sqaaEnabled,
     status: summarizeSonarAnalysisStatus(resolvedResults),
   };
+}
+
+/**
+ * Runs SonarQube analysis commands with bounded parallelism.
+ */
+async function runSonarAnalysisCommands(
+  commands,
+  { maxParallel, rootDirectory, runCommand },
+) {
+  const results = [];
+  const queue = [...commands];
+  const workerCount = Math.max(1, Math.min(maxParallel, queue.length));
+
+  await Promise.all(
+    Array.from({ length: workerCount }, async () => {
+      while (queue.length > 0) {
+        const command = queue.shift();
+
+        if (command !== undefined) {
+          results.push(
+            await runSonarAnalysisCommand(command, {
+              rootDirectory,
+              runCommand,
+            }),
+          );
+        }
+      }
+    }),
+  );
+
+  return results;
 }
 
 /**
@@ -501,6 +557,7 @@ export function formatSonarChangedFileReport(
         `Branch: ${report.branch ?? 'unresolved'}`,
         `Changed files: ${String(report.changedFiles.length)}`,
         `SQAA/A3S enabled: ${String(report.sqaaEnabled)}`,
+        `Results: ${formatSonarResultSummary(report.results)}`,
         '',
         ...formatSonarResultLines(report.results),
       ].join('\n');
@@ -517,29 +574,87 @@ function formatSonarResultLines(results) {
     return ['No changed files to analyze.'];
   }
 
-  return results.flatMap((result) => {
-    const base = `${formatSonarStatusIcon(result.status)} ${result.status}: ${
-      result.label
-    }`;
+  const failedResults = results.filter((result) => result.status === 'failed');
+  const skippedResults = summarizeSkippedSonarResults(results);
+  const passedCount = results.filter(
+    (result) => result.status === 'passed',
+  ).length;
+  const lines = [];
 
-    return result.reason === undefined ? [base] : [base, `  ${result.reason}`];
-  });
+  if (passedCount > 0) {
+    lines.push(`PASS passed: ${String(passedCount)} command(s)`);
+  }
+
+  for (const result of failedResults) {
+    lines.push(`FAIL failed: ${result.label}`);
+    lines.push(`  ${result.reason ?? 'SonarQube CLI command failed.'}`);
+  }
+
+  for (const summary of skippedResults) {
+    lines.push(`SKIP skipped: ${String(summary.count)} command(s)`);
+    lines.push(`  ${summary.reason}`);
+  }
+
+  return lines;
 }
 
 /**
- * Maps SonarQube result states to compact console markers.
+ * Summarizes SonarQube result status counts for the report header.
  */
-function formatSonarStatusIcon(status) {
-  switch (status) {
-    case 'failed':
-      return 'FAIL';
-    case 'passed':
-      return 'PASS';
-    case 'skipped':
-      return 'SKIP';
-    default:
-      return 'INFO';
+function formatSonarResultSummary(results) {
+  const counts = countSonarResults(results);
+
+  return [
+    `passed ${String(counts.passed)}`,
+    `skipped ${String(counts.skipped)}`,
+    `failed ${String(counts.failed)}`,
+  ].join(', ');
+}
+
+/**
+ * Counts SonarQube command results by status.
+ */
+function countSonarResults(results) {
+  return results.reduce(
+    (counts, result) => {
+      switch (result.status) {
+        case 'failed':
+          counts.failed += 1;
+          break;
+        case 'passed':
+          counts.passed += 1;
+          break;
+        case 'skipped':
+          counts.skipped += 1;
+          break;
+      }
+
+      return counts;
+    },
+    {
+      failed: 0,
+      passed: 0,
+      skipped: 0,
+    },
+  );
+}
+
+/**
+ * Groups skipped SonarQube results by reason so large diffs remain readable.
+ */
+function summarizeSkippedSonarResults(results) {
+  const grouped = new Map();
+
+  for (const result of results) {
+    if (result.status === 'skipped') {
+      const reason = result.reason ?? 'SonarQube CLI command skipped.';
+      grouped.set(reason, (grouped.get(reason) ?? 0) + 1);
+    }
   }
+
+  return [...grouped.entries()].map(([reason, count]) => {
+    return { count, reason };
+  });
 }
 
 /**
@@ -548,6 +663,7 @@ function formatSonarStatusIcon(status) {
 export function parseSonarChangedFileArgs(argv) {
   const parsed = {
     headRef: defaultHeadRef,
+    maxParallel: defaultMaxParallel,
     outputFormat: defaultOutputFormat,
     project: defaultProjectKey,
     sonarCommand: defaultSonarCommand,
@@ -572,6 +688,10 @@ export function parseSonarChangedFileArgs(argv) {
         break;
       case '--json':
         parsed.outputFormat = 'json';
+        break;
+      case '--max-parallel':
+        parsed.maxParallel = Number(argv[index + 1] ?? defaultMaxParallel);
+        index += 1;
         break;
       case '--format':
         parsed.outputFormat = argv[index + 1] ?? defaultOutputFormat;
