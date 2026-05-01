@@ -69,46 +69,80 @@ export function createSonarChangedFileCommands({
     return commands;
   }
 
-  for (const file of normalizedFiles) {
-    commands.push({
-      args: ['analyze', 'secrets', file],
-      label: `sonar analyze secrets ${file}`,
-      command: sonarCommand,
-    });
-  }
-
-  for (const file of normalizedFiles) {
-    commands.push({
-      args: [
-        'verify',
-        '--file',
-        file,
-        ...(branch === undefined ? [] : ['--branch', branch]),
-        ...(project === undefined ? [] : ['--project', project]),
-      ],
-      label: `sonar verify ${file}`,
-      command: sonarCommand,
-    });
-  }
+  commands.push(
+    ...normalizedFiles.map((file) =>
+      createSonarSecretsCommand({ file, sonarCommand }),
+    ),
+  );
+  commands.push(
+    ...normalizedFiles.map((file) =>
+      createSonarVerifyCommand({ branch, file, project, sonarCommand }),
+    ),
+  );
 
   if (sqaaEnabled) {
-    for (const file of normalizedFiles) {
-      commands.push({
-        args: [
-          'analyze',
-          'sqaa',
-          '--file',
-          file,
-          ...(branch === undefined ? [] : ['--branch', branch]),
-          ...(project === undefined ? [] : ['--project', project]),
-        ],
-        label: `sonar analyze sqaa ${file}`,
-        command: sonarCommand,
-      });
-    }
+    commands.push(
+      ...normalizedFiles.map((file) =>
+        createSonarSqaaCommand({ branch, file, project, sonarCommand }),
+      ),
+    );
   }
 
   return commands;
+}
+
+/**
+ * Creates one SonarQube secrets scan command for a changed file.
+ */
+function createSonarSecretsCommand({ file, sonarCommand }) {
+  return {
+    args: ['analyze', 'secrets', file],
+    command: sonarCommand,
+    label: `sonar analyze secrets ${file}`,
+  };
+}
+
+/**
+ * Creates one SonarQube verification command for a changed file.
+ */
+function createSonarVerifyCommand({ branch, file, project, sonarCommand }) {
+  return {
+    args: [
+      'verify',
+      '--file',
+      file,
+      ...createSonarContextArgs({ branch, project }),
+    ],
+    command: sonarCommand,
+    label: `sonar verify ${file}`,
+  };
+}
+
+/**
+ * Creates one optional SQAA command for a changed file.
+ */
+function createSonarSqaaCommand({ branch, file, project, sonarCommand }) {
+  return {
+    args: [
+      'analyze',
+      'sqaa',
+      '--file',
+      file,
+      ...createSonarContextArgs({ branch, project }),
+    ],
+    command: sonarCommand,
+    label: `sonar analyze sqaa ${file}`,
+  };
+}
+
+/**
+ * Creates shared branch and project arguments for file-scoped SonarQube commands.
+ */
+function createSonarContextArgs({ branch, project }) {
+  return [
+    ...(branch === undefined ? [] : ['--branch', branch]),
+    ...(project === undefined ? [] : ['--project', project]),
+  ];
 }
 
 /**
