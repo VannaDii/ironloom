@@ -498,10 +498,28 @@ export function createDeepScenario(runtimeEnv) {
     storage: {
       rootDirectory: 'devplat-state',
       layoutVersion: 1,
+      artifactDirectory: 'devplat-state/artifacts',
+      indexDirectory: 'devplat-state/indexes',
+      auditLogDirectory: 'devplat-state/audit',
     },
     worktrees: {
-      rootDirectory: 'devplat-worktrees',
+      rootDirectory: 'devplat-state/worktrees',
       baseBranch: 'main',
+      syncStrategy: 'rebase-or-fast-forward',
+    },
+    github: {
+      apiBaseUrl: 'https://api.github.com',
+      webBaseUrl: 'https://github.com',
+      tokenEnvironmentVariable: 'GITHUB_TOKEN',
+    },
+    deployment: {
+      target: 'local-docker',
+      dockerImageRepository: 'ghcr.io/vannadii/devplat-openclaw-runtime',
+      dockerImageTag: 'latest',
+      helmReleaseName: 'devplat',
+      helmNamespace: 'devplat',
+      helmChartPath: 'deploy/helm/devplat',
+      stateMountPath: '/var/lib/devplat',
     },
     discord: {
       apiBaseUrl: runtimeEnv.DISCORD_API_BASE_URL,

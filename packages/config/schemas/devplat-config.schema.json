@@ -61,6 +61,22 @@
           "required": ["owner", "repo", "defaultBranch", "repositoryKey"],
           "additionalProperties": false
         },
+        "github": {
+          "type": "object",
+          "properties": {
+            "apiBaseUrl": {
+              "type": "string"
+            },
+            "webBaseUrl": {
+              "type": "string"
+            },
+            "tokenEnvironmentVariable": {
+              "type": "string"
+            }
+          },
+          "required": ["apiBaseUrl", "webBaseUrl", "tokenEnvironmentVariable"],
+          "additionalProperties": false
+        },
         "storage": {
           "type": "object",
           "properties": {
@@ -69,9 +85,24 @@
             },
             "layoutVersion": {
               "const": 1
+            },
+            "artifactDirectory": {
+              "type": "string"
+            },
+            "indexDirectory": {
+              "type": "string"
+            },
+            "auditLogDirectory": {
+              "type": "string"
             }
           },
-          "required": ["rootDirectory", "layoutVersion"],
+          "required": [
+            "rootDirectory",
+            "layoutVersion",
+            "artifactDirectory",
+            "indexDirectory",
+            "auditLogDirectory"
+          ],
           "additionalProperties": false
         },
         "worktrees": {
@@ -82,9 +113,48 @@
             },
             "baseBranch": {
               "type": "string"
+            },
+            "syncStrategy": {
+              "const": "rebase-or-fast-forward"
             }
           },
-          "required": ["rootDirectory", "baseBranch"],
+          "required": ["rootDirectory", "baseBranch", "syncStrategy"],
+          "additionalProperties": false
+        },
+        "deployment": {
+          "type": "object",
+          "properties": {
+            "target": {
+              "enum": ["local-docker", "kubernetes"]
+            },
+            "dockerImageRepository": {
+              "type": "string"
+            },
+            "dockerImageTag": {
+              "type": "string"
+            },
+            "helmReleaseName": {
+              "type": "string"
+            },
+            "helmNamespace": {
+              "type": "string"
+            },
+            "helmChartPath": {
+              "type": "string"
+            },
+            "stateMountPath": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "target",
+            "dockerImageRepository",
+            "dockerImageTag",
+            "helmReleaseName",
+            "helmNamespace",
+            "helmChartPath",
+            "stateMountPath"
+          ],
           "additionalProperties": false
         },
         "discord": {
@@ -241,8 +311,10 @@
         "githubOwner",
         "githubRepo",
         "repository",
+        "github",
         "storage",
         "worktrees",
+        "deployment",
         "discord",
         "openclaw",
         "sonar"

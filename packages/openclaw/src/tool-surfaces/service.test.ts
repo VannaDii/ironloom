@@ -355,13 +355,31 @@ describe('tool surface service', () => {
           defaultBranch: 'main',
           repositoryKey: 'VannaDii/devplat',
         },
+        github: {
+          apiBaseUrl: 'https://api.github.com',
+          webBaseUrl: 'https://github.com',
+          tokenEnvironmentVariable: 'GITHUB_TOKEN',
+        },
         storage: {
-          rootDirectory: 'devplat-state',
+          rootDirectory: '.devplat',
           layoutVersion: 1,
+          artifactDirectory: '.devplat/artifacts',
+          indexDirectory: '.devplat/indexes',
+          auditLogDirectory: '.devplat/audit',
         },
         worktrees: {
-          rootDirectory: 'devplat-worktrees',
+          rootDirectory: '.devplat/worktrees',
           baseBranch: 'main',
+          syncStrategy: 'rebase-or-fast-forward',
+        },
+        deployment: {
+          target: 'local-docker',
+          dockerImageRepository: 'ghcr.io/vannadii/devplat-openclaw-runtime',
+          dockerImageTag: 'latest',
+          helmReleaseName: 'devplat',
+          helmNamespace: 'devplat',
+          helmChartPath: 'deploy/helm/devplat',
+          stateMountPath: '/var/lib/devplat',
         },
         discord: {
           apiBaseUrl: 'https://discord.com/api/v10',

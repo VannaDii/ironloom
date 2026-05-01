@@ -20,8 +20,21 @@ Runtime configuration normalization reads:
 - `GITHUB_OWNER`
 - `GITHUB_REPO`
 - `GITHUB_DEFAULT_BRANCH`
+- `GITHUB_API_BASE_URL`
+- `GITHUB_WEB_BASE_URL`
+- `GITHUB_TOKEN_ENV`
 - `DEVPLAT_STORAGE_ROOT`
+- `DEVPLAT_ARTIFACT_DIRECTORY`
+- `DEVPLAT_INDEX_DIRECTORY`
+- `DEVPLAT_AUDIT_LOG_DIRECTORY`
 - `DEVPLAT_WORKTREE_ROOT`
+- `DEVPLAT_DEPLOYMENT_TARGET`
+- `DEVPLAT_DOCKER_IMAGE_REPOSITORY`
+- `DEVPLAT_DOCKER_IMAGE_TAG`
+- `DEVPLAT_HELM_RELEASE`
+- `DEVPLAT_HELM_NAMESPACE`
+- `DEVPLAT_HELM_CHART_PATH`
+- `DEVPLAT_STATE_MOUNT_PATH`
 - `OPENCLAW_PLUGIN_ID`
 - `OPENCLAW_GATEWAY_PORT`
 - `DISCORD_API_BASE_URL`
@@ -38,11 +51,18 @@ Runtime configuration normalization reads:
 - `SONAR_PROJECT_KEY`
 
 The normalized repository runtime config exposes `owner`, `repo`,
-`defaultBranch`, and `repositoryKey`. Storage defaults to `devplat-state` with
-layout version `1`. Worktrees default to `devplat-worktrees` and inherit the
-configured default branch. The OpenClaw gateway defaults to loopback token auth
-on port `18789`. Only `@vannadii/devplat-storage` may directly read or write
-the runtime state directory.
+`defaultBranch`, and `repositoryKey`. GitHub API submission defaults to
+`https://api.github.com`, GitHub web links default to `https://github.com`, and
+the token is read from `GITHUB_TOKEN` unless `GITHUB_TOKEN_ENV` is overridden.
+Storage defaults to `devplat-state` with `artifacts`, `indexes`, and `audit`
+subdirectories at layout version `1`. Worktrees default to
+`devplat-state/worktrees`, inherit the configured default branch, and use
+`rebase-or-fast-forward` sync. Deployment defaults target local Docker with
+`ghcr.io/vannadii/devplat-openclaw-runtime:latest`, Helm release `devplat`,
+namespace `devplat`, chart path `deploy/helm/devplat`, and state mount
+`/var/lib/devplat`. The OpenClaw gateway defaults to loopback token auth on port
+`18789`. Only `@vannadii/devplat-storage` may directly read or write the runtime
+state directory.
 
 The normalized Discord runtime config also fixes:
 
@@ -50,7 +70,10 @@ The normalized Discord runtime config also fixes:
 - OAuth install scopes `bot` and `applications.commands`
 - required guild/channel permissions for thread-aware control: `ViewChannel`, `SendMessages`, `CreatePublicThreads`, `CreatePrivateThreads`, `SendMessagesInThreads`, `ManageThreads`, and `ReadMessageHistory`
 
-Missing required Discord credentials fail fast during config load instead of falling back to placeholder values.
+Missing required Discord credentials, invalid URLs, invalid gateway ports, and
+invalid deployment targets fail fast during config load. Normalized config can
+also be checked for structured validation issues before it is handed to
+integration services.
 
 Recommended channel layout:
 

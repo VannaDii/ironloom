@@ -95,6 +95,38 @@ describe('OpenClawPluginConfig logic', () => {
           updatedAt: '2026-04-04T00:00:00.000Z',
           githubOwner: 'VannaDii',
           githubRepo: 'devplat',
+          repository: {
+            owner: 'VannaDii',
+            repo: 'devplat',
+            defaultBranch: 'main',
+            repositoryKey: 'VannaDii/devplat',
+          },
+          github: {
+            apiBaseUrl: 'https://api.github.com',
+            webBaseUrl: 'https://github.com',
+            tokenEnvironmentVariable: 'GITHUB_TOKEN',
+          },
+          storage: {
+            rootDirectory: '.devplat',
+            layoutVersion: 1,
+            artifactDirectory: '.devplat/artifacts',
+            indexDirectory: '.devplat/indexes',
+            auditLogDirectory: '.devplat/audit',
+          },
+          worktrees: {
+            rootDirectory: '.devplat/worktrees',
+            baseBranch: 'main',
+            syncStrategy: 'rebase-or-fast-forward',
+          },
+          deployment: {
+            target: 'local-docker',
+            dockerImageRepository: 'ghcr.io/vannadii/devplat-openclaw-runtime',
+            dockerImageTag: 'latest',
+            helmReleaseName: 'devplat',
+            helmNamespace: 'devplat',
+            helmChartPath: 'deploy/helm/devplat',
+            stateMountPath: '/var/lib/devplat',
+          },
           discord: {
             apiBaseUrl: 'https://discord.com/api/v10',
             apiVersion: 'v10',
@@ -121,6 +153,11 @@ describe('OpenClawPluginConfig logic', () => {
           },
           openclaw: {
             pluginId: '@vannadii/devplat-openclaw',
+            gateway: {
+              bind: 'loopback',
+              port: 18789,
+              authMode: 'token',
+            },
             actionGates: {
               approveThis: true,
               mergeNow: false,

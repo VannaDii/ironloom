@@ -17,6 +17,10 @@ describe('RuntimeConfigService', () => {
         new RuntimeConfigService().fromEnvironment(env),
       assert: (config: ReturnType<RuntimeConfigService['fromEnvironment']>) => {
         expect(config.githubOwner).toBe('VannaDii');
+        expect(config.github.apiBaseUrl).toBe('https://api.github.com');
+        expect(config.storage.rootDirectory).toBe('devplat-state');
+        expect(config.worktrees.rootDirectory).toBe('devplat-state/worktrees');
+        expect(config.deployment.helmChartPath).toBe('deploy/helm/devplat');
         expect(config.discord.apiVersion).toBe('v10');
         expect(config.discord.projectManagementChannelId).toBe(
           'project-management-channel',
@@ -41,6 +45,13 @@ describe('RuntimeConfigService', () => {
           DISCORD_AUDIT_CHANNEL_ID: 'audit',
           DISCORD_PROJECT_MANAGEMENT_CHANNEL_ID: 'pm',
           OPENCLAW_PLUGIN_ID: '@acme/platform-openclaw',
+          GITHUB_API_BASE_URL: 'https://api.github.example',
+          GITHUB_WEB_BASE_URL: 'https://github.example',
+          GITHUB_TOKEN_ENV: 'ACME_GITHUB_TOKEN',
+          DEVPLAT_DOCKER_IMAGE_REPOSITORY: 'ghcr.io/acme/platform-runtime',
+          DEVPLAT_DOCKER_IMAGE_TAG: 'sha-123',
+          DEVPLAT_HELM_RELEASE: 'platform-runtime',
+          DEVPLAT_HELM_NAMESPACE: 'automation',
           SONAR_ORGANIZATION: 'AcmeOrg',
           SONAR_PROJECT_KEY: 'AcmeOrg_platform',
         },
@@ -52,11 +63,20 @@ describe('RuntimeConfigService', () => {
 
         expect(config.githubOwner).toBe('AcmeOrg');
         expect(config.githubRepo).toBe('platform');
+        expect(config.github).toEqual({
+          apiBaseUrl: 'https://api.github.example',
+          webBaseUrl: 'https://github.example',
+          tokenEnvironmentVariable: 'ACME_GITHUB_TOKEN',
+        });
         expect(config.discord.applicationId).toBe('application-7');
         expect(config.discord.defaultGuildId).toBe('guild-7');
         expect(config.discord.pullRequestChannelId).toBe('prs');
         expect(config.discord.projectManagementChannelId).toBe('pm');
         expect(config.openclaw.pluginId).toBe('@acme/platform-openclaw');
+        expect(config.deployment.dockerImageRepository).toBe(
+          'ghcr.io/acme/platform-runtime',
+        );
+        expect(config.deployment.helmNamespace).toBe('automation');
         expect(service.execute(config)).toBe(config);
       },
     },

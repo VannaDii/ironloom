@@ -89,10 +89,13 @@ executing repo, coverage, build, docs, generated artifact, and compatibility
 jobs.
 
 Runtime configuration is repository-scoped for the single-repo production path.
-Set `GITHUB_OWNER`, `GITHUB_REPO`, `GITHUB_DEFAULT_BRANCH`,
-`DEVPLAT_STORAGE_ROOT`, `DEVPLAT_WORKTREE_ROOT`, and the Discord/OpenClaw/Sonar
-variables documented in the configuration guide before running live operator
-flows. The storage package remains the only package that directly reads or
+Set `GITHUB_OWNER`, `GITHUB_REPO`, `GITHUB_DEFAULT_BRANCH`, GitHub API/token
+overrides, runtime storage/worktree overrides, Docker/Helm deployment
+overrides, and the Discord/OpenClaw/Sonar variables documented in the
+configuration guide before running live operator flows. Config loading now
+normalizes those defaults and returns structured validation issues for bad
+URLs, empty required paths, invalid deployment targets, and invalid gateway
+ports. The storage package remains the only package that directly reads or
 writes the committed runtime state directory.
 
 Public contract schemas are generated from exported `io-ts` codecs. For

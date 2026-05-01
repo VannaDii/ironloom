@@ -1,9 +1,11 @@
 import { appendTrace } from '@vannadii/devplat-core';
 
 import type {
+  DeploymentTarget,
   DevplatConfig,
   DiscordInstallScope,
   DiscordPermission,
+  RuntimeConfigValidationIssue,
 } from './types.js';
 
 const DISCORD_INSTALL_SCOPES: readonly DiscordInstallScope[] = [
@@ -21,12 +23,30 @@ const DISCORD_REQUIRED_PERMISSIONS: readonly DiscordPermission[] = [
   'ReadMessageHistory',
 ];
 
+const VALID_DEPLOYMENT_TARGETS: readonly DeploymentTarget[] = [
+  'local-docker',
+  'kubernetes',
+];
+
 function readEnvValue(
   env: Record<string, string | undefined>,
   key: string,
   fallback: string,
 ): string {
   return env[key]?.trim() || fallback;
+}
+
+function readEnvUrl(
+  env: Record<string, string | undefined>,
+  key: string,
+  fallback: string,
+): string {
+  const value = readEnvValue(env, key, fallback);
+  try {
+    return new URL(value).toString().replace(/\/$/, '');
+  } catch {
+    throw new Error(`${key} must be a valid URL.`);
+  }
 }
 
 function readEnvNumber(
@@ -47,6 +67,22 @@ function readEnvNumber(
   return parsed;
 }
 
+function readDeploymentTarget(
+  env: Record<string, string | undefined>,
+): DeploymentTarget {
+  const value = readEnvValue(env, 'DEVPLAT_DEPLOYMENT_TARGET', 'local-docker');
+  const target = VALID_DEPLOYMENT_TARGETS.find(
+    (candidate) => candidate === value,
+  );
+  if (target === undefined) {
+    throw new Error(
+      'DEVPLAT_DEPLOYMENT_TARGET must be local-docker or kubernetes.',
+    );
+  }
+
+  return target;
+}
+
 function requireEnvValue(
   env: Record<string, string | undefined>,
   key: 'DISCORD_APPLICATION_ID' | 'DISCORD_PUBLIC_KEY' | 'DISCORD_BOT_TOKEN',
@@ -59,7 +95,124 @@ function requireEnvValue(
   return value;
 }
 
+function createValidationIssue(input: {
+  field: string;
+  code: string;
+  message: string;
+}): RuntimeConfigValidationIssue {
+  return {
+    field: input.field.trim(),
+    code: input.code.trim(),
+    message: input.message.trim(),
+    severity: 'error',
+  };
+}
+
+function hasBlankValue(value: string): boolean {
+  return value.trim().length === 0;
+}
+
+function isValidUrl(value: string): boolean {
+  try {
+    new URL(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function appendNonEmptyIssue(
+  issues: RuntimeConfigValidationIssue[],
+  field: string,
+  value: string,
+): RuntimeConfigValidationIssue[] {
+  if (!hasBlankValue(value)) {
+    return issues;
+  }
+
+  return [
+    ...issues,
+    createValidationIssue({
+      field,
+      code: 'config.empty-value',
+      message: `${field} must not be empty.`,
+    }),
+  ];
+}
+
+export function validateDevplatConfig(
+  config: DevplatConfig,
+): readonly RuntimeConfigValidationIssue[] {
+  const textChecks: readonly (readonly [string, string])[] = [
+    ['repository.owner', config.repository.owner],
+    ['repository.repo', config.repository.repo],
+    ['repository.defaultBranch', config.repository.defaultBranch],
+    ['repository.repositoryKey', config.repository.repositoryKey],
+    ['github.tokenEnvironmentVariable', config.github.tokenEnvironmentVariable],
+    ['storage.rootDirectory', config.storage.rootDirectory],
+    ['storage.artifactDirectory', config.storage.artifactDirectory],
+    ['storage.indexDirectory', config.storage.indexDirectory],
+    ['storage.auditLogDirectory', config.storage.auditLogDirectory],
+    ['worktrees.rootDirectory', config.worktrees.rootDirectory],
+    ['worktrees.baseBranch', config.worktrees.baseBranch],
+    [
+      'deployment.dockerImageRepository',
+      config.deployment.dockerImageRepository,
+    ],
+    ['deployment.dockerImageTag', config.deployment.dockerImageTag],
+    ['deployment.helmReleaseName', config.deployment.helmReleaseName],
+    ['deployment.helmNamespace', config.deployment.helmNamespace],
+    ['deployment.helmChartPath', config.deployment.helmChartPath],
+    ['deployment.stateMountPath', config.deployment.stateMountPath],
+    ['discord.defaultGuildId', config.discord.defaultGuildId],
+    ['discord.specChannelId', config.discord.specChannelId],
+    ['discord.implementationChannelId', config.discord.implementationChannelId],
+    ['discord.pullRequestChannelId', config.discord.pullRequestChannelId],
+    ['discord.auditChannelId', config.discord.auditChannelId],
+    [
+      'discord.projectManagementChannelId',
+      config.discord.projectManagementChannelId,
+    ],
+    ['sonar.organization', config.sonar.organization],
+    ['sonar.projectKey', config.sonar.projectKey],
+  ];
+
+  const emptyIssues: RuntimeConfigValidationIssue[] = [];
+  const nonEmptyIssues = textChecks.reduce(
+    (issues, check) => appendNonEmptyIssue(issues, check[0], check[1]),
+    emptyIssues,
+  );
+
+  const urlChecks: readonly (readonly [string, string])[] = [
+    ['github.apiBaseUrl', config.github.apiBaseUrl],
+    ['github.webBaseUrl', config.github.webBaseUrl],
+    ['discord.apiBaseUrl', config.discord.apiBaseUrl],
+  ];
+  const urlIssues = urlChecks.flatMap(([field, value]) =>
+    isValidUrl(value)
+      ? []
+      : [
+          createValidationIssue({
+            field,
+            code: 'config.invalid-url',
+            message: `${field} must be a valid URL.`,
+          }),
+        ],
+  );
+
+  return [...nonEmptyIssues, ...urlIssues];
+}
+
 export function createDevplatConfig(input: DevplatConfig): DevplatConfig {
+  const issues = validateDevplatConfig(input);
+  if (issues.length > 0) {
+    throw new Error(
+      `Runtime configuration is invalid: ${issues
+        .map((issue) => `${issue.field} ${issue.message}`)
+        .join('; ')}`,
+    );
+  }
+
   return appendTrace(
     {
       ...input,
@@ -76,6 +229,11 @@ export function createDefaultDevplatConfig(
   const githubOwner = readEnvValue(env, 'GITHUB_OWNER', 'VannaDii');
   const githubRepo = readEnvValue(env, 'GITHUB_REPO', 'devplat');
   const defaultBranch = readEnvValue(env, 'GITHUB_DEFAULT_BRANCH', 'main');
+  const storageRoot = readEnvValue(
+    env,
+    'DEVPLAT_STORAGE_ROOT',
+    'devplat-state',
+  );
 
   return createDevplatConfig({
     id: 'devplat-config',
@@ -91,20 +249,74 @@ export function createDefaultDevplatConfig(
       defaultBranch,
       repositoryKey: `${githubOwner}/${githubRepo}`,
     },
+    github: {
+      apiBaseUrl: readEnvUrl(
+        env,
+        'GITHUB_API_BASE_URL',
+        'https://api.github.com',
+      ),
+      webBaseUrl: readEnvUrl(env, 'GITHUB_WEB_BASE_URL', 'https://github.com'),
+      tokenEnvironmentVariable: readEnvValue(
+        env,
+        'GITHUB_TOKEN_ENV',
+        'GITHUB_TOKEN',
+      ),
+    },
     storage: {
-      rootDirectory: readEnvValue(env, 'DEVPLAT_STORAGE_ROOT', 'devplat-state'),
+      rootDirectory: storageRoot,
       layoutVersion: 1,
+      artifactDirectory: readEnvValue(
+        env,
+        'DEVPLAT_ARTIFACT_DIRECTORY',
+        `${storageRoot}/artifacts`,
+      ),
+      indexDirectory: readEnvValue(
+        env,
+        'DEVPLAT_INDEX_DIRECTORY',
+        `${storageRoot}/indexes`,
+      ),
+      auditLogDirectory: readEnvValue(
+        env,
+        'DEVPLAT_AUDIT_LOG_DIRECTORY',
+        `${storageRoot}/audit`,
+      ),
     },
     worktrees: {
       rootDirectory: readEnvValue(
         env,
         'DEVPLAT_WORKTREE_ROOT',
-        'devplat-worktrees',
+        `${storageRoot}/worktrees`,
       ),
       baseBranch: defaultBranch,
+      syncStrategy: 'rebase-or-fast-forward',
+    },
+    deployment: {
+      target: readDeploymentTarget(env),
+      dockerImageRepository: readEnvValue(
+        env,
+        'DEVPLAT_DOCKER_IMAGE_REPOSITORY',
+        'ghcr.io/vannadii/devplat-openclaw-runtime',
+      ),
+      dockerImageTag: readEnvValue(env, 'DEVPLAT_DOCKER_IMAGE_TAG', 'latest'),
+      helmReleaseName: readEnvValue(env, 'DEVPLAT_HELM_RELEASE', 'devplat'),
+      helmNamespace: readEnvValue(env, 'DEVPLAT_HELM_NAMESPACE', 'devplat'),
+      helmChartPath: readEnvValue(
+        env,
+        'DEVPLAT_HELM_CHART_PATH',
+        'deploy/helm/devplat',
+      ),
+      stateMountPath: readEnvValue(
+        env,
+        'DEVPLAT_STATE_MOUNT_PATH',
+        '/var/lib/devplat',
+      ),
     },
     discord: {
-      apiBaseUrl: env['DISCORD_API_BASE_URL'] ?? 'https://discord.com/api/v10',
+      apiBaseUrl: readEnvUrl(
+        env,
+        'DISCORD_API_BASE_URL',
+        'https://discord.com/api/v10',
+      ),
       apiVersion: 'v10',
       applicationId: requireEnvValue(env, 'DISCORD_APPLICATION_ID'),
       publicKey: requireEnvValue(env, 'DISCORD_PUBLIC_KEY'),

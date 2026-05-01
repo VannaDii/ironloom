@@ -1,6 +1,9 @@
 import * as t from 'io-ts';
 
-import { LifecycleStatusCodec } from '@vannadii/devplat-core';
+import {
+  DevplatErrorSeverityCodec,
+  LifecycleStatusCodec,
+} from '@vannadii/devplat-core';
 
 export const DiscordApiVersionCodec = t.literal('v10');
 
@@ -26,14 +29,39 @@ export const RepositoryRuntimeConfigCodec = t.type({
   repositoryKey: t.string,
 });
 
+export const GitHubRuntimeConfigCodec = t.type({
+  apiBaseUrl: t.string,
+  webBaseUrl: t.string,
+  tokenEnvironmentVariable: t.string,
+});
+
 export const StorageRuntimeConfigCodec = t.type({
   rootDirectory: t.string,
   layoutVersion: t.literal(1),
+  artifactDirectory: t.string,
+  indexDirectory: t.string,
+  auditLogDirectory: t.string,
 });
 
 export const WorktreeRuntimeConfigCodec = t.type({
   rootDirectory: t.string,
   baseBranch: t.string,
+  syncStrategy: t.literal('rebase-or-fast-forward'),
+});
+
+export const DeploymentTargetCodec = t.union([
+  t.literal('local-docker'),
+  t.literal('kubernetes'),
+]);
+
+export const DeploymentRuntimeConfigCodec = t.type({
+  target: DeploymentTargetCodec,
+  dockerImageRepository: t.string,
+  dockerImageTag: t.string,
+  helmReleaseName: t.string,
+  helmNamespace: t.string,
+  helmChartPath: t.string,
+  stateMountPath: t.string,
 });
 
 export const DiscordRuntimeConfigCodec = t.type({
@@ -66,6 +94,13 @@ export const OpenClawActionGateConfigCodec = t.type({
   rebaseAllDependents: t.boolean,
 });
 
+export const RuntimeConfigValidationIssueCodec = t.type({
+  field: t.string,
+  code: t.string,
+  message: t.string,
+  severity: DevplatErrorSeverityCodec,
+});
+
 export const DevplatConfigCodec = t.type({
   id: t.string,
   summary: t.string,
@@ -75,8 +110,10 @@ export const DevplatConfigCodec = t.type({
   githubOwner: t.string,
   githubRepo: t.string,
   repository: RepositoryRuntimeConfigCodec,
+  github: GitHubRuntimeConfigCodec,
   storage: StorageRuntimeConfigCodec,
   worktrees: WorktreeRuntimeConfigCodec,
+  deployment: DeploymentRuntimeConfigCodec,
   discord: DiscordRuntimeConfigCodec,
   openclaw: t.type({
     pluginId: t.string,
