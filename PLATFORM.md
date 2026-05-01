@@ -149,7 +149,7 @@ the package responsibilities below. Current completion work focuses on:
 
 - `@vannadii/devplat-core`: current code covers lifecycle status, trace snapshots, result primitives, codec-derived public types, and shared decode helpers; remaining gap is typed IDs, richer error taxonomy, and typed timestamp/value-object helpers.
 - `@vannadii/devplat-config`: current code covers normalized runtime config for GitHub, Discord, OpenClaw, and Sonar; remaining gap is broader deployment/storage/worktree defaults and fuller config validation errors.
-- `@vannadii/devplat-artifacts`: current code covers artifact envelopes, approval, audit, merge, rebase, and validation; remaining gap is a fuller artifact registry, explicit migrations, and broader artifact coverage for research/spec/slice/task/review handoffs.
+- `@vannadii/devplat-artifacts`: current code covers artifact envelopes, the default lifecycle artifact registry, explicit migration records, approval, audit, merge, rebase, validation, and registered research/spec/slice/task/review handoff contracts.
 - `@vannadii/devplat-memory`: current code covers memory-entry persistence plus decision-log, known-trap, and reusable context-bundle modeling.
 - `@vannadii/devplat-research`: current code covers structured research briefs, capability comparisons, feasibility structure, and source attribution.
 - `@vannadii/devplat-specs`: current code covers spec records, approval, and explicit revision updates; remaining gap is richer revision history and PR-ready spec rendering contracts.

@@ -20,6 +20,6 @@
 '@vannadii/devplat-worktrees': patch
 ---
 
-Add the first full-autonomy contract slices for repository-scoped runtime configuration, structured platform errors, artifact migration metadata, storage layout/index metadata, richer policy decisions, durable lifecycle records, gate classifications, command retry/truncation metadata, PR projections, review conformance summaries, remediation results, Sonar issue normalization, supervisor phase routing, real Discord interaction response routing, GitHub REST submission, and Git-backed worktree operations.
+Add the first full-autonomy contract slices for repository-scoped runtime configuration, structured platform errors, artifact registry and migration metadata, storage layout/index metadata, richer policy decisions, durable lifecycle records, gate classifications, command retry/truncation metadata, PR projections, review conformance summaries, remediation results, Sonar issue normalization, supervisor phase routing, real Discord interaction response routing, GitHub REST submission, and Git-backed worktree operations.
 
 Repository validation now requires package-local README coverage with real-world Mermaid flow diagrams, and generated schemas/manifests are emitted in Prettier-stable JSON so generation, repo validation, and formatting checks agree.

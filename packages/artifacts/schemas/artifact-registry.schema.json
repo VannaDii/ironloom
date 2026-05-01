@@ -1,0 +1,123 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/ArtifactRegistry",
+  "definitions": {
+    "ArtifactRegistry": {
+      "type": "object",
+      "properties": {
+        "registryId": {
+          "type": "string"
+        },
+        "version": {
+          "const": 1
+        },
+        "repositoryKey": {
+          "type": "string"
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "artifactType": {
+                "type": "string"
+              },
+              "currentVersion": {
+                "type": "number"
+              },
+              "schemaName": {
+                "type": "string"
+              },
+              "ownerPackage": {
+                "type": "string"
+              },
+              "storageScope": {
+                "enum": [
+                  "artifacts",
+                  "audit",
+                  "gates",
+                  "memory",
+                  "pull-requests",
+                  "remediation",
+                  "reviews",
+                  "slices",
+                  "specs",
+                  "state",
+                  "tasks",
+                  "telemetry",
+                  "worktrees"
+                ]
+              },
+              "migrationPolicy": {
+                "enum": ["none", "optional", "required"]
+              },
+              "updatedAt": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "artifactType",
+              "currentVersion",
+              "schemaName",
+              "ownerPackage",
+              "storageScope",
+              "migrationPolicy",
+              "updatedAt"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "migrations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "migrationId": {
+                "type": "string"
+              },
+              "artifactType": {
+                "type": "string"
+              },
+              "fromVersion": {
+                "type": "number"
+              },
+              "toVersion": {
+                "type": "number"
+              },
+              "summary": {
+                "type": "string"
+              },
+              "migratedAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "migrationId",
+              "artifactType",
+              "fromVersion",
+              "toVersion",
+              "summary",
+              "migratedAt"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "updatedAt": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "registryId",
+        "version",
+        "repositoryKey",
+        "entries",
+        "migrations",
+        "updatedAt"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

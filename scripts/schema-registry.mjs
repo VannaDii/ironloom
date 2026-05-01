@@ -13,6 +13,12 @@ export const schemaRegistry = [
   ],
   [
     'artifacts',
+    'artifact-registry',
+    'ArtifactRegistry',
+    'schemas/artifact-registry.schema.json',
+  ],
+  [
+    'artifacts',
     'approval-record',
     'ApprovalRecordArtifact',
     'schemas/approval-record.schema.json',
