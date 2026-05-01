@@ -47,6 +47,12 @@
                 "sliceId": {
                   "type": "string"
                 },
+                "graphId": {
+                  "type": "string"
+                },
+                "generatedAt": {
+                  "type": "string"
+                },
                 "edges": {
                   "type": "array",
                   "items": {
@@ -68,14 +74,27 @@
                   "items": {
                     "type": "string"
                   }
+                },
+                "dependencyCount": {
+                  "type": "number"
                 }
               },
-              "required": ["sliceId", "edges", "blockedBy"],
+              "required": [
+                "sliceId",
+                "graphId",
+                "generatedAt",
+                "edges",
+                "blockedBy",
+                "dependencyCount"
+              ],
               "additionalProperties": false
             },
             "workPacket": {
               "type": "object",
               "properties": {
+                "packetId": {
+                  "type": "string"
+                },
                 "branchName": {
                   "type": "string"
                 },
@@ -85,14 +104,30 @@
                     "type": "string"
                   }
                 },
+                "estimatedTaskCount": {
+                  "type": "number"
+                },
                 "estimatedPullRequestCount": {
                   "type": "number"
+                },
+                "pullRequestTitle": {
+                  "type": "string"
+                },
+                "reviewFocus": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
                 }
               },
               "required": [
+                "packetId",
                 "branchName",
                 "taskIds",
-                "estimatedPullRequestCount"
+                "estimatedTaskCount",
+                "estimatedPullRequestCount",
+                "pullRequestTitle",
+                "reviewFocus"
               ],
               "additionalProperties": false
             }

@@ -12,24 +12,34 @@ export function buildSliceDependencyGraph(
   input: SlicePlan,
 ): SliceDependencyGraph {
   const blockedBy = uniqueTrimmed(input.dependsOn);
+  const sliceId = input.sliceId.trim();
   return {
-    sliceId: input.sliceId.trim(),
+    sliceId,
+    graphId: `${sliceId}:dependencies`,
+    generatedAt: new Date(input.updatedAt).toISOString(),
     edges: blockedBy.map((dependency) => ({
       fromSliceId: dependency,
-      toSliceId: input.sliceId.trim(),
+      toSliceId: sliceId,
     })),
     blockedBy,
+    dependencyCount: blockedBy.length,
   };
 }
 
 export function buildSliceWorkPacket(input: SlicePlan): SliceWorkPacket {
+  const sliceId = input.sliceId.trim();
   const taskIds = uniqueTrimmed(input.doneConditions).map(
-    (_condition, index) => `${input.sliceId.trim()}-task-${String(index + 1)}`,
+    (_condition, index) => `${sliceId}-task-${String(index + 1)}`,
   );
+  const reviewFocus = uniqueTrimmed(input.acceptanceCriteria);
   return {
-    branchName: `devplat/${input.sliceId.trim()}`,
+    packetId: `${sliceId}:work-packet`,
+    branchName: `devplat/${sliceId}`,
     taskIds,
+    estimatedTaskCount: taskIds.length,
     estimatedPullRequestCount: input.size === 'large' ? 2 : 1,
+    pullRequestTitle: `feat: implement ${input.title.trim()}`,
+    reviewFocus,
   };
 }
 
