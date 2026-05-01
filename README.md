@@ -14,6 +14,9 @@ DevPlat is a Discord-first autonomous software-delivery platform built as a stri
 ```mermaid
 flowchart TD
   Operator[Discord operator] --> OpenClaw[OpenClaw agent loop]
+  Operator --> Commands[Discord command contracts]
+  Commands --> DiscordGuild[Sandbox guild command registration]
+  DiscordGuild --> Approval
   OpenClaw --> Adapter["@vannadii/devplat-openclaw adapter"]
   Adapter --> Config[Repository runtime config]
   Adapter --> Supervisor[Supervisor lifecycle routing]

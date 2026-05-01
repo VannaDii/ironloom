@@ -100,11 +100,13 @@ Use them this way:
 Every message is labeled with the run metadata, so operators can correlate
 activity without per-run channel trees.
 
-The live lab also runs a Discord interaction probe. The probe simulates the
-operator `/retry-gates` path, routes it through the Discord control-plane
-service, posts the interaction acknowledgement into the audit channel, posts the
-bound-thread status into the implementation channel, and records both receipt
-endpoints in `live-lab-report.json`.
+The live lab also registers the exported Discord operator command contracts into
+the sandbox guild. After registration, it runs a Discord interaction probe. The
+probe simulates the operator `/retry-gates` path, routes it through the Discord
+control-plane service, posts the interaction acknowledgement into the audit
+channel, posts the bound-thread status into the implementation channel, and
+records both the command registration and response receipt endpoints in
+`live-lab-report.json`.
 
 ## Public Repo Safety Model
 

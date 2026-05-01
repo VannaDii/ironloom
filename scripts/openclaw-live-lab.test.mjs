@@ -22,6 +22,7 @@ import {
   createStatusMessage,
   mapProgressToChannel,
   parseLiveLabArgs,
+  registerDiscordApplicationCommands,
   resolveGitHubOwnerKind,
   runDiscordInteractionProbe,
   runLiveLab,
@@ -159,6 +160,75 @@ describe('openclaw-live-lab helpers', () => {
           [
             '/channels/implementation-1/messages',
             'DevPlat accepted retry-gates.',
+          ],
+        ]);
+      },
+    },
+    {
+      name: 'registers Discord application command contracts in the sandbox guild',
+      inputs: {
+        applicationId: 'app-1',
+        guildId: 'guild-1',
+      },
+      mock: async () => {
+        const discordCalls = [];
+        const discordRequest = async (path, options = {}) => {
+          discordCalls.push([path, options.method ?? 'GET', options.body]);
+          return [{ id: 'command-1', name: 'retry-gates' }];
+        };
+        const createDiscordApplicationCommandPayloads = async () => [
+          {
+            name: 'retry-gates',
+            description: 'Retry gates for this thread.',
+            type: 1,
+          },
+          {
+            name: 'show-status',
+            description: 'Show status for this thread.',
+            type: 1,
+          },
+        ];
+
+        return {
+          createDiscordApplicationCommandPayloads,
+          discordCalls,
+          discordRequest,
+        };
+      },
+      assert: async (context, inputs) => {
+        const result = await registerDiscordApplicationCommands(
+          {
+            applicationId: inputs.applicationId,
+            discordRequest: context.discordRequest,
+            guildId: inputs.guildId,
+          },
+          {
+            createDiscordApplicationCommandPayloads:
+              context.createDiscordApplicationCommandPayloads,
+          },
+        );
+
+        expect(result).toMatchObject({
+          count: 2,
+          endpoint: '/applications/app-1/guilds/guild-1/commands',
+          names: ['retry-gates', 'show-status'],
+        });
+        expect(context.discordCalls).toEqual([
+          [
+            '/applications/app-1/guilds/guild-1/commands',
+            'PUT',
+            [
+              {
+                name: 'retry-gates',
+                description: 'Retry gates for this thread.',
+                type: 1,
+              },
+              {
+                name: 'show-status',
+                description: 'Show status for this thread.',
+                type: 1,
+              },
+            ],
           ],
         ]);
       },
@@ -999,6 +1069,12 @@ describe('runLiveLab', () => {
           threadEndpoint: '/channels/implementation-1/messages',
           threadId: 'implementation-1',
         });
+        const registerDiscordApplicationCommandsMock = async () => ({
+          count: 14,
+          endpoint: '/applications/app-1/guilds/guild-1/commands',
+          names: ['run-this', 'retry-gates', 'show-status'],
+          responseBody: [],
+        });
 
         return {
           collectFixtureFiles: async () => fixtureFiles,
@@ -1008,6 +1084,7 @@ describe('runLiveLab', () => {
           githubCalls,
           githubRequest,
           reportDir,
+          registerDiscordApplicationCommandsMock,
           runDeepTestMock,
           runDiscordInteractionProbeMock,
           sonarCalls,
@@ -1032,6 +1109,8 @@ describe('runLiveLab', () => {
             collectFixtureFiles: context.collectFixtureFiles,
             discordRequest: context.discordRequest,
             githubRequest: context.githubRequest,
+            registerDiscordApplicationCommands:
+              context.registerDiscordApplicationCommandsMock,
             runDeepTest: context.runDeepTestMock,
             runDiscordInteractionProbe: context.runDiscordInteractionProbeMock,
             sonarRequest: context.sonarRequest,
@@ -1059,6 +1138,10 @@ describe('runLiveLab', () => {
           action: 'retry-gates',
           failedClosed: false,
           threadId: 'implementation-1',
+        });
+        expect(savedReport.discord.commandRegistration).toMatchObject({
+          count: 14,
+          endpoint: '/applications/app-1/guilds/guild-1/commands',
         });
         expect(context.githubCalls).toEqual(
           expect.arrayContaining([
@@ -1304,6 +1387,12 @@ describe('runLiveLab', () => {
           githubCalls,
           githubRequest,
           reportDir,
+          registerDiscordApplicationCommandsMock: async () => ({
+            count: 14,
+            endpoint: '/applications/app-1/guilds/guild-1/commands',
+            names: ['run-this', 'retry-gates', 'show-status'],
+            responseBody: [],
+          }),
           runDiscordInteractionProbeMock: async () => ({
             action: 'retry-gates',
             allowed: true,
@@ -1352,6 +1441,8 @@ describe('runLiveLab', () => {
             ],
             discordRequest: context.discordRequest,
             githubRequest: context.githubRequest,
+            registerDiscordApplicationCommands:
+              context.registerDiscordApplicationCommandsMock,
             runDeepTest: context.runDeepTestMock,
             runDiscordInteractionProbe: context.runDiscordInteractionProbeMock,
             sonarRequest: context.sonarRequest,
@@ -1548,6 +1639,12 @@ describe('runLiveLab', () => {
           },
           githubRequest,
           reportDir,
+          registerDiscordApplicationCommandsMock: async () => ({
+            count: 14,
+            endpoint: '/applications/app-1/guilds/guild-1/commands',
+            names: ['run-this', 'retry-gates', 'show-status'],
+            responseBody: [],
+          }),
           runDeepTestMock: async () => ({
             reportDirectory: resolve(reportDir, 'deep-test'),
             steps: [{ tool: 'resolve_runtime_config' }],
@@ -1618,6 +1715,8 @@ describe('runLiveLab', () => {
               ],
               discordRequest: context.discordRequest,
               githubRequest: context.githubRequest,
+              registerDiscordApplicationCommands:
+                context.registerDiscordApplicationCommandsMock,
               runDeepTest: context.runDeepTestMock,
               runDiscordInteractionProbe:
                 context.runDiscordInteractionProbeMock,
@@ -1862,6 +1961,12 @@ describe('runLiveLab', () => {
           githubCalls,
           githubRequest,
           reportDir,
+          registerDiscordApplicationCommandsMock: async () => ({
+            count: 14,
+            endpoint: '/applications/app-1/guilds/guild-1/commands',
+            names: ['run-this', 'retry-gates', 'show-status'],
+            responseBody: [],
+          }),
           runDeepTestMock: async () => {
             throw new Error('deep test failed');
           },
@@ -1885,6 +1990,8 @@ describe('runLiveLab', () => {
               ],
               discordRequest: context.discordRequest,
               githubRequest: context.githubRequest,
+              registerDiscordApplicationCommands:
+                context.registerDiscordApplicationCommandsMock,
               runDeepTest: context.runDeepTestMock,
               sonarRequest: context.sonarRequest,
             },
@@ -2099,6 +2206,12 @@ describe('runLiveLab', () => {
           githubCalls,
           githubRequest,
           reportDir,
+          registerDiscordApplicationCommandsMock: async () => ({
+            count: 14,
+            endpoint: '/applications/app-1/guilds/guild-1/commands',
+            names: ['run-this', 'retry-gates', 'show-status'],
+            responseBody: [],
+          }),
           runDeepTestMock: async () => {
             throw new Error('deep test failed');
           },
@@ -2122,6 +2235,8 @@ describe('runLiveLab', () => {
               ],
               discordRequest: context.discordRequest,
               githubRequest: context.githubRequest,
+              registerDiscordApplicationCommands:
+                context.registerDiscordApplicationCommandsMock,
               runDeepTest: context.runDeepTestMock,
               sonarRequest: context.sonarRequest,
             },

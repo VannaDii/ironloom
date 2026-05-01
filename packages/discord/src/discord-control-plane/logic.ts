@@ -1,5 +1,6 @@
 import { appendTrace } from '@vannadii/devplat-core';
 
+import { resolveDiscordCommandAction } from '../command-contract/logic.js';
 import type {
   DiscordControlAction,
   DiscordControlRequest,
@@ -23,6 +24,7 @@ const commandActionMap = new Map<string, DiscordControlAction>([
   ['merge now', 'merge-now'],
   ['merge-now', 'merge-now'],
   ['rebase dependents', 'rebase-all-dependents'],
+  ['rebase-dependents', 'rebase-all-dependents'],
   ['rebase-all-dependents', 'rebase-all-dependents'],
   ['sync worktree', 'sync-worktree'],
   ['sync-worktree', 'sync-worktree'],
@@ -52,9 +54,12 @@ function normalizeActionToken(value: string | undefined): string | undefined {
 function resolveAction(
   input: DiscordOperatorInteraction,
 ): DiscordControlAction | undefined {
-  const commandAction = commandActionMap.get(
-    normalizeActionToken(input.commandName) ?? '',
-  );
+  const normalizedCommand = normalizeActionToken(input.commandName);
+  const commandAction =
+    normalizedCommand === undefined
+      ? undefined
+      : (commandActionMap.get(normalizedCommand) ??
+        resolveDiscordCommandAction(normalizedCommand));
   const customAction = commandActionMap.get(
     normalizeActionToken(input.customId) ?? '',
   );

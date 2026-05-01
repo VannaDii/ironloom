@@ -222,6 +222,51 @@ describe('DiscordControlRequest logic', () => {
           }
         },
       },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-007',
+            token: 'token-7',
+            actorId: 'user-7',
+            channelId: 'channel-7',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'rebase-dependents',
+            boundThreadId: 'thread-7',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.action).toBe('rebase-all-dependents');
+            expect(route.request.threadId).toBe('thread-7');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-008',
+            token: 'token-8',
+            actorId: 'user-8',
+            channelId: 'channel-8',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'deploy-now',
+            boundThreadId: 'thread-8',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(false);
+          if (!route.ok) {
+            expect(route.reason).toContain('not recognized');
+          }
+        },
+      },
     ];
 
     for (const testCase of cases) {

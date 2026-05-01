@@ -7,15 +7,19 @@ Discord control plane workflows.
 This package owns Discord thread sessions, channel bindings, interactive approval requests, and operator control actions. Runtime behavior must resolve bound thread context and fail closed when a lifecycle-changing action is ambiguous.
 Slash command and button interactions are routed into control actions, must
 resolve exactly one bound thread, and post both interaction acknowledgements and
-thread status messages through the Discord REST transport. The live lab includes
-a simulated interaction probe so this response path is validated with
-operator-visible Discord messages, not only local unit tests.
+thread status messages through the Discord REST transport. The exported command
+contract registry is the source for guild slash-command registration. The live
+lab registers those commands and includes a simulated interaction probe so this
+response path is validated with operator-visible Discord messages, not only
+local unit tests.
 
 ## Real-World Flow
 
 ```mermaid
 flowchart LR
-  Command[Slash command or button] --> Binding[Resolve bound thread context]
+  Contract[Command contract registry] --> Register[Guild command registration]
+  Register --> Command[Slash command or button]
+  Command --> Binding[Resolve bound thread context]
   Binding -->|unambiguous| Policy[Policy evaluation]
   Binding -->|ambiguous| Deny[Fail closed response]
   Policy --> State[Persist state and telemetry]

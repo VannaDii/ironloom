@@ -143,6 +143,12 @@ export const schemaRegistry = [
   ],
   [
     'discord',
+    'command-contract',
+    'DiscordCommandContractRegistry',
+    'schemas/discord-command-contract-registry.schema.json',
+  ],
+  [
+    'discord',
     'discord-control-plane',
     'DiscordControlRequest',
     'schemas/discord-control-request.schema.json',

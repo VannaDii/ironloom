@@ -1201,6 +1201,37 @@ async function createDiscordControlPlaneService({
   );
 }
 
+async function createDiscordApplicationCommandPayloads() {
+  const discordModule = await import(
+    pathToFileURL(resolve(repoRootDirectory, 'packages/discord/dist/index.js'))
+      .href
+  );
+
+  return discordModule.createDiscordApplicationCommandPayloads();
+}
+
+export async function registerDiscordApplicationCommands(
+  { applicationId, discordRequest, guildId },
+  dependencies = {},
+) {
+  const payloadFactory =
+    dependencies.createDiscordApplicationCommandPayloads ??
+    createDiscordApplicationCommandPayloads;
+  const payloads = await payloadFactory();
+  const endpoint = `/applications/${encodeURIComponent(applicationId)}/guilds/${encodeURIComponent(guildId)}/commands`;
+  const responseBody = await discordRequest(endpoint, {
+    method: 'PUT',
+    body: payloads,
+  });
+
+  return {
+    endpoint,
+    count: payloads.length,
+    names: payloads.map((payload) => payload.name),
+    responseBody,
+  };
+}
+
 export async function runDiscordInteractionProbe(
   {
     discordChannels,
@@ -1486,6 +1517,9 @@ export async function runLiveLab(options, dependencies = {}) {
   const runDeepTestFn = dependencies.runDeepTest ?? runDeepTest;
   const runDiscordInteractionProbeFn =
     dependencies.runDiscordInteractionProbe ?? runDiscordInteractionProbe;
+  const registerDiscordApplicationCommandsFn =
+    dependencies.registerDiscordApplicationCommands ??
+    registerDiscordApplicationCommands;
   const writeTextFile = dependencies.writeTextFile ?? writeFile;
 
   const identifiers = createRunIdentifiers({
@@ -1554,6 +1588,12 @@ export async function runLiveLab(options, dependencies = {}) {
         ]),
       ),
     };
+    report.discord.commandRegistration =
+      await registerDiscordApplicationCommandsFn({
+        applicationId: options.environment.discord.applicationId,
+        discordRequest,
+        guildId: options.environment.discord.guildId,
+      });
 
     await postStatusSafe({
       channelId: discordChannels.channels.projectManagement.id,
