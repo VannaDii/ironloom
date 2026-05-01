@@ -1280,19 +1280,51 @@ describe('tool surface service', () => {
   });
 
   it('evaluates policy actions from valid tool input', async () => {
-    const result = await createEvaluatePolicyActionTool().execute(
-      'tool-call-pa1',
+    const cases = [
       {
-        action: 'merge-now',
-        privileged: false,
-      },
-    );
+        name: 'returns lifecycle policy metadata for merge requests',
+        inputs: {
+          params: {
+            action: 'merge-now',
+            privileged: false,
+          },
+        },
+        mock: () => undefined,
+        assert: async (
+          _context: undefined,
+          inputs: {
+            params: {
+              action: string;
+              privileged: boolean;
+            };
+          },
+        ) => {
+          const result = await createEvaluatePolicyActionTool().execute(
+            'tool-call-pa1',
+            inputs.params,
+          );
 
-    expect(result.details).toMatchObject({
-      action: 'merge-now',
-      allowed: false,
-      requiresApproval: true,
-    });
+          expect(result.details).toMatchObject({
+            action: 'merge-now',
+            actionCategory: 'merge',
+            allowed: false,
+            auditRequired: true,
+            escalationRequired: true,
+            escalationTarget: 'operator',
+            nextAction: 'request-merge-approval',
+            privileged: false,
+            requiresApproval: true,
+            riskLevel: 'high',
+          });
+          expect(result.details).toHaveProperty('auditReason');
+        },
+      },
+    ];
+
+    for (const testCase of cases) {
+      const context = testCase.mock();
+      await testCase.assert(context, testCase.inputs);
+    }
   });
 
   it('returns decode failures for invalid policy action input', async () => {

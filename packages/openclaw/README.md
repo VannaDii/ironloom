@@ -48,7 +48,8 @@ flowchart LR
 - `create_review_finding`: create a review finding artifact
 - `create_remediation_plan`: create a remediation plan artifact
 - `remember_memory_entry`: normalize and persist memory entry state
-- `evaluate_policy_action`: evaluate privileged action policy
+- `evaluate_policy_action`: evaluate lifecycle action policy with risk,
+  escalation, audit reason, privilege, and next-action metadata
 - `record_telemetry_event`: create telemetry records
 - `create_task_record`: create a queue task record
 - `claim_task`: claim a queued task

@@ -1021,7 +1021,7 @@ export function createEvaluatePolicyActionTool(): AnyAgentTool {
         );
       }
 
-      const decision = new DecisionPolicyService().evaluateControlAction(
+      const decision = new DecisionPolicyService().evaluateLifecycleAction(
         decoded.value.action,
         decoded.value.privileged,
       );

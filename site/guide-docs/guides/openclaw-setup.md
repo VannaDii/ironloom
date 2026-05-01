@@ -31,6 +31,10 @@ The runtime expects OpenClaw configuration through environment variables, mounte
 ## Tool Surface
 
 The adapter exposes research, specs, slicing, runtime config, artifacts, GitHub, Discord, SonarCloud, task queue, storage, worktrees, execution, policy, telemetry, and supervisor capabilities.
+The policy surface returns lifecycle evaluations with explicit action category,
+risk, escalation target, audit reason, privilege, and next-action metadata so
+OpenClaw callers do not need to infer merge, command, rebase, publish, autofix,
+or destructive cleanup handling.
 
 Required foundation-phase tool coverage includes:
 
