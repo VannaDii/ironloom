@@ -18,7 +18,7 @@
 ## Integration Packages
 
 - `@vannadii/devplat-storage`: the only package allowed to read or write `.devplat/` paths directly
-- `@vannadii/devplat-observability`: telemetry event recording
+- `@vannadii/devplat-observability`: telemetry event recording, audit records, run metrics, and run summaries
 - `@vannadii/devplat-github`: GitHub action request and workflow coordination contracts
 - `@vannadii/devplat-discord`: thread bindings, approvals, and Discord control handling
 - `@vannadii/devplat-sonarcloud`: Sonar bootstrap and quality gate interpretation

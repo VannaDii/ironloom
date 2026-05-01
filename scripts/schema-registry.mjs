@@ -118,6 +118,24 @@ export const schemaRegistry = [
     'schemas/telemetry-event.schema.json',
   ],
   [
+    'observability',
+    'telemetry-event',
+    'TelemetryAuditRecord',
+    'schemas/telemetry-audit-record.schema.json',
+  ],
+  [
+    'observability',
+    'telemetry-event',
+    'TelemetryRunMetrics',
+    'schemas/telemetry-run-metrics.schema.json',
+  ],
+  [
+    'observability',
+    'telemetry-event',
+    'TelemetryRunSummary',
+    'schemas/telemetry-run-summary.schema.json',
+  ],
+  [
     'github',
     'github-workflow',
     'GitHubActionRequest',
