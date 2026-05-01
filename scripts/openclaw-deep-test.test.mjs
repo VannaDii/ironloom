@@ -312,8 +312,8 @@ describe('runDeepTest', () => {
         temporaryRoots.push(reportDirectory);
 
         const invocations = [];
-        const commandRunner = async (command, args) => {
-          invocations.push([command, ...args]);
+        const commandRunner = async (command, args, options = {}) => {
+          invocations.push({ args, command, options });
           if (args[0] === 'build') {
             return { stdout: '', stderr: '' };
           }
@@ -413,10 +413,27 @@ describe('runDeepTest', () => {
         expect(runtimeTempStats.isDirectory()).toBe(true);
         expect(context.invocations).toEqual(
           expect.arrayContaining([
-            expect.arrayContaining(['docker', 'build']),
-            expect.arrayContaining(['docker', 'run']),
-            expect.arrayContaining(['docker', 'rm']),
-            expect.arrayContaining(['docker', 'image', 'rm', '-f']),
+            expect.objectContaining({
+              args: expect.arrayContaining(['build']),
+              command: 'docker',
+            }),
+            expect.objectContaining({
+              args: expect.arrayContaining(['run', '-e', 'DISCORD_BOT_TOKEN']),
+              command: 'docker',
+              options: expect.objectContaining({
+                env: expect.objectContaining({
+                  DISCORD_BOT_TOKEN: 'bot-secret',
+                }),
+              }),
+            }),
+            expect.objectContaining({
+              args: expect.arrayContaining(['rm']),
+              command: 'docker',
+            }),
+            expect.objectContaining({
+              args: expect.arrayContaining(['image', 'rm', '-f']),
+              command: 'docker',
+            }),
           ]),
         );
       },

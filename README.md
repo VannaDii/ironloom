@@ -100,6 +100,15 @@ URLs, empty required paths, invalid deployment targets, and invalid gateway
 ports. The storage package remains the only package that directly reads or
 writes the committed runtime state directory.
 
+The live lab registers Discord operator commands in the sandbox guild and records
+callback-shaped interaction evidence in its report, including response endpoints,
+Discord message ids, posted content, and component custom ids. Human-triggered
+Discord client clicks remain a manual sandbox-guild acceptance check because
+Discord does not expose a supported bot API for clicking buttons as a user.
+Live-lab runtime containers receive the same repo-scoped Discord/OpenClaw/Sonar
+environment through Docker env-name pass-through while report artifacts keep
+secret values redacted.
+
 Public contract schemas are generated from exported `io-ts` codecs. For
 codec-owned lifecycle records, derive TypeScript types from those codecs rather
 than duplicating interface shapes, then run `npm run generate:schemas` and

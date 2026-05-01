@@ -185,12 +185,18 @@ describe('openclaw-live-lab helpers', () => {
         expect(result).toMatchObject({
           action: 'retry-gates',
           allowed: true,
+          componentCustomIds: ['devplat:v1:show-status:implementation-1'],
           componentRows: 1,
           commandName: 'retry-gates',
           failedClosed: false,
+          interactionMessageId: 'message-1',
           interactionEndpoint:
             '/interactions/live-lab-200-1-retry-gates/simulated-token-200-1/callback',
+          responseContent:
+            'simulated interaction callback: DevPlat accepted retry-gates.',
+          threadContent: 'DevPlat accepted retry-gates.',
           threadEndpoint: '/channels/implementation-1/messages',
+          threadMessageId: 'message-2',
         });
         expect(context.serviceCalls[0]).toMatchObject({
           actorId: 'live-lab-operator',

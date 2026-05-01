@@ -35,6 +35,10 @@ const livePrefix = 'devplat-test-';
  * Shared Discord category used by live-lab and OpenClaw test runs.
  */
 const testDiscordCategoryName = 'test';
+/**
+ * Discord component wire field for the developer-defined interaction id.
+ */
+const discordComponentCustomIdField = 'custom_id';
 const liveLabGitHubAppPermissions = Object.freeze({
   actions: 'write',
   administration: 'write',
@@ -1180,11 +1184,20 @@ function prefixDiscordMessageContent(prefix, payload) {
  * Posts a Discord message body without dropping structured components.
  */
 async function sendDiscordMessage(channelId, payload, discordRequest) {
-  return discordRequest(`/channels/${encodeURIComponent(channelId)}/messages`, {
-    body: createDiscordMessageBody(payload),
-    expectedStatuses: [200, 201],
-    method: 'POST',
-  });
+  const body = createDiscordMessageBody(payload);
+  const responseBody = await discordRequest(
+    `/channels/${encodeURIComponent(channelId)}/messages`,
+    {
+      body,
+      expectedStatuses: [200, 201],
+      method: 'POST',
+    },
+  );
+
+  return {
+    body,
+    responseBody,
+  };
 }
 
 /**
@@ -1197,6 +1210,52 @@ function hasDiscordActionComponents(payload) {
       (row) => Array.isArray(row?.components) && row.components.length > 0,
     )
   );
+}
+
+/**
+ * Collects actionable Discord component identifiers from a structured payload.
+ */
+function collectDiscordComponentCustomIds(payload) {
+  if (!Array.isArray(payload?.components)) {
+    return [];
+  }
+
+  return payload.components.flatMap((row) => {
+    if (!Array.isArray(row?.components)) {
+      return [];
+    }
+
+    return row.components.flatMap((component) => {
+      const customId = component?.[discordComponentCustomIdField];
+
+      return typeof customId === 'string' ? [customId] : [];
+    });
+  });
+}
+
+/**
+ * Reads the Discord message id returned by the transport receipt.
+ */
+function readDiscordReceiptMessageId(receipt) {
+  const messageId = receipt?.responseBody?.id;
+
+  return typeof messageId === 'string' ? messageId : null;
+}
+
+/**
+ * Reads the visible Discord message content from a structured payload.
+ */
+function readDiscordPayloadContent(payload) {
+  const content = payload?.content;
+
+  return typeof content === 'string' ? content : null;
+}
+
+/**
+ * Reads the visible Discord message content from the posted receipt body.
+ */
+function readDiscordReceiptContent(receipt) {
+  return readDiscordPayloadContent(receipt?.body);
 }
 
 async function postStatus({
@@ -1245,46 +1304,49 @@ class LiveLabDiscordInteractionTransport {
 
   async postInteractionResponse(input, content) {
     const endpoint = `/interactions/${encodeURIComponent(input.id)}/${encodeURIComponent(input.token)}/callback`;
-    const responseBody = await sendDiscordMessage(
+    const receipt = await sendDiscordMessage(
       this.auditChannelId,
       prefixDiscordMessageContent('simulated interaction callback: ', content),
       this.discordRequest,
     );
 
     return {
+      body: receipt.body,
       endpoint,
+      responseBody: receipt.responseBody,
       statusCode: 201,
-      responseBody,
     };
   }
 
   async postInteractionDeferred(input) {
     const endpoint = `/interactions/${encodeURIComponent(input.id)}/${encodeURIComponent(input.token)}/callback`;
-    const responseBody = await sendDiscordMessage(
+    const receipt = await sendDiscordMessage(
       this.auditChannelId,
       `simulated interaction deferred: ${input.id}`,
       this.discordRequest,
     );
 
     return {
+      body: receipt.body,
       endpoint,
+      responseBody: receipt.responseBody,
       statusCode: 201,
-      responseBody,
     };
   }
 
   async postThreadMessage(threadId, content) {
     const endpoint = `/channels/${encodeURIComponent(threadId)}/messages`;
-    const responseBody = await sendDiscordMessage(
+    const receipt = await sendDiscordMessage(
       threadId,
       content,
       this.discordRequest,
     );
 
     return {
+      body: receipt.body,
       endpoint,
+      responseBody: receipt.responseBody,
       statusCode: 201,
-      responseBody,
     };
   }
 }
@@ -1449,13 +1511,18 @@ export async function runDiscordInteractionProbe(
   return {
     action: result.request.action,
     allowed: result.allowed,
+    componentCustomIds: collectDiscordComponentCustomIds(result.threadPayload),
     componentRows: result.threadPayload.components.length,
     commandName: interaction.commandName,
     failedClosed: result.failedClosed,
     interactionEndpoint: result.responseReceipt.endpoint,
+    interactionMessageId: readDiscordReceiptMessageId(result.responseReceipt),
     policyDecisionId: result.policyDecisionId,
+    responseContent: readDiscordReceiptContent(result.responseReceipt),
+    threadContent: readDiscordReceiptContent(result.threadReceipt),
     threadEndpoint: result.threadReceipt.endpoint,
     threadId: result.request.threadId,
+    threadMessageId: readDiscordReceiptMessageId(result.threadReceipt),
     workItem: result.workItem ?? null,
   };
 }

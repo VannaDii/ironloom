@@ -262,8 +262,12 @@ export function buildDockerRunArgs({
   devplatStateDirectory,
   imageTag,
   mode,
+  runtimeEnv = {},
   runtimeDirectory,
 }) {
+  const runtimeEnvArgs = Object.keys(runtimeEnv)
+    .sort()
+    .flatMap((key) => ['-e', key]);
   const args = [
     'run',
     '-d',
@@ -283,6 +287,7 @@ export function buildDockerRunArgs({
     'TMPDIR=/state/tmp',
     '-e',
     `DEVPLAT_TEST_MODE=${mode}`,
+    ...runtimeEnvArgs,
     '-v',
     `${runtimeDirectory}:/state`,
     '-v',
@@ -1561,10 +1566,12 @@ export async function runDeepTest(options, dependencies = {}) {
         devplatStateDirectory,
         imageTag,
         mode: options.mode,
+        runtimeEnv,
         runtimeDirectory,
       }),
       {
         cwd: repoRootDirectory,
+        env: runtimeEnv,
       },
     );
     containerStarted = true;

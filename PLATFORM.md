@@ -169,7 +169,7 @@ the package responsibilities below. Current completion work focuses on:
 - `@vannadii/devplat-observability`: current code covers telemetry events, audit records, run metrics, run summaries, and persisted audit/telemetry evidence.
 - `@vannadii/devplat-github`: current code covers GitHub action requests, policy-aware submission semantics, concrete REST request submission for PR create/update/comment/merge and branch sync, normalized repository state, normalized pull request state, and issue/spec/PR link contracts.
 - `@vannadii/devplat-openclaw`: current code covers deterministic plugin config, broad tool validation, adapter delegation, lifecycle policy evaluation output with action category, risk, escalation target, audit reason, privilege, and next-action metadata, Discord control handling for both normalized control requests and operator interaction callbacks, and hermetic deep-test coverage of callback-shaped Discord interactions through the loopback response transport; remaining gap is keeping tool inventory and handler depth aligned with the intended end-to-end platform surface as package behavior becomes more concrete.
-- `@vannadii/devplat-discord`: current code covers thread-aware bindings, approvals, expanded operator actions, explicit `pull-request` thread sessions, codec-backed slash command contracts, raw Discord callback normalization, signature-verified interaction webhook handling, Discord ping responses, live-lab guild command registration, slash/button interaction routing, fail-closed thread ambiguity handling, typed bound work-item projection from Discord thread sessions, REST response posting that names the resolved work item, and a live-lab interaction probe that routes a callback-shaped operator command through the Discord response path while failing if callback/thread receipts are missing, the bound thread is wrong, or actionable button components are dropped; remaining gap is operator-triggered slash/button invocation in the sandbox guild instead of a signed or callback-shaped probe.
+- `@vannadii/devplat-discord`: current code covers thread-aware bindings, approvals, expanded operator actions, explicit `pull-request` thread sessions, codec-backed slash command contracts, raw Discord callback normalization, signature-verified interaction webhook handling, Discord ping responses, live-lab guild command registration, slash/button interaction routing, fail-closed thread ambiguity handling, typed bound work-item projection from Discord thread sessions, REST response posting that names the resolved work item, and a live-lab interaction probe that routes a callback-shaped operator command through the Discord response path while failing if callback/thread receipts are missing, the bound thread is wrong, actionable button components are dropped, or component custom ids and message receipt ids are not recorded; remaining gap is human operator-triggered slash/button invocation in the sandbox guild because Discord does not provide a supported bot API for clicking buttons as a user.
 - `@vannadii/devplat-policy`: current code covers privileged-action decisions, explicit approval requirements, lifecycle action categories for merge, command execution, worktree release, rebase, publish, autofix, and destructive cleanup, risk levels, escalation targets, next-action hints, and audit reasons.
 - `@vannadii/devplat-storage`: current code covers filesystem-backed record storage under `.devplat`, explicit layout contracts, and active thread/task/PR/branch/artifact indexes.
 
@@ -496,7 +496,8 @@ This phase is complete when:
   records for accepted, blocked, and refused interactions
 - the dispatchable live lab registers Discord command contracts and records
   Discord interaction-response probing through operator-visible Discord messages
-  with actionable button components preserved
+  with actionable button components, component custom ids, posted content, and
+  Discord message receipt ids preserved
 - the Discord package exposes a reusable signature-verified interaction webhook
   handler that production can mount for real slash/button callbacks
 - docs are sufficient for operators and contributors to install and use the platform without private guidance
@@ -519,7 +520,7 @@ Live-lab acceptance must also verify the Discord interactive UX path directly:
 1. register or simulate a Discord slash/button interaction
 2. route it through the Discord control-plane service
 3. post an interaction acknowledgement and bound-thread status through the Discord response transport
-4. record callback and thread-message receipts in the live-lab report
+4. record callback and thread-message receipts, message ids, posted content, and component custom ids in the live-lab report
 5. fail the live lab if the interaction fails closed, does not resolve to one bound thread, or drops actionable controls
 
 ## Implementation Phases
