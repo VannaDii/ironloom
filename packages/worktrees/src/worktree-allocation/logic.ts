@@ -2,6 +2,7 @@ import { appendTrace } from '@vannadii/devplat-core';
 
 import type {
   WorktreeAllocation,
+  WorktreeBranchSafetyCheck,
   WorktreeReleaseMode,
   WorktreeReleaseResult,
   WorktreeSyncMode,
@@ -12,21 +13,155 @@ function trimWorktreeValue(value: string): string {
   return value.trim();
 }
 
+const unsafeGitRefCharacters = ['~', '^', ':', '?', '*', '[', ']', '\\'];
+
+function createSafetyCheck(input: {
+  branchName: string;
+  normalizedBranchName: string;
+  reason: string;
+  nextAction: string;
+  safe: boolean;
+}): WorktreeBranchSafetyCheck {
+  return {
+    status: input.safe ? 'safe' : 'blocked',
+    branchName: input.branchName,
+    normalizedBranchName: input.normalizedBranchName,
+    reason: input.reason,
+    nextAction: input.nextAction,
+  };
+}
+
+function hasUnsafeGitRefCharacter(branchName: string): boolean {
+  for (const character of branchName) {
+    const codePoint = character.codePointAt(0);
+    if (
+      character.trim().length === 0 ||
+      unsafeGitRefCharacters.includes(character) ||
+      codePoint === undefined ||
+      codePoint < 32 ||
+      codePoint === 127
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function findUnsafeGitRefReason(branchName: string): string {
+  if (branchName.length === 0) {
+    return 'Branch name must not be empty.';
+  }
+
+  if (branchName === '@') {
+    return 'Branch name must not be a bare @ ref.';
+  }
+
+  if (branchName.startsWith('-')) {
+    return 'Branch name must not start with a dash.';
+  }
+
+  if (branchName.startsWith('/') || branchName.endsWith('/')) {
+    return 'Branch name must not start or end with a slash.';
+  }
+
+  if (branchName.includes('//')) {
+    return 'Branch name must not contain empty path segments.';
+  }
+
+  if (branchName.includes('..')) {
+    return 'Branch name must not contain parent-directory segments.';
+  }
+
+  if (branchName.includes('@{')) {
+    return 'Branch name must not contain git reflog syntax.';
+  }
+
+  if (branchName.endsWith('.')) {
+    return 'Branch name must not end with a dot.';
+  }
+
+  const segments = branchName.split('/');
+  if (segments.some((segment) => segment.startsWith('.'))) {
+    return 'Branch path segments must not start with a dot.';
+  }
+
+  if (segments.some((segment) => segment.endsWith('.lock'))) {
+    return 'Branch path segments must not end with .lock.';
+  }
+
+  if (hasUnsafeGitRefCharacter(branchName)) {
+    return 'Branch name contains characters that are unsafe for git refs.';
+  }
+
+  return '';
+}
+
+export function evaluateWorktreeBranchSafety(
+  branchName: string,
+): WorktreeBranchSafetyCheck {
+  const normalizedBranchName = trimWorktreeValue(branchName);
+  const unsafeReason = findUnsafeGitRefReason(normalizedBranchName);
+
+  return createSafetyCheck({
+    branchName,
+    normalizedBranchName,
+    reason: unsafeReason || 'Branch name is safe for git worktree operations.',
+    nextAction:
+      unsafeReason.length === 0
+        ? 'allocate-worktree'
+        : 'choose-a-safe-branch-name',
+    safe: unsafeReason.length === 0,
+  });
+}
+
+function createBlockedWorktreePath(
+  worktreeRoot: string,
+  taskId: string,
+): string {
+  return `${worktreeRoot}/blocked/${taskId}`;
+}
+
+function inferWorktreeRoot(worktreePath: string, branchName: string): string {
+  const normalizedWorktreePath = trimWorktreeValue(worktreePath);
+  const blockedMarker = '/blocked/';
+  const blockedMarkerIndex = normalizedWorktreePath.indexOf(blockedMarker);
+  if (blockedMarkerIndex >= 0) {
+    return normalizedWorktreePath.slice(0, blockedMarkerIndex);
+  }
+
+  const branchSuffix = `/${branchName}`;
+  if (branchName.length > 0 && normalizedWorktreePath.endsWith(branchSuffix)) {
+    return normalizedWorktreePath.slice(0, -branchSuffix.length);
+  }
+
+  return normalizedWorktreePath;
+}
+
 export function createWorktreeAllocation(
   input: WorktreeAllocation,
 ): WorktreeAllocation {
   const taskId = trimWorktreeValue(input.taskId);
-  const branchName = trimWorktreeValue(input.branchName);
-  const worktreePath = trimWorktreeValue(input.worktreePath);
+  const branchSafety = evaluateWorktreeBranchSafety(input.branchName);
+  const branchName = branchSafety.normalizedBranchName;
+  const worktreePath =
+    branchSafety.status === 'safe'
+      ? trimWorktreeValue(input.worktreePath)
+      : createBlockedWorktreePath(
+          inferWorktreeRoot(input.worktreePath, branchName),
+          taskId,
+        );
 
   return appendTrace(
     {
       ...input,
       summary: input.summary.trim(),
+      status: branchSafety.status === 'safe' ? input.status : 'blocked',
       updatedAt: new Date(input.updatedAt).toISOString(),
       taskId,
       branchName,
       worktreePath,
+      branchSafety,
     },
     `worktree:${taskId}:${branchName}`,
   );
@@ -40,16 +175,22 @@ export function allocateWorktree(
   const normalizedTaskId = trimWorktreeValue(taskId);
   const normalizedBranchName = trimWorktreeValue(branchName);
   const normalizedWorktreeRoot = trimWorktreeValue(worktreeRoot);
+  const branchSafety = evaluateWorktreeBranchSafety(normalizedBranchName);
+  const safeWorktreePath =
+    branchSafety.status === 'safe'
+      ? `${normalizedWorktreeRoot}/${normalizedBranchName}`
+      : createBlockedWorktreePath(normalizedWorktreeRoot, normalizedTaskId);
 
   return createWorktreeAllocation({
     id: `worktree-${normalizedTaskId}`,
     summary: `Allocated worktree for ${normalizedTaskId}`,
-    status: 'approved',
+    status: branchSafety.status === 'safe' ? 'approved' : 'blocked',
     trace: [],
     updatedAt: new Date().toISOString(),
     taskId: normalizedTaskId,
     branchName: normalizedBranchName,
-    worktreePath: `${normalizedWorktreeRoot}/${normalizedBranchName}`,
+    worktreePath: safeWorktreePath,
+    branchSafety,
   });
 }
 
@@ -72,6 +213,9 @@ export function createWorktreeSyncResult(
       taskId,
       branchName,
       worktreePath: trimWorktreeValue(input.worktreePath),
+      ...(input.branchSafety === undefined
+        ? {}
+        : { branchSafety: input.branchSafety }),
     },
     `worktree:sync:${taskId}:${branchName}:${input.syncMode}`,
   );
@@ -83,11 +227,12 @@ export function syncWorktree(
   syncMode: WorktreeSyncMode = 'rebase',
 ): WorktreeSyncResult {
   const normalized = createWorktreeAllocation(allocation);
-
-  return createWorktreeSyncResult({
+  const branchSafety = evaluateWorktreeBranchSafety(normalized.branchName);
+  const safe = branchSafety.status === 'safe';
+  const input: WorktreeSyncResult = {
     id: `${normalized.id}:sync:${syncMode}`,
     summary: `Synced worktree for ${normalized.branchName}`,
-    status: 'complete',
+    status: safe ? 'complete' : 'blocked',
     trace: [...normalized.trace],
     updatedAt: new Date().toISOString(),
     taskId: normalized.taskId,
@@ -95,8 +240,13 @@ export function syncWorktree(
     worktreePath: normalized.worktreePath,
     baseBranch,
     syncMode,
-    changed: true,
+    changed: safe,
     conflictsDetected: false,
+  };
+
+  return createWorktreeSyncResult({
+    ...input,
+    branchSafety,
   });
 }
 
@@ -114,6 +264,9 @@ export function createWorktreeReleaseResult(
       taskId,
       branchName,
       worktreePath: trimWorktreeValue(input.worktreePath),
+      ...(input.branchSafety === undefined
+        ? {}
+        : { branchSafety: input.branchSafety }),
     },
     `worktree:release:${taskId}:${branchName}:${input.releaseMode}`,
   );
@@ -124,8 +277,8 @@ export function releaseWorktree(
   releaseMode: WorktreeReleaseMode = 'archive',
 ): WorktreeReleaseResult {
   const normalized = createWorktreeAllocation(allocation);
-
-  return createWorktreeReleaseResult({
+  const branchSafety = evaluateWorktreeBranchSafety(normalized.branchName);
+  const input: WorktreeReleaseResult = {
     id: `${normalized.id}:release:${releaseMode}`,
     summary: `Released worktree for ${normalized.branchName}`,
     status: 'complete',
@@ -136,5 +289,10 @@ export function releaseWorktree(
     worktreePath: normalized.worktreePath,
     releaseMode,
     released: true,
+  };
+
+  return createWorktreeReleaseResult({
+    ...input,
+    branchSafety,
   });
 }

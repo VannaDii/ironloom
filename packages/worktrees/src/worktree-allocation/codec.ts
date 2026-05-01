@@ -12,44 +12,72 @@ export const WorktreeReleaseModeCodec = t.union([
   t.literal('delete'),
 ]);
 
-export const WorktreeAllocationCodec = t.type({
-  id: t.string,
-  summary: t.string,
-  status: LifecycleStatusCodec,
-  trace: t.array(t.string),
-  updatedAt: t.string,
-  taskId: t.string,
+export const WorktreeBranchSafetyStatusCodec = t.union([
+  t.literal('safe'),
+  t.literal('blocked'),
+]);
+
+export const WorktreeBranchSafetyCheckCodec = t.type({
+  status: WorktreeBranchSafetyStatusCodec,
   branchName: t.string,
-  worktreePath: t.string,
+  normalizedBranchName: t.string,
+  reason: t.string,
+  nextAction: t.string,
 });
 
-export const WorktreeSyncResultCodec = t.type({
-  id: t.string,
-  summary: t.string,
-  status: LifecycleStatusCodec,
-  trace: t.array(t.string),
-  updatedAt: t.string,
-  taskId: t.string,
-  branchName: t.string,
-  worktreePath: t.string,
-  baseBranch: t.string,
-  syncMode: WorktreeSyncModeCodec,
-  changed: t.boolean,
-  conflictsDetected: t.boolean,
-});
+export const WorktreeAllocationCodec = t.intersection([
+  t.type({
+    id: t.string,
+    summary: t.string,
+    status: LifecycleStatusCodec,
+    trace: t.array(t.string),
+    updatedAt: t.string,
+    taskId: t.string,
+    branchName: t.string,
+    worktreePath: t.string,
+  }),
+  t.partial({
+    branchSafety: WorktreeBranchSafetyCheckCodec,
+  }),
+]);
 
-export const WorktreeReleaseResultCodec = t.type({
-  id: t.string,
-  summary: t.string,
-  status: LifecycleStatusCodec,
-  trace: t.array(t.string),
-  updatedAt: t.string,
-  taskId: t.string,
-  branchName: t.string,
-  worktreePath: t.string,
-  releaseMode: WorktreeReleaseModeCodec,
-  released: t.boolean,
-});
+export const WorktreeSyncResultCodec = t.intersection([
+  t.type({
+    id: t.string,
+    summary: t.string,
+    status: LifecycleStatusCodec,
+    trace: t.array(t.string),
+    updatedAt: t.string,
+    taskId: t.string,
+    branchName: t.string,
+    worktreePath: t.string,
+    baseBranch: t.string,
+    syncMode: WorktreeSyncModeCodec,
+    changed: t.boolean,
+    conflictsDetected: t.boolean,
+  }),
+  t.partial({
+    branchSafety: WorktreeBranchSafetyCheckCodec,
+  }),
+]);
+
+export const WorktreeReleaseResultCodec = t.intersection([
+  t.type({
+    id: t.string,
+    summary: t.string,
+    status: LifecycleStatusCodec,
+    trace: t.array(t.string),
+    updatedAt: t.string,
+    taskId: t.string,
+    branchName: t.string,
+    worktreePath: t.string,
+    releaseMode: WorktreeReleaseModeCodec,
+    released: t.boolean,
+  }),
+  t.partial({
+    branchSafety: WorktreeBranchSafetyCheckCodec,
+  }),
+]);
 
 export const WorktreeGitCommandResultCodec = t.type({
   command: t.string,

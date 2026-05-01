@@ -2,6 +2,8 @@ import type * as t from 'io-ts';
 
 import type {
   WorktreeAllocationCodec,
+  WorktreeBranchSafetyCheckCodec,
+  WorktreeBranchSafetyStatusCodec,
   WorktreeGitCommandResultCodec,
   WorktreeReleaseModeCodec,
   WorktreeReleaseResultCodec,
@@ -10,6 +12,14 @@ import type {
 } from './codec.js';
 
 export type WorktreeAllocation = t.TypeOf<typeof WorktreeAllocationCodec>;
+
+export type WorktreeBranchSafetyStatus = t.TypeOf<
+  typeof WorktreeBranchSafetyStatusCodec
+>;
+
+export type WorktreeBranchSafetyCheck = t.TypeOf<
+  typeof WorktreeBranchSafetyCheckCodec
+>;
 
 export type WorktreeSyncMode = t.TypeOf<typeof WorktreeSyncModeCodec>;
 

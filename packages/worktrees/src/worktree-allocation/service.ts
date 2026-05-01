@@ -74,7 +74,7 @@ export class WorktreeAllocationService {
   }
 
   public allocate(taskId: string, branchName: string): WorktreeAllocation {
-    return allocateWorktree(taskId, branchName);
+    return allocateWorktree(taskId, branchName, this.worktreeRoot);
   }
 
   public async allocateOnDisk(
@@ -83,6 +83,13 @@ export class WorktreeAllocationService {
     baseBranch = 'main',
   ): Promise<WorktreeAllocation> {
     const allocation = allocateWorktree(taskId, branchName, this.worktreeRoot);
+    if (allocation.branchSafety?.status === 'blocked') {
+      return createWorktreeAllocation({
+        ...allocation,
+        trace: [...allocation.trace, 'git:worktree:add:blocked'],
+      });
+    }
+
     const result = await this.runner.run(
       'git',
       [
@@ -120,6 +127,24 @@ export class WorktreeAllocationService {
     syncMode: WorktreeSyncMode = 'rebase',
   ): Promise<WorktreeSyncResult> {
     const normalized = createWorktreeAllocation(allocation);
+    if (normalized.branchSafety?.status === 'blocked') {
+      return createWorktreeSyncResult({
+        id: `${normalized.id}:sync:${syncMode}`,
+        summary: `Blocked worktree sync for ${normalized.branchName}`,
+        status: 'blocked',
+        trace: [...normalized.trace, 'git:sync:blocked'],
+        updatedAt: new Date().toISOString(),
+        taskId: normalized.taskId,
+        branchName: normalized.branchName,
+        worktreePath: normalized.worktreePath,
+        baseBranch,
+        syncMode,
+        changed: false,
+        conflictsDetected: false,
+        branchSafety: normalized.branchSafety,
+      });
+    }
+
     const fetchResult = await this.runner.run(
       'git',
       ['fetch', 'origin', baseBranch],
@@ -168,6 +193,22 @@ export class WorktreeAllocationService {
     releaseMode: WorktreeReleaseMode = 'archive',
   ): Promise<WorktreeReleaseResult> {
     const normalized = createWorktreeAllocation(allocation);
+    if (normalized.branchSafety?.status === 'blocked') {
+      return createWorktreeReleaseResult({
+        id: `${normalized.id}:release:${releaseMode}`,
+        summary: `Blocked worktree release for ${normalized.branchName}`,
+        status: 'blocked',
+        trace: [...normalized.trace, 'git:release:blocked'],
+        updatedAt: new Date().toISOString(),
+        taskId: normalized.taskId,
+        branchName: normalized.branchName,
+        worktreePath: normalized.worktreePath,
+        releaseMode,
+        released: false,
+        branchSafety: normalized.branchSafety,
+      });
+    }
+
     const result =
       releaseMode === 'delete'
         ? await this.runner.run(

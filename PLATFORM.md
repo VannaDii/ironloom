@@ -155,7 +155,7 @@ the package responsibilities below. Current completion work focuses on:
 - `@vannadii/devplat-specs`: current code covers spec records, approval, explicit revision metadata, source artifact references, and PR-ready spec rendering with metadata, criteria, sources, and revision history.
 - `@vannadii/devplat-slicing`: current code covers slice plans, readiness checks, explicit dependency-graph artifacts, and PR-sized work packets with task counts, PR title hints, and review focus.
 - `@vannadii/devplat-queue`: current code covers task creation, claim, lifecycle updates, release/resume transitions, and explicit transition-event history.
-- `@vannadii/devplat-worktrees`: current code covers pure allocation/sync/release records plus Git-backed worktree add, fetch/rebase or fast-forward sync, and archive/delete release methods; remaining gap is deeper branch-safety validation.
+- `@vannadii/devplat-worktrees`: current code covers pure allocation/sync/release records, branch safety checks with fail-closed Git execution, Git-backed worktree add, fetch/rebase or fast-forward sync, and archive/delete release methods.
 - `@vannadii/devplat-execution`: current code covers structured subprocess execution, timeouts, retry policy, truncation policy, and retry outcome contracts.
 - `@vannadii/devplat-gates`: current code covers gate execution, reports, failure classification, and next-action hints; remaining gap is deeper remediation hook orchestration.
 - `@vannadii/devplat-sonarcloud`: current code covers bootstrap verification and quality gate interpretation; remaining gap is fuller issue normalization into review/remediation inputs.
