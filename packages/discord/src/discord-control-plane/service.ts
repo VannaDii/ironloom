@@ -5,6 +5,7 @@ import { FileStoreService } from '@vannadii/devplat-storage';
 import {
   createDiscordControlRequest,
   createDiscordControlRequestFromInteraction,
+  describeDiscordWorkItemBinding,
   describeDiscordControlRequest,
 } from './logic.js';
 import type {
@@ -13,6 +14,15 @@ import type {
   DiscordOperatorInteraction,
   DiscordResponseReceipt,
 } from './types.js';
+
+function createDiscordActionMessage(
+  prefix: string,
+  request: DiscordControlRequest,
+): string {
+  return request.workItem === undefined
+    ? `${prefix} ${request.action}.`
+    : `${prefix} ${request.action} for ${describeDiscordWorkItemBinding(request.workItem)}.`;
+}
 
 export interface DiscordControlResponseTransport {
   postInteractionResponse(
@@ -111,6 +121,22 @@ export class DiscordControlPlaneService {
       request.privileged,
     );
 
+    const payload =
+      request.workItem === undefined
+        ? {
+            threadId: request.threadId,
+            channelId: request.channelId,
+            action: request.action,
+            policyDecisionId: decision.id,
+          }
+        : {
+            threadId: request.threadId,
+            channelId: request.channelId,
+            action: request.action,
+            policyDecisionId: decision.id,
+            workItem: request.workItem,
+          };
+
     await this.store.store({
       id: request.id,
       key: request.id,
@@ -119,13 +145,24 @@ export class DiscordControlPlaneService {
       status: decision.allowed ? 'approved' : 'review',
       trace: [...request.trace, ...decision.trace],
       updatedAt: request.updatedAt,
-      payload: {
-        threadId: request.threadId,
-        channelId: request.channelId,
-        action: request.action,
-        policyDecisionId: decision.id,
-      },
+      payload,
     });
+
+    const details =
+      request.workItem === undefined
+        ? {
+            threadId: request.threadId,
+            channelId: request.channelId,
+            policyDecisionId: decision.id,
+            allowed: decision.allowed,
+          }
+        : {
+            threadId: request.threadId,
+            channelId: request.channelId,
+            policyDecisionId: decision.id,
+            allowed: decision.allowed,
+            workItem: request.workItem,
+          };
 
     await this.telemetry.record({
       id: request.id,
@@ -136,21 +173,23 @@ export class DiscordControlPlaneService {
       actorId: request.actorId,
       action: request.action,
       scope: 'discord',
-      details: {
-        threadId: request.threadId,
-        channelId: request.channelId,
-        policyDecisionId: decision.id,
-        allowed: decision.allowed,
-      },
+      details,
     });
 
-    return {
+    const result = {
       request,
       policyDecisionId: decision.id,
       allowed: decision.allowed,
       persistedKey: request.id,
       failedClosed: false,
     };
+
+    return request.workItem === undefined
+      ? result
+      : {
+          ...result,
+          workItem: request.workItem,
+        };
   }
 
   public async handleInteraction(
@@ -189,14 +228,14 @@ export class DiscordControlPlaneService {
     const responseReceipt = await this.responses.postInteractionResponse(
       input,
       result.allowed
-        ? `Accepted ${route.request.action}.`
-        : `Blocked ${route.request.action}.`,
+        ? createDiscordActionMessage('Accepted', route.request)
+        : createDiscordActionMessage('Blocked', route.request),
     );
     const threadReceipt = await this.responses.postThreadMessage(
       route.request.threadId,
       result.allowed
-        ? `DevPlat accepted ${route.request.action}.`
-        : `DevPlat blocked ${route.request.action}.`,
+        ? createDiscordActionMessage('DevPlat accepted', route.request)
+        : createDiscordActionMessage('DevPlat blocked', route.request),
     );
 
     return {

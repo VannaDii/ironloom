@@ -60,6 +60,7 @@ Project-management lookups must stay read-only. Any lifecycle-changing action st
 - persist the decision path and resulting audit log
 - reflect the resulting state back into GitHub and operator-visible thread updates
 - keep Discord-facing approval contracts aligned with codecs, generated schemas, and auditable artifacts
+- route slash commands and buttons through exactly one bound thread session, then project that session into a typed spec, implementation, or pull-request work item before responding
 
 ## Operational Pattern
 

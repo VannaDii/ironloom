@@ -2,6 +2,12 @@ import * as t from 'io-ts';
 
 import { LifecycleStatusCodec } from '@vannadii/devplat-core';
 
+import {
+  DiscordThreadKindCodec,
+  DiscordThreadSessionCodec,
+  PositivePullRequestNumberCodec,
+} from '../thread-session/codec.js';
+
 export const DiscordControlActionCodec = t.union([
   t.literal('run-this'),
   t.literal('claim-this'),
@@ -21,18 +27,36 @@ export const DiscordControlActionCodec = t.union([
   t.literal('update-spec'),
 ]);
 
-export const DiscordControlRequestCodec = t.type({
-  id: t.string,
-  summary: t.string,
-  status: LifecycleStatusCodec,
-  trace: t.array(t.string),
-  updatedAt: t.string,
-  actorId: t.string,
-  threadId: t.string,
-  channelId: t.string,
-  action: DiscordControlActionCodec,
-  privileged: t.boolean,
-});
+export const DiscordWorkItemBindingCodec = t.intersection([
+  t.type({
+    threadKind: DiscordThreadKindCodec,
+    threadId: t.string,
+    artifactId: t.string,
+  }),
+  t.partial({
+    specId: t.string,
+    sliceId: t.string,
+    pullRequestNumber: PositivePullRequestNumberCodec,
+  }),
+]);
+
+export const DiscordControlRequestCodec = t.intersection([
+  t.type({
+    id: t.string,
+    summary: t.string,
+    status: LifecycleStatusCodec,
+    trace: t.array(t.string),
+    updatedAt: t.string,
+    actorId: t.string,
+    threadId: t.string,
+    channelId: t.string,
+    action: DiscordControlActionCodec,
+    privileged: t.boolean,
+  }),
+  t.partial({
+    workItem: DiscordWorkItemBindingCodec,
+  }),
+]);
 
 export const DiscordOperatorInteractionCodec = t.intersection([
   t.type({
@@ -48,6 +72,7 @@ export const DiscordOperatorInteractionCodec = t.intersection([
     summary: t.string,
     threadId: t.string,
     boundThreadId: t.string,
+    boundSession: DiscordThreadSessionCodec,
     privileged: t.boolean,
   }),
 ]);
@@ -67,6 +92,7 @@ export const DiscordControlResultCodec = t.intersection([
     failedClosed: t.boolean,
   }),
   t.partial({
+    workItem: DiscordWorkItemBindingCodec,
     responseReceipt: DiscordResponseReceiptCodec,
     threadReceipt: DiscordResponseReceiptCodec,
   }),

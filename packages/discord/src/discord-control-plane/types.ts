@@ -9,9 +9,14 @@ import type {
   DiscordInteractionRouteSuccessCodec,
   DiscordOperatorInteractionCodec,
   DiscordResponseReceiptCodec,
+  DiscordWorkItemBindingCodec,
 } from './codec.js';
 
 export type DiscordControlAction = t.TypeOf<typeof DiscordControlActionCodec>;
+
+export type DiscordWorkItemBinding = t.TypeOf<
+  typeof DiscordWorkItemBindingCodec
+>;
 
 export type DiscordControlRequest = t.TypeOf<typeof DiscordControlRequestCodec>;
 

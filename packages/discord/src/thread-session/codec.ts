@@ -2,7 +2,7 @@ import * as t from 'io-ts';
 
 import { LifecycleStatusCodec } from '@vannadii/devplat-core';
 
-const PositivePullRequestNumberCodec = new t.Type<number, number>(
+export const PositivePullRequestNumberCodec = new t.Type<number, number>(
   'PositivePullRequestNumber',
   (input): input is number =>
     typeof input === 'number' && Number.isInteger(input) && input >= 1,

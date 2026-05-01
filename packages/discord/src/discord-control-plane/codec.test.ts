@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import { decodeWithCodec } from '@vannadii/devplat-core';
 
-import { DiscordControlRequestCodec } from './codec.js';
+import {
+  DiscordControlRequestCodec,
+  DiscordOperatorInteractionCodec,
+} from './codec.js';
 
 describe('discord control request codec', () => {
   const cases = [
@@ -45,6 +48,13 @@ describe('discord control request codec', () => {
             channelId: 'channel-1',
             action: 'claim-this',
             privileged: false,
+            workItem: {
+              threadKind: 'implementation',
+              threadId: 'thread-1',
+              specId: 'spec-1',
+              sliceId: 'slice-1',
+              artifactId: 'artifact-1',
+            },
           },
         ],
       },
@@ -80,6 +90,44 @@ describe('discord control request codec', () => {
         ),
       assert: (decodedValues) => {
         expect(decodedValues.every((decoded) => !decoded.ok)).toBe(true);
+      },
+    },
+    {
+      name: 'decode operator interactions with bound thread sessions',
+      inputs: {
+        values: [
+          {
+            id: 'interaction-1',
+            token: 'token-1',
+            actorId: 'operator-1',
+            channelId: 'channel-1',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'show status',
+            boundSession: {
+              id: 'thread-session-1',
+              summary: 'Pull request session',
+              status: 'running',
+              trace: [],
+              updatedAt: '2026-04-04T00:00:00.000Z',
+              guildId: 'guild-1',
+              channelId: 'thread-1',
+              parentChannelId: 'pull-request-channel',
+              threadId: 'thread-1',
+              kind: 'pull-request',
+              specId: 'spec-1',
+              sliceId: 'slice-1',
+              pullRequestNumber: 12,
+              artifactId: 'artifact-1',
+            },
+          },
+        ],
+      },
+      mock: async ({ values }) =>
+        values.map((value) =>
+          decodeWithCodec(DiscordOperatorInteractionCodec, value),
+        ),
+      assert: (decodedValues) => {
+        expect(decodedValues.every((decoded) => decoded.ok)).toBe(true);
       },
     },
   ];

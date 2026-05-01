@@ -198,6 +198,12 @@ export const schemaRegistry = [
   [
     'discord',
     'discord-control-plane',
+    'DiscordWorkItemBinding',
+    'schemas/discord-work-item-binding.schema.json',
+  ],
+  [
+    'discord',
+    'discord-control-plane',
     'DiscordOperatorInteraction',
     'schemas/discord-operator-interaction.schema.json',
   ],

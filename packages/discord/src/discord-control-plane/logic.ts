@@ -6,7 +6,9 @@ import type {
   DiscordControlRequest,
   DiscordInteractionRoute,
   DiscordOperatorInteraction,
+  DiscordWorkItemBinding,
 } from './types.js';
+import type { DiscordThreadSession } from '../thread-session/types.js';
 
 const commandActionMap = new Map<string, DiscordControlAction>([
   ['run this', 'run-this'],
@@ -77,7 +79,66 @@ function collectThreadCandidates(
   return [
     ...(input.threadId === undefined ? [] : [input.threadId.trim()]),
     ...(input.boundThreadId === undefined ? [] : [input.boundThreadId.trim()]),
+    ...(input.boundSession === undefined
+      ? []
+      : [input.boundSession.threadId.trim()]),
   ].filter((value) => value.length > 0);
+}
+
+export function createDiscordWorkItemBinding(
+  session: DiscordThreadSession,
+): DiscordWorkItemBinding {
+  const base = {
+    threadKind: session.kind,
+    threadId: session.threadId,
+    artifactId: session.artifactId,
+  };
+
+  switch (session.kind) {
+    case 'spec':
+      return {
+        ...base,
+        specId: session.specId,
+      };
+    case 'implementation':
+      return session.specId === null
+        ? {
+            ...base,
+            sliceId: session.sliceId,
+          }
+        : {
+            ...base,
+            specId: session.specId,
+            sliceId: session.sliceId,
+          };
+    case 'pull-request':
+      return {
+        ...base,
+        ...(session.specId === null ? {} : { specId: session.specId }),
+        ...(session.sliceId === null ? {} : { sliceId: session.sliceId }),
+        pullRequestNumber: session.pullRequestNumber,
+      };
+  }
+}
+
+export function describeDiscordWorkItemBinding(
+  input: DiscordWorkItemBinding,
+): string {
+  if (input.threadKind === 'pull-request') {
+    return input.pullRequestNumber === undefined
+      ? `pull-request ${input.threadId}`
+      : `pull-request #${String(input.pullRequestNumber)} in ${input.threadId}`;
+  }
+
+  if (input.threadKind === 'implementation') {
+    return input.sliceId === undefined
+      ? `implementation ${input.threadId}`
+      : `implementation ${input.sliceId} in ${input.threadId}`;
+  }
+
+  return input.specId === undefined
+    ? `spec ${input.threadId}`
+    : `spec ${input.specId} in ${input.threadId}`;
 }
 
 export function createDiscordControlRequest(
@@ -101,6 +162,41 @@ export function describeDiscordControlRequest(
   input: DiscordControlRequest,
 ): string {
   return `${input.threadId}:${input.action} -> ${input.summary}`;
+}
+
+function createInteractionControlRequestInput(
+  input: DiscordOperatorInteraction,
+  action: DiscordControlAction,
+  threadId: string,
+): DiscordControlRequest {
+  if (input.boundSession === undefined) {
+    return {
+      id: input.id,
+      summary: input.summary?.trim() ?? action,
+      status: 'running',
+      trace: [],
+      updatedAt: input.updatedAt,
+      actorId: input.actorId,
+      threadId,
+      channelId: input.channelId,
+      action,
+      privileged: input.privileged ?? false,
+    };
+  }
+
+  return {
+    id: input.id,
+    summary: input.summary?.trim() ?? action,
+    status: 'running',
+    trace: [],
+    updatedAt: input.updatedAt,
+    actorId: input.actorId,
+    threadId,
+    channelId: input.channelId,
+    action,
+    privileged: input.privileged ?? false,
+    workItem: createDiscordWorkItemBinding(input.boundSession),
+  };
 }
 
 export function createDiscordControlRequestFromInteraction(
@@ -128,17 +224,8 @@ export function createDiscordControlRequestFromInteraction(
 
   return {
     ok: true,
-    request: createDiscordControlRequest({
-      id: input.id,
-      summary: input.summary?.trim() ?? action,
-      status: 'running',
-      trace: [],
-      updatedAt: input.updatedAt,
-      actorId: input.actorId,
-      threadId,
-      channelId: input.channelId,
-      action,
-      privileged: input.privileged ?? false,
-    }),
+    request: createDiscordControlRequest(
+      createInteractionControlRequestInput(input, action, threadId),
+    ),
   };
 }

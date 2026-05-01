@@ -3,9 +3,15 @@ import { describe, expect, it } from 'vitest';
 import {
   createDiscordControlRequestFromInteraction,
   createDiscordControlRequest,
+  createDiscordWorkItemBinding,
+  describeDiscordWorkItemBinding,
   describeDiscordControlRequest,
 } from './logic.js';
-import type { DiscordOperatorInteraction } from './types.js';
+import type {
+  DiscordOperatorInteraction,
+  DiscordWorkItemBinding,
+} from './types.js';
+import type { DiscordThreadSession } from '../thread-session/types.js';
 
 describe('DiscordControlRequest logic', () => {
   it('keeps actions thread-scoped and auditable', () => {
@@ -267,6 +273,88 @@ describe('DiscordControlRequest logic', () => {
           }
         },
       },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-009',
+            token: 'token-9',
+            actorId: 'user-9',
+            channelId: 'channel-9',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'show status',
+            boundSession: {
+              id: 'thread-session-009',
+              summary: 'Implementation session',
+              status: 'running',
+              trace: [],
+              updatedAt: '2026-04-04T00:00:00.000Z',
+              guildId: 'guild-9',
+              channelId: 'thread-9',
+              parentChannelId: 'implementation-channel',
+              threadId: 'thread-9',
+              kind: 'implementation',
+              specId: 'spec-9',
+              sliceId: 'slice-9',
+              pullRequestNumber: null,
+              artifactId: 'artifact-9',
+            },
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.threadId).toBe('thread-9');
+            expect(route.request.workItem).toMatchObject({
+              threadKind: 'implementation',
+              threadId: 'thread-9',
+              specId: 'spec-9',
+              sliceId: 'slice-9',
+              artifactId: 'artifact-9',
+            });
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-010',
+            token: 'token-10',
+            actorId: 'user-10',
+            channelId: 'channel-10',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'show status',
+            threadId: 'thread-10',
+            boundSession: {
+              id: 'thread-session-010',
+              summary: 'Pull request session',
+              status: 'running',
+              trace: [],
+              updatedAt: '2026-04-04T00:00:00.000Z',
+              guildId: 'guild-10',
+              channelId: 'thread-11',
+              parentChannelId: 'pull-request-channel',
+              threadId: 'thread-11',
+              kind: 'pull-request',
+              specId: 'spec-10',
+              sliceId: 'slice-10',
+              pullRequestNumber: 10,
+              artifactId: 'artifact-10',
+            },
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(false);
+          if (!route.ok) {
+            expect(route.reason).toContain('exactly one bound thread');
+          }
+        },
+      },
     ];
 
     for (const testCase of cases) {
@@ -274,6 +362,236 @@ describe('DiscordControlRequest logic', () => {
       testCase.assert(
         createDiscordControlRequestFromInteraction(testCase.inputs.interaction),
       );
+    }
+  });
+
+  it('projects and describes bound work items from thread sessions', () => {
+    type WorkItemCase =
+      | {
+          name: string;
+          inputs: {
+            mode: 'session';
+            session: DiscordThreadSession;
+            expectedBinding: Partial<DiscordWorkItemBinding>;
+            expectedDescription: string;
+          };
+          mock: () => Record<string, never>;
+          assert: (
+            context: Record<string, never>,
+            inputs: WorkItemCase['inputs'],
+          ) => void;
+        }
+      | {
+          name: string;
+          inputs: {
+            mode: 'description';
+            workItem: DiscordWorkItemBinding;
+            expectedDescription: string;
+          };
+          mock: () => Record<string, never>;
+          assert: (
+            context: Record<string, never>,
+            inputs: WorkItemCase['inputs'],
+          ) => void;
+        };
+
+    const cases = [
+      {
+        name: 'projects spec sessions',
+        inputs: {
+          mode: 'session',
+          session: {
+            id: 'thread-session-spec',
+            summary: 'Spec session',
+            status: 'running',
+            trace: [],
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            guildId: 'guild-spec',
+            channelId: 'thread-spec',
+            parentChannelId: 'spec-channel',
+            threadId: 'thread-spec',
+            kind: 'spec',
+            specId: 'spec-1',
+            sliceId: null,
+            pullRequestNumber: null,
+            artifactId: 'artifact-spec',
+          },
+          expectedBinding: {
+            threadKind: 'spec',
+            specId: 'spec-1',
+          },
+          expectedDescription: 'spec spec-1 in thread-spec',
+        },
+        mock: () => ({}),
+        assert: (context, inputs) => {
+          if (inputs.mode !== 'session') {
+            throw new Error('expected session inputs');
+          }
+
+          const binding = createDiscordWorkItemBinding(inputs.session);
+
+          expect(binding).toMatchObject(inputs.expectedBinding);
+          expect(describeDiscordWorkItemBinding(binding)).toBe(
+            inputs.expectedDescription,
+          );
+        },
+      },
+      {
+        name: 'projects implementation sessions without spec ids',
+        inputs: {
+          mode: 'session',
+          session: {
+            id: 'thread-session-implementation',
+            summary: 'Implementation session',
+            status: 'running',
+            trace: [],
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            guildId: 'guild-implementation',
+            channelId: 'thread-implementation',
+            parentChannelId: 'implementation-channel',
+            threadId: 'thread-implementation',
+            kind: 'implementation',
+            specId: null,
+            sliceId: 'slice-1',
+            pullRequestNumber: null,
+            artifactId: 'artifact-implementation',
+          },
+          expectedBinding: {
+            threadKind: 'implementation',
+            sliceId: 'slice-1',
+          },
+          expectedDescription:
+            'implementation slice-1 in thread-implementation',
+        },
+        mock: () => ({}),
+        assert: (context, inputs) => {
+          if (inputs.mode !== 'session') {
+            throw new Error('expected session inputs');
+          }
+
+          const binding = createDiscordWorkItemBinding(inputs.session);
+
+          expect(binding).toMatchObject(inputs.expectedBinding);
+          expect(binding.specId).toBeUndefined();
+          expect(describeDiscordWorkItemBinding(binding)).toBe(
+            inputs.expectedDescription,
+          );
+        },
+      },
+      {
+        name: 'describes incomplete pull request work items',
+        inputs: {
+          mode: 'description',
+          workItem: {
+            threadKind: 'pull-request',
+            threadId: 'thread-pr',
+            artifactId: 'artifact-pr',
+          },
+          expectedDescription: 'pull-request thread-pr',
+        },
+        mock: () => ({}),
+        assert: (context, inputs) => {
+          if (inputs.mode !== 'description') {
+            throw new Error('expected description inputs');
+          }
+
+          expect(describeDiscordWorkItemBinding(inputs.workItem)).toBe(
+            inputs.expectedDescription,
+          );
+        },
+      },
+      {
+        name: 'projects pull request sessions without spec or slice ids',
+        inputs: {
+          mode: 'session',
+          session: {
+            id: 'thread-session-pull-request',
+            summary: 'Pull request session',
+            status: 'running',
+            trace: [],
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            guildId: 'guild-pull-request',
+            channelId: 'thread-pull-request',
+            parentChannelId: 'pull-request-channel',
+            threadId: 'thread-pull-request',
+            kind: 'pull-request',
+            specId: null,
+            sliceId: null,
+            pullRequestNumber: 27,
+            artifactId: 'artifact-pull-request',
+          },
+          expectedBinding: {
+            threadKind: 'pull-request',
+            pullRequestNumber: 27,
+          },
+          expectedDescription: 'pull-request #27 in thread-pull-request',
+        },
+        mock: () => ({}),
+        assert: (context, inputs) => {
+          if (inputs.mode !== 'session') {
+            throw new Error('expected session inputs');
+          }
+
+          const binding = createDiscordWorkItemBinding(inputs.session);
+
+          expect(binding).toMatchObject(inputs.expectedBinding);
+          expect(binding.specId).toBeUndefined();
+          expect(binding.sliceId).toBeUndefined();
+          expect(describeDiscordWorkItemBinding(binding)).toBe(
+            inputs.expectedDescription,
+          );
+        },
+      },
+      {
+        name: 'describes incomplete implementation work items',
+        inputs: {
+          mode: 'description',
+          workItem: {
+            threadKind: 'implementation',
+            threadId: 'thread-implementation',
+            artifactId: 'artifact-implementation',
+          },
+          expectedDescription: 'implementation thread-implementation',
+        },
+        mock: () => ({}),
+        assert: (context, inputs) => {
+          if (inputs.mode !== 'description') {
+            throw new Error('expected description inputs');
+          }
+
+          expect(describeDiscordWorkItemBinding(inputs.workItem)).toBe(
+            inputs.expectedDescription,
+          );
+        },
+      },
+      {
+        name: 'describes incomplete spec work items',
+        inputs: {
+          mode: 'description',
+          workItem: {
+            threadKind: 'spec',
+            threadId: 'thread-spec',
+            artifactId: 'artifact-spec',
+          },
+          expectedDescription: 'spec thread-spec',
+        },
+        mock: () => ({}),
+        assert: (context, inputs) => {
+          if (inputs.mode !== 'description') {
+            throw new Error('expected description inputs');
+          }
+
+          expect(describeDiscordWorkItemBinding(inputs.workItem)).toBe(
+            inputs.expectedDescription,
+          );
+        },
+      },
+    ] satisfies WorkItemCase[];
+
+    for (const testCase of cases) {
+      const context = testCase.mock();
+
+      testCase.assert(context, testCase.inputs);
     }
   });
 });

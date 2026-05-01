@@ -194,6 +194,85 @@ describe('DiscordControlPlaneService', () => {
           );
         },
       },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-001b',
+            token: 'token-1b',
+            actorId: 'user-5b',
+            channelId: 'channel-5b',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'show status',
+            boundSession: {
+              id: 'thread-session-001b',
+              summary: 'Pull request session',
+              status: 'running',
+              trace: [],
+              updatedAt: '2026-04-04T00:00:00.000Z',
+              guildId: 'guild-5b',
+              channelId: 'thread-5b',
+              parentChannelId: 'pull-request-channel',
+              threadId: 'thread-5b',
+              kind: 'pull-request',
+              specId: 'spec-5b',
+              sliceId: 'slice-5b',
+              pullRequestNumber: 42,
+              artifactId: 'artifact-5b',
+            },
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: async () => {
+          const rootDirectory = await mkdtemp(
+            join(tmpdir(), 'devplat-discord-'),
+          );
+          const store = new FileStoreService(rootDirectory);
+          const messages: string[] = [];
+          return {
+            messages,
+            store,
+            service: new DiscordControlPlaneService(
+              new DecisionPolicyService(),
+              new TelemetryEventService(store),
+              store,
+              {
+                async postInteractionResponse(input, content) {
+                  messages.push(content);
+                  return createReceipt(
+                    `/interactions/${input.id}/${input.token}/callback`,
+                  );
+                },
+                async postThreadMessage(threadId, content) {
+                  messages.push(content);
+                  return createReceipt(`/channels/${threadId}/messages`);
+                },
+              },
+            ),
+          };
+        },
+        assert: async (context: {
+          messages: string[];
+          store: FileStoreService;
+          service: DiscordControlPlaneService;
+        }) => {
+          const result = await context.service.handleInteraction(
+            cases[1].inputs.interaction,
+          );
+
+          expect(result.allowed).toBe(true);
+          expect(result.workItem).toMatchObject({
+            threadKind: 'pull-request',
+            pullRequestNumber: 42,
+            artifactId: 'artifact-5b',
+          });
+          expect(result.threadReceipt?.endpoint).toBe(
+            '/channels/thread-5b/messages',
+          );
+          expect(context.messages.join('\n')).toContain('pull-request #42');
+          expect(await context.store.list('state')).toContain(
+            'interaction-001b',
+          );
+        },
+      },
     ];
 
     for (const testCase of cases) {

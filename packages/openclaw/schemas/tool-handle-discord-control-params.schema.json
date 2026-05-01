@@ -67,6 +67,32 @@
         },
         "privileged": {
           "type": "boolean"
+        },
+        "workItem": {
+          "type": "object",
+          "properties": {
+            "threadKind": {
+              "enum": ["spec", "implementation", "pull-request"]
+            },
+            "threadId": {
+              "type": "string"
+            },
+            "artifactId": {
+              "type": "string"
+            },
+            "specId": {
+              "type": "string"
+            },
+            "sliceId": {
+              "type": "string"
+            },
+            "pullRequestNumber": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": ["threadKind", "threadId", "artifactId"],
+          "additionalProperties": false
         }
       },
       "required": [
