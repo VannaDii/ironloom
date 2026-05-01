@@ -1,43 +1,30 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$ref": "#/definitions/PolicyDecision",
+  "$ref": "#/definitions/PolicyActionEvaluation",
   "definitions": {
-    "PolicyDecision": {
+    "PolicyActionEvaluation": {
       "type": "object",
       "properties": {
         "id": {
           "type": "string"
         },
-        "summary": {
-          "type": "string"
-        },
-        "status": {
-          "enum": [
-            "draft",
-            "queued",
-            "claimed",
-            "running",
-            "review",
-            "blocked",
-            "approved",
-            "merge-ready",
-            "merged",
-            "failed",
-            "rebasing",
-            "complete"
-          ]
-        },
-        "trace": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "updatedAt": {
-          "type": "string"
-        },
         "action": {
           "type": "string"
+        },
+        "actionCategory": {
+          "enum": [
+            "merge",
+            "command-execution",
+            "worktree-release",
+            "rebase",
+            "publish",
+            "autofix",
+            "destructive-cleanup",
+            "routine"
+          ]
+        },
+        "privileged": {
+          "type": "boolean"
         },
         "allowed": {
           "type": "boolean"
@@ -56,21 +43,6 @@
             "external-publish"
           ]
         },
-        "reason": {
-          "type": "string"
-        },
-        "actionCategory": {
-          "enum": [
-            "merge",
-            "command-execution",
-            "worktree-release",
-            "rebase",
-            "publish",
-            "autofix",
-            "destructive-cleanup",
-            "routine"
-          ]
-        },
         "riskLevel": {
           "enum": ["low", "medium", "high", "critical"]
         },
@@ -80,25 +52,35 @@
         "escalationTarget": {
           "enum": ["none", "operator", "maintainer", "release-manager"]
         },
-        "nextAction": {
+        "reason": {
           "type": "string"
         },
         "auditReason": {
+          "type": "string"
+        },
+        "nextAction": {
+          "type": "string"
+        },
+        "updatedAt": {
           "type": "string"
         }
       },
       "required": [
         "id",
-        "summary",
-        "status",
-        "trace",
-        "updatedAt",
         "action",
+        "actionCategory",
+        "privileged",
         "allowed",
         "requiresApproval",
         "auditRequired",
         "privilegeLevel",
-        "reason"
+        "riskLevel",
+        "escalationRequired",
+        "escalationTarget",
+        "reason",
+        "auditReason",
+        "nextAction",
+        "updatedAt"
       ],
       "additionalProperties": false
     }

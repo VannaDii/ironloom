@@ -5,7 +5,7 @@
 - `@vannadii/devplat-core`: shared lifecycle primitives and decode helpers
 - `@vannadii/devplat-config`: runtime config normalization
 - `@vannadii/devplat-artifacts`: artifact envelope and approval/audit contracts
-- `@vannadii/devplat-policy`: privileged action policy decisions
+- `@vannadii/devplat-policy`: lifecycle action policy decisions with category, risk, escalation, approval, audit, and next-action guidance
 
 ## Workflow Packages
 

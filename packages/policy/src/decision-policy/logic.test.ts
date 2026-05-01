@@ -3,9 +3,10 @@ import { describe, expect, it } from 'vitest';
 import {
   createPolicyDecision,
   describePolicyDecision,
+  evaluateLifecyclePolicyAction,
   evaluatePolicyDecision,
 } from './logic.js';
-import type { PolicyDecision } from './types.js';
+import type { PolicyActionCategory, PolicyDecision } from './types.js';
 
 type PolicyDecisionLogicInputs =
   | {
@@ -25,6 +26,18 @@ type PolicyDecisionLogicInputs =
       mode: 'classify';
       releaseAction: string;
       publishAction: string;
+    }
+  | {
+      mode: 'lifecycle-matrix';
+      actions: {
+        action: string;
+        category: PolicyActionCategory;
+        privileged: boolean;
+        allowed: boolean;
+        requiresApproval: boolean;
+        escalationRequired: boolean;
+        nextAction: string;
+      }[];
     };
 
 type PolicyDecisionLogicCase = {
@@ -158,6 +171,106 @@ describe('PolicyDecision logic', () => {
         expect(publish.privilegeLevel).toBe('external-publish');
         expect(release.auditRequired).toBe(true);
         expect(publish.auditRequired).toBe(true);
+      },
+    },
+    {
+      name: 'classifies lifecycle-changing policy actions with escalation guidance',
+      inputs: {
+        mode: 'lifecycle-matrix',
+        actions: [
+          {
+            action: 'merge-now',
+            category: 'merge',
+            privileged: false,
+            allowed: false,
+            requiresApproval: true,
+            escalationRequired: true,
+            nextAction: 'request-merge-approval',
+          },
+          {
+            action: 'execute-command',
+            category: 'command-execution',
+            privileged: false,
+            allowed: true,
+            requiresApproval: false,
+            escalationRequired: false,
+            nextAction: 'execute-with-audit',
+          },
+          {
+            action: 'release-worktree',
+            category: 'worktree-release',
+            privileged: false,
+            allowed: false,
+            requiresApproval: true,
+            escalationRequired: true,
+            nextAction: 'request-destructive-approval',
+          },
+          {
+            action: 'rebase-dependents',
+            category: 'rebase',
+            privileged: false,
+            allowed: false,
+            requiresApproval: true,
+            escalationRequired: true,
+            nextAction: 'request-rebase-approval',
+          },
+          {
+            action: 'sync-branch',
+            category: 'routine',
+            privileged: false,
+            allowed: true,
+            requiresApproval: false,
+            escalationRequired: false,
+            nextAction: 'continue',
+          },
+          {
+            action: 'publish-release',
+            category: 'publish',
+            privileged: false,
+            allowed: false,
+            requiresApproval: true,
+            escalationRequired: true,
+            nextAction: 'request-publish-approval',
+          },
+          {
+            action: 'autofix-review',
+            category: 'autofix',
+            privileged: false,
+            allowed: false,
+            requiresApproval: true,
+            escalationRequired: true,
+            nextAction: 'request-autofix-approval',
+          },
+          {
+            action: 'destructive-cleanup',
+            category: 'destructive-cleanup',
+            privileged: false,
+            allowed: false,
+            requiresApproval: true,
+            escalationRequired: true,
+            nextAction: 'request-destructive-approval',
+          },
+        ],
+      },
+      mock: () => ({}),
+      assert: (context, inputs) => {
+        if (inputs.mode !== 'lifecycle-matrix') {
+          throw new Error('expected lifecycle-matrix inputs');
+        }
+
+        for (const action of inputs.actions) {
+          const decision = evaluateLifecyclePolicyAction(
+            action.action,
+            action.privileged,
+          );
+
+          expect(decision.actionCategory).toBe(action.category);
+          expect(decision.allowed).toBe(action.allowed);
+          expect(decision.requiresApproval).toBe(action.requiresApproval);
+          expect(decision.escalationRequired).toBe(action.escalationRequired);
+          expect(decision.nextAction).toBe(action.nextAction);
+          expect(decision.auditReason).toContain(action.action);
+        }
       },
     },
   ] satisfies PolicyDecisionLogicCase[];

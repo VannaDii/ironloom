@@ -166,6 +166,12 @@ export const schemaRegistry = [
     'schemas/policy-decision.schema.json',
   ],
   [
+    'policy',
+    'decision-policy',
+    'PolicyActionEvaluation',
+    'schemas/policy-action-evaluation.schema.json',
+  ],
+  [
     'storage',
     'file-store',
     'StoredRecordSchema',

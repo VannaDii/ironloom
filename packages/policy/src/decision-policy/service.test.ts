@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { DecisionPolicyService } from './service.js';
-import type { PolicyDecision } from './types.js';
+import type { PolicyActionCategory, PolicyDecision } from './types.js';
 
 type DecisionPolicyServiceInputs =
   | {
@@ -12,6 +12,13 @@ type DecisionPolicyServiceInputs =
   | {
       mode: 'execute';
       decision: PolicyDecision;
+    }
+  | {
+      mode: 'lifecycle';
+      action: string;
+      privileged: boolean;
+      category: PolicyActionCategory;
+      nextAction: string;
     };
 
 type DecisionPolicyServiceCase = {
@@ -79,6 +86,34 @@ describe('DecisionPolicyService', () => {
         const decision = context.service.execute(inputs.decision);
 
         expect(decision.summary).toBe('retry gates');
+      },
+    },
+    {
+      name: 'evaluates lifecycle policy actions with caller next action',
+      inputs: {
+        mode: 'lifecycle',
+        action: 'autofix-review',
+        privileged: false,
+        category: 'autofix',
+        nextAction: 'request-autofix-approval',
+      },
+      mock: () => ({
+        service: new DecisionPolicyService(),
+      }),
+      assert: (context, inputs) => {
+        if (inputs.mode !== 'lifecycle') {
+          throw new Error('expected lifecycle inputs');
+        }
+
+        const decision = context.service.evaluateLifecycleAction(
+          inputs.action,
+          inputs.privileged,
+        );
+
+        expect(decision.actionCategory).toBe(inputs.category);
+        expect(decision.nextAction).toBe(inputs.nextAction);
+        expect(decision.allowed).toBe(false);
+        expect(decision.auditReason).toContain('autofix-review');
       },
     },
   ] satisfies DecisionPolicyServiceCase[];

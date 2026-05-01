@@ -1,9 +1,10 @@
 import {
   createPolicyDecision,
   describePolicyDecision,
+  evaluateLifecyclePolicyAction,
   evaluatePolicyDecision,
 } from './logic.js';
-import type { PolicyDecision } from './types.js';
+import type { PolicyActionEvaluation, PolicyDecision } from './types.js';
 
 export class DecisionPolicyService {
   public execute(input: PolicyDecision): PolicyDecision {
@@ -19,5 +20,12 @@ export class DecisionPolicyService {
     privileged: boolean,
   ): PolicyDecision {
     return evaluatePolicyDecision(action, privileged);
+  }
+
+  public evaluateLifecycleAction(
+    action: string,
+    privileged: boolean,
+  ): PolicyActionEvaluation {
+    return evaluateLifecyclePolicyAction(action, privileged);
   }
 }
