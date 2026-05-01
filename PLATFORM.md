@@ -158,7 +158,7 @@ the package responsibilities below. Current completion work focuses on:
 - `@vannadii/devplat-worktrees`: current code covers pure allocation/sync/release records, branch safety checks with fail-closed Git execution, Git-backed worktree add, fetch/rebase or fast-forward sync, and archive/delete release methods.
 - `@vannadii/devplat-execution`: current code covers structured subprocess execution, timeouts, retry policy, truncation policy, and retry outcome contracts.
 - `@vannadii/devplat-gates`: current code covers gate execution, reports, failure classification, remediation handoff hooks, and next-action hints.
-- `@vannadii/devplat-sonarcloud`: current code covers bootstrap verification and quality gate interpretation; remaining gap is fuller issue normalization into review/remediation inputs.
+- `@vannadii/devplat-sonarcloud`: current code covers bootstrap verification, quality gate interpretation, normalized issue records, and Sonar issue projection into review findings for remediation planning.
 - `@vannadii/devplat-review`: current code covers structured review findings, review summary generation, and spec-vs-implementation conformance contracts.
 - `@vannadii/devplat-remediation`: current code covers remediation planning from review findings and gate remediation hooks, remediation result records, and unresolved-issue summaries.
 - `@vannadii/devplat-prs`: current code covers PR normalization plus update and merge submission semantics; remaining gap is richer PR body/update projections and deeper review/remediation status projection.

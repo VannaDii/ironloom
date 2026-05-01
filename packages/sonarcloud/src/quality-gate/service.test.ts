@@ -16,6 +16,10 @@ type SonarQualityGateServiceInputs =
   | {
       mode: 'execute';
       result: SonarQualityGateResult;
+    }
+  | {
+      mode: 'review-findings';
+      result: SonarQualityGateResult;
     };
 
 type SonarQualityGateServiceCase = {
@@ -93,6 +97,45 @@ describe('SonarQualityGateService', () => {
         const result = context.service.execute(inputs.result);
 
         expect(result.status).toBe('failed');
+      },
+    },
+    {
+      name: 'projects Sonar quality gate issues into review findings',
+      inputs: {
+        mode: 'review-findings',
+        result: {
+          projectKey: 'vannadii_devplat',
+          status: 'failed',
+          overallCoverage: 100,
+          newCodeCoverage: 100,
+          blockingIssues: 0,
+          evaluatedAt: '2026-04-04T00:00:00.000Z',
+          issues: [
+            {
+              issueKey: 'issue-1',
+              severity: 'major',
+              path: 'packages/core/src/domain/logic.ts',
+              message: 'Fix this',
+              effortMinutes: 10,
+              blocking: false,
+            },
+          ],
+        },
+      },
+      mock: () => ({
+        service: new SonarQualityGateService(),
+      }),
+      assert: (context, inputs) => {
+        if (inputs.mode !== 'review-findings') {
+          throw new Error('expected review-findings inputs');
+        }
+
+        const findings = context.service.toReviewFindings(inputs.result);
+
+        expect(findings.map((finding) => finding.findingId)).toEqual([
+          'sonar:issue-1',
+        ]);
+        expect(findings[0]?.source).toBe('sonar');
       },
     },
   ] satisfies SonarQualityGateServiceCase[];
