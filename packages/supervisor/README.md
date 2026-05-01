@@ -12,14 +12,17 @@ This package owns deterministic supervisor decisions and lifecycle routing acros
 flowchart LR
   State[Current lifecycle state] --> Policy[Policy decision]
   Policy --> Decision[Supervisor decision]
-  Decision --> Phase[Lifecycle phase route]
-  Phase --> Next[Next service action]
+  Signals[Lifecycle signals] --> Decision
+  Decision --> Route[Route plan]
+  Route --> Blocked[Policy or blocker wait]
+  Route --> Next[Next phase owner]
   Next --> Trace[Auditable trace]
 ```
 
 ## Boundaries
 
 - Use policy decisions as inputs for privileged actions.
+- Preserve lifecycle signals, blockers, artifact IDs, and route audit reasons on supervisor decisions.
 - Do not own OpenClaw agent execution; OpenClaw remains the agent loop.
 - Keep outputs auditable and artifact-friendly.
 

@@ -26,12 +26,16 @@ export class SupervisorCycleService {
     action: string;
     actorId: string;
     privileged: boolean;
+    lifecycleSignals?: SupervisorDecision['lifecycleSignals'];
   }): Promise<SupervisorDecision> {
     const policyDecision = this.policy.evaluateControlAction(
       params.action,
       params.privileged,
     );
-    const decision = decideNextState(policyDecision);
+    const decision = createSupervisorDecision({
+      ...decideNextState(policyDecision),
+      lifecycleSignals: params.lifecycleSignals ?? [],
+    });
 
     await this.telemetry.record({
       id: decision.id,
@@ -45,6 +49,8 @@ export class SupervisorCycleService {
       details: {
         nextState: decision.nextState,
         approved: decision.approved,
+        phase: decision.phase,
+        routePlan: decision.routePlan,
       },
     });
 

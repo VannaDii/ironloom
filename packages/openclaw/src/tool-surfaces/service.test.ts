@@ -1959,11 +1959,24 @@ describe('tool surface service', () => {
       action: 'retry-gates',
       actorId: 'operator-1',
       privileged: false,
+      lifecycleSignals: [
+        {
+          phase: 'gates',
+          ready: true,
+          artifactIds: ['gate-run-1'],
+          blockers: [],
+          nextAction: 'review-findings',
+        },
+      ],
     });
 
     expect(result.details).toMatchObject({
       approved: true,
       nextState: 'approved',
+      routePlan: {
+        nextPhase: 'review',
+        routedTo: 'review-findings-service',
+      },
     });
   });
 

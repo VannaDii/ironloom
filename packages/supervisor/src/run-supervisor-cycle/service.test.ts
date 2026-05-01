@@ -15,6 +15,7 @@ type SupervisorRunStepInput = {
   action: string;
   actorId: string;
   privileged: boolean;
+  lifecycleSignals?: SupervisorDecision['lifecycleSignals'];
 };
 
 type SupervisorCycleServiceInputs =
@@ -59,6 +60,15 @@ describe('SupervisorCycleService', () => {
           action: 'retry-gates',
           actorId: 'operator-1',
           privileged: false,
+          lifecycleSignals: [
+            {
+              phase: 'gates',
+              ready: true,
+              artifactIds: ['gate-run-1'],
+              blockers: [],
+              nextAction: 'review-findings',
+            },
+          ],
         },
       },
       mock: async () => ({
@@ -72,6 +82,7 @@ describe('SupervisorCycleService', () => {
         const decision = await context.service.runStep(inputs.runStep);
 
         expect(decision.approved).toBe(true);
+        expect(decision.routePlan?.nextPhase).toBe('review');
       },
     },
     {

@@ -23,6 +23,7 @@ import { SlicePlanCodec } from '@vannadii/devplat-slicing';
 import { DevplatConfigCodec } from '@vannadii/devplat-config';
 import { SonarBootstrapVerificationInputCodec } from '@vannadii/devplat-sonarcloud';
 import { SpecRecordCodec } from '@vannadii/devplat-specs';
+import { SupervisorLifecycleSignalCodec } from '@vannadii/devplat-supervisor';
 import { PullRequestRecordCodec } from '@vannadii/devplat-prs';
 import { TaskRecordCodec } from '@vannadii/devplat-queue';
 import { StoredRecordCodec, StoreScopeCodec } from '@vannadii/devplat-storage';
@@ -227,8 +228,13 @@ export const ValidateArtifactToolInputCodec = t.type({
   artifact: t.UnknownRecord,
 });
 
-export const RunSupervisorStepToolInputCodec = t.type({
-  action: t.string,
-  actorId: t.string,
-  privileged: t.boolean,
-});
+export const RunSupervisorStepToolInputCodec = t.intersection([
+  t.type({
+    action: t.string,
+    actorId: t.string,
+    privileged: t.boolean,
+  }),
+  t.partial({
+    lifecycleSignals: t.array(SupervisorLifecycleSignalCodec),
+  }),
+]);

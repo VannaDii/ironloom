@@ -2,7 +2,40 @@ import { appendTrace } from '@vannadii/devplat-core';
 
 import type { PolicyDecision } from '@vannadii/devplat-policy';
 
-import type { SupervisorDecision, SupervisorPhase } from './types.js';
+import type {
+  SupervisorDecision,
+  SupervisorLifecycleSignal,
+  SupervisorPhase,
+  SupervisorRoutePlan,
+} from './types.js';
+
+const supervisorPhaseOrder = [
+  'research',
+  'spec',
+  'slicing',
+  'implementation',
+  'gates',
+  'review',
+  'remediation',
+  'merge',
+  'continuation',
+] satisfies SupervisorPhase[];
+
+const routeTargets: Record<SupervisorPhase, string> = {
+  research: 'research-brief-service',
+  spec: 'spec-record-service',
+  slicing: 'slice-plan-service',
+  implementation: 'task-queue-service',
+  gates: 'gate-run-service',
+  review: 'review-findings-service',
+  remediation: 'remediation-plan-service',
+  merge: 'pull-request-service',
+  continuation: 'branching-service',
+};
+
+function uniqueTrimmed(values: readonly string[]): string[] {
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+}
 
 export function inferSupervisorPhase(action: string): SupervisorPhase {
   if (action.includes('research')) {
@@ -32,17 +65,112 @@ export function inferSupervisorPhase(action: string): SupervisorPhase {
   return 'implementation';
 }
 
+function getNextPhase(currentPhase: SupervisorPhase): SupervisorPhase {
+  const currentIndex = supervisorPhaseOrder.indexOf(currentPhase);
+  const nextPhase = supervisorPhaseOrder[currentIndex + 1];
+
+  return nextPhase ?? 'continuation';
+}
+
+function normalizeLifecycleSignal(
+  signal: SupervisorLifecycleSignal,
+): SupervisorLifecycleSignal {
+  return {
+    phase: signal.phase,
+    ready: signal.ready,
+    artifactIds: uniqueTrimmed(signal.artifactIds),
+    blockers: uniqueTrimmed(signal.blockers),
+    nextAction: signal.nextAction.trim(),
+  };
+}
+
+function findLifecycleSignal(
+  phase: SupervisorPhase,
+  signals: readonly SupervisorLifecycleSignal[],
+): SupervisorLifecycleSignal | undefined {
+  return signals.find((signal) => signal.phase === phase);
+}
+
+export function createSupervisorRoutePlan(input: {
+  action: string;
+  approved: boolean;
+  currentPhase: SupervisorPhase;
+  lifecycleSignals: readonly SupervisorLifecycleSignal[];
+}): SupervisorRoutePlan {
+  const lifecycleSignals = input.lifecycleSignals.map(normalizeLifecycleSignal);
+  const currentSignal = findLifecycleSignal(
+    input.currentPhase,
+    lifecycleSignals,
+  );
+  const action = input.action.trim();
+
+  if (!input.approved) {
+    return {
+      currentPhase: input.currentPhase,
+      nextPhase: input.currentPhase,
+      routedTo: 'policy-service',
+      nextAction: `await-approval:${action}`,
+      status: 'blocked',
+      blockers: uniqueTrimmed([
+        ...(currentSignal?.blockers ?? []),
+        'policy approval required',
+      ]),
+      artifactIds: uniqueTrimmed(currentSignal?.artifactIds ?? []),
+      auditReason: `Policy blocked ${action} in ${input.currentPhase}`,
+    };
+  }
+
+  if (currentSignal !== undefined && !currentSignal.ready) {
+    return {
+      currentPhase: input.currentPhase,
+      nextPhase: input.currentPhase,
+      routedTo: routeTargets[input.currentPhase],
+      nextAction: currentSignal.nextAction,
+      status: 'waiting',
+      blockers: uniqueTrimmed(currentSignal.blockers),
+      artifactIds: uniqueTrimmed(currentSignal.artifactIds),
+      auditReason: `Waiting for ${input.currentPhase} blockers before routing forward`,
+    };
+  }
+
+  const nextPhase = getNextPhase(input.currentPhase);
+  return {
+    currentPhase: input.currentPhase,
+    nextPhase,
+    routedTo: routeTargets[nextPhase],
+    nextAction: `run-${nextPhase}`,
+    status: 'ready',
+    blockers: [],
+    artifactIds: uniqueTrimmed(currentSignal?.artifactIds ?? []),
+    auditReason: `Routed ${input.currentPhase} to ${nextPhase}`,
+  };
+}
+
 export function createSupervisorDecision(
   input: SupervisorDecision,
 ): SupervisorDecision {
   const phase = input.phase ?? inferSupervisorPhase(input.action);
+  const lifecycleSignals = (input.lifecycleSignals ?? []).map(
+    normalizeLifecycleSignal,
+  );
+  const routePlan =
+    input.routePlan ??
+    createSupervisorRoutePlan({
+      action: input.action,
+      approved: input.approved,
+      currentPhase: phase,
+      lifecycleSignals,
+    });
+
   return appendTrace(
     {
       ...input,
       summary: input.summary.trim(),
       updatedAt: new Date(input.updatedAt).toISOString(),
       phase,
-      routedTo: input.routedTo ?? phase,
+      routedTo: input.routedTo ?? routePlan.routedTo,
+      routePlan,
+      lifecycleSignals,
     },
     `supervisor:${input.action}:${input.nextState}`,
   );
