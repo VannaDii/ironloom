@@ -76,19 +76,42 @@ describe('openclaw-live-lab helpers', () => {
         const discordMessages = [];
         const serviceCalls = [];
         const discordRequest = async (path, options = {}) => {
-          discordMessages.push([path, options.body?.content ?? '']);
+          discordMessages.push([path, options.body]);
           return { id: `message-${discordMessages.length}` };
         };
         const createDiscordControlPlaneService = async ({ transport }) => ({
           async handleInteraction(input) {
             serviceCalls.push(input);
+            const acceptedPayload = {
+              content: 'DevPlat accepted retry-gates.',
+              /**
+               * Discord message payload wire key used to suppress operator pings.
+               */
+              allowed_mentions: { parse: [] },
+              components: [
+                {
+                  type: 1,
+                  components: [
+                    {
+                      type: 2,
+                      label: 'Show Status',
+                      style: 2,
+                      /**
+                       * Discord component wire key returned by button interactions.
+                       */
+                      custom_id: 'devplat:v1:show-status:implementation-1',
+                    },
+                  ],
+                },
+              ],
+            };
             const responseReceipt = await transport.postInteractionResponse(
               input,
-              'Accepted retry-gates.',
+              acceptedPayload,
             );
             const threadReceipt = await transport.postThreadMessage(
               input.boundThreadId,
-              'DevPlat accepted retry-gates.',
+              acceptedPayload,
             );
 
             return {
@@ -109,7 +132,9 @@ describe('openclaw-live-lab helpers', () => {
                 updatedAt: input.updatedAt,
               },
               responseReceipt,
+              responsePayload: acceptedPayload,
               threadReceipt,
+              threadPayload: acceptedPayload,
             };
           },
         });
@@ -160,6 +185,7 @@ describe('openclaw-live-lab helpers', () => {
         expect(result).toMatchObject({
           action: 'retry-gates',
           allowed: true,
+          componentRows: 1,
           commandName: 'retry-gates',
           failedClosed: false,
           interactionEndpoint:
@@ -178,11 +204,56 @@ describe('openclaw-live-lab helpers', () => {
         expect(context.discordMessages).toEqual([
           [
             '/channels/audit-1/messages',
-            'simulated interaction callback: Accepted retry-gates.',
+            {
+              /**
+               * Discord message payload wire key used to suppress operator pings.
+               */
+              allowed_mentions: { parse: [] },
+              components: [
+                {
+                  components: [
+                    {
+                      /**
+                       * Discord component wire key returned by button interactions.
+                       */
+                      custom_id: 'devplat:v1:show-status:implementation-1',
+                      label: 'Show Status',
+                      style: 2,
+                      type: 2,
+                    },
+                  ],
+                  type: 1,
+                },
+              ],
+              content:
+                'simulated interaction callback: DevPlat accepted retry-gates.',
+            },
           ],
           [
             '/channels/implementation-1/messages',
-            'DevPlat accepted retry-gates.',
+            {
+              /**
+               * Discord message payload wire key used to suppress operator pings.
+               */
+              allowed_mentions: { parse: [] },
+              components: [
+                {
+                  components: [
+                    {
+                      /**
+                       * Discord component wire key returned by button interactions.
+                       */
+                      custom_id: 'devplat:v1:show-status:implementation-1',
+                      label: 'Show Status',
+                      style: 2,
+                      type: 2,
+                    },
+                  ],
+                  type: 1,
+                },
+              ],
+              content: 'DevPlat accepted retry-gates.',
+            },
           ],
         ]);
       },
@@ -327,6 +398,97 @@ describe('openclaw-live-lab helpers', () => {
             },
           ),
         ).rejects.toThrow('Discord interaction probe did not record receipts');
+      },
+    },
+    {
+      name: 'fails the simulated Discord interaction probe when actionable components are missing',
+      inputs: {
+        runLabel: '200-3',
+      },
+      mock: async () => {
+        const createDiscordControlPlaneService = async ({ transport }) => ({
+          async handleInteraction(input) {
+            const payload = {
+              content: 'DevPlat accepted retry-gates without controls.',
+            };
+            const responseReceipt = await transport.postInteractionResponse(
+              input,
+              payload,
+            );
+            const threadReceipt = await transport.postThreadMessage(
+              input.boundThreadId,
+              payload,
+            );
+
+            return {
+              allowed: true,
+              failedClosed: false,
+              persistedKey: input.id,
+              policyDecisionId: 'policy-retry-gates',
+              request: {
+                action: 'retry-gates',
+                actorId: input.actorId,
+                channelId: input.channelId,
+                id: input.id,
+                privileged: false,
+                status: 'approved',
+                summary: input.summary,
+                threadId: input.boundThreadId,
+                trace: [],
+                updatedAt: input.updatedAt,
+              },
+              responsePayload: payload,
+              responseReceipt,
+              threadPayload: payload,
+              threadReceipt,
+            };
+          },
+        });
+
+        return {
+          createDiscordControlPlaneService,
+          createDiscordOperatorInteractionFromCallback: async (
+            callback,
+            options,
+          ) => ({
+            id: callback.id,
+            token: callback.token,
+            actorId: callback.member.user.id,
+            channelId: callback.channel_id,
+            threadId: options.threadId,
+            boundThreadId: options.boundThreadId,
+            boundSession: options.boundSession,
+            commandName: callback.data.name,
+            summary: options.summary,
+            privileged: options.privileged,
+            updatedAt: options.updatedAt,
+          }),
+          discordRequest: async () => ({ id: 'message-1' }),
+        };
+      },
+      assert: async (context, inputs) => {
+        await expect(
+          runDiscordInteractionProbe(
+            {
+              discordChannels: {
+                audit: { id: 'audit-1' },
+                implementation: { id: 'implementation-1' },
+              },
+              discordRequest: context.discordRequest,
+              reportDirectory: resolve(tmpdir(), 'devplat-live-lab-probe'),
+              runLabel: inputs.runLabel,
+              updatedAt: '2026-04-30T00:00:00.000Z',
+            },
+            {
+              createDiscordControlPlaneService:
+                context.createDiscordControlPlaneService,
+              createDiscordOperatorInteractionFromCallback:
+                context.createDiscordOperatorInteractionFromCallback,
+            },
+          ),
+        ).rejects.toThrow(
+          'Discord interaction probe did not publish actionable controls',
+        );
       },
     },
     {

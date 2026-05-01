@@ -18,9 +18,11 @@ messages and still write audit records. The exported command contract registry
 is the source for guild slash-command registration. The live lab registers those
 commands and includes a Discord callback-shaped interaction probe so this
 response path is validated from raw slash-command payload normalization through
-operator-visible Discord messages, not only local unit tests. Hermetic OpenClaw
-deep tests use the exported loopback response transport to verify the same
-callback-shaped interaction flow without external Discord access.
+operator-visible Discord messages, not only local unit tests. The live-lab probe
+fails if the acknowledgement or thread message loses the structured button rows.
+Hermetic OpenClaw deep tests use the exported loopback response transport to
+verify the same callback-shaped interaction flow without external Discord
+access.
 
 ## Real-World Flow
 

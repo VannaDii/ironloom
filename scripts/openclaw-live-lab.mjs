@@ -1151,12 +1151,52 @@ async function ensureDiscordChannels({
   };
 }
 
-async function sendDiscordMessage(channelId, content, discordRequest) {
+/**
+ * Normalizes a plain status string or structured Discord payload into a message body.
+ */
+function createDiscordMessageBody(payload) {
+  if (typeof payload === 'string') {
+    return { content: payload };
+  }
+
+  return payload;
+}
+
+/**
+ * Prefixes the visible content while preserving structured Discord controls.
+ */
+function prefixDiscordMessageContent(prefix, payload) {
+  if (typeof payload === 'string') {
+    return `${prefix}${payload}`;
+  }
+
+  return {
+    ...payload,
+    content: `${prefix}${payload.content}`,
+  };
+}
+
+/**
+ * Posts a Discord message body without dropping structured components.
+ */
+async function sendDiscordMessage(channelId, payload, discordRequest) {
   return discordRequest(`/channels/${encodeURIComponent(channelId)}/messages`, {
-    body: { content },
+    body: createDiscordMessageBody(payload),
     expectedStatuses: [200, 201],
     method: 'POST',
   });
+}
+
+/**
+ * Detects whether a structured Discord payload includes actionable controls.
+ */
+function hasDiscordActionComponents(payload) {
+  return (
+    Array.isArray(payload?.components) &&
+    payload.components.some(
+      (row) => Array.isArray(row?.components) && row.components.length > 0,
+    )
+  );
 }
 
 async function postStatus({
@@ -1207,7 +1247,22 @@ class LiveLabDiscordInteractionTransport {
     const endpoint = `/interactions/${encodeURIComponent(input.id)}/${encodeURIComponent(input.token)}/callback`;
     const responseBody = await sendDiscordMessage(
       this.auditChannelId,
-      `simulated interaction callback: ${content}`,
+      prefixDiscordMessageContent('simulated interaction callback: ', content),
+      this.discordRequest,
+    );
+
+    return {
+      endpoint,
+      statusCode: 201,
+      responseBody,
+    };
+  }
+
+  async postInteractionDeferred(input) {
+    const endpoint = `/interactions/${encodeURIComponent(input.id)}/${encodeURIComponent(input.token)}/callback`;
+    const responseBody = await sendDiscordMessage(
+      this.auditChannelId,
+      `simulated interaction deferred: ${input.id}`,
       this.discordRequest,
     );
 
@@ -1382,9 +1437,19 @@ export async function runDiscordInteractionProbe(
     throw new Error('Discord interaction probe did not record receipts.');
   }
 
+  if (
+    !hasDiscordActionComponents(result.responsePayload) ||
+    !hasDiscordActionComponents(result.threadPayload)
+  ) {
+    throw new Error(
+      'Discord interaction probe did not publish actionable controls.',
+    );
+  }
+
   return {
     action: result.request.action,
     allowed: result.allowed,
+    componentRows: result.threadPayload.components.length,
     commandName: interaction.commandName,
     failedClosed: result.failedClosed,
     interactionEndpoint: result.responseReceipt.endpoint,

@@ -16,7 +16,7 @@ CI.
   slash command payload, and posts the interaction acknowledgement plus
   bound-thread status through the same response transport used by the runtime;
   the run fails if the interaction resolves to the wrong thread or does not
-  record both callback and thread message receipts
+  record both callback and thread message receipts with actionable components
 - waits for SonarQube Cloud to auto-import the repository
 - runs the OpenClaw live deep test against the real container with network
   access enabled
@@ -118,7 +118,9 @@ control-plane service, renders the compact operator message payload with
 contextual buttons, posts the interaction acknowledgement into the audit
 channel, posts the bound-thread status into the implementation channel, and
 records both the command registration and response receipt endpoints in
-`live-lab-report.json`.
+`live-lab-report.json`. The probe fails if either response loses the structured
+button rows, so the live-lab lane cannot silently regress to plain log-style
+messages.
 
 The Discord package also exposes a signature-verified interaction webhook
 service for production mounts. That service validates the Discord Ed25519
