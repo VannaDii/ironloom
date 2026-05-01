@@ -15,6 +15,7 @@ import {
   type DiscordControlResponseTransport,
 } from './service.js';
 import type {
+  DiscordMessagePayload,
   DiscordOperatorInteraction,
   DiscordResponseReceipt,
 } from './types.js';
@@ -27,9 +28,18 @@ function createReceipt(endpoint: string): DiscordResponseReceipt {
   };
 }
 
+function createMessagePayload(content: string): DiscordMessagePayload {
+  return {
+    content,
+  };
+}
+
 function createResponseTransport(): DiscordControlResponseTransport {
   return {
     async postInteractionResponse(input) {
+      return createReceipt(`/interactions/${input.id}/${input.token}/callback`);
+    },
+    async postInteractionDeferred(input) {
       return createReceipt(`/interactions/${input.id}/${input.token}/callback`);
     },
     async postThreadMessage(threadId) {
@@ -63,6 +73,7 @@ describe('DiscordControlPlaneService', () => {
 
     expect(result.allowed).toBe(true);
     expect(result.persistedKey).toBe('discord-001');
+    expect(await store.list('audit')).toContain('discord-001:audit');
   });
 
   it('blocks privileged merge actions and exposes helper methods', async () => {
@@ -91,6 +102,7 @@ describe('DiscordControlPlaneService', () => {
     expect(service.explain(prepared)).toContain('thread-2:merge-now');
     expect(result.allowed).toBe(false);
     expect(await store.list('state')).toContain('discord-002');
+    expect(await store.list('audit')).toContain('discord-002:audit');
   });
 
   it('records thread-aware diagnostic actions without privileged overrides', async () => {
@@ -236,14 +248,19 @@ describe('DiscordControlPlaneService', () => {
               new TelemetryEventService(store),
               store,
               {
-                async postInteractionResponse(input, content) {
-                  messages.push(content);
+                async postInteractionResponse(input, payload) {
+                  messages.push(payload.content);
                   return createReceipt(
                     `/interactions/${input.id}/${input.token}/callback`,
                   );
                 },
-                async postThreadMessage(threadId, content) {
-                  messages.push(content);
+                async postInteractionDeferred(input) {
+                  return createReceipt(
+                    `/interactions/${input.id}/${input.token}/callback`,
+                  );
+                },
+                async postThreadMessage(threadId, payload) {
+                  messages.push(payload.content);
                   return createReceipt(`/channels/${threadId}/messages`);
                 },
               },
@@ -329,6 +346,9 @@ describe('DiscordControlPlaneService', () => {
           expect(await context.store.list('state')).not.toContain(
             'interaction-002',
           );
+          expect(await context.store.list('audit')).toContain(
+            'interaction-002:audit',
+          );
         },
       },
     ];
@@ -355,11 +375,17 @@ describe('DiscordControlPlaneService', () => {
         },
         mock: () => {
           const calls: string[] = [];
-          const fetchImpl = async (url: string): Promise<Response> => {
+          const bodies: string[] = [];
+          const fetchImpl = async (
+            url: string,
+            init?: RequestInit,
+          ): Promise<Response> => {
             calls.push(url);
+            bodies.push(String(init?.body ?? ''));
             return new Response(JSON.stringify({ ok: true }), { status: 200 });
           };
           return {
+            bodies,
             calls,
             transport: new DiscordRestResponseTransport(
               'bot-token',
@@ -369,17 +395,37 @@ describe('DiscordControlPlaneService', () => {
           };
         },
         assert: async (context: {
+          bodies: string[];
           calls: string[];
           transport: DiscordRestResponseTransport;
         }) => {
           const interactionReceipt =
             await context.transport.postInteractionResponse(
               cases[0].inputs.interaction,
-              'accepted',
+              {
+                allowed_mentions: { parse: [] },
+                content: 'accepted',
+                flags: 64,
+              },
             );
           const threadReceipt = await context.transport.postThreadMessage(
             'thread-7',
-            'accepted',
+            {
+              components: [
+                {
+                  components: [
+                    {
+                      custom_id: 'devplat:v1:show-status:thread-7',
+                      label: 'Show Status',
+                      style: 2,
+                      type: 2,
+                    },
+                  ],
+                  type: 1,
+                },
+              ],
+              content: 'accepted',
+            },
           );
 
           expect(interactionReceipt.endpoint).toBe(
@@ -389,6 +435,32 @@ describe('DiscordControlPlaneService', () => {
           expect(context.calls).toEqual([
             'https://discord.test/api/v10/interactions/interaction-003/token-3/callback',
             'https://discord.test/api/v10/channels/thread-7/messages',
+          ]);
+          expect(context.bodies).toEqual([
+            JSON.stringify({
+              type: 4,
+              data: {
+                content: 'accepted',
+                allowed_mentions: { parse: [] },
+                flags: 64,
+              },
+            }),
+            JSON.stringify({
+              content: 'accepted',
+              components: [
+                {
+                  components: [
+                    {
+                      custom_id: 'devplat:v1:show-status:thread-7',
+                      label: 'Show Status',
+                      style: 2,
+                      type: 2,
+                    },
+                  ],
+                  type: 1,
+                },
+              ],
+            }),
           ]);
         },
       },
@@ -426,7 +498,7 @@ describe('DiscordControlPlaneService', () => {
         assert: async (transport: DiscordRestResponseTransport) => {
           const receipt = await transport.postInteractionResponse(
             cases[0].inputs.interaction,
-            'accepted',
+            createMessagePayload('accepted'),
           );
 
           expect(receipt.statusCode).toBe(200);
@@ -465,11 +537,14 @@ describe('DiscordControlPlaneService', () => {
         ) => {
           const responseReceipt = await transport.postInteractionResponse(
             inputs.interaction,
-            'Accepted.',
+            createMessagePayload('Accepted.'),
           );
           const threadReceipt = await transport.postThreadMessage(
             inputs.threadId,
-            'DevPlat accepted.',
+            createMessagePayload('DevPlat accepted.'),
+          );
+          const deferredReceipt = await transport.postInteractionDeferred(
+            inputs.interaction,
           );
 
           expect(responseReceipt).toMatchObject({
@@ -487,6 +562,14 @@ describe('DiscordControlPlaneService', () => {
               mode: 'loopback',
               content: 'DevPlat accepted.',
               threadId: 'thread/10',
+            },
+          });
+          expect(deferredReceipt).toMatchObject({
+            endpoint: '/interactions/interaction-006/token-6/callback',
+            responseBody: {
+              deferred: true,
+              interactionId: 'interaction-006',
+              mode: 'loopback',
             },
           });
         },
@@ -554,7 +637,10 @@ describe('DiscordControlPlaneService', () => {
           new DiscordRestResponseTransport('', 'https://discord.test/api/v10'),
         assert: async (transport: DiscordRestResponseTransport) => {
           await expect(
-            transport.postThreadMessage(cases[0].inputs.threadId, 'blocked'),
+            transport.postThreadMessage(
+              cases[0].inputs.threadId,
+              createMessagePayload('blocked'),
+            ),
           ).rejects.toThrow('DISCORD_BOT_TOKEN');
         },
       },
@@ -602,19 +688,28 @@ describe('DiscordControlPlaneService', () => {
         }) => {
           const receipt = await context.transport.postInteractionResponse(
             cases[0].inputs.interaction,
-            'Accepted.',
+            createMessagePayload('Accepted.'),
           );
+          const deferredReceipt =
+            await context.transport.postInteractionDeferred(
+              cases[0].inputs.interaction,
+            );
 
           expect(receipt.statusCode).toBe(202);
+          expect(deferredReceipt.statusCode).toBe(202);
           expect(receipt.responseBody).toBeNull();
           expect(receipt.endpoint).toBe(
             '/interactions/interaction%2Frest%201/token%2Frest%201/callback',
           );
           expect(context.calls).toEqual([
             'https://discord.test/interactions/interaction%2Frest%201/token%2Frest%201/callback',
+            'https://discord.test/interactions/interaction%2Frest%201/token%2Frest%201/callback',
           ]);
           await expect(
-            context.transport.postThreadMessage('thread-rest', 'Accepted.'),
+            context.transport.postThreadMessage(
+              'thread-rest',
+              createMessagePayload('Accepted.'),
+            ),
           ).rejects.toThrow('DISCORD_BOT_TOKEN');
         },
       },
@@ -645,7 +740,7 @@ describe('DiscordControlPlaneService', () => {
         }) => {
           const receipt = await context.transport.postThreadMessage(
             cases[1].inputs.threadId,
-            'Accepted.',
+            createMessagePayload('Accepted.'),
           );
 
           expect(receipt.statusCode).toBe(200);

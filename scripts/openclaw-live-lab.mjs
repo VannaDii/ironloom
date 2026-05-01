@@ -31,6 +31,10 @@ const defaultWorkflowTimeoutMs = 180_000;
 const defaultPollMs = 5_000;
 const githubRepositoryListPageSize = 100;
 const livePrefix = 'devplat-test-';
+/**
+ * Shared Discord category used by live-lab and OpenClaw test runs.
+ */
+const testDiscordCategoryName = 'test';
 const liveLabGitHubAppPermissions = Object.freeze({
   actions: 'write',
   administration: 'write',
@@ -289,7 +293,7 @@ export function createRunIdentifiers({ runAttempt, runNumber }) {
 
   return {
     branchName: `live-test/${runLabel}`,
-    categoryName: repoName,
+    categoryName: testDiscordCategoryName,
     repoName,
     runAttempt: normalizedRunAttempt,
     runLabel,
@@ -297,13 +301,27 @@ export function createRunIdentifiers({ runAttempt, runNumber }) {
   };
 }
 
-export function createDiscordChannelPlan() {
+export function createDiscordChannelPlan(
+  categoryName = testDiscordCategoryName,
+) {
   return [
-    { key: 'spec', name: 'spec' },
-    { key: 'implementation', name: 'implementation' },
-    { key: 'pullRequest', name: 'pull-request' },
-    { key: 'audit', name: 'audit' },
-    { key: 'projectManagement', name: 'project-management' },
+    { categoryName, key: 'spec', name: 'spec' },
+    {
+      categoryName,
+      key: 'implementation',
+      name: 'implementation',
+    },
+    {
+      categoryName,
+      key: 'pullRequest',
+      name: 'pull-request',
+    },
+    { categoryName, key: 'audit', name: 'audit' },
+    {
+      categoryName,
+      key: 'projectManagement',
+      name: 'project-management',
+    },
   ];
 }
 
@@ -406,6 +424,8 @@ export function createLiveRuntimeEnv({
     DISCORD_APPLICATION_ID: discordConfig.applicationId,
     DISCORD_AUDIT_CHANNEL_ID: discordChannels.audit.id,
     DISCORD_BOT_TOKEN: discordConfig.botToken,
+    DISCORD_CATEGORY_NAME:
+      discordConfig.categoryName ?? testDiscordCategoryName,
     DISCORD_DEFAULT_GUILD_ID: discordConfig.guildId,
     DISCORD_IMPLEMENTATION_CHANNEL_ID: discordChannels.implementation.id,
     DISCORD_PROJECT_MANAGEMENT_CHANNEL_ID: discordChannels.projectManagement.id,
@@ -470,6 +490,7 @@ export function createStepSummary(report) {
     `- Run: ${report.runLabel}`,
     `- Repository: ${report.github?.repoFullName ?? 'n/a'}`,
     `- Workflow: ${report.workflowUrl ?? 'n/a'}`,
+    `- Discord category: ${report.discord?.category?.name ?? 'n/a'}`,
     `- Discord channels: ${report.discord?.channelNames?.join(', ') ?? 'n/a'}`,
     `- Deep-test steps: ${String(report.deepTest?.steps ?? 0)}`,
     `- Repository cleanup: ${report.cleanup?.repository.status ?? 'n/a'}`,
@@ -1062,19 +1083,50 @@ async function getGuild(guildId, discordRequest) {
   return discordRequest(`/guilds/${encodeURIComponent(guildId)}`);
 }
 
-async function ensureDiscordChannels({ discordRequest, guildId }) {
+async function ensureDiscordCategory({
+  categoryName,
+  discordRequest,
+  existingChannels,
+  guildId,
+}) {
+  return (
+    existingChannels.find(
+      (candidate) => candidate.name === categoryName && candidate.type === 4,
+    ) ??
+    (await discordRequest(`/guilds/${encodeURIComponent(guildId)}/channels`, {
+      body: {
+        name: categoryName,
+        type: 4,
+      },
+      expectedStatuses: [200, 201],
+      method: 'POST',
+    }))
+  );
+}
+
+async function ensureDiscordChannels({
+  categoryName = testDiscordCategoryName,
+  discordRequest,
+  guildId,
+}) {
   const existingChannels = await listGuildChannels({
     discordRequest,
     guildId,
   });
+  const testCategory = await ensureDiscordCategory({
+    categoryName,
+    discordRequest,
+    existingChannels,
+    guildId,
+  });
   const channels = {};
 
-  for (const channel of createDiscordChannelPlan()) {
+  for (const channel of createDiscordChannelPlan(categoryName)) {
     const existingChannel = existingChannels.find(
       (candidate) =>
         candidate.name === channel.name &&
         candidate.type === 0 &&
-        (candidate.parent_id === undefined || candidate.parent_id === null),
+        candidate.parent_id === testCategory.id,
     );
 
     channels[channel.key] =
@@ -1082,6 +1134,10 @@ async function ensureDiscordChannels({ discordRequest, guildId }) {
       (await discordRequest(`/guilds/${encodeURIComponent(guildId)}/channels`, {
         body: {
           name: channel.name,
+          /**
+           * Discord channel creation wire key used to nest test channels under the test category.
+           */
+          parent_id: testCategory.id,
           type: 0,
         },
         expectedStatuses: [200, 201],
@@ -1090,6 +1146,7 @@ async function ensureDiscordChannels({ discordRequest, guildId }) {
   }
 
   return {
+    category: testCategory,
     channels,
   };
 }
@@ -1628,11 +1685,19 @@ export async function runLiveLab(options, dependencies = {}) {
     );
 
     const discordChannels = await ensureDiscordChannels({
+      categoryName:
+        options.environment.discord.categoryName ?? testDiscordCategoryName,
       discordRequest,
       guildId: options.environment.discord.guildId,
     });
     report.discord = {
-      channelNames: createDiscordChannelPlan().map((channel) => channel.name),
+      category: {
+        id: discordChannels.category.id,
+        name: discordChannels.category.name,
+      },
+      channelNames: createDiscordChannelPlan(discordChannels.category.name).map(
+        (channel) => channel.name,
+      ),
       channels: Object.fromEntries(
         Object.entries(discordChannels.channels).map(([key, channel]) => [
           key,

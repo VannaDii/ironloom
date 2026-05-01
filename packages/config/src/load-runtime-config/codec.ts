@@ -68,6 +68,7 @@ export const DiscordRuntimeConfigCodec = t.type({
   apiBaseUrl: t.string,
   apiVersion: DiscordApiVersionCodec,
   applicationId: t.string,
+  categoryName: t.string,
   publicKey: t.string,
   botToken: t.string,
   installScopes: t.readonlyArray(DiscordInstallScopeCodec),

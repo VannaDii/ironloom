@@ -357,6 +357,117 @@ describe('DiscordControlRequest logic', () => {
           }
         },
       },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-011',
+            token: 'token-11',
+            actorId: 'user-11',
+            channelId: 'thread-12',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            customId: 'devplat:v1:show-status:thread-11',
+            threadId: 'thread-11',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.action).toBe('show-status');
+            expect(route.request.threadId).toBe('thread-11');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-012',
+            token: 'token-12',
+            actorId: 'user-12',
+            channelId: 'thread-12',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            customId: 'devplat:v1:pause-this:thread-encoded',
+            threadId: 'thread-current',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(false);
+          if (!route.ok) {
+            expect(route.reason).toContain('exactly one bound thread');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-013',
+            token: 'token-13',
+            actorId: 'user-13',
+            channelId: 'thread-13',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            customId: 'devplat:v1:show-status:thread-13:extra',
+            threadId: 'thread-13',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(false);
+          if (!route.ok) {
+            expect(route.reason).toContain('not recognized');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-014',
+            token: 'token-14',
+            actorId: 'user-14',
+            channelId: 'thread-14',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            customId: 'devplat:v1:unknown-action:thread-14',
+            threadId: 'thread-14',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(false);
+          if (!route.ok) {
+            expect(route.reason).toContain('not recognized');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-015',
+            token: 'token-15',
+            actorId: 'user-15',
+            channelId: 'thread-15',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            customId: 'devplat:v1:show-status: ',
+            threadId: 'thread-15',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(false);
+          if (!route.ok) {
+            expect(route.reason).toContain('not recognized');
+          }
+        },
+      },
     ];
 
     for (const testCase of cases) {

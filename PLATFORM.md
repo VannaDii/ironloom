@@ -35,6 +35,8 @@ The current repository already includes the concrete surfaces that this phase is
 
 - Discord control actions currently cover `run-this`, `claim-this`, `approve-this`, `block-this`, `complete-this`, `pause-this`, `resume-this`, `retry-gates`, `merge-now`, `rebase-all-dependents`, `show-status`, `show-last-artifact`, `explain-failure`, `sync-worktree`, `release-worktree`, and `update-spec`.
 - Discord thread/session contracts now distinguish `spec`, `implementation`, and `pull-request` thread kinds so PR workflows can stay thread-scoped instead of remaining only a documented target.
+- Discord operator messages are compact structured UI payloads with status/scope/item/result fields plus contextual buttons; route failures and policy denials fail closed and persist audit records.
+- Discord categories default to the configured repository name for multi-repository guild separation; OpenClaw test and live-lab traffic uses the `test` category.
 - The OpenClaw adapter already exposes explicit worktree sync/release tools, explicit spec-update handling, pull-request update and merge submission tools, and dependent rebase execution delegated into platform packages.
 - The guide site already includes a dedicated publishing and release guide at `site/guide-docs/guides/publishing-release.md`.
 - Pre-commit enforcement is centralized through `scripts/check-pre-commit.mjs`, which verifies Node, regenerates schemas and the OpenClaw manifest twice around `lint-staged`, re-stages generated files, then runs workspace typecheck and repository validation.
@@ -222,6 +224,8 @@ All Discord interactions MUST be thread-aware.
 - no operator action may run against ambiguous global context
 - all lifecycle-changing actions must resolve context from thread metadata
 - if thread context is missing or ambiguous, the system must fail closed unless an explicit override path exists
+- message components must encode action and thread context, then revalidate the live Discord payload, persisted binding, policy decision, and current work item before running an action
+- test and live-lab OpenClaw Discord traffic must use the standard channels under a `test` category; production ops uses the standard configured channels under a category named for the repository
 
 ### Expected Operator Actions
 
@@ -244,6 +248,41 @@ Discord operator actions must cover common development operations such as:
 - `release worktree`
 - `update spec`
 
+### Message UX
+
+Discord messages must be operator UI rather than logs. Primary messages use the
+canonical structure:
+
+```text
+<indicator> DevPlat · <action label>
+
+Status: <status>
+Scope: <thread kind> · <thread id>
+Item: <spec | slice | PR | artifact | run>
+Actor: <Discord actor mention or id>
+→ <result or next action>
+```
+
+Actionable messages include contextual buttons for relevant next steps only.
+Button payloads may include action and thread context, but encoded payloads are
+never trusted by themselves. The control plane must fail closed when the
+interaction thread, persisted binding, work item, stale-state check, or policy
+decision does not match.
+
+Route failures use:
+
+```text
+🔴 DevPlat · Action refused
+
+Status: blocked
+Scope: unresolved
+Reason: interaction must resolve to exactly one bound thread
+→ Run this from the correct spec, implementation, or PR thread.
+```
+
+Policy denials use the standard blocked-action format and change no platform
+state beyond audit logging.
+
 Current Discord thread/session contracts must support:
 
 - `spec` thread context
@@ -254,6 +293,7 @@ Runtime Discord configuration must also declare:
 
 - Discord API `v10` access
 - application id, public key, and bot token inputs
+- category name, defaulting to the configured repository name except for test traffic
 - parent channels for `spec`, `implementation`, and `pull-request` threads
 - audit and project-management channels
 - an inheritance-based thread binding mode
@@ -451,6 +491,9 @@ This phase is complete when:
 - GitHub Pages docs deploys successfully through artifact-based publishing
 - `@vannadii/devplat-openclaw` exposes the intended foundation tool surface
 - Discord interactions are thread-aware and auditable
+- Discord operator messages use compact structured payloads with contextual
+  buttons, fail-closed route messages, policy-denied blocked messages, and audit
+  records for accepted, blocked, and refused interactions
 - the dispatchable live lab registers Discord command contracts and records
   Discord interaction-response probing through operator-visible Discord messages
 - the Discord package exposes a reusable signature-verified interaction webhook

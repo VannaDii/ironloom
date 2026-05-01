@@ -39,6 +39,8 @@ describe('Discord command contract logic', () => {
           'approve-this',
           'block-this',
           'complete-this',
+          'pause-this',
+          'resume-this',
           'retry-gates',
           'merge-now',
           'rebase-dependents',

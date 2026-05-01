@@ -19,6 +19,11 @@ flowchart LR
 - `schemas/plugin-config.schema.json`: generated plugin config schema
 - `dist/index.js`: built plugin entrypoint
 
+Runtime plugin config includes the Discord category name. Normal production
+configuration derives that category from the repository name so one guild can
+host multiple repositories without cross-thread ambiguity; OpenClaw test and
+live-lab runs set the category to `test`.
+
 ## Exposed Tools
 
 - `run_gates`: execute the configured DevPlat gate suite

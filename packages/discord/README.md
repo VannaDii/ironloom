@@ -10,15 +10,17 @@ projections, and operator control actions. Runtime behavior must resolve bound
 thread context and fail closed when a lifecycle-changing action is ambiguous.
 Slash command and button interactions are routed into control actions, must
 resolve exactly one bound thread or bound thread session, project that session
-into a typed spec/implementation/pull-request work item, and post both
-interaction acknowledgements and thread status messages through the Discord REST
-transport. The exported command contract registry is the source for guild
-slash-command registration. The live lab registers those commands and includes a
-Discord callback-shaped interaction probe so this response path is validated
-from raw slash-command payload normalization through operator-visible Discord
-messages, not only local unit tests. Hermetic OpenClaw deep tests use the
-exported loopback response transport to verify the same callback-shaped
-interaction flow without external Discord access.
+into a typed spec/implementation/pull-request work item, render compact
+operator UI payloads with contextual buttons, and post both interaction
+acknowledgements and thread status messages through the structured Discord REST
+transport. Route failures and policy denials use standard blocked/refused
+messages and still write audit records. The exported command contract registry
+is the source for guild slash-command registration. The live lab registers those
+commands and includes a Discord callback-shaped interaction probe so this
+response path is validated from raw slash-command payload normalization through
+operator-visible Discord messages, not only local unit tests. Hermetic OpenClaw
+deep tests use the exported loopback response transport to verify the same
+callback-shaped interaction flow without external Discord access.
 
 ## Real-World Flow
 
@@ -32,9 +34,11 @@ flowchart LR
   Normalize --> Binding[Resolve bound thread session]
   Binding --> WorkItem[Project bound work item]
   WorkItem -->|unambiguous| Policy[Policy evaluation]
-  Binding -->|ambiguous| Deny[Fail closed response]
-  Policy --> State[Persist state and telemetry]
-  State --> Response[Interaction acknowledgement]
+  Binding -->|ambiguous| Deny[Fail closed response and audit]
+  Policy --> State[Persist state telemetry and audit]
+  State --> Render[Render compact operator UI]
+  Render --> Components[Contextual buttons]
+  Components --> Response[Interaction acknowledgement]
   Response --> Thread[Thread status message]
 ```
 

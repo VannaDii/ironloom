@@ -26,6 +26,7 @@ export const OpenClawPluginConfigCodec = t.type({
   apiBaseUrl: t.string,
   apiVersion: t.literal('v10'),
   applicationId: t.string,
+  categoryName: t.string,
   publicKey: t.string,
   botToken: t.string,
   installScopes: t.readonlyArray(OpenClawPluginConfigDiscordInstallScopeCodec),

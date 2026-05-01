@@ -6,9 +6,14 @@ import type {
   DiscordInteractionCallbackCodec,
   DiscordInteractionCallbackOptionsCodec,
   DiscordControlResultCodec,
+  DiscordActionRowComponentCodec,
+  DiscordAllowedMentionsCodec,
+  DiscordButtonComponentCodec,
+  DiscordButtonStyleCodec,
   DiscordInteractionRouteCodec,
   DiscordInteractionRouteFailureCodec,
   DiscordInteractionRouteSuccessCodec,
+  DiscordMessagePayloadCodec,
   DiscordOperatorInteractionCodec,
   DiscordResponseReceiptCodec,
   DiscordWorkItemBindingCodec,
@@ -51,3 +56,19 @@ export type DiscordInteractionRoute = t.TypeOf<
 export type DiscordResponseReceipt = t.TypeOf<
   typeof DiscordResponseReceiptCodec
 >;
+
+export type DiscordAllowedMentions = t.TypeOf<
+  typeof DiscordAllowedMentionsCodec
+>;
+
+export type DiscordButtonStyle = t.TypeOf<typeof DiscordButtonStyleCodec>;
+
+export type DiscordButtonComponent = t.TypeOf<
+  typeof DiscordButtonComponentCodec
+>;
+
+export type DiscordActionRowComponent = t.TypeOf<
+  typeof DiscordActionRowComponentCodec
+>;
+
+export type DiscordMessagePayload = t.TypeOf<typeof DiscordMessagePayloadCodec>;

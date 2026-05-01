@@ -361,7 +361,7 @@ describe('openclaw-live-lab helpers', () => {
         });
         expect(identifiers).toMatchObject({
           branchName: 'live-test/101-2',
-          categoryName: 'devplat-test-101-2',
+          categoryName: 'test',
           repoName: 'devplat-test-101-2',
         });
         expect(channelPlan.map((channel) => channel.name)).toEqual([
@@ -370,6 +370,24 @@ describe('openclaw-live-lab helpers', () => {
           'pull-request',
           'audit',
           'project-management',
+        ]);
+        expect(channelPlan.map((channel) => channel.categoryName)).toEqual([
+          'test',
+          'test',
+          'test',
+          'test',
+          'test',
+        ]);
+        expect(
+          createDiscordChannelPlan('repo-alpha').map(
+            (channel) => channel.categoryName,
+          ),
+        ).toEqual([
+          'repo-alpha',
+          'repo-alpha',
+          'repo-alpha',
+          'repo-alpha',
+          'repo-alpha',
         ]);
       },
     },
@@ -442,6 +460,7 @@ describe('openclaw-live-lab helpers', () => {
           },
           discordConfig: {
             applicationId: 'app-1',
+            categoryName: 'test',
             botToken: 'bot-token-1',
             guildId: 'guild-1',
             publicKey: 'public-key-1',
@@ -904,6 +923,7 @@ describe('runLiveLab', () => {
   const baseEnvironment = {
     discord: {
       applicationId: 'app-1',
+      categoryName: 'test',
       baseUrl: 'https://discord.example/api/v10',
       botToken: 'bot-token-1',
       guildId: 'guild-1',
@@ -946,13 +966,25 @@ describe('runLiveLab', () => {
         const discordMessages = [];
         const sonarCalls = [];
         const sharedDiscordChannels = [
-          { id: 'spec-1', name: 'spec', type: 0 },
-          { id: 'implementation-1', name: 'implementation', type: 0 },
-          { id: 'pull-request-1', name: 'pull-request', type: 0 },
-          { id: 'audit-1', name: 'audit', type: 0 },
+          { id: 'test-category', name: 'test', type: 4 },
+          { id: 'spec-1', name: 'spec', parent_id: 'test-category', type: 0 },
+          {
+            id: 'implementation-1',
+            name: 'implementation',
+            parent_id: 'test-category',
+            type: 0,
+          },
+          {
+            id: 'pull-request-1',
+            name: 'pull-request',
+            parent_id: 'test-category',
+            type: 0,
+          },
+          { id: 'audit-1', name: 'audit', parent_id: 'test-category', type: 0 },
           {
             id: 'project-management-1',
             name: 'project-management',
+            parent_id: 'test-category',
             type: 0,
           },
         ];
@@ -1275,6 +1307,7 @@ describe('runLiveLab', () => {
         );
         expect(context.summaryEntries[0]).toContain('Status: passed');
         expect(context.summaryEntries[0]).toContain(`Ref: ${inputs.ref}`);
+        expect(context.summaryEntries[0]).toContain('Discord category: test');
         expect(context.summaryEntries[0]).toContain(
           'Discord channels: spec, implementation, pull-request, audit, project-management',
         );
@@ -1292,14 +1325,31 @@ describe('runLiveLab', () => {
         );
         temporaryRoots.push(reportDir);
         const discordCalls = [];
+        const createdDiscordChannels = [];
         const githubCalls = [];
         const sonarCalls = [];
         const discordChannelResponses = [
-          { id: 'spec-1', name: 'spec', type: 0 },
-          { id: 'implementation-1', name: 'implementation', type: 0 },
-          { id: 'pull-request-1', name: 'pull-request', type: 0 },
-          { id: 'audit-1', name: 'audit', type: 0 },
-          { id: 'project-management-1', name: 'project-management', type: 0 },
+          { id: 'test-category', name: 'test', type: 4 },
+          { id: 'spec-1', name: 'spec', parent_id: 'test-category', type: 0 },
+          {
+            id: 'implementation-1',
+            name: 'implementation',
+            parent_id: 'test-category',
+            type: 0,
+          },
+          {
+            id: 'pull-request-1',
+            name: 'pull-request',
+            parent_id: 'test-category',
+            type: 0,
+          },
+          { id: 'audit-1', name: 'audit', parent_id: 'test-category', type: 0 },
+          {
+            id: 'project-management-1',
+            name: 'project-management',
+            parent_id: 'test-category',
+            type: 0,
+          },
         ];
 
         const githubRoutes = new Map([
@@ -1465,6 +1515,7 @@ describe('runLiveLab', () => {
               path === '/guilds/guild-1/channels' &&
               options.method === 'POST'
             ) {
+              createdDiscordChannels.push(options.body);
               return discordChannelResponses.shift();
             }
             if (
@@ -1480,6 +1531,7 @@ describe('runLiveLab', () => {
             );
           },
           discordCalls,
+          createdDiscordChannels,
           githubCalls,
           githubRequest,
           reportDir,
@@ -1570,6 +1622,17 @@ describe('runLiveLab', () => {
             ['/guilds/guild-1/channels', 'POST'],
           ]),
         );
+        /**
+         * `parent_id` is the Discord channel creation wire key for category nesting.
+         */
+        expect(context.createdDiscordChannels).toEqual([
+          { name: 'test', type: 4 },
+          { name: 'spec', parent_id: 'test-category', type: 0 },
+          { name: 'implementation', parent_id: 'test-category', type: 0 },
+          { name: 'pull-request', parent_id: 'test-category', type: 0 },
+          { name: 'audit', parent_id: 'test-category', type: 0 },
+          { name: 'project-management', parent_id: 'test-category', type: 0 },
+        ]);
         expect(context.sonarCalls).toEqual(
           expect.arrayContaining([
             [
@@ -1595,11 +1658,27 @@ describe('runLiveLab', () => {
         const summaryEntries = [];
         const githubCalls = [];
         const sharedDiscordChannels = [
-          { id: 'spec-1', name: 'spec', type: 0 },
-          { id: 'implementation-1', name: 'implementation', type: 0 },
-          { id: 'pull-request-1', name: 'pull-request', type: 0 },
-          { id: 'audit-1', name: 'audit', type: 0 },
-          { id: 'project-management-1', name: 'project-management', type: 0 },
+          { id: 'test-category', name: 'test', type: 4 },
+          { id: 'spec-1', name: 'spec', parent_id: 'test-category', type: 0 },
+          {
+            id: 'implementation-1',
+            name: 'implementation',
+            parent_id: 'test-category',
+            type: 0,
+          },
+          {
+            id: 'pull-request-1',
+            name: 'pull-request',
+            parent_id: 'test-category',
+            type: 0,
+          },
+          { id: 'audit-1', name: 'audit', parent_id: 'test-category', type: 0 },
+          {
+            id: 'project-management-1',
+            name: 'project-management',
+            parent_id: 'test-category',
+            type: 0,
+          },
         ];
 
         const githubRoutes = new Map([
@@ -1848,11 +1927,27 @@ describe('runLiveLab', () => {
         const githubCalls = [];
         const sonarCalls = [];
         const sharedDiscordChannels = [
-          { id: 'spec-1', name: 'spec', type: 0 },
-          { id: 'implementation-1', name: 'implementation', type: 0 },
-          { id: 'pull-request-1', name: 'pull-request', type: 0 },
-          { id: 'audit-1', name: 'audit', type: 0 },
-          { id: 'project-management-1', name: 'project-management', type: 0 },
+          { id: 'test-category', name: 'test', type: 4 },
+          { id: 'spec-1', name: 'spec', parent_id: 'test-category', type: 0 },
+          {
+            id: 'implementation-1',
+            name: 'implementation',
+            parent_id: 'test-category',
+            type: 0,
+          },
+          {
+            id: 'pull-request-1',
+            name: 'pull-request',
+            parent_id: 'test-category',
+            type: 0,
+          },
+          { id: 'audit-1', name: 'audit', parent_id: 'test-category', type: 0 },
+          {
+            id: 'project-management-1',
+            name: 'project-management',
+            parent_id: 'test-category',
+            type: 0,
+          },
         ];
 
         const githubRoutes = new Map([
@@ -2149,11 +2244,27 @@ describe('runLiveLab', () => {
         const githubCalls = [];
         const sonarCalls = [];
         const sharedDiscordChannels = [
-          { id: 'spec-1', name: 'spec', type: 0 },
-          { id: 'implementation-1', name: 'implementation', type: 0 },
-          { id: 'pull-request-1', name: 'pull-request', type: 0 },
-          { id: 'audit-1', name: 'audit', type: 0 },
-          { id: 'project-management-1', name: 'project-management', type: 0 },
+          { id: 'test-category', name: 'test', type: 4 },
+          { id: 'spec-1', name: 'spec', parent_id: 'test-category', type: 0 },
+          {
+            id: 'implementation-1',
+            name: 'implementation',
+            parent_id: 'test-category',
+            type: 0,
+          },
+          {
+            id: 'pull-request-1',
+            name: 'pull-request',
+            parent_id: 'test-category',
+            type: 0,
+          },
+          { id: 'audit-1', name: 'audit', parent_id: 'test-category', type: 0 },
+          {
+            id: 'project-management-1',
+            name: 'project-management',
+            parent_id: 'test-category',
+            type: 0,
+          },
         ];
 
         const githubRoutes = new Map([

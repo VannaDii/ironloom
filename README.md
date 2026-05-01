@@ -93,7 +93,9 @@ Set `GITHUB_OWNER`, `GITHUB_REPO`, `GITHUB_DEFAULT_BRANCH`, GitHub API/token
 overrides, runtime storage/worktree overrides, Docker/Helm deployment
 overrides, and the Discord/OpenClaw/Sonar variables documented in the
 configuration guide before running live operator flows. Config loading now
-normalizes those defaults and returns structured validation issues for bad
+normalizes those defaults, derives the Discord category name from `GITHUB_REPO`
+for multi-repository guild separation unless test traffic explicitly sets
+`DISCORD_CATEGORY_NAME=test`, and returns structured validation issues for bad
 URLs, empty required paths, invalid deployment targets, and invalid gateway
 ports. The storage package remains the only package that directly reads or
 writes the committed runtime state directory.

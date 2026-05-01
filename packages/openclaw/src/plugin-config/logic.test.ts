@@ -44,6 +44,7 @@ describe('OpenClawPluginConfig logic', () => {
           apiBaseUrl: 'https://discord.com/api/v10',
           apiVersion: 'v10',
           applicationId: 'application-1',
+          categoryName: 'devplat',
           publicKey: 'public-key-1',
           botToken: 'bot-token-1',
           installScopes: ['bot', 'applications.commands'],
@@ -131,6 +132,7 @@ describe('OpenClawPluginConfig logic', () => {
             apiBaseUrl: 'https://discord.com/api/v10',
             apiVersion: 'v10',
             applicationId: 'application-9',
+            categoryName: 'devplat',
             publicKey: 'public-key-9',
             botToken: 'bot-token-9',
             installScopes: ['bot', 'applications.commands'],
@@ -184,6 +186,7 @@ describe('OpenClawPluginConfig logic', () => {
 
         expect(config.id).toBe('@vannadii/devplat-openclaw:config');
         expect(config.apiVersion).toBe('v10');
+        expect(config.categoryName).toBe('devplat');
         expect(config.pullRequestChannelId).toBe('prs');
         expect(config.projectManagementChannelId).toBe('pm');
         expect(config.threadBindingMode).toBe('inherit-parent');

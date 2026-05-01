@@ -4,7 +4,13 @@ Configuration loading and normalization for DevPlat.
 
 ## Responsibility
 
-This package owns repository-scoped runtime configuration for the single-repo production path: GitHub identity, default branch, storage layout, worktree layout, deployment defaults, Discord runtime settings, OpenClaw gateway settings, and SonarCloud project configuration.
+This package owns repository-scoped runtime configuration for the production
+path: GitHub identity, default branch, storage layout, worktree layout,
+deployment defaults, Discord runtime settings, OpenClaw gateway settings, and
+SonarCloud project configuration. Discord category names default to the
+configured repository name so multiple configured repositories can share a guild
+without mixing operator surfaces; tests and live-lab runs override the category
+to `test`.
 
 ## Real-World Flow
 
@@ -35,6 +41,7 @@ flowchart LR
 - Worktrees default to `devplat-state/worktrees` and use `rebase-or-fast-forward` sync.
 - Deployment defaults target local Docker with the published OpenClaw runtime image and the `deploy/helm/devplat` chart.
 - GitHub defaults to `https://api.github.com`, `https://github.com`, and `GITHUB_TOKEN`.
+- Discord category names default to `GITHUB_REPO`; use `DISCORD_CATEGORY_NAME=test` only for OpenClaw test and live-lab traffic.
 
 ## Development
 

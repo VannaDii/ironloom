@@ -22,6 +22,7 @@ describe('RuntimeConfigService', () => {
         expect(config.worktrees.rootDirectory).toBe('devplat-state/worktrees');
         expect(config.deployment.helmChartPath).toBe('deploy/helm/devplat');
         expect(config.discord.apiVersion).toBe('v10');
+        expect(config.discord.categoryName).toBe('devplat');
         expect(config.discord.projectManagementChannelId).toBe(
           'project-management-channel',
         );
@@ -69,6 +70,7 @@ describe('RuntimeConfigService', () => {
           tokenEnvironmentVariable: 'ACME_GITHUB_TOKEN',
         });
         expect(config.discord.applicationId).toBe('application-7');
+        expect(config.discord.categoryName).toBe('platform');
         expect(config.discord.defaultGuildId).toBe('guild-7');
         expect(config.discord.pullRequestChannelId).toBe('prs');
         expect(config.discord.projectManagementChannelId).toBe('pm');

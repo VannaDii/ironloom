@@ -1,6 +1,7 @@
 import { appendTrace } from '@vannadii/devplat-core';
 
 import { resolveDiscordCommandAction } from '../command-contract/logic.js';
+import { DISCORD_COMPONENT_CUSTOM_ID_PREFIX } from './constants.js';
 import type {
   DiscordControlAction,
   DiscordControlRequest,
@@ -11,6 +12,14 @@ import type {
   DiscordWorkItemBinding,
 } from './types.js';
 import type { DiscordThreadSession } from '../thread-session/types.js';
+
+/**
+ * Parsed DevPlat component custom-id context.
+ */
+type DiscordComponentCustomIdContext = {
+  readonly action: DiscordControlAction;
+  readonly threadId: string;
+};
 
 const commandActionMap = new Map<string, DiscordControlAction>([
   ['run this', 'run-this'],
@@ -23,6 +32,10 @@ const commandActionMap = new Map<string, DiscordControlAction>([
   ['block-this', 'block-this'],
   ['complete this', 'complete-this'],
   ['complete-this', 'complete-this'],
+  ['pause this', 'pause-this'],
+  ['pause-this', 'pause-this'],
+  ['resume this', 'resume-this'],
+  ['resume-this', 'resume-this'],
   ['retry gates', 'retry-gates'],
   ['retry-gates', 'retry-gates'],
   ['merge now', 'merge-now'],
@@ -44,6 +57,57 @@ const commandActionMap = new Map<string, DiscordControlAction>([
   ['update-spec', 'update-spec'],
 ]);
 
+/**
+ * Resolves a known action token into a control action.
+ */
+function resolveKnownAction(
+  value: string | undefined,
+): DiscordControlAction | undefined {
+  return value === undefined
+    ? undefined
+    : (commandActionMap.get(value) ?? resolveDiscordCommandAction(value));
+}
+
+/**
+ * Parses the versioned component custom id produced by the Discord renderer.
+ */
+function parseDiscordComponentCustomId(
+  value: string | undefined,
+): DiscordComponentCustomIdContext | undefined {
+  const trimmed = value?.trim();
+  if (trimmed === undefined || trimmed.length === 0) {
+    return undefined;
+  }
+
+  const prefix = `${DISCORD_COMPONENT_CUSTOM_ID_PREFIX}:`;
+  if (!trimmed.startsWith(prefix)) {
+    return undefined;
+  }
+
+  const suffix = trimmed.slice(prefix.length);
+  const separatorIndex = suffix.indexOf(':');
+  if (
+    separatorIndex < 1 ||
+    separatorIndex === suffix.length - 1 ||
+    suffix.indexOf(':', separatorIndex + 1) !== -1
+  ) {
+    return undefined;
+  }
+
+  const actionToken = suffix.slice(0, separatorIndex);
+  const threadToken = suffix.slice(separatorIndex + 1);
+  const action = resolveKnownAction(actionToken);
+  const threadId = threadToken.trim();
+  if (action === undefined || threadId.length === 0) {
+    return undefined;
+  }
+
+  return {
+    action,
+    threadId,
+  };
+}
+
 function normalizeActionToken(value: string | undefined): string | undefined {
   const trimmed = value?.trim().toLowerCase();
   if (trimmed === undefined || trimmed.length === 0) {
@@ -59,14 +123,11 @@ function resolveAction(
   input: DiscordOperatorInteraction,
 ): DiscordControlAction | undefined {
   const normalizedCommand = normalizeActionToken(input.commandName);
-  const commandAction =
-    normalizedCommand === undefined
-      ? undefined
-      : (commandActionMap.get(normalizedCommand) ??
-        resolveDiscordCommandAction(normalizedCommand));
-  const customAction = commandActionMap.get(
-    normalizeActionToken(input.customId) ?? '',
-  );
+  const commandAction = resolveKnownAction(normalizedCommand);
+  const componentContext = parseDiscordComponentCustomId(input.customId);
+  const customAction =
+    componentContext?.action ??
+    commandActionMap.get(normalizeActionToken(input.customId) ?? '');
 
   if (commandAction !== undefined && customAction !== undefined) {
     return commandAction === customAction ? commandAction : undefined;
@@ -78,9 +139,12 @@ function resolveAction(
 function collectThreadCandidates(
   input: DiscordOperatorInteraction,
 ): readonly string[] {
+  const componentContext = parseDiscordComponentCustomId(input.customId);
+
   return [
     ...(input.threadId === undefined ? [] : [input.threadId.trim()]),
     ...(input.boundThreadId === undefined ? [] : [input.boundThreadId.trim()]),
+    ...(componentContext === undefined ? [] : [componentContext.threadId]),
     ...(input.boundSession === undefined
       ? []
       : [input.boundSession.threadId.trim()]),

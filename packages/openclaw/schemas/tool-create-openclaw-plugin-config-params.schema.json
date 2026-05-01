@@ -169,6 +169,9 @@
             "applicationId": {
               "type": "string"
             },
+            "categoryName": {
+              "type": "string"
+            },
             "publicKey": {
               "type": "string"
             },
@@ -221,6 +224,7 @@
             "apiBaseUrl",
             "apiVersion",
             "applicationId",
+            "categoryName",
             "publicKey",
             "botToken",
             "installScopes",

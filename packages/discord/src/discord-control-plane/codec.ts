@@ -87,6 +87,9 @@ export const DiscordInteractionCallbackMemberCodec = t.type({
 
 export const DiscordInteractionCallbackDataCodec = t.partial({
   name: t.string,
+  /**
+   * Discord interaction callback wire key; internally normalized to `customId`.
+   */
   custom_id: t.string,
 });
 
@@ -94,6 +97,9 @@ export const DiscordInteractionCallbackCodec = t.intersection([
   t.type({
     id: t.string,
     token: t.string,
+    /**
+     * Discord interaction callback wire key; internally normalized to `channelId`.
+     */
     channel_id: t.string,
   }),
   t.partial({
@@ -118,6 +124,53 @@ export const DiscordResponseReceiptCodec = t.type({
   responseBody: t.unknown,
 });
 
+export const DiscordAllowedMentionsCodec = t.type({
+  parse: t.readonlyArray(t.string),
+});
+
+export const DiscordButtonStyleCodec = t.union([
+  t.literal(1),
+  t.literal(2),
+  t.literal(3),
+  t.literal(4),
+  t.literal(5),
+]);
+
+export const DiscordButtonComponentCodec = t.intersection([
+  t.type({
+    type: t.literal(2),
+    label: t.string,
+    style: DiscordButtonStyleCodec,
+  }),
+  t.partial({
+    /**
+     * Discord component wire key; internally generated from the control action context.
+     */
+    custom_id: t.string,
+    url: t.string,
+    disabled: t.boolean,
+  }),
+]);
+
+export const DiscordActionRowComponentCodec = t.type({
+  type: t.literal(1),
+  components: t.readonlyArray(DiscordButtonComponentCodec),
+});
+
+export const DiscordMessagePayloadCodec = t.intersection([
+  t.type({
+    content: t.string,
+  }),
+  t.partial({
+    /**
+     * Discord message payload wire key for suppressing unwanted pings.
+     */
+    allowed_mentions: DiscordAllowedMentionsCodec,
+    components: t.readonlyArray(DiscordActionRowComponentCodec),
+    flags: t.number,
+  }),
+]);
+
 export const DiscordControlResultCodec = t.intersection([
   t.type({
     request: DiscordControlRequestCodec,
@@ -130,6 +183,8 @@ export const DiscordControlResultCodec = t.intersection([
     workItem: DiscordWorkItemBindingCodec,
     responseReceipt: DiscordResponseReceiptCodec,
     threadReceipt: DiscordResponseReceiptCodec,
+    responsePayload: DiscordMessagePayloadCodec,
+    threadPayload: DiscordMessagePayloadCodec,
   }),
 ]);
 

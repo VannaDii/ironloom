@@ -321,6 +321,7 @@ export function createDefaultDevplatConfig(
       ),
       apiVersion: 'v10',
       applicationId: requireEnvValue(env, 'DISCORD_APPLICATION_ID'),
+      categoryName: readEnvValue(env, 'DISCORD_CATEGORY_NAME', githubRepo),
       publicKey: requireEnvValue(env, 'DISCORD_PUBLIC_KEY'),
       botToken: requireEnvValue(env, 'DISCORD_BOT_TOKEN'),
       installScopes: [...DISCORD_INSTALL_SCOPES],

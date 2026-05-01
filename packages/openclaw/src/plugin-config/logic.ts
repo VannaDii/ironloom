@@ -34,6 +34,7 @@ export function createOpenClawPluginConfigFromRuntimeConfig(
     apiBaseUrl: input.discord.apiBaseUrl,
     apiVersion: input.discord.apiVersion,
     applicationId: input.discord.applicationId,
+    categoryName: input.discord.categoryName,
     publicKey: input.discord.publicKey,
     botToken: input.discord.botToken,
     installScopes: input.discord.installScopes,

@@ -44,6 +44,20 @@ const commandContracts: readonly DiscordCommandContract[] = [
     privileged: false,
   },
   {
+    name: 'pause-this',
+    description: 'Pause automation for the item bound to this Discord thread.',
+    type: applicationCommandType,
+    action: 'pause-this',
+    privileged: false,
+  },
+  {
+    name: 'resume-this',
+    description: 'Resume automation for the item bound to this Discord thread.',
+    type: applicationCommandType,
+    action: 'resume-this',
+    privileged: false,
+  },
+  {
     name: 'retry-gates',
     description: 'Retry gates for the work item bound to this Discord thread.',
     type: applicationCommandType,

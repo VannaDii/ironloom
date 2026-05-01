@@ -39,6 +39,7 @@ Runtime configuration normalization reads:
 - `OPENCLAW_GATEWAY_PORT`
 - `DISCORD_API_BASE_URL`
 - `DISCORD_APPLICATION_ID` (required)
+- `DISCORD_CATEGORY_NAME`
 - `DISCORD_PUBLIC_KEY` (required)
 - `DISCORD_BOT_TOKEN` (required)
 - `DISCORD_DEFAULT_GUILD_ID`
@@ -67,6 +68,8 @@ state directory.
 The normalized Discord runtime config also fixes:
 
 - API version `v10`
+- category name: defaults to `GITHUB_REPO` for multi-repository guild
+  separation; OpenClaw test and live-lab runs set this to `test`
 - OAuth install scopes `bot` and `applications.commands`
 - required guild/channel permissions for thread-aware control: `ViewChannel`, `SendMessages`, `CreatePublicThreads`, `CreatePrivateThreads`, `SendMessagesInThreads`, `ManageThreads`, and `ReadMessageHistory`
 

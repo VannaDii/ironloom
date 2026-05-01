@@ -5,7 +5,6 @@ import type { AnyAgentTool } from 'openclaw/plugin-sdk/plugin-entry';
 import type {
   DiscordControlResponseTransport,
   DiscordOperatorInteraction,
-  DiscordResponseReceipt,
   DiscordThreadSession,
 } from '@vannadii/devplat-discord';
 
@@ -25,6 +24,7 @@ import {
   DiscordChannelBindingService,
   DiscordControlPlaneService,
   DiscordInteractiveApprovalService,
+  DiscordLoopbackResponseTransport,
   DiscordThreadSessionService,
 } from '@vannadii/devplat-discord';
 import { RunGatesService } from '@vannadii/devplat-gates';
@@ -154,30 +154,7 @@ function isDiscordOperatorInteraction(
 }
 
 function createLoopbackDiscordResponseTransport(): DiscordControlResponseTransport {
-  return {
-    postInteractionResponse(input, content): Promise<DiscordResponseReceipt> {
-      return Promise.resolve({
-        endpoint: `/interactions/${encodeURIComponent(input.id)}/${encodeURIComponent(input.token)}/callback`,
-        statusCode: 200,
-        responseBody: {
-          mode: 'loopback',
-          content,
-          interactionId: input.id,
-        },
-      });
-    },
-    postThreadMessage(threadId, content): Promise<DiscordResponseReceipt> {
-      return Promise.resolve({
-        endpoint: `/channels/${encodeURIComponent(threadId)}/messages`,
-        statusCode: 200,
-        responseBody: {
-          mode: 'loopback',
-          content,
-          threadId,
-        },
-      });
-    },
-  };
+  return new DiscordLoopbackResponseTransport();
 }
 
 function createDefaultDiscordControlPlaneService(): DiscordControlPlaneService {

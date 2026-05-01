@@ -306,6 +306,7 @@ describe('tool surface service', () => {
         apiBaseUrl: 'https://discord.com/api/v10',
         apiVersion: 'v10',
         applicationId: 'application-1',
+        categoryName: 'devplat',
         publicKey: '[redacted]',
         botToken: '[redacted]',
         installScopes: ['bot', 'applications.commands'],
@@ -388,6 +389,7 @@ describe('tool surface service', () => {
           apiBaseUrl: 'https://discord.com/api/v10',
           apiVersion: 'v10',
           applicationId: 'application-1',
+          categoryName: 'devplat',
           publicKey: '[redacted]',
           botToken: '[redacted]',
           installScopes: ['bot', 'applications.commands'],
@@ -433,6 +435,7 @@ describe('tool surface service', () => {
     expect(result.details).toMatchObject({
       id: '@vannadii/devplat-openclaw:config',
       apiVersion: 'v10',
+      categoryName: 'devplat',
       defaultGuildId: 'guild-1',
       specChannelId: 'spec-1',
       implementationChannelId: 'impl-1',

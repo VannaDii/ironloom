@@ -8,7 +8,8 @@ CI.
 
 - creates a fresh public sandbox repository named `devplat-test-<run_number>-<run_attempt>`
 - hardens that repository immediately after creation
-- reuses one shared set of five live-lab Discord channels
+- reuses one shared set of five live-lab Discord channels under the `test`
+  category
 - reports lifecycle status and progress into those shared channels for the
   duration of the run
 - registers Discord command contracts, normalizes a Discord callback-shaped
@@ -86,7 +87,7 @@ services from `dist`.
 
 ## Discord Reporting Layout
 
-The live lab reuses these shared channels:
+The live lab reuses these shared channels under the `test` Discord category:
 
 - `spec`
 - `implementation`
@@ -105,10 +106,16 @@ Use them this way:
 Every message is labeled with the run metadata, so operators can correlate
 activity without per-run channel trees.
 
+Production operator channels use the same standard channel names from runtime
+configuration under a category named for the repository. OpenClaw test and
+live-lab traffic always uses the `test` category so validation chatter stays
+separated from normal operations.
+
 The live lab also registers the exported Discord operator command contracts into
 the sandbox guild. After registration, it runs a Discord interaction probe. The
 probe simulates the operator `/retry-gates` path, routes it through the Discord
-control-plane service, posts the interaction acknowledgement into the audit
+control-plane service, renders the compact operator message payload with
+contextual buttons, posts the interaction acknowledgement into the audit
 channel, posts the bound-thread status into the implementation channel, and
 records both the command registration and response receipt endpoints in
 `live-lab-report.json`.

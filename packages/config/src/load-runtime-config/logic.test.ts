@@ -38,6 +38,7 @@ describe('DevplatConfig logic', () => {
         expect(config.trace).toContain('config:load-runtime-config');
         expect(config.discord.apiBaseUrl).toBe('https://discord.com/api/v10');
         expect(config.discord.apiVersion).toBe('v10');
+        expect(config.discord.categoryName).toBe('devplat');
         expect(config.discord.installScopes).toEqual([
           'bot',
           'applications.commands',
