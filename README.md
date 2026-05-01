@@ -69,6 +69,8 @@ npm run test:coverage
 npm run test:openclaw:deep
 npm run docs:build
 npm run act:pr
+npm run sonar:install-cli
+npm run sonar:analyze:changed
 ```
 
 `npm run check:unit-tests`, included in `check:repo`, verifies that every
@@ -88,6 +90,15 @@ the nested-Docker deep-test job for the `devplat-local-act` actor while still
 executing repo, coverage, build, docs, generated artifact, and compatibility
 jobs.
 
+`npm run sonar:install-cli` installs the SonarQube CLI through the repo helper,
+which selects the documented SonarSource installer for macOS, Linux, or Windows.
+After authenticating with `sonar auth login`, run `npm run sonar:analyze:changed`
+to scan changed files with
+`sonar analyze secrets` and per-file `sonar analyze sqaa --file` commands. The
+wrapper derives the current branch and defaults the project to `vannadii_devplat`;
+override with `--project`, `--branch`, `--base`, or `--head` only for exceptional
+local comparisons.
+
 Runtime configuration is repository-scoped for the single-repo production path.
 Set `GITHUB_OWNER`, `GITHUB_REPO`, `GITHUB_DEFAULT_BRANCH`, GitHub API/token
 overrides, runtime storage/worktree overrides, Docker/Helm deployment
@@ -105,6 +116,9 @@ callback-shaped interaction evidence in its report, including response endpoints
 Discord message ids, posted content, and component custom ids. Human-triggered
 Discord client clicks remain a manual sandbox-guild acceptance check because
 Discord does not expose a supported bot API for clicking buttons as a user.
+Live-lab status posts use compact operator payloads without raw GitHub URLs, and
+reports include selected channel `parentId` values so category placement can be
+audited.
 Live-lab runtime containers receive the same repo-scoped Discord/OpenClaw/Sonar
 environment through Docker env-name pass-through while report artifacts keep
 secret values redacted.

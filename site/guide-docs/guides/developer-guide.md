@@ -9,6 +9,7 @@ npm run check:repo
 npm run check:changed-coverage
 npm run test:coverage
 npm run docs:build
+npm run sonar:analyze:changed
 ```
 
 Use `npm run check:pre-push` as the canonical local gate before pushing.
@@ -19,6 +20,16 @@ each workflow, then runs the hermetic OpenClaw deep test outside `act` so nested
 Docker volume paths resolve on the host. The event fixture skips
 secret-backed publish, Sonar upload, remote artifact-transfer paths, and the
 nested-Docker deep-test job while running the normal PR validation jobs.
+
+Install the SonarQube CLI with `npm run sonar:install-cli`; the repo helper
+selects the documented SonarSource installer for macOS, Linux, or Windows. Then
+authenticate with `sonar auth login` before running the changed-file analysis
+command. The analysis wrapper selects files changed from the merge base, runs
+`sonar analyze secrets` once for the changed-file set, and runs
+`sonar analyze sqaa --file` for each changed file. It derives the branch from
+the local checkout or GitHub environment and defaults the project to
+`vannadii_devplat`. Pass `--base`, `--head`, `--project`, and `--branch` after
+`--` only when a local branch needs explicit comparison or SonarCloud context.
 
 Use the root `PLATFORM.md` file as the authoritative foundation-scope document. This guide focuses on the implementation discipline that keeps work aligned with that objective.
 

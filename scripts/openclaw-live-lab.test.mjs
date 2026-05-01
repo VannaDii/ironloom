@@ -678,7 +678,23 @@ describe('openclaw-live-lab helpers', () => {
           runAttempt: '4',
           runNumber: '300',
         });
-        expect(message).toContain('status: in-progress');
+        expect(message).toEqual({
+          allowed_mentions: { parse: [] },
+          content: [
+            '🟡 DevPlat · Live lab bootstrap',
+            '',
+            'Status: in-progress',
+            'Scope: live-lab · 200-3',
+            'Item: sandbox-org/devplat-test-200-3',
+            'Actor: workflow',
+            'Updated: abc123',
+            '→ Bootstrapped the lab.',
+            '',
+            'Ref: main',
+            'Workflow: 200-3',
+          ].join('\n'),
+          flags: 4,
+        });
         expect(
           mapProgressToChannel({
             phase: 'planning',
@@ -1135,6 +1151,12 @@ describe('runLiveLab', () => {
         const sonarCalls = [];
         const sharedDiscordChannels = [
           { id: 'test-category', name: 'test', type: 4 },
+          {
+            id: 'uncategorized-project-management-1',
+            name: 'project-management',
+            parent_id: null,
+            type: 0,
+          },
           { id: 'spec-1', name: 'spec', parent_id: 'test-category', type: 0 },
           {
             id: 'implementation-1',
@@ -1293,7 +1315,7 @@ describe('runLiveLab', () => {
             path.endsWith('/messages') &&
             options.method === 'POST'
           ) {
-            discordMessages.push(options.body.content);
+            discordMessages.push(options.body);
             return { id: `message-${discordCalls.length}` };
           }
 
@@ -1439,6 +1461,11 @@ describe('runLiveLab', () => {
           count: 14,
           endpoint: '/applications/app-1/guilds/guild-1/commands',
         });
+        expect(savedReport.discord.channels.projectManagement).toEqual({
+          id: 'project-management-1',
+          name: 'project-management',
+          parentId: 'test-category',
+        });
         expect(context.githubCalls).toEqual(
           expect.arrayContaining([
             ['/orgs/sandbox-org/repos', 'POST'],
@@ -1467,12 +1494,23 @@ describe('runLiveLab', () => {
         ]);
         expect(context.discordMessages).toEqual(
           expect.arrayContaining([
-            expect.stringContaining(`ref: ${inputs.ref}`),
-            expect.stringContaining(
-              'Bootstrapped the shared live-lab channels and external service preflight.',
-            ),
+            expect.objectContaining({
+              allowed_mentions: { parse: [] },
+              content: expect.stringContaining(`Ref: ${inputs.ref}`),
+              flags: 4,
+            }),
+            expect.objectContaining({
+              content: expect.stringContaining(
+                '→ Bootstrapped the shared live-lab channels and external service preflight.',
+              ),
+            }),
           ]),
         );
+        expect(
+          context.discordMessages.some((message) =>
+            message.content.includes('github.com/'),
+          ),
+        ).toBe(false);
         expect(context.summaryEntries[0]).toContain('Status: passed');
         expect(context.summaryEntries[0]).toContain(`Ref: ${inputs.ref}`);
         expect(context.summaryEntries[0]).toContain('Discord category: test');

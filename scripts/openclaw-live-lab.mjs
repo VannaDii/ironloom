@@ -339,24 +339,32 @@ export function createStatusMessage({
   status,
   workflowUrl,
 }) {
+  const title =
+    status === 'passed'
+      ? `🟢 DevPlat · Live lab ${phase}`
+      : `🟡 DevPlat · Live lab ${phase}`;
   const lines = [
-    `status: ${status}`,
-    `phase: ${phase}`,
-    `run: ${runLabel}`,
-    `repo: ${repoFullName}`,
-    `ref: ${ref}`,
-    `sha: ${sha}`,
+    title,
+    '',
+    `Status: ${status}`,
+    `Scope: live-lab · ${runLabel}`,
+    `Item: ${repoFullName}`,
+    'Actor: workflow',
+    `Updated: ${sha}`,
+    `→ ${details ?? 'Progress update.'}`,
+    '',
+    `Ref: ${ref}`,
   ];
 
   if (workflowUrl !== null) {
-    lines.push(`workflow: ${workflowUrl}`);
+    lines.push(`Workflow: ${runLabel}`);
   }
 
-  if (details !== undefined && details.length > 0) {
-    lines.push(`details: ${details}`);
-  }
-
-  return lines.join('\n');
+  return {
+    allowed_mentions: { parse: [] },
+    content: lines.join('\n'),
+    flags: 4,
+  };
 }
 
 export function mapProgressToChannel(progress) {
@@ -1833,7 +1841,11 @@ export async function runLiveLab(options, dependencies = {}) {
       channels: Object.fromEntries(
         Object.entries(discordChannels.channels).map(([key, channel]) => [
           key,
-          { id: channel.id, name: channel.name },
+          {
+            id: channel.id,
+            name: channel.name,
+            parentId: channel.parent_id ?? null,
+          },
         ]),
       ),
     };
