@@ -1508,7 +1508,7 @@ describe('runLiveLab', () => {
         );
         expect(
           context.discordMessages.some((message) =>
-            message.content.includes('github.com/'),
+            message.content.includes(inputs.workflowUrl),
           ),
         ).toBe(false);
         expect(context.summaryEntries[0]).toContain('Status: passed');
