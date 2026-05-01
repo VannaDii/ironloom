@@ -1,9 +1,21 @@
+import { isLeft } from 'fp-ts/lib/Either.js';
+import type * as t from 'io-ts';
+
+import {
+  DevplatIdCodec,
+  IsoTimestampCodec,
+  RepositoryKeyCodec,
+} from './codec.js';
 import type {
   DevplatError,
   DevplatErrorKind,
+  DevplatErrorSeverity,
   DevplatFailure,
+  DevplatId,
   DevplatSuccess,
   DomainSnapshot,
+  IsoTimestamp,
+  RepositoryKey,
   TraceRecord,
 } from './types.js';
 
@@ -14,6 +26,19 @@ function normalizeNonEmptyValue(name: string, value: string): string {
   }
 
   return trimmed;
+}
+
+function decodeValueObject<TValue>(
+  failureMessage: string,
+  codec: t.Decoder<unknown, TValue>,
+  value: unknown,
+): TValue {
+  const decoded = codec.decode(value);
+  if (isLeft(decoded)) {
+    throw new Error(failureMessage);
+  }
+
+  return decoded.right;
 }
 
 export function appendTrace<TRecord extends TraceRecord>(
@@ -37,34 +62,50 @@ export function createDevplatError(input: {
   message: string;
   retryable?: boolean;
   details?: Record<string, unknown>;
+  code?: string;
+  severity?: DevplatErrorSeverity;
+  source?: string;
 }): DevplatError {
   return {
     kind: input.kind,
     message: input.message.trim(),
     retryable: input.retryable ?? false,
     details: input.details ?? {},
+    code: input.code?.trim() ?? input.kind,
+    severity: input.severity ?? 'error',
+    source: input.source?.trim() ?? 'devplat',
   };
 }
 
-export function createDevplatId(value: string): string {
-  return normalizeNonEmptyValue('DevPlat id', value);
+export function createDevplatId(value: string): DevplatId {
+  return decodeValueObject(
+    'DevPlat id is invalid.',
+    DevplatIdCodec,
+    normalizeNonEmptyValue('DevPlat id', value),
+  );
 }
 
-export function createRepositoryKey(value: string): string {
+export function createRepositoryKey(value: string): RepositoryKey {
   const normalized = normalizeNonEmptyValue('Repository key', value);
-  const segments = normalized.split('/');
-  if (
-    segments.length !== 2 ||
-    segments.some((segment) => segment.length === 0)
-  ) {
-    throw new Error('Repository key must use owner/repo format.');
+  return decodeValueObject(
+    'Repository key must use owner/repo format.',
+    RepositoryKeyCodec,
+    normalized,
+  );
+}
+
+export function createIsoTimestamp(value: string): IsoTimestamp {
+  const normalized = normalizeNonEmptyValue('ISO timestamp', value);
+  const parsed = Date.parse(normalized);
+  if (Number.isNaN(parsed)) {
+    throw new Error('ISO timestamp must be a valid date.');
   }
 
-  return normalized;
-}
-
-export function createIsoTimestamp(value: string): string {
-  return new Date(normalizeNonEmptyValue('ISO timestamp', value)).toISOString();
+  return decodeValueObject(
+    'ISO timestamp is invalid.',
+    IsoTimestampCodec,
+    new Date(parsed).toISOString(),
+  );
 }
 
 export function createDevplatSuccess<T>(value: T): DevplatSuccess<T> {

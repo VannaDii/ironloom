@@ -3,8 +3,12 @@ import type * as t from 'io-ts';
 import type {
   DevplatErrorCodec,
   DevplatErrorKindCodec,
+  DevplatErrorSeverityCodec,
+  DevplatIdCodec,
   DomainSnapshotCodec,
+  IsoTimestampCodec,
   LifecycleStatusCodec,
+  RepositoryKeyCodec,
   TraceRecordCodec,
 } from './codec.js';
 
@@ -12,19 +16,15 @@ export type LifecycleStatus = t.TypeOf<typeof LifecycleStatusCodec>;
 
 export type TraceRecord = t.TypeOf<typeof TraceRecordCodec>;
 
-declare const devplatIdBrand: unique symbol;
-declare const repositoryKeyBrand: unique symbol;
-declare const isoTimestampBrand: unique symbol;
+export type DevplatId = t.TypeOf<typeof DevplatIdCodec>;
 
-export type DevplatId = string & { readonly [devplatIdBrand]: 'DevplatId' };
-export type RepositoryKey = string & {
-  readonly [repositoryKeyBrand]: 'RepositoryKey';
-};
-export type IsoTimestamp = string & {
-  readonly [isoTimestampBrand]: 'IsoTimestamp';
-};
+export type RepositoryKey = t.TypeOf<typeof RepositoryKeyCodec>;
+
+export type IsoTimestamp = t.TypeOf<typeof IsoTimestampCodec>;
 
 export type DevplatErrorKind = t.TypeOf<typeof DevplatErrorKindCodec>;
+
+export type DevplatErrorSeverity = t.TypeOf<typeof DevplatErrorSeverityCodec>;
 
 export type DevplatError = t.TypeOf<typeof DevplatErrorCodec>;
 

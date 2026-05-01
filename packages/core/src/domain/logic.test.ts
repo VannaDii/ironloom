@@ -77,6 +77,9 @@ describe('DomainSnapshot logic', () => {
           message: 'merge requires approval',
           retryable: false,
           details: {},
+          code: 'policy-denied',
+          severity: 'error',
+          source: 'devplat',
         });
       },
     },
@@ -90,6 +93,9 @@ describe('DomainSnapshot logic', () => {
           details: {
             command: 'test',
           },
+          code: 'gate.command_failed',
+          severity: 'warning',
+          source: 'gates',
         },
       },
       mock: () => undefined,
@@ -101,6 +107,9 @@ describe('DomainSnapshot logic', () => {
           details: {
             command: 'test',
           },
+          code: 'gate.command_failed',
+          severity: 'warning',
+          source: 'gates',
         });
       },
     },
@@ -170,6 +179,18 @@ describe('DomainSnapshot logic', () => {
       mock: () => undefined,
       assert: (inputs: { id: string }) => {
         expect(() => createDevplatId(inputs.id)).toThrow('must not be empty');
+      },
+    },
+    {
+      name: 'rejects invalid timestamps with a domain error',
+      inputs: {
+        timestamp: 'not-a-date',
+      },
+      mock: () => undefined,
+      assert: (inputs: { timestamp: string }) => {
+        expect(() => createIsoTimestamp(inputs.timestamp)).toThrow(
+          'ISO timestamp must be a valid date.',
+        );
       },
     },
   ];
