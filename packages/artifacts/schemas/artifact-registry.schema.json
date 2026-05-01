@@ -20,7 +20,22 @@
             "type": "object",
             "properties": {
               "artifactType": {
-                "type": "string"
+                "enum": [
+                  "approval-record",
+                  "audit-log",
+                  "gate-run-report",
+                  "merge-decision",
+                  "pull-request-record",
+                  "rebase-result",
+                  "remediation-plan",
+                  "research-brief",
+                  "review-finding",
+                  "slice-plan",
+                  "spec-record",
+                  "task-record",
+                  "telemetry-event",
+                  "worktree-allocation"
+                ]
               },
               "currentVersion": {
                 "type": "number"
@@ -52,7 +67,8 @@
                 "enum": ["none", "optional", "required"]
               },
               "updatedAt": {
-                "type": "string"
+                "type": "string",
+                "format": "date-time"
               },
               "description": {
                 "type": "string"
@@ -79,7 +95,22 @@
                 "type": "string"
               },
               "artifactType": {
-                "type": "string"
+                "enum": [
+                  "approval-record",
+                  "audit-log",
+                  "gate-run-report",
+                  "merge-decision",
+                  "pull-request-record",
+                  "rebase-result",
+                  "remediation-plan",
+                  "research-brief",
+                  "review-finding",
+                  "slice-plan",
+                  "spec-record",
+                  "task-record",
+                  "telemetry-event",
+                  "worktree-allocation"
+                ]
               },
               "fromVersion": {
                 "type": "number"
@@ -91,7 +122,8 @@
                 "type": "string"
               },
               "migratedAt": {
-                "type": "string"
+                "type": "string",
+                "format": "date-time"
               }
             },
             "required": [
@@ -106,7 +138,8 @@
           }
         },
         "updatedAt": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         }
       },
       "required": [

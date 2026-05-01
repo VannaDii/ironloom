@@ -1,41 +1,54 @@
 import * as t from 'io-ts';
 
+import { GitBranchNameCodec, IsoTimestampCodec } from '@vannadii/devplat-core';
 import { PullRequestRecordCodec } from '@vannadii/devplat-prs';
 import {
   WorktreeSyncModeCodec,
   WorktreeSyncResultCodec,
 } from '@vannadii/devplat-worktrees';
 
-export const DependentBranchesCodec = t.array(t.string);
+/**
+ * Codec for dependent branch lists that must contain valid Git branch names.
+ */
+export const DependentBranchesCodec = t.array(GitBranchNameCodec);
 
+/**
+ * Codec for branch dependency graph edges.
+ */
 export const BranchDependencyGraphCodec = t.type({
-  baseBranch: t.string,
+  baseBranch: GitBranchNameCodec,
   edges: t.array(
     t.type({
-      fromBranch: t.string,
-      toBranch: t.string,
+      fromBranch: GitBranchNameCodec,
+      toBranch: GitBranchNameCodec,
     }),
   ),
 });
 
+/**
+ * Codec for branch conflict classification after dependency analysis.
+ */
 export const BranchConflictClassificationCodec = t.type({
   kind: t.union([
     t.literal('none'),
     t.literal('expected'),
     t.literal('detected'),
   ]),
-  affectedBranches: t.array(t.string),
+  affectedBranches: t.array(GitBranchNameCodec),
   nextAction: t.string,
 });
 
+/**
+ * Codec for a dependent-branch rebase plan.
+ */
 export const RebasePlanCodec = t.intersection([
   t.type({
     mergedPrNumber: t.number,
-    baseBranch: t.string,
-    dependentBranches: t.array(t.string),
+    baseBranch: GitBranchNameCodec,
+    dependentBranches: DependentBranchesCodec,
     rebaseRequired: t.boolean,
     conflictsExpected: t.boolean,
-    updatedAt: t.string,
+    updatedAt: IsoTimestampCodec,
   }),
   t.partial({
     dependencyGraph: BranchDependencyGraphCodec,
@@ -43,6 +56,9 @@ export const RebasePlanCodec = t.intersection([
   }),
 ]);
 
+/**
+ * Codec for executing dependent branch rebases after a PR merge.
+ */
 export const ExecuteRebaseDependentsInputCodec = t.intersection([
   t.type({
     record: PullRequestRecordCodec,
@@ -53,6 +69,9 @@ export const ExecuteRebaseDependentsInputCodec = t.intersection([
   }),
 ]);
 
+/**
+ * Codec for dependent branch rebase execution results.
+ */
 export const RebaseExecutionResultCodec = t.type({
   plan: RebasePlanCodec,
   syncMode: WorktreeSyncModeCodec,

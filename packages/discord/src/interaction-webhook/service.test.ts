@@ -238,6 +238,54 @@ describe('DiscordInteractionWebhookService', () => {
       },
     },
     {
+      name: 'returns fail-closed summaries for ambiguous thread bindings',
+      inputs: {
+        request: createSignedWebhookRequest(
+          JSON.stringify({
+            id: 'interaction-ambiguous-binding',
+            token: 'token-ambiguous-binding',
+            channel_id: 'thread-a',
+            data: {
+              name: 'show-status',
+            },
+            user: {
+              id: 'operator-ambiguous-binding',
+            },
+          }),
+        ),
+        options: {
+          boundThreadId: 'thread-b',
+          summary: 'Ambiguous thread binding.',
+          updatedAt: '2026-05-01T00:00:00.000Z',
+        },
+      },
+      mock: async (inputs: {
+        request: DiscordInteractionWebhookRequest;
+        options: DiscordInteractionCallbackOptions;
+      }) => {
+        const service = new DiscordInteractionWebhookService(
+          await createControlPlane(),
+          async () => inputs.options,
+        );
+
+        return service.handle(inputs.request);
+      },
+      assert: async (
+        result: Awaited<ReturnType<DiscordInteractionWebhookService['handle']>>,
+      ) => {
+        expect(result.statusCode).toBe(200);
+        expect(result.verified).toBe(true);
+        expect(result.handled).toBe(true);
+        expect(result.threadId).toBe('unresolved');
+        expect(result.responseBody).toMatchObject({
+          data: {
+            content:
+              'Discord interaction must resolve to exactly one bound thread.',
+          },
+        });
+      },
+    },
+    {
       name: 'uses default local dependencies before rejecting invalid signatures',
       inputs: {
         request: {

@@ -3,6 +3,7 @@ import type * as t from 'io-ts';
 
 import {
   DevplatIdCodec,
+  GitBranchNameCodec,
   IsoTimestampCodec,
   RepositoryKeyCodec,
 } from './codec.js';
@@ -14,11 +15,15 @@ import type {
   DevplatId,
   DevplatSuccess,
   DomainSnapshot,
+  GitBranchName,
   IsoTimestamp,
   RepositoryKey,
   TraceRecord,
 } from './types.js';
 
+/**
+ * Trims a value and rejects empty strings for value-object constructors.
+ */
 function normalizeNonEmptyValue(name: string, value: string): string {
   const trimmed = value.trim();
   if (trimmed.length === 0) {
@@ -28,6 +33,9 @@ function normalizeNonEmptyValue(name: string, value: string): string {
   return trimmed;
 }
 
+/**
+ * Decodes a value object and maps validation failures to domain errors.
+ */
 function decodeValueObject<TValue>(
   failureMessage: string,
   codec: t.Decoder<unknown, TValue>,
@@ -41,6 +49,9 @@ function decodeValueObject<TValue>(
   return decoded.right;
 }
 
+/**
+ * Appends a trace marker while normalizing trace record display fields.
+ */
 export function appendTrace<TRecord extends TraceRecord>(
   record: TRecord,
   marker: string,
@@ -53,10 +64,16 @@ export function appendTrace<TRecord extends TraceRecord>(
   };
 }
 
+/**
+ * Creates a normalized domain snapshot.
+ */
 export function createDomainSnapshot(input: DomainSnapshot): DomainSnapshot {
   return appendTrace(input, `domain:${input.domain}`);
 }
 
+/**
+ * Creates a structured platform error with safe defaults.
+ */
 export function createDevplatError(input: {
   kind: DevplatErrorKind;
   message: string;
@@ -77,6 +94,9 @@ export function createDevplatError(input: {
   };
 }
 
+/**
+ * Creates a normalized DevPlat identifier.
+ */
 export function createDevplatId(value: string): DevplatId {
   return decodeValueObject(
     'DevPlat id is invalid.',
@@ -85,6 +105,9 @@ export function createDevplatId(value: string): DevplatId {
   );
 }
 
+/**
+ * Creates a normalized GitHub owner/repository key.
+ */
 export function createRepositoryKey(value: string): RepositoryKey {
   const normalized = normalizeNonEmptyValue('Repository key', value);
   return decodeValueObject(
@@ -94,6 +117,9 @@ export function createRepositoryKey(value: string): RepositoryKey {
   );
 }
 
+/**
+ * Creates a normalized ISO timestamp.
+ */
 export function createIsoTimestamp(value: string): IsoTimestamp {
   const normalized = normalizeNonEmptyValue('ISO timestamp', value);
   const parsed = Date.parse(normalized);
@@ -108,6 +134,20 @@ export function createIsoTimestamp(value: string): IsoTimestamp {
   );
 }
 
+/**
+ * Creates a normalized Git branch name.
+ */
+export function createGitBranchName(value: string): GitBranchName {
+  return decodeValueObject(
+    'Git branch name is invalid.',
+    GitBranchNameCodec,
+    normalizeNonEmptyValue('Git branch name', value),
+  );
+}
+
+/**
+ * Wraps a successful service result.
+ */
 export function createDevplatSuccess<T>(value: T): DevplatSuccess<T> {
   return {
     ok: true,
@@ -115,6 +155,9 @@ export function createDevplatSuccess<T>(value: T): DevplatSuccess<T> {
   };
 }
 
+/**
+ * Wraps a failed service result.
+ */
 export function createDevplatFailure(input: {
   error: string;
   diagnostic?: DevplatError;
@@ -126,6 +169,9 @@ export function createDevplatFailure(input: {
   };
 }
 
+/**
+ * Describes a domain snapshot for operator-facing output.
+ */
 export function describeDomainSnapshot(input: DomainSnapshot): string {
   return `${input.domain} -> ${input.summary}`;
 }

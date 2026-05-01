@@ -25,11 +25,21 @@
 
 ## Completion Standard
 
-- Use folder-per-unit structure with `types.ts`, `codec.ts`, `logic.ts`, `logic.test.ts`, `service.ts`, and `service.test.ts`.
+- Use folder-per-unit structure with `constants.ts` when constants exist, `codec.ts`, `logic.ts`, `logic.test.ts`, `service.ts`, and `service.test.ts`. Keep `types.ts` only when it contains non-codec-derived helper types.
 - Keep `logic.ts` pure. Keep orchestration, IO, and framework glue in `service.ts`.
-- Use structured `const cases = [...]` test tables. Each case must declare `inputs`, a `mock` setup function, and an `assert` function, then run through a single implementation per suite.
+- Use structured `const cases = [...]` test tables. Each case must declare `inputs`, a `mock` setup function, and an `assert` function, then run through a single `it.each(cases)('$name', ...)` implementation per suite.
+- Keep constants in package-local `constants.ts` files. Promote constants used by more than one package into `@vannadii/devplat-core`.
+- Treat regular expressions as constants and test every pattern with matching and non-matching edge cases.
+- Add JSDoc to authored constants, helpers, codecs, functions, classes, and public types unless the symbol is only a trivial re-export.
 - Use explicit relative `.js` specifiers in `NodeNext` TypeScript source.
 - Keep runtime contracts aligned across TypeScript types, `io-ts` codecs, generated schemas, docs, and tests.
 - Keep Discord and OpenClaw control-plane contracts aligned with generated schemas, auditable artifacts, and the platform packages that own the behavior.
 - Update docs, issue/PR templates, and release-facing artifacts when lifecycle, operator, or distribution behavior changes.
 - Preserve Linux-only compatibility validation against the latest stable TypeScript `5.x` and `6.x` releases while authoring against TypeScript `6.0.2`.
+
+## Pull Request Feedback
+
+- Review every comment, verify the affected code path and edge cases, and implement the smallest complete fix.
+- Add or update focused tests before running broader validation.
+- Reply directly on each review thread with a brief concrete note describing the fix.
+- Do not resolve review threads after replying; leave resolution to the PR author.

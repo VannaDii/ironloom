@@ -7,6 +7,7 @@ import {
   createStoredRecordIndexEntry,
   createStoredRecord,
   describeStoredRecord,
+  assertSafeStoredRecordKey,
 } from './logic.js';
 
 describe('StoredRecord logic', () => {
@@ -44,6 +45,38 @@ describe('StoredRecord logic', () => {
         );
         expect(describeStoredRecord(record)).toContain(
           'telemetry/telemetry-001.json',
+        );
+      },
+    },
+    {
+      name: 'rejects unsafe storage keys before path construction',
+      inputs: {
+        record: {
+          id: 'storage-003',
+          key: '../escape',
+          scope: 'state',
+          summary: 'Unsafe key',
+          status: 'blocked',
+          trace: [],
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          payload: {},
+        },
+      },
+      mock: () => undefined,
+      assert: (inputs: {
+        record: Parameters<typeof createStoredRecord>[0];
+      }) => {
+        expect(() => createStoredRecord(inputs.record)).toThrow(
+          'path separators',
+        );
+        expect(() => buildStoragePath('state', 'bad/key')).toThrow(
+          'path separators',
+        );
+        expect(() => buildStorageIndexPath('task', 'bad\\key')).toThrow(
+          'path separators',
+        );
+        expect(assertSafeStoredRecordKey('approval-1:artifact')).toBe(
+          'approval-1:artifact',
         );
       },
     },
@@ -98,12 +131,10 @@ describe('StoredRecord logic', () => {
     },
   ];
 
-  for (const testCase of cases) {
-    it(testCase.name, () => {
-      expect.hasAssertions();
-      const mockResult = testCase.mock();
+  it.each(cases)('$name', (testCase) => {
+    expect.hasAssertions();
+    const mockResult = testCase.mock();
 
-      testCase.assert(testCase.inputs, mockResult);
-    });
-  }
+    testCase.assert(testCase.inputs, mockResult);
+  });
 });

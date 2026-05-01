@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { TRAILING_URL_SLASH_PATTERN } from './constants.js';
 import {
   createDevplatConfig,
   createDefaultDevplatConfig,
@@ -255,6 +256,35 @@ describe('DevplatConfig logic', () => {
         expect(createConfig).toThrow(
           'Runtime configuration is invalid: github.webBaseUrl github.webBaseUrl must be a valid URL.',
         );
+      },
+    },
+    {
+      name: 'keeps trailing URL slash normalization explicit and tested',
+      inputs: {
+        urlsWithTrailingSlash: [
+          'https://api.github.com/',
+          'https://discord.com/api/v10/',
+        ],
+        urlsWithoutTrailingSlash: [
+          'https://api.github.com',
+          'https://discord.com/api/v10',
+        ],
+      },
+      mock: (inputs: {
+        urlsWithTrailingSlash: string[];
+        urlsWithoutTrailingSlash: string[];
+      }) => inputs,
+      assert: (inputs: {
+        urlsWithTrailingSlash: string[];
+        urlsWithoutTrailingSlash: string[];
+      }) => {
+        for (const url of inputs.urlsWithTrailingSlash) {
+          expect(TRAILING_URL_SLASH_PATTERN.test(url)).toBe(true);
+        }
+
+        for (const url of inputs.urlsWithoutTrailingSlash) {
+          expect(TRAILING_URL_SLASH_PATTERN.test(url)).toBe(false);
+        }
       },
     },
   ];

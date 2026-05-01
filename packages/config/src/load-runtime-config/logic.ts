@@ -1,33 +1,20 @@
 import { appendTrace } from '@vannadii/devplat-core';
 
+import {
+  DISCORD_INSTALL_SCOPES,
+  DISCORD_REQUIRED_PERMISSIONS,
+  TRAILING_URL_SLASH_PATTERN,
+  VALID_DEPLOYMENT_TARGETS,
+} from './constants.js';
 import type {
   DeploymentTarget,
   DevplatConfig,
-  DiscordInstallScope,
-  DiscordPermission,
   RuntimeConfigValidationIssue,
 } from './types.js';
 
-const DISCORD_INSTALL_SCOPES: readonly DiscordInstallScope[] = [
-  'bot',
-  'applications.commands',
-];
-
-const DISCORD_REQUIRED_PERMISSIONS: readonly DiscordPermission[] = [
-  'ViewChannel',
-  'SendMessages',
-  'CreatePublicThreads',
-  'CreatePrivateThreads',
-  'SendMessagesInThreads',
-  'ManageThreads',
-  'ReadMessageHistory',
-];
-
-const VALID_DEPLOYMENT_TARGETS: readonly DeploymentTarget[] = [
-  'local-docker',
-  'kubernetes',
-];
-
+/**
+ * Reads an environment value with whitespace trimming and fallback support.
+ */
 function readEnvValue(
   env: Record<string, string | undefined>,
   key: string,
@@ -36,6 +23,9 @@ function readEnvValue(
   return env[key]?.trim() || fallback;
 }
 
+/**
+ * Reads and normalizes a URL environment value.
+ */
 function readEnvUrl(
   env: Record<string, string | undefined>,
   key: string,
@@ -43,12 +33,15 @@ function readEnvUrl(
 ): string {
   const value = readEnvValue(env, key, fallback);
   try {
-    return new URL(value).toString().replace(/\/$/, '');
+    return new URL(value).toString().replace(TRAILING_URL_SLASH_PATTERN, '');
   } catch {
     throw new Error(`${key} must be a valid URL.`);
   }
 }
 
+/**
+ * Reads a positive integer environment value.
+ */
 function readEnvNumber(
   env: Record<string, string | undefined>,
   key: string,
@@ -67,6 +60,9 @@ function readEnvNumber(
   return parsed;
 }
 
+/**
+ * Reads the configured deployment target and rejects unsupported values.
+ */
 function readDeploymentTarget(
   env: Record<string, string | undefined>,
 ): DeploymentTarget {
@@ -83,6 +79,9 @@ function readDeploymentTarget(
   return target;
 }
 
+/**
+ * Requires a Discord credential environment value.
+ */
 function requireEnvValue(
   env: Record<string, string | undefined>,
   key: 'DISCORD_APPLICATION_ID' | 'DISCORD_PUBLIC_KEY' | 'DISCORD_BOT_TOKEN',
@@ -95,6 +94,9 @@ function requireEnvValue(
   return value;
 }
 
+/**
+ * Builds a normalized runtime configuration validation issue.
+ */
 function createValidationIssue(input: {
   field: string;
   code: string;

@@ -63,5 +63,17 @@ Use the root `PLATFORM.md` file as the authoritative foundation-scope document. 
 - keep branch names and pull request titles free of registered tool names
 - keep pull request titles in conventional commit format
 - keep pull request bodies aligned with `.github/pull_request_template.md` and fill every section with concrete change details
-- keep tests in structured `const cases = [...]` tables where each case provides `inputs`, `mock`, and `assert`, then exercises a single implementation per suite; `npm run check:unit-tests` enforces this for `.test.ts`, `.test.mts`, and `.test.mjs` files
+- keep tests in structured `const cases = [...]` tables where each case provides `inputs`, `mock`, and `assert`, then exercises a single `it.each(cases)('$name', ...)` implementation per suite; `npm run check:unit-tests` enforces the baseline case-table fields for `.test.ts`, `.test.mts`, and `.test.mjs` files
+- keep constants in package-local `constants.ts` files, promote cross-package constants into `@vannadii/devplat-core`, and test every regular-expression constant with matching and non-matching edge cases
+- keep JSDoc on authored constants, helpers, codecs, functions, classes, and public types so internal maintainers and API users can read the same intent at the symbol boundary
 - document release, rollback, and performance impact when a change touches those surfaces
+
+## Pull Request Feedback
+
+Review feedback work is part of implementation, not a separate courtesy pass:
+
+- review every comment and confirm the code path and edge cases before editing
+- make the smallest complete fix that preserves package boundaries and generated-contract flow
+- add or update targeted tests before broad validation
+- reply directly on each review thread with a brief concrete note about what changed
+- leave thread resolution to the PR author

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { GIT_BRANCH_DISALLOWED_CONTROL_OR_SPACE_PATTERN } from './constants.js';
 import {
   appendTrace,
   createDevplatFailure,
@@ -7,6 +8,7 @@ import {
   createDevplatId,
   createDevplatSuccess,
   createDomainSnapshot,
+  createGitBranchName,
   createIsoTimestamp,
   createRepositoryKey,
   describeDomainSnapshot,
@@ -160,6 +162,69 @@ describe('DomainSnapshot logic', () => {
       },
     },
     {
+      name: 'normalizes valid Git branch names',
+      inputs: {
+        branchName: ' feature/full-autonomy-runtime ',
+      },
+      mock: () => undefined,
+      assert: (inputs: { branchName: string }) => {
+        expect(createGitBranchName(inputs.branchName)).toBe(
+          'feature/full-autonomy-runtime',
+        );
+      },
+    },
+    {
+      name: 'rejects branch names with Git ref metacharacters and traversal',
+      inputs: {
+        branchNames: [
+          'feature/has space',
+          'feature/has~tilde',
+          'feature/has^caret',
+          'feature/has:colon',
+          'feature/has?question',
+          'feature/has*star',
+          'feature/[bracket',
+          'feature//double-slash',
+          'feature/../escape',
+          'feature/branch.lock',
+          '-feature',
+          '@',
+        ],
+      },
+      mock: () => undefined,
+      assert: (inputs: { branchNames: string[] }) => {
+        for (const branchName of inputs.branchNames) {
+          expect(() => createGitBranchName(branchName)).toThrow(
+            'Git branch name is invalid.',
+          );
+        }
+      },
+    },
+    {
+      name: 'keeps the Git branch control-character pattern explicit and tested',
+      inputs: {
+        validBranchName: 'feature/full-autonomy-runtime',
+        invalidBranchNames: ['feature/has space', 'feature/has\tab'],
+      },
+      mock: () => undefined,
+      assert: (inputs: {
+        validBranchName: string;
+        invalidBranchNames: string[];
+      }) => {
+        expect(
+          GIT_BRANCH_DISALLOWED_CONTROL_OR_SPACE_PATTERN.test(
+            inputs.validBranchName,
+          ),
+        ).toBe(false);
+
+        for (const branchName of inputs.invalidBranchNames) {
+          expect(
+            GIT_BRANCH_DISALLOWED_CONTROL_OR_SPACE_PATTERN.test(branchName),
+          ).toBe(true);
+        }
+      },
+    },
+    {
       name: 'rejects invalid repository keys',
       inputs: {
         repositoryKey: 'invalid',
@@ -195,11 +260,9 @@ describe('DomainSnapshot logic', () => {
     },
   ];
 
-  for (const testCase of cases) {
-    it(testCase.name, () => {
-      expect.hasAssertions();
-      testCase.mock();
-      testCase.assert(testCase.inputs);
-    });
-  }
+  it.each(cases)('$name', (testCase) => {
+    expect.hasAssertions();
+    testCase.mock();
+    testCase.assert(testCase.inputs);
+  });
 });

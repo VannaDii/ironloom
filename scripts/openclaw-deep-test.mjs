@@ -1199,6 +1199,7 @@ export function createDeepScenario(runtimeEnv) {
           summary: 'Sync downstream branch',
           privileged: false,
           branchName: 'feature/downstream',
+          targetNumber: 42,
           updatedAt: fixedTimestamp,
         },
         actorId: 'operator-1',

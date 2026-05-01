@@ -2,7 +2,7 @@ import {
   createMergeDecisionArtifact,
   describeMergeDecisionArtifact,
 } from './logic.js';
-import type { MergeDecisionArtifact } from './types.js';
+import type { MergeDecisionArtifact } from './codec.js';
 
 export class MergeDecisionArtifactService {
   public execute(input: MergeDecisionArtifact): MergeDecisionArtifact {

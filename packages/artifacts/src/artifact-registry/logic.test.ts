@@ -7,7 +7,7 @@ import {
   recordArtifactMigration,
   registerArtifactType,
 } from './logic.js';
-import type { ArtifactRegistry } from './types.js';
+import type { ArtifactRegistry } from './codec.js';
 
 const baseRegistry: ArtifactRegistry = {
   registryId: ' artifacts-main ',
@@ -15,7 +15,7 @@ const baseRegistry: ArtifactRegistry = {
   repositoryKey: ' repo-main ',
   entries: [
     {
-      artifactType: ' spec-record ',
+      artifactType: 'spec-record',
       currentVersion: 1.2,
       schemaName: ' spec-record.schema.json ',
       ownerPackage: ' @vannadii/devplat-specs ',
@@ -25,7 +25,7 @@ const baseRegistry: ArtifactRegistry = {
       description: ' PR-ready spec revisions ',
     },
     {
-      artifactType: ' spec-record ',
+      artifactType: 'spec-record',
       currentVersion: 2,
       schemaName: ' spec-record-v2.schema.json ',
       ownerPackage: ' @vannadii/devplat-specs ',
@@ -34,7 +34,7 @@ const baseRegistry: ArtifactRegistry = {
       updatedAt: ' 2026-04-30T00:01:00.000Z ',
     },
     {
-      artifactType: ' spec-record ',
+      artifactType: 'spec-record',
       currentVersion: 1,
       schemaName: ' spec-record-legacy.schema.json ',
       ownerPackage: ' @vannadii/devplat-specs ',
@@ -46,7 +46,7 @@ const baseRegistry: ArtifactRegistry = {
   migrations: [
     {
       migrationId: ' spec-1-to-2 ',
-      artifactType: ' spec-record ',
+      artifactType: 'spec-record',
       fromVersion: 1,
       toVersion: 2,
       summary: ' carry revision history into rendered pull request bodies ',
@@ -54,7 +54,7 @@ const baseRegistry: ArtifactRegistry = {
     },
     {
       migrationId: ' spec-2-to-3 ',
-      artifactType: ' spec-record ',
+      artifactType: 'spec-record',
       fromVersion: 2,
       toVersion: 3,
       summary: ' add source artifact lineage ',
@@ -195,11 +195,9 @@ describe('ArtifactRegistry logic', () => {
     },
   ];
 
-  for (const testCase of cases) {
-    it(testCase.name, () => {
-      expect.hasAssertions();
-      testCase.mock();
-      testCase.assert(testCase.inputs);
-    });
-  }
+  it.each(cases)('$name', (testCase) => {
+    expect.hasAssertions();
+    testCase.mock();
+    testCase.assert(testCase.inputs);
+  });
 });

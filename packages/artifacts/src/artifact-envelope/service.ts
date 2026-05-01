@@ -1,5 +1,5 @@
 import { createArtifactEnvelope, describeArtifactEnvelope } from './logic.js';
-import type { ArtifactEnvelope } from './types.js';
+import type { ArtifactEnvelope } from './codec.js';
 
 export class ArtifactEnvelopeService {
   public execute<TPayload extends object>(

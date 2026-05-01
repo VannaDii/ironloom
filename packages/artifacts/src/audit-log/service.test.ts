@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { AuditLogArtifactService } from './service.js';
-import type { AuditLogArtifact } from './types.js';
+import type { AuditLogArtifact } from './codec.js';
 
 type AuditLogServiceCase = {
   name: string;
@@ -53,12 +53,10 @@ describe('AuditLogArtifactService', () => {
     },
   ] satisfies AuditLogServiceCase[];
 
-  for (const testCase of cases) {
-    it(testCase.name, () => {
-      expect.hasAssertions();
-      const context = testCase.mock();
+  it.each(cases)('$name', (testCase) => {
+    expect.hasAssertions();
+    const context = testCase.mock();
 
-      testCase.assert(context, testCase.inputs);
-    });
-  }
+    testCase.assert(context, testCase.inputs);
+  });
 });

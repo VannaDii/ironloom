@@ -9,7 +9,7 @@ import type {
   ArtifactMigrationRecord,
   ArtifactRegistry,
   ArtifactRegistryEntry,
-} from './types.js';
+} from './codec.js';
 
 export class ArtifactRegistryService {
   public createDefault(repositoryKey: string): ArtifactRegistry {

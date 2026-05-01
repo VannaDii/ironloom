@@ -4,7 +4,7 @@ import {
   createRebaseResultArtifact,
   describeRebaseResultArtifact,
 } from './logic.js';
-import type { RebaseResultArtifact } from './types.js';
+import type { RebaseResultArtifact } from './codec.js';
 
 type RebaseResultLogicCase = {
   name: string;
@@ -115,12 +115,10 @@ describe('RebaseResultArtifact logic', () => {
     },
   ] satisfies RebaseResultLogicCase[];
 
-  for (const testCase of cases) {
-    it(testCase.name, () => {
-      expect.hasAssertions();
-      const context = testCase.mock();
+  it.each(cases)('$name', (testCase) => {
+    expect.hasAssertions();
+    const context = testCase.mock();
 
-      testCase.assert(context, testCase.inputs);
-    });
-  }
+    testCase.assert(context, testCase.inputs);
+  });
 });

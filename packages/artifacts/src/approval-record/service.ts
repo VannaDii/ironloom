@@ -2,7 +2,7 @@ import {
   createApprovalRecordArtifact,
   describeApprovalRecordArtifact,
 } from './logic.js';
-import type { ApprovalRecordArtifact } from './types.js';
+import type { ApprovalRecordArtifact } from './codec.js';
 
 export class ApprovalRecordArtifactService {
   public execute(input: ApprovalRecordArtifact): ApprovalRecordArtifact {

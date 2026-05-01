@@ -18,9 +18,10 @@ import type {
 } from './types.js';
 
 describe('GitHubActionRequest logic', () => {
-  it('normalizes GitHub action requests and privilege inference', () => {
+  describe('normalizes GitHub action requests and privilege inference', () => {
     const cases = [
       {
+        name: 'normalizes privileged merge requests',
         inputs: {
           request: {
             repoFullName: ' VannaDii/devplat ',
@@ -40,15 +41,17 @@ describe('GitHubActionRequest logic', () => {
       },
     ];
 
-    for (const testCase of cases) {
+    it.each(cases)('$name', (testCase) => {
+      expect.hasAssertions();
       testCase.mock();
       testCase.assert(createGitHubActionRequest(testCase.inputs.request));
-    }
+    });
   });
 
-  it('treats regular update actions as non-privileged by default', () => {
+  describe('treats regular update actions as non-privileged by default', () => {
     const cases = [
       {
+        name: 'normalizes non-privileged update requests',
         inputs: {
           request: {
             repoFullName: ' VannaDii/devplat ',
@@ -67,15 +70,17 @@ describe('GitHubActionRequest logic', () => {
       },
     ];
 
-    for (const testCase of cases) {
+    it.each(cases)('$name', (testCase) => {
+      expect.hasAssertions();
       testCase.mock();
       testCase.assert(createGitHubActionRequest(testCase.inputs.request));
-    }
+    });
   });
 
-  it('maps platform actions to concrete GitHub REST requests', () => {
+  describe('maps platform actions to concrete GitHub REST requests', () => {
     const cases = [
       {
+        name: 'maps create-pr to the pull request creation endpoint',
         inputs: {
           request: {
             repoFullName: 'VannaDii/devplat',
@@ -104,6 +109,7 @@ describe('GitHubActionRequest logic', () => {
         },
       },
       {
+        name: 'maps comment-pr to the issue comments endpoint',
         inputs: {
           request: {
             repoFullName: 'VannaDii/devplat',
@@ -125,6 +131,7 @@ describe('GitHubActionRequest logic', () => {
         },
       },
       {
+        name: 'uses the request body fallback for comments',
         inputs: {
           request: {
             repoFullName: 'VannaDii/devplat',
@@ -146,6 +153,7 @@ describe('GitHubActionRequest logic', () => {
         },
       },
       {
+        name: 'uses the request summary fallback for comments',
         inputs: {
           request: {
             repoFullName: 'VannaDii/devplat',
@@ -166,6 +174,7 @@ describe('GitHubActionRequest logic', () => {
         },
       },
       {
+        name: 'maps sync-branch with an expected head SHA',
         inputs: {
           request: {
             repoFullName: 'VannaDii/devplat',
@@ -187,6 +196,7 @@ describe('GitHubActionRequest logic', () => {
         },
       },
       {
+        name: 'maps merge-pr with explicit commit text',
         inputs: {
           request: {
             repoFullName: 'VannaDii/devplat',
@@ -212,6 +222,7 @@ describe('GitHubActionRequest logic', () => {
         },
       },
       {
+        name: 'maps update-pr to the pull request update endpoint',
         inputs: {
           request: {
             repoFullName: 'VannaDii/devplat',
@@ -237,6 +248,7 @@ describe('GitHubActionRequest logic', () => {
         },
       },
       {
+        name: 'maps merge-pr with expected head SHA protection',
         inputs: {
           request: {
             repoFullName: 'VannaDii/devplat',
@@ -262,6 +274,7 @@ describe('GitHubActionRequest logic', () => {
         },
       },
       {
+        name: 'maps sync-branch without an expected head SHA',
         inputs: {
           request: {
             repoFullName: 'VannaDii/devplat',
@@ -283,21 +296,41 @@ describe('GitHubActionRequest logic', () => {
       },
     ];
 
-    for (const testCase of cases) {
+    it.each(cases)('$name', (testCase) => {
+      expect.hasAssertions();
       testCase.mock();
       testCase.assert(createGitHubRestRequest(testCase.inputs.request));
-    }
+    });
   });
 
-  it('rejects incomplete GitHub REST action inputs', () => {
+  describe('rejects incomplete GitHub REST action inputs', () => {
     const cases = [
       {
+        name: 'rejects create-pr without baseBranch',
         inputs: {
           request: {
             repoFullName: 'VannaDii/devplat',
             action: 'create-pr',
             summary: 'Open PR',
             privileged: false,
+            branchName: 'feature/spec',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+          } satisfies GitHubActionRequest,
+        },
+        mock: () => undefined,
+        assert: (request: GitHubActionRequest) => {
+          expect(() => createGitHubRestRequest(request)).toThrow('baseBranch');
+        },
+      },
+      {
+        name: 'rejects create-pr without branchName',
+        inputs: {
+          request: {
+            repoFullName: 'VannaDii/devplat',
+            action: 'create-pr',
+            summary: 'Open PR',
+            privileged: false,
+            baseBranch: 'main',
             updatedAt: '2026-04-04T00:00:00.000Z',
           } satisfies GitHubActionRequest,
         },
@@ -307,6 +340,27 @@ describe('GitHubActionRequest logic', () => {
         },
       },
       {
+        name: 'rejects invalid create-pr branch names',
+        inputs: {
+          request: {
+            repoFullName: 'VannaDii/devplat',
+            action: 'create-pr',
+            summary: 'Open PR',
+            privileged: false,
+            branchName: 'feature..bad',
+            baseBranch: 'main',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+          } satisfies GitHubActionRequest,
+        },
+        mock: () => undefined,
+        assert: (request: GitHubActionRequest) => {
+          expect(() => createGitHubRestRequest(request)).toThrow(
+            'Git branch name',
+          );
+        },
+      },
+      {
+        name: 'rejects pull-request actions without targetNumber',
         inputs: {
           request: {
             repoFullName: 'VannaDii/devplat',
@@ -324,6 +378,7 @@ describe('GitHubActionRequest logic', () => {
         },
       },
       {
+        name: 'rejects malformed repository names',
         inputs: {
           request: {
             repoFullName: 'VannaDii',
@@ -341,15 +396,17 @@ describe('GitHubActionRequest logic', () => {
       },
     ];
 
-    for (const testCase of cases) {
+    it.each(cases)('$name', (testCase) => {
+      expect.hasAssertions();
       testCase.mock();
       testCase.assert(testCase.inputs.request);
-    }
+    });
   });
 
-  it('normalizes GitHub repository and pull request state contracts', () => {
+  describe('normalizes GitHub repository and pull request state contracts', () => {
     const cases = [
       {
+        name: 'normalizes repository and pull request state',
         inputs: {
           repository: {
             repoFullName: ' VannaDii/devplat ',
@@ -399,15 +456,17 @@ describe('GitHubActionRequest logic', () => {
       },
     ];
 
-    for (const testCase of cases) {
+    it.each(cases)('$name', (testCase) => {
+      expect.hasAssertions();
       testCase.mock();
       testCase.assert(testCase.inputs);
-    }
+    });
   });
 
-  it('normalizes issue/spec pull request links', () => {
+  describe('normalizes issue/spec pull request links', () => {
     const cases = [
       {
+        name: 'normalizes issue spec pull request links',
         inputs: {
           link: {
             repoFullName: ' VannaDii/devplat ',
@@ -431,9 +490,10 @@ describe('GitHubActionRequest logic', () => {
       },
     ];
 
-    for (const testCase of cases) {
+    it.each(cases)('$name', (testCase) => {
+      expect.hasAssertions();
       testCase.mock();
       testCase.assert(testCase.inputs);
-    }
+    });
   });
 });

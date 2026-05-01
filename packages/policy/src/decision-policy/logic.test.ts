@@ -275,12 +275,10 @@ describe('PolicyDecision logic', () => {
     },
   ] satisfies PolicyDecisionLogicCase[];
 
-  for (const testCase of cases) {
-    it(testCase.name, () => {
-      expect.hasAssertions();
-      const context = testCase.mock();
+  it.each(cases)('$name', (testCase) => {
+    expect.hasAssertions();
+    const context = testCase.mock();
 
-      testCase.assert(context, testCase.inputs);
-    });
-  }
+    testCase.assert(context, testCase.inputs);
+  });
 });

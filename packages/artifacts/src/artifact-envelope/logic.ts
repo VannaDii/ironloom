@@ -1,6 +1,6 @@
 import { appendTrace } from '@vannadii/devplat-core';
 
-import type { ArtifactEnvelope } from './types.js';
+import type { ArtifactEnvelope } from './codec.js';
 
 export function createArtifactEnvelope<
   TPayload extends object,

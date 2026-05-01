@@ -21,7 +21,8 @@
           "enum": ["planned", "in-progress", "blocked", "complete"]
         },
         "updatedAt": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "threadId": {
           "type": "string"

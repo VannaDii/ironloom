@@ -6,9 +6,11 @@ import type {
   DevplatErrorSeverityCodec,
   DevplatIdCodec,
   DomainSnapshotCodec,
+  GitBranchNameCodec,
   IsoTimestampCodec,
   LifecycleStatusCodec,
   RepositoryKeyCodec,
+  SupportedArtifactTypeCodec,
   TraceRecordCodec,
 } from './codec.js';
 
@@ -21,6 +23,10 @@ export type DevplatId = t.TypeOf<typeof DevplatIdCodec>;
 export type RepositoryKey = t.TypeOf<typeof RepositoryKeyCodec>;
 
 export type IsoTimestamp = t.TypeOf<typeof IsoTimestampCodec>;
+
+export type GitBranchName = t.TypeOf<typeof GitBranchNameCodec>;
+
+export type SupportedArtifactType = t.TypeOf<typeof SupportedArtifactTypeCodec>;
 
 export type DevplatErrorKind = t.TypeOf<typeof DevplatErrorKindCodec>;
 

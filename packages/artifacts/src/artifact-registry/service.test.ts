@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { ArtifactRegistryService } from './service.js';
-import type { ArtifactRegistry } from './types.js';
+import type { ArtifactRegistry } from './codec.js';
 
 const registry: ArtifactRegistry = {
   registryId: 'artifacts-main',
@@ -115,11 +115,9 @@ describe('ArtifactRegistryService', () => {
     },
   ];
 
-  for (const testCase of cases) {
-    it(testCase.name, () => {
-      expect.hasAssertions();
-      const service = testCase.mock();
-      testCase.assert(testCase.inputs, service);
-    });
-  }
+  it.each(cases)('$name', (testCase) => {
+    expect.hasAssertions();
+    const service = testCase.mock();
+    testCase.assert(testCase.inputs, service);
+  });
 });

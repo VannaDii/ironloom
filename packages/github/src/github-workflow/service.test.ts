@@ -21,6 +21,9 @@ import type {
   GitHubSubmissionReceipt,
 } from './types.js';
 
+/**
+ * Creates a deterministic GitHub transport for service tests.
+ */
 function createTransport(
   receipt: GitHubSubmissionReceipt,
 ): GitHubRestTransport {
@@ -32,9 +35,10 @@ function createTransport(
 }
 
 describe('GitHubWorkflowService', () => {
-  it('evaluates policy and records telemetry for GitHub actions', async () => {
+  describe('evaluates policy and records telemetry for GitHub actions', () => {
     const cases = [
       {
+        name: 'blocks privileged merge actions without policy approval',
         inputs: {
           request: {
             repoFullName: 'VannaDii/devplat',
@@ -64,11 +68,14 @@ describe('GitHubWorkflowService', () => {
             ),
           };
         },
-        assert: async (context: {
-          store: FileStoreService;
-          service: GitHubWorkflowService;
-        }) => {
-          const result = await context.service.submit(cases[0].inputs.request);
+        assert: async (
+          context: {
+            store: FileStoreService;
+            service: GitHubWorkflowService;
+          },
+          inputs: { request: GitHubActionRequest },
+        ) => {
+          const result = await context.service.submit(inputs.request);
           expect(result.allowed).toBe(false);
           expect(result.submitted).toBe(false);
           expect(await context.store.list('telemetry')).toHaveLength(1);
@@ -79,15 +86,17 @@ describe('GitHubWorkflowService', () => {
       },
     ];
 
-    for (const testCase of cases) {
+    it.each(cases)('$name', async (testCase) => {
+      expect.hasAssertions();
       const context = await testCase.mock();
-      await testCase.assert(context);
-    }
+      await testCase.assert(context, testCase.inputs);
+    });
   });
 
-  it('prepares normal update actions and records nullable metadata', async () => {
+  describe('prepares normal update actions and records nullable metadata', () => {
     const cases = [
       {
+        name: 'prepares update-pr requests and records nullable fields',
         inputs: {
           request: {
             repoFullName: ' VannaDii/devplat ',
@@ -116,8 +125,11 @@ describe('GitHubWorkflowService', () => {
             ),
           };
         },
-        assert: async (context: { service: GitHubWorkflowService }) => {
-          const prepared = context.service.prepare(cases[0].inputs.request);
+        assert: async (
+          context: { service: GitHubWorkflowService },
+          inputs: { request: GitHubActionRequest },
+        ) => {
+          const prepared = context.service.prepare(inputs.request);
           const result = await context.service.submit(prepared);
 
           expect(prepared.repoFullName).toBe('VannaDii/devplat');
@@ -130,6 +142,7 @@ describe('GitHubWorkflowService', () => {
         },
       },
       {
+        name: 'submits create-pr requests with explicit base branches',
         inputs: {
           request: {
             repoFullName: 'VannaDii/devplat',
@@ -137,6 +150,7 @@ describe('GitHubWorkflowService', () => {
             summary: 'Open implementation PR',
             privileged: false,
             branchName: 'feature/implementation',
+            baseBranch: 'main',
             updatedAt: '2026-04-04T00:00:00.000Z',
           } satisfies GitHubActionRequest,
         },
@@ -158,8 +172,11 @@ describe('GitHubWorkflowService', () => {
             ),
           };
         },
-        assert: async (context: { service: GitHubWorkflowService }) => {
-          const result = await context.service.submit(cases[1].inputs.request);
+        assert: async (
+          context: { service: GitHubWorkflowService },
+          inputs: { request: GitHubActionRequest },
+        ) => {
+          const result = await context.service.submit(inputs.request);
 
           expect(result.allowed).toBe(true);
           expect(result.submitted).toBe(true);
@@ -168,15 +185,17 @@ describe('GitHubWorkflowService', () => {
       },
     ];
 
-    for (const testCase of cases) {
+    it.each(cases)('$name', async (testCase) => {
+      expect.hasAssertions();
       const context = await testCase.mock();
-      await testCase.assert(context);
-    }
+      await testCase.assert(context, testCase.inputs);
+    });
   });
 
-  it('normalizes repository, pull request, and spec issue state through the service', () => {
+  describe('normalizes repository, pull request, and spec issue state through the service', () => {
     const cases = [
       {
+        name: 'normalizes repository, pull request, and issue/spec state',
         inputs: {
           repository: {
             repoFullName: ' VannaDii/devplat ',
@@ -240,15 +259,17 @@ describe('GitHubWorkflowService', () => {
       },
     ];
 
-    for (const testCase of cases) {
+    it.each(cases)('$name', (testCase) => {
+      expect.hasAssertions();
       const context = testCase.mock();
       testCase.assert(context, testCase.inputs);
-    }
+    });
   });
 
-  it('submits concrete GitHub REST requests with response receipts', async () => {
+  describe('submits concrete GitHub REST requests with response receipts', () => {
     const cases = [
       {
+        name: 'submits create-pr to the concrete REST endpoint',
         inputs: {
           request: {
             repoFullName: 'VannaDii/devplat',
@@ -256,6 +277,7 @@ describe('GitHubWorkflowService', () => {
             summary: 'Open PR',
             privileged: false,
             branchName: 'feature/pr',
+            baseBranch: 'main',
             updatedAt: '2026-04-04T00:00:00.000Z',
           } satisfies GitHubActionRequest,
         },
@@ -276,13 +298,14 @@ describe('GitHubWorkflowService', () => {
             ),
           };
         },
-        assert: async (context: {
-          calls: string[];
-          transport: GitHubRestApiTransport;
-        }) => {
-          const receipt = await context.transport.submit(
-            cases[0].inputs.request,
-          );
+        assert: async (
+          context: {
+            calls: string[];
+            transport: GitHubRestApiTransport;
+          },
+          inputs: { request: GitHubActionRequest },
+        ) => {
+          const receipt = await context.transport.submit(inputs.request);
 
           expect(receipt.statusCode).toBe(201);
           expect(receipt.endpoint).toBe('/repos/VannaDii/devplat/pulls');
@@ -293,15 +316,17 @@ describe('GitHubWorkflowService', () => {
       },
     ];
 
-    for (const testCase of cases) {
+    it.each(cases)('$name', async (testCase) => {
+      expect.hasAssertions();
       const context = testCase.mock();
-      await testCase.assert(context);
-    }
+      await testCase.assert(context, testCase.inputs);
+    });
   });
 
-  it('requires a token before GitHub REST submission', async () => {
+  describe('requires a token before GitHub REST submission', () => {
     const cases = [
       {
+        name: 'rejects live submissions without a token',
         inputs: {
           request: {
             repoFullName: 'VannaDii/devplat',
@@ -309,27 +334,33 @@ describe('GitHubWorkflowService', () => {
             summary: 'Open PR',
             privileged: false,
             branchName: 'feature/pr',
+            baseBranch: 'main',
             updatedAt: '2026-04-04T00:00:00.000Z',
           } satisfies GitHubActionRequest,
         },
         mock: () =>
           new GitHubRestApiTransport('', 'https://github.test', fetch, 'live'),
-        assert: async (transport: GitHubRestApiTransport) => {
-          await expect(
-            transport.submit(cases[0].inputs.request),
-          ).rejects.toThrow('GITHUB_TOKEN');
+        assert: async (
+          transport: GitHubRestApiTransport,
+          inputs: { request: GitHubActionRequest },
+        ) => {
+          await expect(transport.submit(inputs.request)).rejects.toThrow(
+            'GITHUB_TOKEN',
+          );
         },
       },
     ];
 
-    for (const testCase of cases) {
-      await testCase.assert(testCase.mock());
-    }
+    it.each(cases)('$name', async (testCase) => {
+      expect.hasAssertions();
+      await testCase.assert(testCase.mock(), testCase.inputs);
+    });
   });
 
-  it('handles empty GitHub REST response bodies', async () => {
+  describe('handles empty GitHub REST response bodies', () => {
     const cases = [
       {
+        name: 'maps empty JSON response bodies to null',
         inputs: {
           request: {
             repoFullName: 'VannaDii/devplat',
@@ -350,8 +381,11 @@ describe('GitHubWorkflowService', () => {
             'live',
           );
         },
-        assert: async (transport: GitHubRestApiTransport) => {
-          const receipt = await transport.submit(cases[0].inputs.request);
+        assert: async (
+          transport: GitHubRestApiTransport,
+          inputs: { request: GitHubActionRequest },
+        ) => {
+          const receipt = await transport.submit(inputs.request);
 
           expect(receipt.statusCode).toBe(200);
           expect(receipt.responseBody).toBeNull();
@@ -359,14 +393,16 @@ describe('GitHubWorkflowService', () => {
       },
     ];
 
-    for (const testCase of cases) {
-      await testCase.assert(testCase.mock());
-    }
+    it.each(cases)('$name', async (testCase) => {
+      expect.hasAssertions();
+      await testCase.assert(testCase.mock(), testCase.inputs);
+    });
   });
 
-  it('dry-runs GitHub submission when no token is configured', async () => {
+  describe('dry-runs GitHub submission when no token is configured', () => {
     const cases = [
       {
+        name: 'dry-runs sync-branch with the concrete REST request',
         inputs: {
           request: {
             repoFullName: 'VannaDii/devplat',
@@ -374,18 +410,33 @@ describe('GitHubWorkflowService', () => {
             summary: 'Sync branch',
             privileged: false,
             branchName: 'feature/downstream',
+            targetNumber: 42,
             updatedAt: '2026-04-04T00:00:00.000Z',
           } satisfies GitHubActionRequest,
         },
         mock: () => new GitHubRestApiTransport('', 'https://github.test'),
-        assert: async (transport: GitHubRestApiTransport) => {
-          const receipt = await transport.submit(cases[0].inputs.request);
+        assert: async (
+          transport: GitHubRestApiTransport,
+          inputs: { request: GitHubActionRequest },
+        ) => {
+          const receipt = await transport.submit(inputs.request);
 
           expect(receipt.statusCode).toBe(0);
-          expect(receipt.endpoint).toBe('dry-run:sync-branch');
+          expect(receipt).toMatchObject({
+            method: 'PUT',
+            endpoint: '/repos/VannaDii/devplat/pulls/42/update-branch',
+            responseBody: {
+              dryRun: true,
+              request: {
+                method: 'PUT',
+                endpoint: '/repos/VannaDii/devplat/pulls/42/update-branch',
+              },
+            },
+          });
         },
       },
       {
+        name: 'dry-runs update-pr with the concrete REST request',
         inputs: {
           request: {
             repoFullName: 'VannaDii/devplat',
@@ -397,22 +448,31 @@ describe('GitHubWorkflowService', () => {
           } satisfies GitHubActionRequest,
         },
         mock: () => new GitHubRestApiTransport('', 'https://github.test'),
-        assert: async (transport: GitHubRestApiTransport) => {
-          const receipt = await transport.submit(cases[1].inputs.request);
+        assert: async (
+          transport: GitHubRestApiTransport,
+          inputs: { request: GitHubActionRequest },
+        ) => {
+          const receipt = await transport.submit(inputs.request);
 
           expect(receipt.statusCode).toBe(0);
           expect(receipt.responseBody).toEqual({
             dryRun: true,
-            repoFullName: 'VannaDii/devplat',
-            targetNumber: 42,
-            branchName: null,
+            request: {
+              method: 'PATCH',
+              endpoint: '/repos/VannaDii/devplat/pulls/42',
+              body: {
+                title: 'Dry run update',
+                body: 'Dry run update',
+              },
+            },
           });
         },
       },
     ];
 
-    for (const testCase of cases) {
-      await testCase.assert(testCase.mock());
-    }
+    it.each(cases)('$name', async (testCase) => {
+      expect.hasAssertions();
+      await testCase.assert(testCase.mock(), testCase.inputs);
+    });
   });
 });

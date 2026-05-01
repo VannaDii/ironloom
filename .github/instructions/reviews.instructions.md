@@ -16,3 +16,4 @@
 
 - Reject changes that hide logic in decorators, weaken strictness, skip required artifacts, or move privileged behavior outside policy and observability paths.
 - Reject changes that leave lifecycle steps incomplete across GitHub, Discord, OpenClaw, release surfaces, docs, or operator guidance.
+- When addressing PR feedback, review each item, research its edge cases, implement the smallest complete fix, run targeted verification, and reply directly on the review thread with a brief concrete note. Do not resolve review threads after replying.

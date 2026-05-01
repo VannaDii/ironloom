@@ -8,6 +8,21 @@ import { schemaRegistry } from './schema-registry.mjs';
 
 const rootDirectory = resolve(import.meta.dirname, '..');
 const schemaDraft = 'http://json-schema.org/draft-07/schema#';
+const namedStringCodecSchemas = new Map([
+  [
+    'IsoTimestamp',
+    {
+      type: 'string',
+      format: 'date-time',
+    },
+  ],
+  [
+    'GitBranchName',
+    {
+      type: 'string',
+    },
+  ],
+]);
 
 function mergeObjectSchemas(schemas) {
   const properties = {};
@@ -74,6 +89,11 @@ function objectSchema(codec, required) {
 }
 
 function codecToJsonSchema(codec) {
+  const namedStringCodecSchema = namedStringCodecSchemas.get(codec.name);
+  if (namedStringCodecSchema !== undefined) {
+    return namedStringCodecSchema;
+  }
+
   if (codec.name === 'PositivePullRequestNumber') {
     return {
       type: 'integer',

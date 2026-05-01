@@ -4,7 +4,7 @@ import {
   createMergeDecisionArtifact,
   describeMergeDecisionArtifact,
 } from './logic.js';
-import type { MergeDecisionArtifact } from './types.js';
+import type { MergeDecisionArtifact } from './codec.js';
 
 type MergeDecisionLogicCase = {
   name: string;
@@ -115,12 +115,10 @@ describe('MergeDecisionArtifact logic', () => {
     },
   ] satisfies MergeDecisionLogicCase[];
 
-  for (const testCase of cases) {
-    it(testCase.name, () => {
-      expect.hasAssertions();
-      const context = testCase.mock();
+  it.each(cases)('$name', (testCase) => {
+    expect.hasAssertions();
+    const context = testCase.mock();
 
-      testCase.assert(context, testCase.inputs);
-    });
-  }
+    testCase.assert(context, testCase.inputs);
+  });
 });

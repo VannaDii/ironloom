@@ -2,11 +2,15 @@ import { generateKeyPairSync, sign } from 'node:crypto';
 
 import { describe, expect, it } from 'vitest';
 
+import { DISCORD_HEX_SIGNATURE_FIELD_PATTERN } from './constants.js';
 import {
   parseDiscordInteractionWebhookBody,
   verifyDiscordInteractionSignature,
 } from './logic.js';
 
+/**
+ * Creates a signed Discord interaction request fixture.
+ */
 function createSignedRequest(body: string) {
   const { privateKey, publicKey } = generateKeyPairSync('ed25519');
   const timestamp = '2026-05-01T00:00:00.000Z';
@@ -179,6 +183,29 @@ describe('discord interaction webhook logic', () => {
       ) => {
         expect(parsed.ok).toBe(false);
         expect(parsed.reason).toContain('supported callback payload');
+      },
+    },
+    {
+      name: 'keeps Discord hex field validation explicit and tested',
+      inputs: {
+        validHexValues: ['abcdef', 'ABCDEF', '1234567890abcdef'],
+        invalidHexValues: ['', 'not-hex', 'abc123!', 'abc 123'],
+      },
+      mock: (inputs: {
+        validHexValues: string[];
+        invalidHexValues: string[];
+      }) => inputs,
+      assert: (inputs: {
+        validHexValues: string[];
+        invalidHexValues: string[];
+      }) => {
+        for (const value of inputs.validHexValues) {
+          expect(DISCORD_HEX_SIGNATURE_FIELD_PATTERN.test(value)).toBe(true);
+        }
+
+        for (const value of inputs.invalidHexValues) {
+          expect(DISCORD_HEX_SIGNATURE_FIELD_PATTERN.test(value)).toBe(false);
+        }
       },
     },
   ];

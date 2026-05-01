@@ -4,6 +4,7 @@ import { join, resolve } from 'node:path';
 
 import { describe, expect, it, vi } from 'vitest';
 
+import { JSON_FILE_EXTENSION_PATTERN } from './constants.js';
 import { FileStoreService } from './service.js';
 import type { StoredRecord } from './types.js';
 
@@ -25,6 +26,14 @@ type FileStoreServiceInputs =
     }
   | {
       mode: 'non-json-and-string-error';
+    }
+  | {
+      mode: 'json-extension-pattern';
+      filenames: string[];
+    }
+  | {
+      mode: 'unsafe-key';
+      record: StoredRecord<FileStorePayload>;
     };
 
 type FileStoreServiceContext = {
@@ -107,6 +116,44 @@ describe('FileStoreService', () => {
         if (loaded.ok) {
           expect(loaded.value.payload).toEqual({ state: 'queued' });
         }
+      },
+    },
+    {
+      name: 'rejects unsafe keys before writing files',
+      inputs: {
+        mode: 'unsafe-key',
+        record: {
+          id: 'storage-unsafe',
+          key: '../outside',
+          scope: 'state',
+          summary: 'Unsafe storage key',
+          status: 'blocked',
+          trace: [],
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          payload: { state: 'blocked' },
+        },
+      },
+      mock: async () => {
+        const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-storage-'));
+
+        return {
+          rootDirectory,
+          service: new FileStoreService(rootDirectory),
+        };
+      },
+      assert: async (context, inputs) => {
+        if (inputs.mode !== 'unsafe-key') {
+          throw new Error('expected unsafe-key inputs');
+        }
+
+        await expect(context.service.store(inputs.record)).rejects.toThrow(
+          'path separators',
+        );
+        await expect(
+          context.service.read('state', '../outside'),
+        ).resolves.toMatchObject({
+          ok: false,
+        });
       },
     },
     {
@@ -208,6 +255,33 @@ describe('FileStoreService', () => {
       },
     },
     {
+      name: 'strips JSON extensions with the tested file-name pattern',
+      inputs: {
+        mode: 'json-extension-pattern',
+        filenames: ['task-1.json', 'task-2.txt'],
+      },
+      mock: async () => {
+        const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-storage-'));
+
+        return {
+          rootDirectory,
+          service: new FileStoreService(rootDirectory),
+        };
+      },
+      assert: async (_context, inputs) => {
+        if (inputs.mode !== 'json-extension-pattern') {
+          throw new Error('expected json-extension-pattern inputs');
+        }
+
+        expect(
+          inputs.filenames[0].replace(JSON_FILE_EXTENSION_PATTERN, ''),
+        ).toBe('task-1');
+        expect(
+          inputs.filenames[1].replace(JSON_FILE_EXTENSION_PATTERN, ''),
+        ).toBe('task-2.txt');
+      },
+    },
+    {
       name: 'ignores non-json entries and stringifies non-Error failures',
       inputs: {
         mode: 'non-json-and-string-error',
@@ -248,12 +322,10 @@ describe('FileStoreService', () => {
     },
   ] satisfies FileStoreServiceCase[];
 
-  for (const testCase of cases) {
-    it(testCase.name, async () => {
-      expect.hasAssertions();
-      const context = await testCase.mock();
+  it.each(cases)('$name', async (testCase) => {
+    expect.hasAssertions();
+    const context = await testCase.mock();
 
-      await testCase.assert(context, testCase.inputs);
-    });
-  }
+    await testCase.assert(context, testCase.inputs);
+  });
 });

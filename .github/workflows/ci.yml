@@ -293,7 +293,7 @@ jobs:
           tar -C "$RUNNER_TEMP" -czf "$artifact" openclaw-deep
 
       - name: Upload Hermetic Deep Test Artifact
-        if: always() && env.ACT != 'true'
+        if: env.ACT != 'true'
         uses: actions/upload-artifact@v7
         with:
           name: openclaw-deep-${{ github.run_id }}-${{ github.run_attempt }}

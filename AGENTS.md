@@ -30,9 +30,21 @@
 - Keep `logic.ts` pure and test it directly.
 - Keep `service.ts` as the class shell for orchestration, delegation, and side-effect boundaries.
 - Keep relative `NodeNext` import and export specifiers explicit with emitted `.js` extensions.
+- Add JSDoc to every authored constant, codec, function, class, public type, and internal helper unless the symbol is a trivial re-export.
 - Every non-trivial unit needs sibling tests that reveal failure source and operational impact.
-- Use structured test tables with `const cases = [...]`. Each case must declare `inputs`, a `mock` setup function, and an `assert` function, then run through a single implementation per suite.
-- Public contract changes require aligned types, `io-ts` codecs, generated schemas, docs, and tests.
+- Use structured test tables with `const cases = [...]`. Each case must declare `inputs`, a `mock` setup function, and an `assert` function, then run through a single `it.each(cases)('$name', ...)` implementation per suite.
+- Public contract changes require aligned codec-owned types, `io-ts` codecs, generated schemas, docs, and tests.
+- Export public types near their source codec definitions; delete `types.ts` files when they only re-export or alias codec-owned types.
+- Keep constants in the owning package's `constants.ts`. If more than one package needs the same constant, define it once in `@vannadii/devplat-core` and import it from there.
+- Do not inline repeated literals or magic numbers in authored code. Define meaningful constants for versions, artifact kinds, action names, statuses, storage scopes, index names, and other shared vocabulary.
+- Treat regular expressions as constants: define named regex patterns in `constants.ts`, and cover every pattern with comprehensive tests for matching and non-matching edge cases.
+- Use shared codecs for domain-specific strings such as ISO timestamps and Git branch names instead of plain `t.string`.
 - Keep Discord and OpenClaw control-plane contracts aligned with auditable artifacts and generated schemas.
 - Fail closed when a Discord action lacks an unambiguous thread binding.
 - Preserve Linux-only compatibility validation against the latest stable TypeScript `5.x` and `6.x` releases while authoring against TypeScript `6.0.2`.
+
+## Pull Request Feedback
+
+- Resolving PR feedback means reviewing every item, researching the issue and edge cases, implementing the smallest complete fix, and verifying it with targeted tests and the relevant repo gates.
+- Reply directly on each review thread with a warm, very brief, concrete note describing how it was addressed.
+- Do not resolve review threads after replying; leave thread resolution to the author.

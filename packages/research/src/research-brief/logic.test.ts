@@ -62,11 +62,9 @@ describe('ResearchBrief logic', () => {
     },
   ];
 
-  for (const testCase of cases) {
-    it(testCase.name, () => {
-      expect.hasAssertions();
-      testCase.mock();
-      testCase.assert(testCase.inputs);
-    });
-  }
+  it.each(cases)('$name', (testCase) => {
+    expect.hasAssertions();
+    testCase.mock();
+    testCase.assert(testCase.inputs);
+  });
 });

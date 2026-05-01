@@ -54,7 +54,8 @@
           }
         },
         "updatedAt": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "payload": {
           "type": "object",

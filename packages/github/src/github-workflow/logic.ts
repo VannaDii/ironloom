@@ -1,3 +1,14 @@
+import { createGitBranchName } from '@vannadii/devplat-core';
+
+import {
+  GITHUB_ACTION_COMMENT_PR,
+  GITHUB_ACTION_CREATE_PR,
+  GITHUB_ACTION_MERGE_PR,
+  GITHUB_ACTION_UPDATE_PR,
+  GITHUB_HTTP_METHOD_PATCH,
+  GITHUB_HTTP_METHOD_POST,
+  GITHUB_HTTP_METHOD_PUT,
+} from './constants.js';
 import type {
   GitHubActionRequest,
   GitHubIssueSpecLink,
@@ -6,11 +17,17 @@ import type {
   GitHubRestRequest,
 } from './types.js';
 
+/**
+ * Trims optional text and drops blank optional fields.
+ */
 function optionalTrimmed(value: string | undefined): string | undefined {
   const trimmed = value?.trim();
   return trimmed === undefined || trimmed.length === 0 ? undefined : trimmed;
 }
 
+/**
+ * Deduplicates and sorts non-empty strings.
+ */
 function uniqueTrimmed(values: readonly string[]): string[] {
   return [
     ...new Set(
@@ -19,10 +36,16 @@ function uniqueTrimmed(values: readonly string[]): string[] {
   ].sort((left, right) => left.localeCompare(right));
 }
 
+/**
+ * Deduplicates and sorts numeric identifiers.
+ */
 function uniqueNumbers(values: readonly number[]): number[] {
   return [...new Set(values)].sort((left, right) => left - right);
 }
 
+/**
+ * Reads the pull request number required by pull-request-targeted actions.
+ */
 function requirePullRequestNumber(input: GitHubActionRequest): number {
   if (typeof input.targetNumber !== 'number') {
     throw new Error(`${input.action} requires targetNumber.`);
@@ -31,6 +54,9 @@ function requirePullRequestNumber(input: GitHubActionRequest): number {
   return input.targetNumber;
 }
 
+/**
+ * Encodes `owner/repo` into a safe GitHub REST path segment pair.
+ */
 function encodeRepositoryPath(repoFullName: string): string {
   const parts = repoFullName.split('/');
   const owner = parts[0];
@@ -43,6 +69,9 @@ function encodeRepositoryPath(repoFullName: string): string {
   return `${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
 }
 
+/**
+ * Normalizes a GitHub workflow action request.
+ */
 export function createGitHubActionRequest(
   input: GitHubActionRequest,
 ): GitHubActionRequest {
@@ -58,8 +87,10 @@ export function createGitHubActionRequest(
     repoFullName: input.repoFullName.trim(),
     summary: input.summary.trim(),
     updatedAt: new Date(input.updatedAt).toISOString(),
-    ...(branchName ? { branchName } : {}),
-    ...(baseBranch === undefined ? {} : { baseBranch }),
+    ...(branchName ? { branchName: createGitBranchName(branchName) } : {}),
+    ...(baseBranch === undefined
+      ? {}
+      : { baseBranch: createGitBranchName(baseBranch) }),
     ...(title === undefined ? {} : { title }),
     ...(body === undefined ? {} : { body }),
     ...(commentBody === undefined ? {} : { commentBody }),
@@ -67,16 +98,25 @@ export function createGitHubActionRequest(
   };
 }
 
+/**
+ * Returns true when the GitHub action requires privileged policy approval.
+ */
 export function isPrivilegedGitHubAction(input: GitHubActionRequest): boolean {
-  return input.privileged || input.action === 'merge-pr';
+  return input.privileged || input.action === GITHUB_ACTION_MERGE_PR;
 }
 
+/**
+ * Describes a GitHub action request for status output.
+ */
 export function describeGitHubActionRequest(
   input: GitHubActionRequest,
 ): string {
   return `${input.action} -> ${input.repoFullName}`;
 }
 
+/**
+ * Normalizes a repository state snapshot.
+ */
 export function createGitHubRepositoryState(
   input: GitHubRepositoryState,
 ): GitHubRepositoryState {
@@ -91,6 +131,9 @@ export function createGitHubRepositoryState(
   };
 }
 
+/**
+ * Normalizes a pull request state snapshot.
+ */
 export function createGitHubPullRequestState(
   input: GitHubPullRequestState,
 ): GitHubPullRequestState {
@@ -110,6 +153,9 @@ export function createGitHubPullRequestState(
   };
 }
 
+/**
+ * Normalizes an issue/spec/pull-request link.
+ */
 export function createGitHubIssueSpecLink(
   input: GitHubIssueSpecLink,
 ): GitHubIssueSpecLink {
@@ -124,39 +170,48 @@ export function createGitHubIssueSpecLink(
   };
 }
 
+/**
+ * Describes pull request state for operator-facing output.
+ */
 export function describeGitHubPullRequestState(
   input: GitHubPullRequestState,
 ): string {
   return `${input.repoFullName}#${String(input.number)} ${input.state} ${input.headBranch}->${input.baseBranch}`;
 }
 
+/**
+ * Converts a platform GitHub action request into a concrete REST request.
+ */
 export function createGitHubRestRequest(
   input: GitHubActionRequest,
 ): GitHubRestRequest {
   const request = createGitHubActionRequest(input);
   const repoPath = encodeRepositoryPath(request.repoFullName);
 
-  if (request.action === 'create-pr') {
+  if (request.action === GITHUB_ACTION_CREATE_PR) {
     if (request.branchName === undefined) {
       throw new Error('create-pr requires branchName.');
     }
+    if (request.baseBranch === undefined) {
+      throw new Error('create-pr requires baseBranch.');
+    }
 
     return {
-      method: 'POST',
+      method: GITHUB_HTTP_METHOD_POST,
       endpoint: `/repos/${repoPath}/pulls`,
       body: {
         title: request.title ?? request.summary,
         body: request.body ?? request.summary,
         head: request.branchName,
-        base: request.baseBranch ?? 'main',
+        base: request.baseBranch,
       },
     };
   }
 
-  if (request.action === 'update-pr') {
+  if (request.action === GITHUB_ACTION_UPDATE_PR) {
     const pullRequestNumber = requirePullRequestNumber(request);
     return {
-      method: 'PATCH',
+      method: GITHUB_HTTP_METHOD_PATCH,
       endpoint: `/repos/${repoPath}/pulls/${String(pullRequestNumber)}`,
       body: {
         title: request.title ?? request.summary,
@@ -165,10 +220,10 @@ export function createGitHubRestRequest(
     };
   }
 
-  if (request.action === 'comment-pr') {
+  if (request.action === GITHUB_ACTION_COMMENT_PR) {
     const pullRequestNumber = requirePullRequestNumber(request);
     return {
-      method: 'POST',
+      method: GITHUB_HTTP_METHOD_POST,
       endpoint: `/repos/${repoPath}/issues/${String(pullRequestNumber)}/comments`,
       body: {
         body: request.commentBody ?? request.body ?? request.summary,
@@ -176,10 +231,10 @@ export function createGitHubRestRequest(
     };
   }
 
-  if (request.action === 'merge-pr') {
+  if (request.action === GITHUB_ACTION_MERGE_PR) {
     const pullRequestNumber = requirePullRequestNumber(request);
     return {
-      method: 'PUT',
+      method: GITHUB_HTTP_METHOD_PUT,
       endpoint: `/repos/${repoPath}/pulls/${String(pullRequestNumber)}/merge`,
       body: {
         commit_title: request.title ?? request.summary,
@@ -193,7 +248,7 @@ export function createGitHubRestRequest(
 
   const pullRequestNumber = requirePullRequestNumber(request);
   return {
-    method: 'PUT',
+    method: GITHUB_HTTP_METHOD_PUT,
     endpoint: `/repos/${repoPath}/pulls/${String(pullRequestNumber)}/update-branch`,
     body:
       request.expectedHeadSha === undefined

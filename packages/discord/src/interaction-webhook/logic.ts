@@ -8,10 +8,22 @@ import type {
   DiscordInteractionWebhookParseResult,
   DiscordInteractionWebhookRequest,
 } from './types.js';
+import {
+  DISCORD_ED25519_SPKI_PREFIX_HEX,
+  DISCORD_HEX_SIGNATURE_FIELD_PATTERN,
+} from './constants.js';
 
-const discordEd25519SpkiPrefix = Buffer.from('302a300506032b6570032100', 'hex');
-const hexPattern = /^[0-9a-f]+$/iu;
+/**
+ * DER SubjectPublicKeyInfo prefix bytes for Discord Ed25519 public keys.
+ */
+const discordEd25519SpkiPrefix = Buffer.from(
+  DISCORD_ED25519_SPKI_PREFIX_HEX,
+  'hex',
+);
 
+/**
+ * Decodes fixed-width hexadecimal Discord signature material.
+ */
 function decodeFixedHex(
   value: string,
   expectedByteLength: number,
@@ -19,7 +31,7 @@ function decodeFixedHex(
   const normalized = value.trim();
   if (
     normalized.length !== expectedByteLength * 2 ||
-    !hexPattern.test(normalized)
+    !DISCORD_HEX_SIGNATURE_FIELD_PATTERN.test(normalized)
   ) {
     return undefined;
   }
@@ -27,6 +39,9 @@ function decodeFixedHex(
   return Buffer.from(normalized, 'hex');
 }
 
+/**
+ * Creates a Node public key from Discord's raw Ed25519 public-key string.
+ */
 function createDiscordPublicKey(publicKey: string): KeyObject | undefined {
   const publicKeyBytes = decodeFixedHex(publicKey, 32);
   if (publicKeyBytes === undefined) {
@@ -40,10 +55,16 @@ function createDiscordPublicKey(publicKey: string): KeyObject | undefined {
   });
 }
 
+/**
+ * Parses the raw interaction request body.
+ */
 function parseWebhookJson(body: string): unknown {
   return JSON.parse(body);
 }
 
+/**
+ * Returns true when the parsed payload is Discord's interaction ping probe.
+ */
 function isDiscordPingPayload(value: unknown): boolean {
   return (
     typeof value === 'object' &&
@@ -53,6 +74,9 @@ function isDiscordPingPayload(value: unknown): boolean {
   );
 }
 
+/**
+ * Verifies a Discord interaction request using the Ed25519 signature headers.
+ */
 export function verifyDiscordInteractionSignature(
   input: DiscordInteractionWebhookRequest,
 ): boolean {
@@ -70,6 +94,9 @@ export function verifyDiscordInteractionSignature(
   );
 }
 
+/**
+ * Parses a Discord interaction webhook body into ping or command callback form.
+ */
 export function parseDiscordInteractionWebhookBody(
   body: string,
 ): DiscordInteractionWebhookParseResult {

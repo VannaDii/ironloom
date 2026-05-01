@@ -1,21 +1,61 @@
 import * as t from 'io-ts';
 
+import {
+  ARTIFACT_TYPE_APPROVAL_RECORD,
+  ARTIFACT_TYPE_AUDIT_LOG,
+  ARTIFACT_TYPE_GATE_RUN_REPORT,
+  ARTIFACT_TYPE_MERGE_DECISION,
+  ARTIFACT_TYPE_PULL_REQUEST_RECORD,
+  ARTIFACT_TYPE_REBASE_RESULT,
+  ARTIFACT_TYPE_REMEDIATION_PLAN,
+  ARTIFACT_TYPE_RESEARCH_BRIEF,
+  ARTIFACT_TYPE_REVIEW_FINDING,
+  ARTIFACT_TYPE_SLICE_PLAN,
+  ARTIFACT_TYPE_SPEC_RECORD,
+  ARTIFACT_TYPE_TASK_RECORD,
+  ARTIFACT_TYPE_TELEMETRY_EVENT,
+  ARTIFACT_TYPE_WORKTREE_ALLOCATION,
+  GIT_BRANCH_DISALLOWED_CONTROL_OR_SPACE_PATTERN,
+} from './constants.js';
+
+/**
+ * Brand carried by normalized DevPlat identifiers.
+ */
 export interface DevplatIdBrand {
   readonly DevplatId: unique symbol;
 }
 
+/**
+ * Brand carried by normalized owner/repository keys.
+ */
 export interface RepositoryKeyBrand {
   readonly RepositoryKey: unique symbol;
 }
 
+/**
+ * Brand marker retained for ISO timestamp documentation.
+ */
 export interface IsoTimestampBrand {
   readonly IsoTimestamp: unique symbol;
 }
 
+/**
+ * Brand marker retained for Git branch name documentation.
+ */
+export interface GitBranchNameBrand {
+  readonly GitBranchName: unique symbol;
+}
+
+/**
+ * Returns true when a string is already trimmed and has at least one byte.
+ */
 function isNormalizedNonEmptyString(value: string): boolean {
   return value.trim() === value && value.length > 0;
 }
 
+/**
+ * Returns true when a repository key uses the GitHub owner/repository shape.
+ */
 function isRepositoryKey(value: string): boolean {
   const segments = value.split('/');
 
@@ -28,6 +68,9 @@ function isRepositoryKey(value: string): boolean {
   );
 }
 
+/**
+ * Returns true when a timestamp round-trips through ISO-8601 milliseconds.
+ */
 function isIsoTimestamp(value: string): boolean {
   const parsed = Date.parse(value);
   if (Number.isNaN(parsed)) {
@@ -37,6 +80,35 @@ function isIsoTimestamp(value: string): boolean {
   return new Date(parsed).toISOString() === value;
 }
 
+/**
+ * Returns true when a string is safe for use as a Git branch ref segment path.
+ */
+function isGitBranchName(value: string): boolean {
+  return (
+    isNormalizedNonEmptyString(value) &&
+    value !== '@' &&
+    !value.startsWith('-') &&
+    !value.startsWith('/') &&
+    !value.endsWith('/') &&
+    !value.endsWith('.') &&
+    !value.includes('..') &&
+    !value.includes('//') &&
+    !value.includes('@{') &&
+    !value.includes('\\') &&
+    !value.includes('~') &&
+    !value.includes('^') &&
+    !value.includes(':') &&
+    !value.includes('?') &&
+    !value.includes('*') &&
+    !value.includes('[') &&
+    !value.split('/').some((segment) => segment.endsWith('.lock')) &&
+    !GIT_BRANCH_DISALLOWED_CONTROL_OR_SPACE_PATTERN.test(value)
+  );
+}
+
+/**
+ * Codec for normalized DevPlat identifiers.
+ */
 export const DevplatIdCodec = t.brand(
   t.string,
   (value): value is t.Branded<string, DevplatIdBrand> =>
@@ -44,6 +116,9 @@ export const DevplatIdCodec = t.brand(
   'DevplatId',
 );
 
+/**
+ * Codec for owner/repository identity keys.
+ */
 export const RepositoryKeyCodec = t.brand(
   t.string,
   (value): value is t.Branded<string, RepositoryKeyBrand> =>
@@ -51,13 +126,61 @@ export const RepositoryKeyCodec = t.brand(
   'RepositoryKey',
 );
 
-export const IsoTimestampCodec = t.brand(
-  t.string,
-  (value): value is t.Branded<string, IsoTimestampBrand> =>
-    isIsoTimestamp(value),
+/**
+ * Codec for ISO-8601 timestamps with millisecond precision.
+ */
+export const IsoTimestampCodec = new t.Type<string, string, unknown>(
   'IsoTimestamp',
+  (value): value is string => typeof value === 'string',
+  (value, context) =>
+    typeof value === 'string' && isIsoTimestamp(value)
+      ? t.success(value)
+      : t.failure(value, context),
+  t.identity,
 );
 
+/**
+ * Codec for Git branch names that satisfy Git ref naming constraints.
+ */
+export const GitBranchNameCodec = new t.Type<string, string, unknown>(
+  'GitBranchName',
+  (value): value is string => typeof value === 'string',
+  (value, context) => {
+    if (typeof value !== 'string') {
+      return t.failure(value, context);
+    }
+
+    const normalized = value.trim();
+    return isGitBranchName(normalized)
+      ? t.success(normalized)
+      : t.failure(value, context);
+  },
+  t.identity,
+);
+
+/**
+ * Codec for all supported lifecycle artifact types.
+ */
+export const SupportedArtifactTypeCodec = t.union([
+  t.literal(ARTIFACT_TYPE_APPROVAL_RECORD),
+  t.literal(ARTIFACT_TYPE_AUDIT_LOG),
+  t.literal(ARTIFACT_TYPE_GATE_RUN_REPORT),
+  t.literal(ARTIFACT_TYPE_MERGE_DECISION),
+  t.literal(ARTIFACT_TYPE_PULL_REQUEST_RECORD),
+  t.literal(ARTIFACT_TYPE_REBASE_RESULT),
+  t.literal(ARTIFACT_TYPE_REMEDIATION_PLAN),
+  t.literal(ARTIFACT_TYPE_RESEARCH_BRIEF),
+  t.literal(ARTIFACT_TYPE_REVIEW_FINDING),
+  t.literal(ARTIFACT_TYPE_SLICE_PLAN),
+  t.literal(ARTIFACT_TYPE_SPEC_RECORD),
+  t.literal(ARTIFACT_TYPE_TASK_RECORD),
+  t.literal(ARTIFACT_TYPE_TELEMETRY_EVENT),
+  t.literal(ARTIFACT_TYPE_WORKTREE_ALLOCATION),
+]);
+
+/**
+ * Codec for high-level lifecycle status values shared across records.
+ */
 export const LifecycleStatusCodec = t.union([
   t.literal('draft'),
   t.literal('queued'),
@@ -73,14 +196,20 @@ export const LifecycleStatusCodec = t.union([
   t.literal('complete'),
 ]);
 
+/**
+ * Codec for traceable lifecycle records.
+ */
 export const TraceRecordCodec = t.type({
   id: t.string,
   summary: t.string,
   status: LifecycleStatusCodec,
   trace: t.array(t.string),
-  updatedAt: t.string,
+  updatedAt: IsoTimestampCodec,
 });
 
+/**
+ * Codec for a traceable snapshot owned by a package domain.
+ */
 export const DomainSnapshotCodec = t.intersection([
   TraceRecordCodec,
   t.type({
@@ -88,6 +217,9 @@ export const DomainSnapshotCodec = t.intersection([
   }),
 ]);
 
+/**
+ * Codec for structured platform error categories.
+ */
 export const DevplatErrorKindCodec = t.union([
   t.literal('configuration'),
   t.literal('validation'),
@@ -98,6 +230,9 @@ export const DevplatErrorKindCodec = t.union([
   t.literal('unknown'),
 ]);
 
+/**
+ * Codec for structured platform error severity.
+ */
 export const DevplatErrorSeverityCodec = t.union([
   t.literal('info'),
   t.literal('warning'),
@@ -105,6 +240,9 @@ export const DevplatErrorSeverityCodec = t.union([
   t.literal('fatal'),
 ]);
 
+/**
+ * Codec for structured platform errors returned through service boundaries.
+ */
 export const DevplatErrorCodec = t.intersection([
   t.type({
     kind: DevplatErrorKindCodec,

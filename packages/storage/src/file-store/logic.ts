@@ -1,5 +1,10 @@
 import { appendTrace } from '@vannadii/devplat-core';
 
+import {
+  STORAGE_LAYOUT_VERSION,
+  storageIndexes,
+  storageScopes,
+} from './constants.js';
 import type {
   StoredRecord,
   StoredRecordIndexEntry,
@@ -8,45 +13,46 @@ import type {
   StoreScope,
 } from './types.js';
 
-export const storageScopes: readonly StoreScope[] = [
-  'artifacts',
-  'audit',
-  'gates',
-  'memory',
-  'pull-requests',
-  'remediation',
-  'reviews',
-  'slices',
-  'specs',
-  'state',
-  'tasks',
-  'telemetry',
-  'worktrees',
-];
+/**
+ * Validates a storage key before it is interpolated into a file path.
+ */
+export function assertSafeStoredRecordKey(key: string): string {
+  if (
+    key.trim().length === 0 ||
+    key.includes('/') ||
+    key.includes('\\') ||
+    key.includes('..')
+  ) {
+    throw new Error(
+      'Stored record keys must not be empty or contain path separators or traversal segments.',
+    );
+  }
 
-export const storageIndexes: readonly StoreIndexName[] = [
-  'active-thread',
-  'task',
-  'pull-request',
-  'branch',
-  'artifact',
-];
+  return key;
+}
 
+/**
+ * Builds the persisted storage layout contract for `.devplat`.
+ */
 export function createStorageLayoutContract(): StorageLayoutContract {
   return {
-    layoutVersion: 1,
+    layoutVersion: STORAGE_LAYOUT_VERSION,
     scopes: storageScopes,
     indexes: storageIndexes,
   };
 }
 
+/**
+ * Normalizes a stored record and appends its storage trace marker.
+ */
 export function createStoredRecord<TPayload extends object>(
   input: StoredRecord<TPayload>,
 ): StoredRecord<TPayload> {
   return appendTrace(
     {
       ...input,
-      layoutVersion: input.layoutVersion ?? 1,
+      key: assertSafeStoredRecordKey(input.key),
+      layoutVersion: input.layoutVersion ?? STORAGE_LAYOUT_VERSION,
       summary: input.summary.trim(),
       updatedAt: new Date(input.updatedAt).toISOString(),
     },
@@ -54,14 +60,26 @@ export function createStoredRecord<TPayload extends object>(
   );
 }
 
+/**
+ * Builds the relative path for a stored record.
+ */
 export function buildStoragePath(scope: StoreScope, key: string): string {
-  return `${scope}/${key}.json`;
+  return `${scope}/${assertSafeStoredRecordKey(key)}.json`;
 }
 
-export function buildStorageIndexPath(indexName: string, key: string): string {
-  return `indexes/${indexName}/${key}.json`;
+/**
+ * Builds the relative path for a stored index entry.
+ */
+export function buildStorageIndexPath(
+  indexName: StoreIndexName,
+  key: string,
+): string {
+  return `indexes/${indexName}/${assertSafeStoredRecordKey(key)}.json`;
 }
 
+/**
+ * Creates a lookup index entry for a stored record.
+ */
 export function createStoredRecordIndexEntry<TPayload extends object>(
   input: StoredRecord<TPayload>,
 ): StoredRecordIndexEntry {
@@ -73,6 +91,9 @@ export function createStoredRecordIndexEntry<TPayload extends object>(
   };
 }
 
+/**
+ * Describes a stored record for operator-facing output.
+ */
 export function describeStoredRecord<TPayload extends object>(
   input: StoredRecord<TPayload>,
 ): string {

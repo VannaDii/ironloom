@@ -1,16 +1,22 @@
+import { ARTIFACT_TYPE_MERGE_DECISION } from '@vannadii/devplat-core';
+
 import {
   createArtifactEnvelope,
   describeArtifactEnvelope,
 } from '../artifact-envelope/logic.js';
-import type { MergeDecisionArtifact } from './types.js';
+import type { MergeDecisionArtifact } from './codec.js';
+import { MERGE_DECISION_ARTIFACT_VERSION } from './constants.js';
 
+/**
+ * Normalizes a merge decision artifact before persistence.
+ */
 export function createMergeDecisionArtifact(
   input: MergeDecisionArtifact,
 ): MergeDecisionArtifact {
   return createArtifactEnvelope({
     ...input,
-    artifactType: 'merge-decision',
-    version: 1,
+    artifactType: ARTIFACT_TYPE_MERGE_DECISION,
+    version: MERGE_DECISION_ARTIFACT_VERSION,
     payload: {
       ...input.payload,
       decisionId: input.payload.decisionId.trim(),
@@ -23,6 +29,9 @@ export function createMergeDecisionArtifact(
   });
 }
 
+/**
+ * Describes a merge decision artifact for PR status output.
+ */
 export function describeMergeDecisionArtifact(
   input: MergeDecisionArtifact,
 ): string {

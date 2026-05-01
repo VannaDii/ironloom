@@ -125,12 +125,10 @@ describe('SupervisorCycleService', () => {
     },
   ] satisfies SupervisorCycleServiceCase[];
 
-  for (const testCase of cases) {
-    it(testCase.name, async () => {
-      expect.hasAssertions();
-      const context = await testCase.mock();
+  it.each(cases)('$name', async (testCase) => {
+    expect.hasAssertions();
+    const context = await testCase.mock();
 
-      await testCase.assert(context, testCase.inputs);
-    });
-  }
+    await testCase.assert(context, testCase.inputs);
+  });
 });
