@@ -30,6 +30,19 @@ export const GateFailureClassificationCodec = t.type({
   nextAction: t.string,
 });
 
+export const GateRemediationHookCodec = t.type({
+  hookId: t.string,
+  gateRunReportId: t.string,
+  failedGateNames: t.array(t.string),
+  retryableGateNames: t.array(t.string),
+  remediationFindingIds: t.array(t.string),
+  actions: t.array(t.string),
+  autofixEligible: t.boolean,
+  approvalRequired: t.boolean,
+  nextAction: t.string,
+  createdAt: t.string,
+});
+
 export const GateRunReportCodec = t.intersection([
   t.type({
     id: t.string,
@@ -42,6 +55,7 @@ export const GateRunReportCodec = t.intersection([
   }),
   t.partial({
     classification: GateFailureClassificationCodec,
+    remediationHook: GateRemediationHookCodec,
     nextAction: t.string,
   }),
 ]);

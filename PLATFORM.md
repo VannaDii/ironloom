@@ -157,10 +157,10 @@ the package responsibilities below. Current completion work focuses on:
 - `@vannadii/devplat-queue`: current code covers task creation, claim, lifecycle updates, release/resume transitions, and explicit transition-event history.
 - `@vannadii/devplat-worktrees`: current code covers pure allocation/sync/release records, branch safety checks with fail-closed Git execution, Git-backed worktree add, fetch/rebase or fast-forward sync, and archive/delete release methods.
 - `@vannadii/devplat-execution`: current code covers structured subprocess execution, timeouts, retry policy, truncation policy, and retry outcome contracts.
-- `@vannadii/devplat-gates`: current code covers gate execution, reports, failure classification, and next-action hints; remaining gap is deeper remediation hook orchestration.
+- `@vannadii/devplat-gates`: current code covers gate execution, reports, failure classification, remediation handoff hooks, and next-action hints.
 - `@vannadii/devplat-sonarcloud`: current code covers bootstrap verification and quality gate interpretation; remaining gap is fuller issue normalization into review/remediation inputs.
 - `@vannadii/devplat-review`: current code covers structured review findings, review summary generation, and spec-vs-implementation conformance contracts.
-- `@vannadii/devplat-remediation`: current code covers remediation planning, remediation result records, and unresolved-issue summaries.
+- `@vannadii/devplat-remediation`: current code covers remediation planning from review findings and gate remediation hooks, remediation result records, and unresolved-issue summaries.
 - `@vannadii/devplat-prs`: current code covers PR normalization plus update and merge submission semantics; remaining gap is richer PR body/update projections and deeper review/remediation status projection.
 - `@vannadii/devplat-branching`: current code covers dependent rebase planning, explicit merge-triggered execution through worktree sync orchestration, branch dependency graphs, and conflict classification.
 - `@vannadii/devplat-supervisor`: current code covers minimal next-step decision and telemetry; remaining gap is broader lifecycle routing across research, specs, slicing, implementation, review, remediation, merge, and continuation.

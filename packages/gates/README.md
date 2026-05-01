@@ -4,7 +4,7 @@ Quality gate orchestration.
 
 ## Responsibility
 
-This package owns gate command resolution, gate-run reports, pass/fail classification, and next-action hints for the autonomous development cycle.
+This package owns gate command resolution, gate-run reports, pass/fail classification, remediation handoff hooks, and next-action hints for the autonomous development cycle.
 
 ## Real-World Flow
 
@@ -14,13 +14,16 @@ flowchart LR
   Resolve --> Execution[Execution service]
   Execution --> Report[Gate run report]
   Report -->|passed| Continue[Continue to review or PR]
-  Report -->|failed| Action[Retry or remediation hint]
+  Report -->|timeout only| Retry[Retry gates]
+  Report -->|command failure| Hook[Remediation hook]
+  Hook --> Remediation[Remediation plan package]
 ```
 
 ## Boundaries
 
 - Use `@vannadii/devplat-execution` for command execution.
 - Do not own remediation planning or GitHub status publication.
+- Emit remediation hooks only as deterministic handoffs for the remediation package.
 - Keep gate names and reports stable for OpenClaw and Discord callers.
 
 - Keep public TypeScript contracts derived from the exported codecs.

@@ -1,3 +1,4 @@
+import type { GateRemediationHook } from '@vannadii/devplat-gates';
 import type { ReviewFinding } from '@vannadii/devplat-review';
 
 import { createRemediationPlan, describeRemediationPlan } from './logic.js';
@@ -24,6 +25,20 @@ export class RemediationPlanService {
             finding.severity === 'high' || finding.severity === 'critical',
         ),
       updatedAt: new Date().toISOString(),
+    });
+  }
+
+  public fromGateHook(
+    hook: GateRemediationHook,
+    autofix = hook.autofixEligible,
+  ): RemediationPlan {
+    return createRemediationPlan({
+      planId: `remediation-${hook.hookId}`,
+      findingIds: hook.remediationFindingIds,
+      actions: hook.actions,
+      autofix,
+      approvalRequired: hook.approvalRequired || !autofix,
+      updatedAt: hook.createdAt,
     });
   }
 

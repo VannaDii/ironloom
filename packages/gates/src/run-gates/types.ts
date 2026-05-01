@@ -4,6 +4,7 @@ import type {
   GateCheckResultCodec,
   GateFailureClassificationCodec,
   GateFailureKindCodec,
+  GateRemediationHookCodec,
   GateRunReportCodec,
 } from './codec.js';
 
@@ -14,5 +15,7 @@ export type GateCheckResult = t.TypeOf<typeof GateCheckResultCodec>;
 export type GateFailureClassification = t.TypeOf<
   typeof GateFailureClassificationCodec
 >;
+
+export type GateRemediationHook = t.TypeOf<typeof GateRemediationHookCodec>;
 
 export type GateRunReport = t.TypeOf<typeof GateRunReportCodec>;

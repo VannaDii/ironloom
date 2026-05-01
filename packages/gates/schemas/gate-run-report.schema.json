@@ -83,6 +83,66 @@
           "required": ["kind", "failedGateNames", "nextAction"],
           "additionalProperties": false
         },
+        "remediationHook": {
+          "type": "object",
+          "properties": {
+            "hookId": {
+              "type": "string"
+            },
+            "gateRunReportId": {
+              "type": "string"
+            },
+            "failedGateNames": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "retryableGateNames": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "remediationFindingIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "actions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "autofixEligible": {
+              "type": "boolean"
+            },
+            "approvalRequired": {
+              "type": "boolean"
+            },
+            "nextAction": {
+              "type": "string"
+            },
+            "createdAt": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "hookId",
+            "gateRunReportId",
+            "failedGateNames",
+            "retryableGateNames",
+            "remediationFindingIds",
+            "actions",
+            "autofixEligible",
+            "approvalRequired",
+            "nextAction",
+            "createdAt"
+          ],
+          "additionalProperties": false
+        },
         "nextAction": {
           "type": "string"
         }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import type { GateRemediationHook } from '@vannadii/devplat-gates';
 import type { ReviewFinding } from '@vannadii/devplat-review';
 
 import { RemediationPlanService } from './service.js';
@@ -14,6 +15,10 @@ type RemediationPlanServiceInputs =
   | {
       mode: 'manual';
       plan: RemediationPlan;
+    }
+  | {
+      mode: 'gate-hook';
+      hook: GateRemediationHook;
     };
 
 type RemediationPlanServiceCase = {
@@ -64,6 +69,72 @@ describe('RemediationPlanService', () => {
         expect(snapshot.approvalRequired).toBe(true);
         expect(snapshot.findingIds).toEqual(['finding-001']);
         expect(context.service.explain(snapshot)).toContain('remediation-');
+      },
+    },
+    {
+      name: 'derives remediation plans from gate remediation hooks',
+      inputs: {
+        mode: 'gate-hook',
+        hook: {
+          hookId: 'gate-run-1:remediation-hook',
+          gateRunReportId: 'gate-run-1',
+          failedGateNames: ['lint'],
+          retryableGateNames: [],
+          remediationFindingIds: ['gate:lint'],
+          actions: ['Fix lint gate failure: lint failed'],
+          autofixEligible: true,
+          approvalRequired: true,
+          nextAction: 'create-remediation-plan',
+          createdAt: '2026-04-04T00:00:00.000Z',
+        },
+      },
+      mock: () => ({
+        service: new RemediationPlanService(),
+      }),
+      assert: (context, inputs) => {
+        if (inputs.mode !== 'gate-hook') {
+          throw new Error('expected gate-hook inputs');
+        }
+
+        const snapshot = context.service.fromGateHook(inputs.hook);
+
+        expect(snapshot.planId).toBe('remediation-gate-run-1:remediation-hook');
+        expect(snapshot.findingIds).toEqual(['gate:lint']);
+        expect(snapshot.actions).toEqual([
+          'Fix lint gate failure: lint failed',
+        ]);
+        expect(snapshot.approvalRequired).toBe(true);
+      },
+    },
+    {
+      name: 'requires approval when gate hook autofix is disabled by caller',
+      inputs: {
+        mode: 'gate-hook',
+        hook: {
+          hookId: 'gate-run-2:remediation-hook',
+          gateRunReportId: 'gate-run-2',
+          failedGateNames: ['typecheck'],
+          retryableGateNames: [],
+          remediationFindingIds: ['gate:typecheck'],
+          actions: ['Fix typecheck gate failure: typecheck failed'],
+          autofixEligible: true,
+          approvalRequired: false,
+          nextAction: 'create-remediation-plan',
+          createdAt: '2026-04-04T00:00:00.000Z',
+        },
+      },
+      mock: () => ({
+        service: new RemediationPlanService(),
+      }),
+      assert: (context, inputs) => {
+        if (inputs.mode !== 'gate-hook') {
+          throw new Error('expected gate-hook inputs');
+        }
+
+        const snapshot = context.service.fromGateHook(inputs.hook, false);
+
+        expect(snapshot.autofix).toBe(false);
+        expect(snapshot.approvalRequired).toBe(true);
       },
     },
     {

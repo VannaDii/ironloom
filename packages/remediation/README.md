@@ -4,13 +4,14 @@ Remediation planning contracts.
 
 ## Responsibility
 
-This package owns remediation plans from review findings, including autofix eligibility, unresolved issue summaries, and next-step recommendations.
+This package owns remediation plans from review findings and gate remediation hooks, including autofix eligibility, unresolved issue summaries, and next-step recommendations.
 
 ## Real-World Flow
 
 ```mermaid
 flowchart LR
   Findings[Review and Sonar findings] --> Plan[Remediation plan]
+  GateHook[Gate remediation hook] --> Plan
   Plan --> Approval[Approval requirement]
   Approval --> Fix[Apply or request fix]
   Fix --> Result[Remediation result artifact]
@@ -20,6 +21,7 @@ flowchart LR
 ## Boundaries
 
 - Consume review and Sonar findings as inputs.
+- Consume gate remediation hooks emitted by `@vannadii/devplat-gates`.
 - Do not execute fixes directly.
 - Keep remediation plan, result, and summary types derived from the exported codecs.
 - Keep remediation outputs artifact-ready and auditable.
