@@ -1246,6 +1246,22 @@ export async function runDiscordInteractionProbe(
     dependencies.createDiscordControlPlaneService ??
     createDiscordControlPlaneService;
   const threadId = discordChannels.implementation.id;
+  const boundSession = {
+    id: `live-lab-${runLabel}-session`,
+    summary: 'Live-lab implementation thread',
+    status: 'running',
+    trace: [],
+    updatedAt,
+    guildId: 'live-lab-guild',
+    channelId: threadId,
+    parentChannelId: discordChannels.implementation.id,
+    threadId,
+    kind: 'implementation',
+    specId: `live-lab-${runLabel}-spec`,
+    sliceId: `live-lab-${runLabel}-slice`,
+    pullRequestNumber: null,
+    artifactId: `live-lab-${runLabel}-artifact`,
+  };
   const transport = new LiveLabDiscordInteractionTransport({
     auditChannelId: discordChannels.audit.id,
     discordRequest,
@@ -1257,6 +1273,7 @@ export async function runDiscordInteractionProbe(
     channelId: threadId,
     threadId,
     boundThreadId: threadId,
+    boundSession,
     commandName: 'retry-gates',
     summary: 'Live-lab simulated retry gates interaction',
     privileged: false,
@@ -1274,15 +1291,27 @@ export async function runDiscordInteractionProbe(
     throw new Error('Discord interaction probe failed closed.');
   }
 
+  if (result.request.threadId !== threadId) {
+    throw new Error('Discord interaction probe resolved the wrong thread.');
+  }
+
+  if (
+    result.responseReceipt?.endpoint === undefined ||
+    result.threadReceipt?.endpoint === undefined
+  ) {
+    throw new Error('Discord interaction probe did not record receipts.');
+  }
+
   return {
     action: result.request.action,
     allowed: result.allowed,
     commandName: interaction.commandName,
     failedClosed: result.failedClosed,
-    interactionEndpoint: result.responseReceipt?.endpoint ?? null,
+    interactionEndpoint: result.responseReceipt.endpoint,
     policyDecisionId: result.policyDecisionId,
-    threadEndpoint: result.threadReceipt?.endpoint ?? null,
+    threadEndpoint: result.threadReceipt.endpoint,
     threadId: result.request.threadId,
+    workItem: result.workItem ?? null,
   };
 }
 

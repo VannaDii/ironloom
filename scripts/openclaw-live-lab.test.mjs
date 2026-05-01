@@ -234,6 +234,61 @@ describe('openclaw-live-lab helpers', () => {
       },
     },
     {
+      name: 'fails the simulated Discord interaction probe when response receipts are missing',
+      inputs: {
+        runLabel: '200-2',
+      },
+      mock: async () => {
+        const createDiscordControlPlaneService = async () => ({
+          async handleInteraction(input) {
+            return {
+              allowed: true,
+              failedClosed: false,
+              persistedKey: input.id,
+              policyDecisionId: 'policy-retry-gates',
+              request: {
+                action: 'retry-gates',
+                actorId: input.actorId,
+                channelId: input.channelId,
+                id: input.id,
+                privileged: false,
+                status: 'approved',
+                summary: input.summary,
+                threadId: input.boundThreadId,
+                trace: [],
+                updatedAt: input.updatedAt,
+              },
+            };
+          },
+        });
+
+        return {
+          createDiscordControlPlaneService,
+          discordRequest: async () => ({ id: 'message-1' }),
+        };
+      },
+      assert: async (context, inputs) => {
+        await expect(
+          runDiscordInteractionProbe(
+            {
+              discordChannels: {
+                audit: { id: 'audit-1' },
+                implementation: { id: 'implementation-1' },
+              },
+              discordRequest: context.discordRequest,
+              reportDirectory: resolve(tmpdir(), 'devplat-live-lab-probe'),
+              runLabel: inputs.runLabel,
+              updatedAt: '2026-04-30T00:00:00.000Z',
+            },
+            {
+              createDiscordControlPlaneService:
+                context.createDiscordControlPlaneService,
+            },
+          ),
+        ).rejects.toThrow('Discord interaction probe did not record receipts');
+      },
+    },
+    {
       name: 'parses CLI flags and derives run metadata',
       inputs: {
         argv: [
