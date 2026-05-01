@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  createDiscordOperatorInteractionFromCallback,
   createDiscordControlRequestFromInteraction,
   createDiscordControlRequest,
   createDiscordWorkItemBinding,
@@ -8,6 +9,7 @@ import {
   describeDiscordControlRequest,
 } from './logic.js';
 import type {
+  DiscordInteractionCallback,
   DiscordOperatorInteraction,
   DiscordWorkItemBinding,
 } from './types.js';
@@ -362,6 +364,211 @@ describe('DiscordControlRequest logic', () => {
       testCase.assert(
         createDiscordControlRequestFromInteraction(testCase.inputs.interaction),
       );
+    }
+  });
+
+  it('normalizes raw Discord interaction callbacks for slash commands and buttons', () => {
+    type CallbackCase = {
+      name: string;
+      inputs: {
+        callback: DiscordInteractionCallback;
+        options?: Parameters<
+          typeof createDiscordOperatorInteractionFromCallback
+        >[1];
+      };
+      mock: () => Record<string, never>;
+      assert: (
+        context: Record<string, never>,
+        inputs: CallbackCase['inputs'],
+      ) => void;
+    };
+
+    const cases = [
+      {
+        name: 'maps a guild slash command callback to the current channel thread',
+        inputs: {
+          callback: {
+            id: 'callback-001',
+            token: 'token-001',
+            channel_id: 'thread-001',
+            data: {
+              name: 'retry-gates',
+            },
+            member: {
+              user: {
+                id: 'operator-001',
+              },
+            },
+          },
+          options: {
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            summary: 'Retry gates from Discord.',
+            privileged: false,
+            boundSession: {
+              id: 'thread-session-callback-001',
+              summary: 'Implementation session',
+              status: 'running',
+              trace: [],
+              updatedAt: '2026-04-04T00:00:00.000Z',
+              guildId: 'guild-001',
+              channelId: 'thread-001',
+              parentChannelId: 'implementation-channel',
+              threadId: 'thread-001',
+              kind: 'implementation',
+              specId: 'spec-001',
+              sliceId: 'slice-001',
+              pullRequestNumber: null,
+              artifactId: 'artifact-001',
+            },
+          },
+        },
+        mock: () => ({}),
+        assert: (context, inputs) => {
+          const interaction = createDiscordOperatorInteractionFromCallback(
+            inputs.callback,
+            inputs.options,
+          );
+
+          expect(interaction).toMatchObject({
+            id: 'callback-001',
+            token: 'token-001',
+            actorId: 'operator-001',
+            channelId: 'thread-001',
+            threadId: 'thread-001',
+            commandName: 'retry-gates',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            summary: 'Retry gates from Discord.',
+            privileged: false,
+            boundSession: {
+              threadId: 'thread-001',
+              kind: 'implementation',
+            },
+          });
+        },
+      },
+      {
+        name: 'maps a button callback custom id with an explicit bound thread',
+        inputs: {
+          callback: {
+            id: 'callback-002',
+            token: 'token-002',
+            channel_id: 'parent-channel-002',
+            data: {
+              custom_id: 'devplat:show-status',
+            },
+            user: {
+              id: 'operator-002',
+            },
+          },
+          options: {
+            boundThreadId: 'thread-002',
+            threadId: 'thread-002',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+          },
+        },
+        mock: () => ({}),
+        assert: (context, inputs) => {
+          const interaction = createDiscordOperatorInteractionFromCallback(
+            inputs.callback,
+            inputs.options,
+          );
+
+          expect(interaction).toMatchObject({
+            id: 'callback-002',
+            actorId: 'operator-002',
+            channelId: 'parent-channel-002',
+            threadId: 'thread-002',
+            boundThreadId: 'thread-002',
+            customId: 'devplat:show-status',
+          });
+        },
+      },
+      {
+        name: 'rejects callbacks without an actor user id',
+        inputs: {
+          callback: {
+            id: 'callback-003',
+            token: 'token-003',
+            channel_id: 'thread-003',
+            data: {
+              name: 'show-status',
+            },
+          },
+        },
+        mock: () => ({}),
+        assert: (context, inputs) => {
+          expect(() =>
+            createDiscordOperatorInteractionFromCallback(inputs.callback),
+          ).toThrow('actor user id');
+        },
+      },
+      {
+        name: 'uses callback defaults when optional binding metadata is absent',
+        inputs: {
+          callback: {
+            id: 'callback-004',
+            token: 'token-004',
+            channel_id: 'thread-004',
+            data: {
+              custom_id: 'devplat:show-status',
+            },
+            user: {
+              id: 'operator-004',
+            },
+          },
+        },
+        mock: () => ({}),
+        assert: (context, inputs) => {
+          const interaction = createDiscordOperatorInteractionFromCallback(
+            inputs.callback,
+          );
+
+          expect(interaction).toMatchObject({
+            id: 'callback-004',
+            token: 'token-004',
+            actorId: 'operator-004',
+            channelId: 'thread-004',
+            threadId: 'thread-004',
+            customId: 'devplat:show-status',
+          });
+          expect(interaction.commandName).toBeUndefined();
+          expect(interaction.boundThreadId).toBeUndefined();
+          expect(interaction.boundSession).toBeUndefined();
+          expect(interaction.summary).toBeUndefined();
+          expect(interaction.privileged).toBeUndefined();
+          expect(new Date(interaction.updatedAt).toISOString()).toBe(
+            interaction.updatedAt,
+          );
+        },
+      },
+      {
+        name: 'rejects callbacks without a channel id',
+        inputs: {
+          callback: {
+            id: 'callback-005',
+            token: 'token-005',
+            channel_id: ' ',
+            data: {
+              name: 'show-status',
+            },
+            user: {
+              id: 'operator-005',
+            },
+          },
+        },
+        mock: () => ({}),
+        assert: (context, inputs) => {
+          expect(() =>
+            createDiscordOperatorInteractionFromCallback(inputs.callback),
+          ).toThrow('channel id');
+        },
+      },
+    ] satisfies CallbackCase[];
+
+    for (const testCase of cases) {
+      const context = testCase.mock();
+
+      testCase.assert(context, testCase.inputs);
     }
   });
 

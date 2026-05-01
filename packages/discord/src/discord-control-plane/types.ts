@@ -3,6 +3,8 @@ import type * as t from 'io-ts';
 import type {
   DiscordControlActionCodec,
   DiscordControlRequestCodec,
+  DiscordInteractionCallbackCodec,
+  DiscordInteractionCallbackOptionsCodec,
   DiscordControlResultCodec,
   DiscordInteractionRouteCodec,
   DiscordInteractionRouteFailureCodec,
@@ -24,6 +26,14 @@ export type DiscordControlResult = t.TypeOf<typeof DiscordControlResultCodec>;
 
 export type DiscordOperatorInteraction = t.TypeOf<
   typeof DiscordOperatorInteractionCodec
+>;
+
+export type DiscordInteractionCallback = t.TypeOf<
+  typeof DiscordInteractionCallbackCodec
+>;
+
+export type DiscordInteractionCallbackOptions = t.TypeOf<
+  typeof DiscordInteractionCallbackOptionsCodec
 >;
 
 export type DiscordInteractionRouteSuccess = t.TypeOf<

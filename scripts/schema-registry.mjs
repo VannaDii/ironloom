@@ -209,6 +209,18 @@ export const schemaRegistry = [
   ],
   [
     'discord',
+    'discord-control-plane',
+    'DiscordInteractionCallback',
+    'schemas/discord-interaction-callback.schema.json',
+  ],
+  [
+    'discord',
+    'discord-control-plane',
+    'DiscordInteractionCallbackOptions',
+    'schemas/discord-interaction-callback-options.schema.json',
+  ],
+  [
+    'discord',
     'interactive-approval',
     'DiscordApprovalRequest',
     'schemas/discord-approval-request.schema.json',

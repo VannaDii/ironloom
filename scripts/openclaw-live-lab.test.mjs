@@ -116,6 +116,22 @@ describe('openclaw-live-lab helpers', () => {
 
         return {
           createDiscordControlPlaneService,
+          createDiscordOperatorInteractionFromCallback: async (
+            callback,
+            options,
+          ) => ({
+            id: callback.id,
+            token: callback.token,
+            actorId: callback.member.user.id,
+            channelId: callback.channel_id,
+            threadId: options.threadId,
+            boundThreadId: options.boundThreadId,
+            boundSession: options.boundSession,
+            commandName: callback.data.name,
+            summary: options.summary,
+            privileged: options.privileged,
+            updatedAt: options.updatedAt,
+          }),
           discordMessages,
           discordRequest,
           serviceCalls,
@@ -136,6 +152,8 @@ describe('openclaw-live-lab helpers', () => {
           {
             createDiscordControlPlaneService:
               context.createDiscordControlPlaneService,
+            createDiscordOperatorInteractionFromCallback:
+              context.createDiscordOperatorInteractionFromCallback,
           },
         );
 
@@ -149,7 +167,12 @@ describe('openclaw-live-lab helpers', () => {
           threadEndpoint: '/channels/implementation-1/messages',
         });
         expect(context.serviceCalls[0]).toMatchObject({
+          actorId: 'live-lab-operator',
           boundThreadId: 'implementation-1',
+          boundSession: {
+            threadId: 'implementation-1',
+            kind: 'implementation',
+          },
           commandName: 'retry-gates',
         });
         expect(context.discordMessages).toEqual([
@@ -264,6 +287,22 @@ describe('openclaw-live-lab helpers', () => {
 
         return {
           createDiscordControlPlaneService,
+          createDiscordOperatorInteractionFromCallback: async (
+            callback,
+            options,
+          ) => ({
+            id: callback.id,
+            token: callback.token,
+            actorId: callback.member.user.id,
+            channelId: callback.channel_id,
+            threadId: options.threadId,
+            boundThreadId: options.boundThreadId,
+            boundSession: options.boundSession,
+            commandName: callback.data.name,
+            summary: options.summary,
+            privileged: options.privileged,
+            updatedAt: options.updatedAt,
+          }),
           discordRequest: async () => ({ id: 'message-1' }),
         };
       },
@@ -283,6 +322,8 @@ describe('openclaw-live-lab helpers', () => {
             {
               createDiscordControlPlaneService:
                 context.createDiscordControlPlaneService,
+              createDiscordOperatorInteractionFromCallback:
+                context.createDiscordOperatorInteractionFromCallback,
             },
           ),
         ).rejects.toThrow('Discord interaction probe did not record receipts');

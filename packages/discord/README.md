@@ -11,18 +11,20 @@ into a typed spec/implementation/pull-request work item, and post both
 interaction acknowledgements and thread status messages through the Discord REST
 transport. The exported command contract registry is the source for guild
 slash-command registration. The live lab registers those commands and includes a
-simulated interaction probe so this response path is validated with
-operator-visible Discord messages, not only local unit tests. Hermetic OpenClaw
-deep tests use the exported loopback response transport to verify the same
-callback-shaped interaction flow without external Discord access.
+Discord callback-shaped interaction probe so this response path is validated
+from raw slash-command payload normalization through operator-visible Discord
+messages, not only local unit tests. Hermetic OpenClaw deep tests use the
+exported loopback response transport to verify the same callback-shaped
+interaction flow without external Discord access.
 
 ## Real-World Flow
 
 ```mermaid
 flowchart LR
   Contract[Command contract registry] --> Register[Guild command registration]
-  Register --> Command[Slash command or button]
-  Command --> Binding[Resolve bound thread session]
+  Register --> Command[Raw slash command or button callback]
+  Command --> Normalize[Normalize callback payload]
+  Normalize --> Binding[Resolve bound thread session]
   Binding --> WorkItem[Project bound work item]
   WorkItem -->|unambiguous| Policy[Policy evaluation]
   Binding -->|ambiguous| Deny[Fail closed response]

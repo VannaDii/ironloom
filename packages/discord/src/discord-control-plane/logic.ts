@@ -4,6 +4,8 @@ import { resolveDiscordCommandAction } from '../command-contract/logic.js';
 import type {
   DiscordControlAction,
   DiscordControlRequest,
+  DiscordInteractionCallback,
+  DiscordInteractionCallbackOptions,
   DiscordInteractionRoute,
   DiscordOperatorInteraction,
   DiscordWorkItemBinding,
@@ -85,6 +87,40 @@ function collectThreadCandidates(
   ].filter((value) => value.length > 0);
 }
 
+function trimOptional(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  if (trimmed === undefined || trimmed.length === 0) {
+    return undefined;
+  }
+
+  return trimmed;
+}
+
+function resolveCallbackActorId(input: DiscordInteractionCallback): string {
+  const memberUserId = trimOptional(input.member?.user.id);
+  if (memberUserId !== undefined) {
+    return memberUserId;
+  }
+
+  const directUserId = trimOptional(input.user?.id);
+  if (directUserId !== undefined) {
+    return directUserId;
+  }
+
+  throw new Error(
+    'Discord interaction callback must include an actor user id.',
+  );
+}
+
+function resolveCallbackChannelId(input: DiscordInteractionCallback): string {
+  const channelId = input.channel_id.trim();
+  if (channelId.length === 0) {
+    throw new Error('Discord interaction callback must include a channel id.');
+  }
+
+  return channelId;
+}
+
 export function createDiscordWorkItemBinding(
   session: DiscordThreadSession,
 ): DiscordWorkItemBinding {
@@ -162,6 +198,37 @@ export function describeDiscordControlRequest(
   input: DiscordControlRequest,
 ): string {
   return `${input.threadId}:${input.action} -> ${input.summary}`;
+}
+
+export function createDiscordOperatorInteractionFromCallback(
+  input: DiscordInteractionCallback,
+  options: DiscordInteractionCallbackOptions = {},
+): DiscordOperatorInteraction {
+  const channelId = resolveCallbackChannelId(input);
+  const commandName = trimOptional(input.data?.name);
+  const customId = trimOptional(input.data?.custom_id);
+  const summary = trimOptional(options.summary);
+
+  return {
+    id: input.id,
+    token: input.token,
+    actorId: resolveCallbackActorId(input),
+    channelId,
+    updatedAt: options.updatedAt ?? new Date().toISOString(),
+    threadId: options.threadId ?? channelId,
+    ...(commandName === undefined ? {} : { commandName }),
+    ...(customId === undefined ? {} : { customId }),
+    ...(options.boundThreadId === undefined
+      ? {}
+      : { boundThreadId: options.boundThreadId }),
+    ...(options.boundSession === undefined
+      ? {}
+      : { boundSession: options.boundSession }),
+    ...(summary === undefined ? {} : { summary }),
+    ...(options.privileged === undefined
+      ? {}
+      : { privileged: options.privileged }),
+  };
 }
 
 function createInteractionControlRequestInput(

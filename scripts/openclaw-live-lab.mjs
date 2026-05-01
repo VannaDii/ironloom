@@ -1210,6 +1210,18 @@ async function createDiscordApplicationCommandPayloads() {
   return discordModule.createDiscordApplicationCommandPayloads();
 }
 
+async function createDiscordOperatorInteractionFromCallback(callback, options) {
+  const discordModule = await import(
+    pathToFileURL(resolve(repoRootDirectory, 'packages/discord/dist/index.js'))
+      .href
+  );
+
+  return discordModule.createDiscordOperatorInteractionFromCallback(
+    callback,
+    options,
+  );
+}
+
 export async function registerDiscordApplicationCommands(
   { applicationId, discordRequest, guildId },
   dependencies = {},
@@ -1245,6 +1257,9 @@ export async function runDiscordInteractionProbe(
   const serviceFactory =
     dependencies.createDiscordControlPlaneService ??
     createDiscordControlPlaneService;
+  const interactionFactory =
+    dependencies.createDiscordOperatorInteractionFromCallback ??
+    createDiscordOperatorInteractionFromCallback;
   const threadId = discordChannels.implementation.id;
   const boundSession = {
     id: `live-lab-${runLabel}-session`,
@@ -1266,19 +1281,27 @@ export async function runDiscordInteractionProbe(
     auditChannelId: discordChannels.audit.id,
     discordRequest,
   });
-  const interaction = {
+  const callback = {
     id: `live-lab-${runLabel}-retry-gates`,
     token: `simulated-token-${runLabel}`,
-    actorId: 'live-lab-operator',
-    channelId: threadId,
+    channel_id: threadId,
+    data: {
+      name: 'retry-gates',
+    },
+    member: {
+      user: {
+        id: 'live-lab-operator',
+      },
+    },
+  };
+  const interaction = await interactionFactory(callback, {
     threadId,
     boundThreadId: threadId,
     boundSession,
-    commandName: 'retry-gates',
     summary: 'Live-lab simulated retry gates interaction',
     privileged: false,
     updatedAt,
-  };
+  });
   const service = await serviceFactory({
     auditChannelId: discordChannels.audit.id,
     discordRequest,

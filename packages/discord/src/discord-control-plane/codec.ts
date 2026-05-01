@@ -77,6 +77,41 @@ export const DiscordOperatorInteractionCodec = t.intersection([
   }),
 ]);
 
+export const DiscordInteractionCallbackUserCodec = t.type({
+  id: t.string,
+});
+
+export const DiscordInteractionCallbackMemberCodec = t.type({
+  user: DiscordInteractionCallbackUserCodec,
+});
+
+export const DiscordInteractionCallbackDataCodec = t.partial({
+  name: t.string,
+  custom_id: t.string,
+});
+
+export const DiscordInteractionCallbackCodec = t.intersection([
+  t.type({
+    id: t.string,
+    token: t.string,
+    channel_id: t.string,
+  }),
+  t.partial({
+    data: DiscordInteractionCallbackDataCodec,
+    member: DiscordInteractionCallbackMemberCodec,
+    user: DiscordInteractionCallbackUserCodec,
+  }),
+]);
+
+export const DiscordInteractionCallbackOptionsCodec = t.partial({
+  threadId: t.string,
+  boundThreadId: t.string,
+  boundSession: DiscordThreadSessionCodec,
+  summary: t.string,
+  privileged: t.boolean,
+  updatedAt: t.string,
+});
+
 export const DiscordResponseReceiptCodec = t.type({
   endpoint: t.string,
   statusCode: t.number,

@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { decodeWithCodec } from '@vannadii/devplat-core';
 
 import {
+  DiscordInteractionCallbackCodec,
+  DiscordInteractionCallbackOptionsCodec,
   DiscordControlRequestCodec,
   DiscordOperatorInteractionCodec,
 } from './codec.js';
@@ -126,6 +128,45 @@ describe('discord control request codec', () => {
         values.map((value) =>
           decodeWithCodec(DiscordOperatorInteractionCodec, value),
         ),
+      assert: (decodedValues) => {
+        expect(decodedValues.every((decoded) => decoded.ok)).toBe(true);
+      },
+    },
+    {
+      name: 'decode raw Discord callback payloads and binding options',
+      inputs: {
+        values: [
+          {
+            codec: DiscordInteractionCallbackCodec,
+            value: {
+              id: 'callback-1',
+              token: 'token-1',
+              channel_id: 'thread-1',
+              data: {
+                name: 'retry-gates',
+                custom_id: 'devplat:retry-gates',
+              },
+              member: {
+                user: {
+                  id: 'operator-1',
+                },
+              },
+            },
+          },
+          {
+            codec: DiscordInteractionCallbackOptionsCodec,
+            value: {
+              threadId: 'thread-1',
+              boundThreadId: 'thread-1',
+              summary: 'Retry gates.',
+              privileged: false,
+              updatedAt: '2026-04-04T00:00:00.000Z',
+            },
+          },
+        ],
+      },
+      mock: async ({ values }) =>
+        values.map(({ codec, value }) => decodeWithCodec(codec, value)),
       assert: (decodedValues) => {
         expect(decodedValues.every((decoded) => decoded.ok)).toBe(true);
       },
