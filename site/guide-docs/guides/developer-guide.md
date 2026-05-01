@@ -24,12 +24,19 @@ nested-Docker deep-test job while running the normal PR validation jobs.
 Install the SonarQube CLI with `npm run sonar:install-cli`; the repo helper
 selects the documented SonarSource installer for macOS, Linux, or Windows. Then
 authenticate with `sonar auth login` before running the changed-file analysis
-command. The analysis wrapper selects files changed from the merge base, runs
-`sonar analyze secrets` once for the changed-file set, and runs
-`sonar analyze sqaa --file` for each changed file. It derives the branch from
-the local checkout or GitHub environment and defaults the project to
-`vannadii_devplat`. Pass `--base`, `--head`, `--project`, and `--branch` after
-`--` only when a local branch needs explicit comparison or SonarCloud context.
+command. The analysis wrapper selects files changed from the merge base and runs
+`sonar analyze secrets` once for the changed-file set. It prints a plain-text
+summary by default, supports `--json` for agent-readable output, and runs
+configured analyses in parallel. SQAA/A3S analysis is intentionally disabled
+unless `SONAR_A3S_ENABLED=true`, `DEVPLAT_SONAR_A3S_ENABLED=true`, or
+`--sqaa enabled` is supplied; when enabled it runs
+`sonar analyze sqaa --file` for each changed file. If the organization is not
+configured for A3S, the helper reports the SQAA capability as skipped with the
+reason preserved instead of allowing the entire analysis run to fail. It derives
+the branch from the local checkout or GitHub environment and defaults the
+project to `vannadii_devplat`. Pass `--base`, `--head`, `--project`, and
+`--branch` after `--` only when a local branch needs explicit comparison or
+SonarCloud context.
 
 Use the root `PLATFORM.md` file as the authoritative foundation-scope document. This guide focuses on the implementation discipline that keeps work aligned with that objective.
 

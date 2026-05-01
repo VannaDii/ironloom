@@ -4,10 +4,13 @@ import {
   collectChangedFiles,
   createSonarCliInstallCommand,
   createSonarChangedFileCommands,
+  classifySonarAnalysisFailure,
+  formatSonarChangedFileReport,
   installSonarCli,
   parseSonarCliHelperArgs,
   parseSonarChangedFileArgs,
   resolveCurrentBranch,
+  resolveSqaaEnabled,
   runSonarChangedFileAnalysis,
 } from './sonarqube-cli-analyze-changed.mjs';
 
@@ -97,6 +100,7 @@ describe('sonarqube-cli-analyze-changed', () => {
         ],
         project: 'vannadii_devplat',
         sonarCommand: 'sonar',
+        sqaaEnabled: true,
       },
       mock: async () => undefined,
       assert: async (_context, inputs) => {
@@ -222,6 +226,7 @@ describe('sonarqube-cli-analyze-changed', () => {
       assert: async (context, inputs) => {
         const report = await runSonarChangedFileAnalysis({
           changedFiles: inputs.changedFiles,
+          env: {},
           execFileImpl: context.execFileImpl,
           rootDirectory: '/repo',
           runCommand: async () => undefined,
@@ -229,16 +234,33 @@ describe('sonarqube-cli-analyze-changed', () => {
 
         expect(report.branch).toBe('feature/runtime');
         expect(report.project).toBe('vannadii_devplat');
-        expect(report.commands[1].args).toEqual([
-          'analyze',
-          'sqaa',
-          '--file',
-          'packages/core/src/domain/logic.ts',
-          '--branch',
-          'feature/runtime',
-          '--project',
-          'vannadii_devplat',
+        expect(report.commands).toEqual([
+          {
+            args: ['analyze', 'secrets', 'packages/core/src/domain/logic.ts'],
+            command: 'sonar',
+            label: 'sonar analyze secrets',
+          },
         ]);
+        expect(report.results).toEqual([
+          {
+            args: ['analyze', 'secrets', 'packages/core/src/domain/logic.ts'],
+            command: 'sonar',
+            label: 'sonar analyze secrets',
+            status: 'passed',
+            stderr: '',
+            stdout: '',
+          },
+          {
+            args: ['analyze', 'sqaa'],
+            command: 'sonar',
+            label: 'sonar analyze sqaa',
+            reason:
+              'SQAA/A3S analysis is not enabled for this run. Set SONAR_A3S_ENABLED=true or pass --sqaa enabled to run it.',
+            status: 'skipped',
+          },
+        ]);
+        expect(report.sqaaEnabled).toBe(false);
+        expect(report.status).toBe('skipped');
         expect(context.calls).toEqual([
           {
             args: ['branch', '--show-current'],
@@ -274,6 +296,9 @@ describe('sonarqube-cli-analyze-changed', () => {
           changedFiles: [],
           commands: [],
           project: 'vannadii_devplat',
+          results: [],
+          sqaaEnabled: false,
+          status: 'passed',
         });
         expect(context.runs).toEqual([]);
       },
@@ -301,9 +326,37 @@ describe('sonarqube-cli-analyze-changed', () => {
           rootDirectory: '/repo',
           runCommand: context.runCommand,
           sonarCommand: 'sonar',
+          sqaaMode: 'enabled',
         });
 
         expect(report.commands).toHaveLength(2);
+        expect(report.results).toEqual([
+          {
+            args: ['analyze', 'secrets', 'packages/core/src/domain/logic.ts'],
+            command: 'sonar',
+            label: 'sonar analyze secrets',
+            status: 'passed',
+            stderr: '',
+            stdout: '',
+          },
+          {
+            args: [
+              'analyze',
+              'sqaa',
+              '--file',
+              'packages/core/src/domain/logic.ts',
+              '--branch',
+              'feature/runtime',
+              '--project',
+              'vannadii_devplat',
+            ],
+            command: 'sonar',
+            label: 'sonar analyze sqaa packages/core/src/domain/logic.ts',
+            status: 'passed',
+            stderr: '',
+            stdout: '',
+          },
+        ]);
         expect(context.runs).toEqual([
           {
             args: ['analyze', 'secrets', 'packages/core/src/domain/logic.ts'],
@@ -373,16 +426,20 @@ describe('sonarqube-cli-analyze-changed', () => {
           options: {
             baseRef: 'origin/main',
             headRef: 'HEAD',
+            outputFormat: 'text',
             project: 'vannadii_devplat',
             sonarCommand: 'sonar',
+            sqaaMode: 'disabled',
           },
         });
         expect(parseSonarCliHelperArgs([])).toEqual({
           command: 'analyze',
           options: {
             headRef: 'HEAD',
+            outputFormat: 'text',
             project: 'vannadii_devplat',
             sonarCommand: 'sonar',
+            sqaaMode: 'disabled',
           },
         });
       },
@@ -401,6 +458,9 @@ describe('sonarqube-cli-analyze-changed', () => {
           'vannadii_devplat',
           '--sonar-command',
           '/usr/local/bin/sonar',
+          '--json',
+          '--sqaa',
+          'enabled',
         ],
       },
       mock: async () => undefined,
@@ -409,8 +469,10 @@ describe('sonarqube-cli-analyze-changed', () => {
           baseRef: 'origin/main',
           branch: 'feature/runtime',
           headRef: 'HEAD',
+          outputFormat: 'json',
           project: 'vannadii_devplat',
           sonarCommand: '/usr/local/bin/sonar',
+          sqaaMode: 'enabled',
         });
       },
     },
@@ -423,9 +485,145 @@ describe('sonarqube-cli-analyze-changed', () => {
       assert: async (_context, inputs) => {
         expect(parseSonarChangedFileArgs(inputs.argv)).toEqual({
           headRef: 'HEAD',
+          outputFormat: 'text',
           project: 'vannadii_devplat',
           sonarCommand: 'sonar',
+          sqaaMode: 'disabled',
         });
+      },
+    },
+    {
+      name: 'resolves SQAA capability from mode or environment',
+      inputs: {},
+      mock: async () => undefined,
+      assert: async () => {
+        expect(resolveSqaaEnabled({ env: {}, sqaaMode: 'enabled' })).toBe(true);
+        expect(resolveSqaaEnabled({ env: {}, sqaaMode: 'disabled' })).toBe(
+          false,
+        );
+        expect(
+          resolveSqaaEnabled({
+            env: {
+              SONAR_A3S_ENABLED: 'true',
+            },
+          }),
+        ).toBe(true);
+        expect(
+          resolveSqaaEnabled({
+            env: {
+              SONAR_A3S_ENABLED: 'false',
+            },
+          }),
+        ).toBe(false);
+      },
+    },
+    {
+      name: 'runs changed-file commands in parallel',
+      inputs: {
+        changedFiles: [
+          'packages/core/src/domain/logic.ts',
+          'packages/config/src/load-runtime-config/logic.ts',
+        ],
+      },
+      mock: async () => {
+        const started = [];
+        let releaseCommands;
+        const release = new Promise((resolve) => {
+          releaseCommands = resolve;
+        });
+
+        return {
+          releaseCommands,
+          runCommand: async (command, args) => {
+            started.push({ args, command });
+
+            if (started.length === 3) {
+              releaseCommands();
+            }
+
+            await release;
+
+            return { stderr: '', stdout: '' };
+          },
+          started,
+        };
+      },
+      assert: async (context, inputs) => {
+        const report = await runSonarChangedFileAnalysis({
+          branch: 'feature/runtime',
+          changedFiles: inputs.changedFiles,
+          project: 'vannadii_devplat',
+          runCommand: context.runCommand,
+          sqaaMode: 'enabled',
+        });
+
+        expect(context.started).toHaveLength(3);
+        expect(report.results.map((result) => result.status)).toEqual([
+          'passed',
+          'passed',
+          'passed',
+        ]);
+      },
+    },
+    {
+      name: 'classifies disabled A3S analysis as skipped',
+      inputs: {
+        error: {
+          stderr: 'A3S analysis is not activated for this organization\n',
+          stdout: '',
+        },
+      },
+      mock: async () => undefined,
+      assert: async (_context, inputs) => {
+        expect(classifySonarAnalysisFailure(inputs.error)).toEqual({
+          reason: 'A3S analysis is not activated for this organization',
+          status: 'skipped',
+        });
+      },
+    },
+    {
+      name: 'formats plain text and JSON reports',
+      inputs: {
+        report: {
+          branch: 'feature/runtime',
+          changedFiles: ['packages/core/src/domain/logic.ts'],
+          commands: [],
+          project: 'vannadii_devplat',
+          results: [
+            {
+              args: ['analyze', 'secrets'],
+              command: 'sonar',
+              label: 'sonar analyze secrets',
+              status: 'passed',
+              stderr: '',
+              stdout: '',
+            },
+            {
+              args: ['analyze', 'sqaa'],
+              command: 'sonar',
+              label: 'sonar analyze sqaa packages/core/src/domain/logic.ts',
+              reason: 'A3S analysis is not activated for this organization',
+              status: 'skipped',
+            },
+          ],
+          sqaaEnabled: true,
+          status: 'skipped',
+        },
+      },
+      mock: async () => undefined,
+      assert: async (_context, inputs) => {
+        expect(formatSonarChangedFileReport(inputs.report)).toContain(
+          'SonarQube CLI changed-file analysis: skipped',
+        );
+        expect(formatSonarChangedFileReport(inputs.report)).toContain(
+          'SQAA/A3S enabled: true',
+        );
+        expect(formatSonarChangedFileReport(inputs.report)).toContain(
+          'SKIP skipped: sonar analyze sqaa packages/core/src/domain/logic.ts',
+        );
+        expect(
+          JSON.parse(formatSonarChangedFileReport(inputs.report, 'json')),
+        ).toEqual(inputs.report);
       },
     },
   ];

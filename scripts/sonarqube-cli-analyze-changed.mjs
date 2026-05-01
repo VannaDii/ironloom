@@ -9,10 +9,17 @@ const defaultDiffFilter = 'ACMRT';
 const defaultHeadRef = 'HEAD';
 const defaultProjectKey = 'vannadii_devplat';
 const defaultSonarCommand = 'sonar';
+const defaultOutputFormat = 'text';
+const defaultSqaaMode = 'disabled';
 const installScriptUrl =
   'https://raw.githubusercontent.com/SonarSource/sonarqube-cli/refs/heads/master/user-scripts/install.sh';
 const windowsInstallScriptUrl =
   'https://raw.githubusercontent.com/SonarSource/sonarqube-cli/refs/heads/master/user-scripts/install.ps1';
+const a3sInactiveMessage =
+  'A3S analysis is not activated for this organization';
+const sqaaDisabledReason =
+  'SQAA/A3S analysis is not enabled for this run. Set SONAR_A3S_ENABLED=true or pass --sqaa enabled to run it.';
+const truthyEnvValues = ['1', 'true', 'yes', 'enabled'];
 
 /**
  * Splits command output into non-empty lines without using platform-specific parsing.
@@ -47,6 +54,7 @@ export function createSonarChangedFileCommands({
   changedFiles,
   project,
   sonarCommand = defaultSonarCommand,
+  sqaaEnabled = false,
 }) {
   const normalizedFiles = changedFiles.map(normalizePath);
   const commands = [];
@@ -61,19 +69,21 @@ export function createSonarChangedFileCommands({
     command: sonarCommand,
   });
 
-  for (const file of normalizedFiles) {
-    commands.push({
-      args: [
-        'analyze',
-        'sqaa',
-        '--file',
-        file,
-        ...(branch === undefined ? [] : ['--branch', branch]),
-        ...(project === undefined ? [] : ['--project', project]),
-      ],
-      label: `sonar analyze sqaa ${file}`,
-      command: sonarCommand,
-    });
+  if (sqaaEnabled) {
+    for (const file of normalizedFiles) {
+      commands.push({
+        args: [
+          'analyze',
+          'sqaa',
+          '--file',
+          file,
+          ...(branch === undefined ? [] : ['--branch', branch]),
+          ...(project === undefined ? [] : ['--project', project]),
+        ],
+        label: `sonar analyze sqaa ${file}`,
+        command: sonarCommand,
+      });
+    }
   }
 
   return commands;
@@ -202,11 +212,113 @@ export async function resolveCurrentBranch({
  * Runs one external command and streams its output through the current process.
  */
 async function runExternalCommand(command, args, { rootDirectory }) {
-  await execFileAsync(command, args, {
+  return execFileAsync(command, args, {
     cwd: rootDirectory,
     env: process.env,
     maxBuffer: 32 * 1024 * 1024,
   });
+}
+
+/**
+ * Converts command output values into stable plain strings for reports.
+ */
+function stringifyCommandOutput(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+/**
+ * Extracts readable command output from a failed SonarQube CLI invocation.
+ */
+function readCommandFailureOutput(error) {
+  return [
+    stringifyCommandOutput(error.stdout),
+    stringifyCommandOutput(error.stderr),
+    stringifyCommandOutput(error.message),
+  ]
+    .filter((value) => value.length > 0)
+    .join('\n');
+}
+
+/**
+ * Classifies failures that should produce a useful report instead of raw stack noise.
+ */
+export function classifySonarAnalysisFailure(error) {
+  const output = readCommandFailureOutput(error);
+
+  if (output.includes(a3sInactiveMessage)) {
+    return {
+      reason: a3sInactiveMessage,
+      status: 'skipped',
+    };
+  }
+
+  return {
+    reason: output.length === 0 ? 'SonarQube CLI command failed.' : output,
+    status: 'failed',
+  };
+}
+
+/**
+ * Resolves whether SQAA/A3S analysis is configured for this run.
+ */
+export function resolveSqaaEnabled({ env = process.env, sqaaMode } = {}) {
+  switch (sqaaMode) {
+    case 'disabled':
+      return false;
+    case 'enabled':
+      return true;
+    case undefined:
+      break;
+    default:
+      throw new Error(`Unsupported SonarQube SQAA mode: ${sqaaMode}`);
+  }
+
+  return [
+    env.SONAR_A3S_ENABLED,
+    env.DEVPLAT_SONAR_A3S_ENABLED,
+    env.SONAR_SQAA_ENABLED,
+    env.DEVPLAT_SONAR_SQAA_ENABLED,
+  ].some((value) => isTruthyEnvValue(value));
+}
+
+/**
+ * Interprets environment flag strings without accepting arbitrary text.
+ */
+function isTruthyEnvValue(value) {
+  return (
+    typeof value === 'string' &&
+    truthyEnvValues.includes(value.trim().toLowerCase())
+  );
+}
+
+/**
+ * Runs one SonarQube analysis command and returns an auditable result.
+ */
+async function runSonarAnalysisCommand(command, { rootDirectory, runCommand }) {
+  try {
+    const output = await runCommand(command.command, command.args, {
+      rootDirectory,
+    });
+
+    return {
+      args: command.args,
+      command: command.command,
+      label: command.label,
+      status: 'passed',
+      stderr: stringifyCommandOutput(output?.stderr),
+      stdout: stringifyCommandOutput(output?.stdout),
+    };
+  } catch (error) {
+    const classified = classifySonarAnalysisFailure(error);
+
+    return {
+      args: command.args,
+      command: command.command,
+      label: command.label,
+      reason: classified.reason,
+      status: classified.status,
+    };
+  }
 }
 
 /**
@@ -297,6 +409,7 @@ export async function runSonarChangedFileAnalysis({
   rootDirectory = defaultRootDirectory,
   runCommand = runExternalCommand,
   sonarCommand = defaultSonarCommand,
+  sqaaMode,
 } = {}) {
   const resolvedChangedFiles =
     changedFiles ??
@@ -314,24 +427,119 @@ export async function runSonarChangedFileAnalysis({
     rootDirectory,
   });
   const resolvedProject = project ?? env.SONAR_PROJECT_KEY ?? defaultProjectKey;
+  const sqaaEnabled = resolveSqaaEnabled({ env, sqaaMode });
   const commands = createSonarChangedFileCommands({
     branch: resolvedBranch,
     changedFiles: resolvedChangedFiles,
     project: resolvedProject,
     sonarCommand,
+    sqaaEnabled,
   });
-
-  for (const { args, command, label } of commands) {
-    console.log(`Running ${label}`);
-    await runCommand(command, args, { rootDirectory });
-  }
+  const results = await Promise.all(
+    commands.map((command) =>
+      runSonarAnalysisCommand(command, { rootDirectory, runCommand }),
+    ),
+  );
+  const resolvedResults =
+    resolvedChangedFiles.length === 0 || sqaaEnabled
+      ? results
+      : [...results, createSkippedSqaaResult({ sonarCommand })];
 
   return {
     branch: resolvedBranch,
     changedFiles: resolvedChangedFiles,
     commands,
     project: resolvedProject,
+    results: resolvedResults,
+    sqaaEnabled,
+    status: summarizeSonarAnalysisStatus(resolvedResults),
   };
+}
+
+/**
+ * Creates a report entry for intentionally skipped SQAA analysis.
+ */
+function createSkippedSqaaResult({ sonarCommand }) {
+  return {
+    args: ['analyze', 'sqaa'],
+    command: sonarCommand,
+    label: 'sonar analyze sqaa',
+    reason: sqaaDisabledReason,
+    status: 'skipped',
+  };
+}
+
+/**
+ * Collapses per-command analysis results into the report-level status.
+ */
+export function summarizeSonarAnalysisStatus(results) {
+  if (results.some((result) => result.status === 'failed')) {
+    return 'failed';
+  }
+
+  if (results.some((result) => result.status === 'skipped')) {
+    return 'skipped';
+  }
+
+  return 'passed';
+}
+
+/**
+ * Formats the changed-file analysis report for humans or agent tooling.
+ */
+export function formatSonarChangedFileReport(
+  report,
+  format = defaultOutputFormat,
+) {
+  switch (format) {
+    case 'json':
+      return JSON.stringify(report, undefined, 2);
+    case 'text':
+      return [
+        `SonarQube CLI changed-file analysis: ${report.status}`,
+        `Project: ${report.project}`,
+        `Branch: ${report.branch ?? 'unresolved'}`,
+        `Changed files: ${String(report.changedFiles.length)}`,
+        `SQAA/A3S enabled: ${String(report.sqaaEnabled)}`,
+        '',
+        ...formatSonarResultLines(report.results),
+      ].join('\n');
+    default:
+      throw new Error(`Unsupported SonarQube report format: ${format}`);
+  }
+}
+
+/**
+ * Formats individual command results for the plain-text report.
+ */
+function formatSonarResultLines(results) {
+  if (results.length === 0) {
+    return ['No changed files to analyze.'];
+  }
+
+  return results.flatMap((result) => {
+    const base = `${formatSonarStatusIcon(result.status)} ${result.status}: ${
+      result.label
+    }`;
+
+    return result.reason === undefined ? [base] : [base, `  ${result.reason}`];
+  });
+}
+
+/**
+ * Maps SonarQube result states to compact console markers.
+ */
+function formatSonarStatusIcon(status) {
+  switch (status) {
+    case 'failed':
+      return 'FAIL';
+    case 'passed':
+      return 'PASS';
+    case 'skipped':
+      return 'SKIP';
+    default:
+      return 'INFO';
+  }
 }
 
 /**
@@ -340,8 +548,10 @@ export async function runSonarChangedFileAnalysis({
 export function parseSonarChangedFileArgs(argv) {
   const parsed = {
     headRef: defaultHeadRef,
+    outputFormat: defaultOutputFormat,
     project: defaultProjectKey,
     sonarCommand: defaultSonarCommand,
+    sqaaMode: defaultSqaaMode,
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -360,12 +570,23 @@ export function parseSonarChangedFileArgs(argv) {
         parsed.headRef = argv[index + 1] ?? defaultHeadRef;
         index += 1;
         break;
+      case '--json':
+        parsed.outputFormat = 'json';
+        break;
+      case '--format':
+        parsed.outputFormat = argv[index + 1] ?? defaultOutputFormat;
+        index += 1;
+        break;
       case '--project':
         parsed.project = argv[index + 1];
         index += 1;
         break;
       case '--sonar-command':
         parsed.sonarCommand = argv[index + 1] ?? defaultSonarCommand;
+        index += 1;
+        break;
+      case '--sqaa':
+        parsed.sqaaMode = argv[index + 1] ?? defaultSqaaMode;
         index += 1;
         break;
       default:
@@ -416,17 +637,13 @@ async function main() {
 
   const options = parsed.options;
   const report = await runSonarChangedFileAnalysis(options);
+  const output = formatSonarChangedFileReport(report, options.outputFormat);
 
-  if (report.changedFiles.length === 0) {
-    console.log('No changed files to analyze with SonarQube CLI.');
-    return;
+  console.log(output);
+
+  if (report.status === 'failed') {
+    process.exitCode = 1;
   }
-
-  console.log(
-    `Completed SonarQube CLI security and SQAA analysis for ${String(
-      report.changedFiles.length,
-    )} changed file(s).`,
-  );
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
