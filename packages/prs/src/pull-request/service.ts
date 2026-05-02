@@ -1,3 +1,7 @@
+import {
+  DEVPLAT_ACTION_MERGE_PR,
+  DEVPLAT_ACTION_UPDATE_PR,
+} from '@vannadii/devplat-core';
 import { GitHubWorkflowService } from '@vannadii/devplat-github';
 
 import {
@@ -31,7 +35,7 @@ export class PullRequestService {
     return this.github.submit(
       {
         repoFullName: this.repoFullName,
-        action: 'update-pr',
+        action: DEVPLAT_ACTION_UPDATE_PR,
         summary: record.title,
         privileged: canMergePullRequest(record),
         targetNumber: record.prNumber,
@@ -53,7 +57,7 @@ export class PullRequestService {
     return this.github.submit(
       {
         repoFullName: this.repoFullName,
-        action: 'merge-pr',
+        action: DEVPLAT_ACTION_MERGE_PR,
         summary: record.title,
         privileged: canMergePullRequest(record),
         targetNumber: record.prNumber,

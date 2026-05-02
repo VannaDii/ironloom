@@ -164,6 +164,36 @@ export const ARTIFACT_TYPE_WORKTREE_ALLOCATION = 'worktree-allocation';
 export const DEVPLAT_ACTION_APPROVE_THIS = 'approve-this';
 
 /**
+ * Shared lifecycle action that runs the item bound to an operator thread.
+ */
+export const DEVPLAT_ACTION_RUN_THIS = 'run-this';
+
+/**
+ * Shared lifecycle action that claims the item bound to an operator thread.
+ */
+export const DEVPLAT_ACTION_CLAIM_THIS = 'claim-this';
+
+/**
+ * Shared lifecycle action that blocks the item bound to an operator thread.
+ */
+export const DEVPLAT_ACTION_BLOCK_THIS = 'block-this';
+
+/**
+ * Shared lifecycle action that completes the item bound to an operator thread.
+ */
+export const DEVPLAT_ACTION_COMPLETE_THIS = 'complete-this';
+
+/**
+ * Shared lifecycle action that pauses automation for an operator thread.
+ */
+export const DEVPLAT_ACTION_PAUSE_THIS = 'pause-this';
+
+/**
+ * Shared lifecycle action that resumes automation for an operator thread.
+ */
+export const DEVPLAT_ACTION_RESUME_THIS = 'resume-this';
+
+/**
  * Shared lifecycle action that requests an immediate operator merge.
  */
 export const DEVPLAT_ACTION_MERGE_NOW = 'merge-now';
@@ -247,6 +277,21 @@ export const DEVPLAT_ACTION_RUN_GATES = 'run-gates';
  * Shared lifecycle action that retries quality gates.
  */
 export const DEVPLAT_ACTION_RETRY_GATES = 'retry-gates';
+
+/**
+ * Shared lifecycle action that shows status for an operator thread.
+ */
+export const DEVPLAT_ACTION_SHOW_STATUS = 'show-status';
+
+/**
+ * Shared lifecycle action that shows the last artifact for an operator thread.
+ */
+export const DEVPLAT_ACTION_SHOW_LAST_ARTIFACT = 'show-last-artifact';
+
+/**
+ * Shared lifecycle action that explains a failure for an operator thread.
+ */
+export const DEVPLAT_ACTION_EXPLAIN_FAILURE = 'explain-failure';
 
 /**
  * Shared lifecycle action that applies review autofixes.

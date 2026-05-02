@@ -1,6 +1,24 @@
 import * as t from 'io-ts';
 
-import { LifecycleStatusCodec } from '@vannadii/devplat-core';
+import {
+  DEVPLAT_ACTION_APPROVE_THIS,
+  DEVPLAT_ACTION_BLOCK_THIS,
+  DEVPLAT_ACTION_CLAIM_THIS,
+  DEVPLAT_ACTION_COMPLETE_THIS,
+  DEVPLAT_ACTION_EXPLAIN_FAILURE,
+  DEVPLAT_ACTION_MERGE_NOW,
+  DEVPLAT_ACTION_PAUSE_THIS,
+  DEVPLAT_ACTION_REBASE_ALL_DEPENDENTS,
+  DEVPLAT_ACTION_RELEASE_WORKTREE,
+  DEVPLAT_ACTION_RESUME_THIS,
+  DEVPLAT_ACTION_RETRY_GATES,
+  DEVPLAT_ACTION_RUN_THIS,
+  DEVPLAT_ACTION_SHOW_LAST_ARTIFACT,
+  DEVPLAT_ACTION_SHOW_STATUS,
+  DEVPLAT_ACTION_SYNC_WORKTREE,
+  DEVPLAT_ACTION_UPDATE_SPEC,
+  LifecycleStatusCodec,
+} from '@vannadii/devplat-core';
 
 import {
   DiscordThreadKindCodec,
@@ -9,22 +27,22 @@ import {
 } from '../thread-session/codec.js';
 
 export const DiscordControlActionCodec = t.union([
-  t.literal('run-this'),
-  t.literal('claim-this'),
-  t.literal('approve-this'),
-  t.literal('block-this'),
-  t.literal('complete-this'),
-  t.literal('pause-this'),
-  t.literal('resume-this'),
-  t.literal('rebase-all-dependents'),
-  t.literal('retry-gates'),
-  t.literal('merge-now'),
-  t.literal('show-status'),
-  t.literal('show-last-artifact'),
-  t.literal('explain-failure'),
-  t.literal('sync-worktree'),
-  t.literal('release-worktree'),
-  t.literal('update-spec'),
+  t.literal(DEVPLAT_ACTION_RUN_THIS),
+  t.literal(DEVPLAT_ACTION_CLAIM_THIS),
+  t.literal(DEVPLAT_ACTION_APPROVE_THIS),
+  t.literal(DEVPLAT_ACTION_BLOCK_THIS),
+  t.literal(DEVPLAT_ACTION_COMPLETE_THIS),
+  t.literal(DEVPLAT_ACTION_PAUSE_THIS),
+  t.literal(DEVPLAT_ACTION_RESUME_THIS),
+  t.literal(DEVPLAT_ACTION_REBASE_ALL_DEPENDENTS),
+  t.literal(DEVPLAT_ACTION_RETRY_GATES),
+  t.literal(DEVPLAT_ACTION_MERGE_NOW),
+  t.literal(DEVPLAT_ACTION_SHOW_STATUS),
+  t.literal(DEVPLAT_ACTION_SHOW_LAST_ARTIFACT),
+  t.literal(DEVPLAT_ACTION_EXPLAIN_FAILURE),
+  t.literal(DEVPLAT_ACTION_SYNC_WORKTREE),
+  t.literal(DEVPLAT_ACTION_RELEASE_WORKTREE),
+  t.literal(DEVPLAT_ACTION_UPDATE_SPEC),
 ]);
 
 export const DiscordWorkItemBindingCodec = t.intersection([

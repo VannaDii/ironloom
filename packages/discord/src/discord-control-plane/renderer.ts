@@ -1,4 +1,23 @@
 import {
+  DEVPLAT_ACTION_APPROVE_THIS,
+  DEVPLAT_ACTION_BLOCK_THIS,
+  DEVPLAT_ACTION_CLAIM_THIS,
+  DEVPLAT_ACTION_COMPLETE_THIS,
+  DEVPLAT_ACTION_EXPLAIN_FAILURE,
+  DEVPLAT_ACTION_MERGE_NOW,
+  DEVPLAT_ACTION_PAUSE_THIS,
+  DEVPLAT_ACTION_REBASE_ALL_DEPENDENTS,
+  DEVPLAT_ACTION_RELEASE_WORKTREE,
+  DEVPLAT_ACTION_RESUME_THIS,
+  DEVPLAT_ACTION_RETRY_GATES,
+  DEVPLAT_ACTION_RUN_THIS,
+  DEVPLAT_ACTION_SHOW_LAST_ARTIFACT,
+  DEVPLAT_ACTION_SHOW_STATUS,
+  DEVPLAT_ACTION_SYNC_WORKTREE,
+  DEVPLAT_ACTION_UPDATE_SPEC,
+} from '@vannadii/devplat-core';
+
+import {
   DISCORD_ACTION_ROW_COMPONENT_TYPE,
   DISCORD_BUTTON_COMPONENT_TYPE,
   DISCORD_BUTTON_LABEL_MAX_LENGTH,
@@ -47,117 +66,173 @@ type DiscordMessageContentInput = {
 const actionDisplays: Readonly<
   Record<DiscordControlAction, DiscordActionDisplay>
 > = {
-  'approve-this': {
+  [DEVPLAT_ACTION_APPROVE_THIS]: {
     label: 'Approve',
     acceptedTitle: 'Approval recorded',
     acceptedIndicator: '🟢',
     result: 'Approved. Ready for the next lifecycle step.',
-    controls: ['run-this', 'merge-now', 'show-last-artifact'],
+    controls: [
+      DEVPLAT_ACTION_RUN_THIS,
+      DEVPLAT_ACTION_MERGE_NOW,
+      DEVPLAT_ACTION_SHOW_LAST_ARTIFACT,
+    ],
   },
-  'block-this': {
+  [DEVPLAT_ACTION_BLOCK_THIS]: {
     label: 'Block',
     acceptedTitle: 'Work blocked',
     acceptedIndicator: '🔴',
     result: 'Blocked. Automation is paused for this thread.',
-    controls: ['explain-failure', 'resume-this', 'show-last-artifact'],
+    controls: [
+      DEVPLAT_ACTION_EXPLAIN_FAILURE,
+      DEVPLAT_ACTION_RESUME_THIS,
+      DEVPLAT_ACTION_SHOW_LAST_ARTIFACT,
+    ],
   },
-  'claim-this': {
+  [DEVPLAT_ACTION_CLAIM_THIS]: {
     label: 'Claim',
     acceptedTitle: 'Work claimed',
     acceptedIndicator: '🟢',
     result: 'This thread is now claimed for delivery.',
-    controls: ['run-this', 'show-last-artifact', 'show-status'],
+    controls: [
+      DEVPLAT_ACTION_RUN_THIS,
+      DEVPLAT_ACTION_SHOW_LAST_ARTIFACT,
+      DEVPLAT_ACTION_SHOW_STATUS,
+    ],
   },
-  'complete-this': {
+  [DEVPLAT_ACTION_COMPLETE_THIS]: {
     label: 'Complete',
     acceptedTitle: 'Work complete',
     acceptedIndicator: '🟢',
     result: 'Completed. Waiting for supervisor routing.',
-    controls: ['run-this', 'show-status', 'show-last-artifact'],
+    controls: [
+      DEVPLAT_ACTION_RUN_THIS,
+      DEVPLAT_ACTION_SHOW_STATUS,
+      DEVPLAT_ACTION_SHOW_LAST_ARTIFACT,
+    ],
   },
-  'explain-failure': {
+  [DEVPLAT_ACTION_EXPLAIN_FAILURE]: {
     label: 'Explain Failure',
     acceptedTitle: 'Failure explanation',
     acceptedIndicator: '🔴',
     result: 'Review the latest failure and choose the next action.',
-    controls: ['retry-gates', 'show-last-artifact'],
+    controls: [DEVPLAT_ACTION_RETRY_GATES, DEVPLAT_ACTION_SHOW_LAST_ARTIFACT],
   },
-  'merge-now': {
+  [DEVPLAT_ACTION_MERGE_NOW]: {
     label: 'Merge',
     acceptedTitle: 'Merge requested',
     acceptedIndicator: '🟡',
     result: 'Merge request accepted. Policy and gates will be checked first.',
-    controls: ['show-status', 'rebase-all-dependents', 'show-last-artifact'],
+    controls: [
+      DEVPLAT_ACTION_SHOW_STATUS,
+      DEVPLAT_ACTION_REBASE_ALL_DEPENDENTS,
+      DEVPLAT_ACTION_SHOW_LAST_ARTIFACT,
+    ],
   },
-  'pause-this': {
+  [DEVPLAT_ACTION_PAUSE_THIS]: {
     label: 'Pause',
     acceptedTitle: 'Automation paused',
     acceptedIndicator: '⏸️',
     result: 'Automation paused for this thread only.',
-    controls: ['resume-this', 'show-status', 'show-last-artifact'],
+    controls: [
+      DEVPLAT_ACTION_RESUME_THIS,
+      DEVPLAT_ACTION_SHOW_STATUS,
+      DEVPLAT_ACTION_SHOW_LAST_ARTIFACT,
+    ],
   },
-  'rebase-all-dependents': {
+  [DEVPLAT_ACTION_REBASE_ALL_DEPENDENTS]: {
     label: 'Rebase Dependents',
     acceptedTitle: 'Rebase requested',
     acceptedIndicator: '🟡',
     result: 'Rebase requested for dependent branches.',
-    controls: ['show-status', 'explain-failure', 'show-last-artifact'],
+    controls: [
+      DEVPLAT_ACTION_SHOW_STATUS,
+      DEVPLAT_ACTION_EXPLAIN_FAILURE,
+      DEVPLAT_ACTION_SHOW_LAST_ARTIFACT,
+    ],
   },
-  'release-worktree': {
+  [DEVPLAT_ACTION_RELEASE_WORKTREE]: {
     label: 'Release Worktree',
     acceptedTitle: 'Worktree release requested',
     acceptedIndicator: '🟢',
     result: 'Releasing the bound worktree if policy allows.',
-    controls: ['show-status', 'show-last-artifact'],
+    controls: [DEVPLAT_ACTION_SHOW_STATUS, DEVPLAT_ACTION_SHOW_LAST_ARTIFACT],
   },
-  'resume-this': {
+  [DEVPLAT_ACTION_RESUME_THIS]: {
     label: 'Resume',
     acceptedTitle: 'Automation resumed',
     acceptedIndicator: '▶️',
     result: 'Automation may continue in this thread.',
-    controls: ['run-this', 'pause-this', 'show-last-artifact'],
+    controls: [
+      DEVPLAT_ACTION_RUN_THIS,
+      DEVPLAT_ACTION_PAUSE_THIS,
+      DEVPLAT_ACTION_SHOW_LAST_ARTIFACT,
+    ],
   },
-  'retry-gates': {
+  [DEVPLAT_ACTION_RETRY_GATES]: {
     label: 'Retry Gates',
     acceptedTitle: 'Gates retry queued',
     acceptedIndicator: '🟡',
     result: 'Re-running quality gates for this work item.',
-    controls: ['show-status', 'explain-failure', 'show-last-artifact'],
+    controls: [
+      DEVPLAT_ACTION_SHOW_STATUS,
+      DEVPLAT_ACTION_EXPLAIN_FAILURE,
+      DEVPLAT_ACTION_SHOW_LAST_ARTIFACT,
+    ],
   },
-  'run-this': {
+  [DEVPLAT_ACTION_RUN_THIS]: {
     label: 'Run',
     acceptedTitle: 'Run requested',
     acceptedIndicator: '🟡',
     result: 'Starting the bound work item.',
-    controls: ['show-last-artifact', 'show-status', 'pause-this'],
+    controls: [
+      DEVPLAT_ACTION_SHOW_LAST_ARTIFACT,
+      DEVPLAT_ACTION_SHOW_STATUS,
+      DEVPLAT_ACTION_PAUSE_THIS,
+    ],
   },
-  'show-last-artifact': {
+  [DEVPLAT_ACTION_SHOW_LAST_ARTIFACT]: {
     label: 'Details',
     acceptedTitle: 'Last artifact',
     acceptedIndicator: '📎',
     result: 'Latest artifact is attached, linked, or summarized below.',
-    controls: ['show-last-artifact', 'show-status', 'explain-failure'],
+    controls: [
+      DEVPLAT_ACTION_SHOW_LAST_ARTIFACT,
+      DEVPLAT_ACTION_SHOW_STATUS,
+      DEVPLAT_ACTION_EXPLAIN_FAILURE,
+    ],
   },
-  'show-status': {
+  [DEVPLAT_ACTION_SHOW_STATUS]: {
     label: 'Show Status',
     acceptedTitle: 'Status',
     acceptedIndicator: 'ℹ️',
     result: 'Current lifecycle status is available.',
-    controls: ['run-this', 'retry-gates', 'show-last-artifact'],
+    controls: [
+      DEVPLAT_ACTION_RUN_THIS,
+      DEVPLAT_ACTION_RETRY_GATES,
+      DEVPLAT_ACTION_SHOW_LAST_ARTIFACT,
+    ],
   },
-  'sync-worktree': {
+  [DEVPLAT_ACTION_SYNC_WORKTREE]: {
     label: 'Sync Worktree',
     acceptedTitle: 'Worktree sync queued',
     acceptedIndicator: '🟡',
     result: 'Synchronizing the bound worktree.',
-    controls: ['show-status', 'release-worktree', 'show-last-artifact'],
+    controls: [
+      DEVPLAT_ACTION_SHOW_STATUS,
+      DEVPLAT_ACTION_RELEASE_WORKTREE,
+      DEVPLAT_ACTION_SHOW_LAST_ARTIFACT,
+    ],
   },
-  'update-spec': {
+  [DEVPLAT_ACTION_UPDATE_SPEC]: {
     label: 'Update Spec',
     acceptedTitle: 'Spec update requested',
     acceptedIndicator: '🟡',
     result: 'Updating the bound spec from this thread context.',
-    controls: ['show-status', 'approve-this', 'show-last-artifact'],
+    controls: [
+      DEVPLAT_ACTION_SHOW_STATUS,
+      DEVPLAT_ACTION_APPROVE_THIS,
+      DEVPLAT_ACTION_SHOW_LAST_ARTIFACT,
+    ],
   },
 };
 
@@ -165,17 +240,17 @@ const actionDisplays: Readonly<
  * Default controls for route failures and policy-denied messages.
  */
 const failureControls: readonly DiscordControlAction[] = [
-  'show-last-artifact',
-  'show-status',
+  DEVPLAT_ACTION_SHOW_LAST_ARTIFACT,
+  DEVPLAT_ACTION_SHOW_STATUS,
 ];
 
 /**
  * Default controls for policy-denied actions.
  */
 const blockedControls: readonly DiscordControlAction[] = [
-  'show-last-artifact',
-  'show-status',
-  'explain-failure',
+  DEVPLAT_ACTION_SHOW_LAST_ARTIFACT,
+  DEVPLAT_ACTION_SHOW_STATUS,
+  DEVPLAT_ACTION_EXPLAIN_FAILURE,
 ];
 
 /**
@@ -260,25 +335,25 @@ function createDiscordComponentCustomId(
  */
 function resolveButtonStyle(action: DiscordControlAction): DiscordButtonStyle {
   switch (action) {
-    case 'approve-this':
+    case DEVPLAT_ACTION_APPROVE_THIS:
       return DISCORD_BUTTON_STYLE_SUCCESS;
-    case 'block-this':
-    case 'release-worktree':
+    case DEVPLAT_ACTION_BLOCK_THIS:
+    case DEVPLAT_ACTION_RELEASE_WORKTREE:
       return DISCORD_BUTTON_STYLE_DANGER;
-    case 'run-this':
-    case 'retry-gates':
+    case DEVPLAT_ACTION_RUN_THIS:
+    case DEVPLAT_ACTION_RETRY_GATES:
       return DISCORD_BUTTON_STYLE_PRIMARY;
-    case 'claim-this':
-    case 'complete-this':
-    case 'explain-failure':
-    case 'merge-now':
-    case 'pause-this':
-    case 'rebase-all-dependents':
-    case 'resume-this':
-    case 'show-last-artifact':
-    case 'show-status':
-    case 'sync-worktree':
-    case 'update-spec':
+    case DEVPLAT_ACTION_CLAIM_THIS:
+    case DEVPLAT_ACTION_COMPLETE_THIS:
+    case DEVPLAT_ACTION_EXPLAIN_FAILURE:
+    case DEVPLAT_ACTION_MERGE_NOW:
+    case DEVPLAT_ACTION_PAUSE_THIS:
+    case DEVPLAT_ACTION_REBASE_ALL_DEPENDENTS:
+    case DEVPLAT_ACTION_RESUME_THIS:
+    case DEVPLAT_ACTION_SHOW_LAST_ARTIFACT:
+    case DEVPLAT_ACTION_SHOW_STATUS:
+    case DEVPLAT_ACTION_SYNC_WORKTREE:
+    case DEVPLAT_ACTION_UPDATE_SPEC:
       return DISCORD_BUTTON_STYLE_SECONDARY;
   }
 }
@@ -291,25 +366,27 @@ function resolveAcceptedControls(
   display: DiscordActionDisplay,
 ): readonly DiscordControlAction[] {
   switch (request.action) {
-    case 'approve-this':
+    case DEVPLAT_ACTION_APPROVE_THIS:
       return request.workItem?.threadKind === 'pull-request'
         ? display.controls
-        : display.controls.filter((action) => action !== 'merge-now');
-    case 'block-this':
-    case 'claim-this':
-    case 'complete-this':
-    case 'explain-failure':
-    case 'merge-now':
-    case 'pause-this':
-    case 'rebase-all-dependents':
-    case 'release-worktree':
-    case 'resume-this':
-    case 'retry-gates':
-    case 'run-this':
-    case 'show-last-artifact':
-    case 'show-status':
-    case 'sync-worktree':
-    case 'update-spec':
+        : display.controls.filter(
+            (action) => action !== DEVPLAT_ACTION_MERGE_NOW,
+          );
+    case DEVPLAT_ACTION_BLOCK_THIS:
+    case DEVPLAT_ACTION_CLAIM_THIS:
+    case DEVPLAT_ACTION_COMPLETE_THIS:
+    case DEVPLAT_ACTION_EXPLAIN_FAILURE:
+    case DEVPLAT_ACTION_MERGE_NOW:
+    case DEVPLAT_ACTION_PAUSE_THIS:
+    case DEVPLAT_ACTION_REBASE_ALL_DEPENDENTS:
+    case DEVPLAT_ACTION_RELEASE_WORKTREE:
+    case DEVPLAT_ACTION_RESUME_THIS:
+    case DEVPLAT_ACTION_RETRY_GATES:
+    case DEVPLAT_ACTION_RUN_THIS:
+    case DEVPLAT_ACTION_SHOW_LAST_ARTIFACT:
+    case DEVPLAT_ACTION_SHOW_STATUS:
+    case DEVPLAT_ACTION_SYNC_WORKTREE:
+    case DEVPLAT_ACTION_UPDATE_SPEC:
       return display.controls;
   }
 }
@@ -470,7 +547,7 @@ export function renderDiscordRouteFailureMessage(
     actorId: input.actorId,
     threadId: 'unresolved',
     channelId: input.channelId,
-    action: 'show-status',
+    action: DEVPLAT_ACTION_SHOW_STATUS,
     privileged: false,
   } satisfies DiscordControlRequest;
   const content = renderDiscordMessageContent({
@@ -506,9 +583,9 @@ export function renderDiscordStatusMessage(
   });
 
   return createDiscordPayload(content, request, [
-    'run-this',
-    'retry-gates',
-    'show-last-artifact',
+    DEVPLAT_ACTION_RUN_THIS,
+    DEVPLAT_ACTION_RETRY_GATES,
+    DEVPLAT_ACTION_SHOW_LAST_ARTIFACT,
   ]);
 }
 
@@ -532,9 +609,9 @@ export function renderDiscordArtifactMessage(
   });
 
   return createDiscordPayload(content, request, [
-    'show-last-artifact',
-    'show-status',
-    'explain-failure',
+    DEVPLAT_ACTION_SHOW_LAST_ARTIFACT,
+    DEVPLAT_ACTION_SHOW_STATUS,
+    DEVPLAT_ACTION_EXPLAIN_FAILURE,
   ]);
 }
 
@@ -557,7 +634,7 @@ export function renderDiscordFailureExplanationMessage(
   });
 
   return createDiscordPayload(content, request, [
-    'retry-gates',
-    'show-last-artifact',
+    DEVPLAT_ACTION_RETRY_GATES,
+    DEVPLAT_ACTION_SHOW_LAST_ARTIFACT,
   ]);
 }

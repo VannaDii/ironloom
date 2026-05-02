@@ -17,7 +17,10 @@ import {
   MergeDecisionArtifactService,
   RebaseResultArtifactService,
 } from '@vannadii/devplat-artifacts';
-import { decodeWithCodec } from '@vannadii/devplat-core';
+import {
+  decodeWithCodec,
+  DEVPLAT_ACTION_EXECUTE_COMMAND,
+} from '@vannadii/devplat-core';
 import { CommandExecutionService } from '@vannadii/devplat-execution';
 import { RuntimeConfigService } from '@vannadii/devplat-config';
 import {
@@ -806,7 +809,7 @@ export function createExecuteCommandTool(
 
       const request = decoded.value;
       const policy = decisionPolicyService.evaluateControlAction(
-        'execute-command',
+        DEVPLAT_ACTION_EXECUTE_COMMAND,
         request.privileged,
       );
 
@@ -818,7 +821,7 @@ export function createExecuteCommandTool(
           trace: ['openclaw:execute-command'],
           updatedAt: new Date().toISOString(),
           actorId: request.actorId,
-          action: 'execute-command',
+          action: DEVPLAT_ACTION_EXECUTE_COMMAND,
           scope: 'supervisor',
           details: {
             command: request.command,
@@ -866,7 +869,7 @@ export function createExecuteCommandTool(
         trace: ['openclaw:execute-command'],
         updatedAt: new Date().toISOString(),
         actorId: request.actorId,
-        action: 'execute-command',
+        action: DEVPLAT_ACTION_EXECUTE_COMMAND,
         scope: 'supervisor',
         details: {
           command: request.command,

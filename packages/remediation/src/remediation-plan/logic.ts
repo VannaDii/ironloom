@@ -1,18 +1,30 @@
+import { DEVPLAT_ACTION_RETRY_GATES } from '@vannadii/devplat-core';
+
 import type {
   RemediationPlan,
   RemediationResult,
   RemediationResultSummary,
 } from './codec.js';
+import {
+  REMEDIATION_NEXT_ACTION_APPLY_REMEDIATION,
+  REMEDIATION_NEXT_ACTION_REQUEST_APPROVAL,
+} from './constants.js';
 
 type RemediationNextAction =
-  | 'apply-remediation'
-  | 'request-approval'
-  | 'retry-gates';
+  | typeof REMEDIATION_NEXT_ACTION_APPLY_REMEDIATION
+  | typeof REMEDIATION_NEXT_ACTION_REQUEST_APPROVAL
+  | typeof DEVPLAT_ACTION_RETRY_GATES;
 
+/**
+ * Returns unique non-empty string values after trimming user input.
+ */
 function uniqueTrimmed(values: readonly string[]): string[] {
   return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
 }
 
+/**
+ * Normalizes one remediation execution result.
+ */
 export function createRemediationResult(
   input: RemediationResult,
 ): RemediationResult {
@@ -24,6 +36,9 @@ export function createRemediationResult(
   };
 }
 
+/**
+ * Normalizes a remediation plan and resolves its next action.
+ */
 export function createRemediationPlan(input: RemediationPlan): RemediationPlan {
   const findingIds = uniqueTrimmed(input.findingIds);
   const unresolvedFindingIds =
@@ -49,6 +64,9 @@ export function createRemediationPlan(input: RemediationPlan): RemediationPlan {
   };
 }
 
+/**
+ * Summarizes remediation completion status for downstream artifacts.
+ */
 export function createRemediationResultSummary(
   input: RemediationPlan,
 ): RemediationResultSummary {
@@ -84,22 +102,28 @@ export function createRemediationResultSummary(
   };
 }
 
+/**
+ * Resolves the next action implied by remediation state.
+ */
 function resolveRemediationNextAction(
   unresolvedFindingIds: readonly string[],
   autofix: boolean,
   approvalRequired: boolean,
 ): RemediationNextAction {
   if (unresolvedFindingIds.length === 0) {
-    return 'retry-gates';
+    return DEVPLAT_ACTION_RETRY_GATES;
   }
 
   if (autofix && !approvalRequired) {
-    return 'apply-remediation';
+    return REMEDIATION_NEXT_ACTION_APPLY_REMEDIATION;
   }
 
-  return 'request-approval';
+  return REMEDIATION_NEXT_ACTION_REQUEST_APPROVAL;
 }
 
+/**
+ * Describes a remediation plan for service responses and audit traces.
+ */
 export function describeRemediationPlan(input: RemediationPlan): string {
   return `Remediation plan -> ${input.planId}`;
 }

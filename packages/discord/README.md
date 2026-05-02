@@ -7,7 +7,8 @@ Discord control plane workflows.
 This package owns Discord thread sessions, channel bindings, interactive
 approval requests, the private outbound Discord Gateway interaction runtime,
 signature-verified interaction webhook helpers, bound work-item projections, and
-operator control actions. Runtime behavior must resolve bound thread context and
+operator control actions backed by the shared lifecycle action constants.
+Runtime behavior must resolve bound thread context and
 fail closed when a lifecycle-changing action is ambiguous. Slash command and
 button interactions are received over Discord Gateway by default, routed into
 control actions, must resolve exactly one bound thread or bound thread session,

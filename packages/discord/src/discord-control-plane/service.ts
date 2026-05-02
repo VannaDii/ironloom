@@ -1,3 +1,4 @@
+import { DEVPLAT_ACTION_SHOW_STATUS } from '@vannadii/devplat-core';
 import { TelemetryEventService } from '@vannadii/devplat-observability';
 import { DecisionPolicyService } from '@vannadii/devplat-policy';
 import { FileStoreService } from '@vannadii/devplat-storage';
@@ -533,7 +534,7 @@ export class DiscordControlPlaneService {
       actorId: input.actorId,
       threadId: 'unresolved',
       channelId: input.channelId,
-      action: 'show-status',
+      action: DEVPLAT_ACTION_SHOW_STATUS,
       privileged: false,
     });
     const acknowledgement = await this.postInteractionAcknowledgement(
@@ -548,7 +549,7 @@ export class DiscordControlPlaneService {
       runId: input.id,
       eventId: input.id,
       actorId: input.actorId,
-      action: 'show-status',
+      action: DEVPLAT_ACTION_SHOW_STATUS,
       scope: 'discord',
       outcome: 'blocked',
       reason: auditReason,
