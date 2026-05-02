@@ -1941,7 +1941,7 @@ export async function runLiveLab(options, dependencies = {}) {
         guildId: options.environment.discord.guildId,
       });
 
-    await postStatusSafe({
+    await postStatus({
       channelId: discordChannels.channels.projectManagement.id,
       details:
         'Bootstrapped the shared live-lab channels and external service preflight.',

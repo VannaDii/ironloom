@@ -498,6 +498,8 @@ This phase is complete when:
   Discord interaction-response probing through operator-visible Discord messages
   with actionable button components, component custom ids, posted content, and
   Discord message receipt ids preserved
+- the dispatchable live lab fails before sandbox repository mutation when the
+  required project-management bootstrap status message cannot post
 - the Discord package exposes a reusable signature-verified interaction webhook
   handler that production can mount for real slash/button callbacks
 - docs are sufficient for operators and contributors to install and use the platform without private guidance
@@ -521,7 +523,8 @@ Live-lab acceptance must also verify the Discord interactive UX path directly:
 2. route it through the Discord control-plane service
 3. post an interaction acknowledgement and bound-thread status through the Discord response transport
 4. record callback and thread-message receipts, message ids, posted content, and component custom ids in the live-lab report
-5. fail the live lab if the interaction fails closed, does not resolve to one bound thread, or drops actionable controls
+5. fail the live lab before sandbox repository mutation when the required bootstrap status message cannot post
+6. fail the live lab if the interaction fails closed, does not resolve to one bound thread, or drops actionable controls
 
 ## Implementation Phases
 

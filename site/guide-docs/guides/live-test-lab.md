@@ -12,6 +12,8 @@ CI.
   category
 - reports lifecycle status and progress into those shared channels for the
   duration of the run
+- requires the initial project-management bootstrap status message to post
+  successfully before any sandbox repository mutation
 - registers Discord command contracts, normalizes a Discord callback-shaped
   slash command payload, and posts the interaction acknowledgement plus
   bound-thread status through the same response transport used by the runtime;
@@ -118,6 +120,11 @@ shape stays aligned with the Discord operator UI contract instead of regressing
 to plain log output. The uploaded `live-lab-report.json` records each selected
 channel id and `parentId` so operators can confirm the run used the channels
 under the `test` category, not uncategorized duplicates with the same names.
+The first bootstrap message in `project-management` is not best effort: if it
+cannot be posted, the live lab fails before listing, creating, or deleting any
+sandbox repository. Later progress and failure notifications remain
+best-effort so the report can still be written when Discord has a transient
+error after the required operator-visible start signal.
 
 Production operator channels use the same standard channel names from runtime
 configuration under a category named for the repository. OpenClaw test and

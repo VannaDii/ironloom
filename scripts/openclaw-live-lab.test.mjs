@@ -65,6 +65,25 @@ function createTrackedRouteHandler(label, calls, routes) {
   };
 }
 
+/**
+ * Creates the stable Discord command-registration result used by live-lab tests.
+ */
+function createRegisteredDiscordCommandsFixture() {
+  return {
+    count: 14,
+    endpoint: '/applications/app-1/guilds/guild-1/commands',
+    names: ['run-this', 'retry-gates', 'show-status'],
+    responseBody: [],
+  };
+}
+
+/**
+ * Creates a Discord command-registration mock without duplicating callback bodies.
+ */
+function createRegisterDiscordApplicationCommandsMock() {
+  return async () => createRegisteredDiscordCommandsFixture();
+}
+
 describe('openclaw-live-lab helpers', () => {
   const cases = [
     {
@@ -1457,12 +1476,8 @@ describe('runLiveLab', () => {
           threadEndpoint: '/channels/implementation-1/messages',
           threadId: 'implementation-1',
         });
-        const registerDiscordApplicationCommandsMock = async () => ({
-          count: 14,
-          endpoint: '/applications/app-1/guilds/guild-1/commands',
-          names: ['run-this', 'retry-gates', 'show-status'],
-          responseBody: [],
-        });
+        const registerDiscordApplicationCommandsMock =
+          createRegisterDiscordApplicationCommandsMock();
 
         return {
           collectFixtureFiles: async () => fixtureFiles,
@@ -1586,6 +1601,170 @@ describe('runLiveLab', () => {
         expect(context.summaryEntries[0]).toContain('Discord category: test');
         expect(context.summaryEntries[0]).toContain(
           'Discord channels: spec, implementation, pull-request, audit, project-management',
+        );
+      },
+    },
+    {
+      name: 'fails before repository mutation when the bootstrap Discord status cannot post',
+      inputs: {
+        ref: 'main',
+        retainFailedResources: false,
+      },
+      mock: async () => {
+        const reportDir = await mkdtemp(
+          resolve(tmpdir(), 'devplat-live-lab-bootstrap-status-'),
+        );
+        temporaryRoots.push(reportDir);
+        const discordCalls = [];
+        const githubCalls = [];
+        const sonarCalls = [];
+        const sharedDiscordChannels = [
+          { id: 'test-category', name: 'test', type: 4 },
+          { id: 'spec-1', name: 'spec', parent_id: 'test-category', type: 0 },
+          {
+            id: 'implementation-1',
+            name: 'implementation',
+            parent_id: 'test-category',
+            type: 0,
+          },
+          {
+            id: 'pull-request-1',
+            name: 'pull-request',
+            parent_id: 'test-category',
+            type: 0,
+          },
+          { id: 'audit-1', name: 'audit', parent_id: 'test-category', type: 0 },
+          {
+            id: 'project-management-1',
+            name: 'project-management',
+            parent_id: 'test-category',
+            type: 0,
+          },
+        ];
+        const githubRoutes = new Map([
+          ['GET /orgs/sandbox-org', { login: 'sandbox-org' }],
+          [
+            'GET /orgs/sandbox-org/repos?type=public&sort=created&direction=asc&per_page=100',
+            () => {
+              throw new Error(
+                'Live lab continued after Discord bootstrap status failed.',
+              );
+            },
+          ],
+        ]);
+        const githubRequest = createTrackedRouteHandler(
+          'GitHub',
+          githubCalls,
+          githubRoutes,
+        );
+        const discordRequest = async (path, options = {}) => {
+          discordCalls.push([path, options.method ?? 'GET']);
+
+          if (path === '/guilds/guild-1' && options.method === undefined) {
+            return { id: 'guild-1' };
+          }
+          if (
+            path === '/guilds/guild-1/channels' &&
+            options.method === undefined
+          ) {
+            return sharedDiscordChannels;
+          }
+          if (
+            path === '/channels/project-management-1/messages' &&
+            options.method === 'POST'
+          ) {
+            throw new Error('Discord bootstrap status failed.');
+          }
+          if (
+            path === '/channels/audit-1/messages' &&
+            options.method === 'POST'
+          ) {
+            return { id: 'failure-message-1' };
+          }
+
+          throw new Error(
+            `Unexpected Discord request: ${path} ${options.method ?? 'GET'}`,
+          );
+        };
+        const sonarRequest = async (path, options = {}) => {
+          sonarCalls.push([path, options.method ?? 'GET']);
+
+          if (
+            path === '/api/projects/search?organization=sandbox-sonar&ps=1' &&
+            options.method === undefined
+          ) {
+            return { components: [] };
+          }
+
+          throw new Error(
+            `Unexpected Sonar request: ${path} ${options.method ?? 'GET'}`,
+          );
+        };
+        const registerDiscordApplicationCommandsMock =
+          createRegisterDiscordApplicationCommandsMock();
+
+        return {
+          discordCalls,
+          discordRequest,
+          githubCalls,
+          githubRequest,
+          registerDiscordApplicationCommandsMock,
+          reportDir,
+          sonarCalls,
+          sonarRequest,
+        };
+      },
+      assert: async (context, inputs) => {
+        await expect(
+          runLiveLab(
+            {
+              environment: baseEnvironment,
+              maxParallelRepos: 6,
+              ref: inputs.ref,
+              reportDir: context.reportDir,
+              retainFailedResources: inputs.retainFailedResources,
+              skipBuild: true,
+            },
+            {
+              appendSummary: async () => undefined,
+              collectFixtureFiles: async () => [],
+              discordRequest: context.discordRequest,
+              githubRequest: context.githubRequest,
+              registerDiscordApplicationCommands:
+                context.registerDiscordApplicationCommandsMock,
+              runDeepTest: async () => ({
+                reportDirectory: context.reportDir,
+                steps: [],
+              }),
+              runDiscordInteractionProbe: async () => ({
+                allowed: true,
+                failedClosed: false,
+              }),
+              sonarRequest: context.sonarRequest,
+            },
+          ),
+        ).rejects.toThrow('Discord bootstrap status failed.');
+
+        const savedReport = JSON.parse(
+          await readFile(
+            resolve(context.reportDir, 'live-lab-report.json'),
+            'utf8',
+          ),
+        );
+
+        expect(savedReport.status).toBe('failed');
+        expect(savedReport.error.message).toBe(
+          'Discord bootstrap status failed.',
+        );
+        expect(context.githubCalls).not.toContainEqual([
+          '/orgs/sandbox-org/repos?type=public&sort=created&direction=asc&per_page=100',
+          'GET',
+        ]);
+        expect(context.discordCalls).toEqual(
+          expect.arrayContaining([
+            ['/channels/project-management-1/messages', 'POST'],
+            ['/channels/audit-1/messages', 'POST'],
+          ]),
         );
       },
     },
@@ -1811,12 +1990,8 @@ describe('runLiveLab', () => {
           githubCalls,
           githubRequest,
           reportDir,
-          registerDiscordApplicationCommandsMock: async () => ({
-            count: 14,
-            endpoint: '/applications/app-1/guilds/guild-1/commands',
-            names: ['run-this', 'retry-gates', 'show-status'],
-            responseBody: [],
-          }),
+          registerDiscordApplicationCommandsMock:
+            createRegisterDiscordApplicationCommandsMock(),
           runDiscordInteractionProbeMock: async () => ({
             action: 'retry-gates',
             allowed: true,
@@ -2090,12 +2265,8 @@ describe('runLiveLab', () => {
           },
           githubRequest,
           reportDir,
-          registerDiscordApplicationCommandsMock: async () => ({
-            count: 14,
-            endpoint: '/applications/app-1/guilds/guild-1/commands',
-            names: ['run-this', 'retry-gates', 'show-status'],
-            responseBody: [],
-          }),
+          registerDiscordApplicationCommandsMock:
+            createRegisterDiscordApplicationCommandsMock(),
           runDeepTestMock: async () => ({
             reportDirectory: resolve(reportDir, 'deep-test'),
             steps: [{ tool: 'resolve_runtime_config' }],
@@ -2428,12 +2599,8 @@ describe('runLiveLab', () => {
           githubCalls,
           githubRequest,
           reportDir,
-          registerDiscordApplicationCommandsMock: async () => ({
-            count: 14,
-            endpoint: '/applications/app-1/guilds/guild-1/commands',
-            names: ['run-this', 'retry-gates', 'show-status'],
-            responseBody: [],
-          }),
+          registerDiscordApplicationCommandsMock:
+            createRegisterDiscordApplicationCommandsMock(),
           runDeepTestMock: async () => {
             throw new Error('deep test failed');
           },
@@ -2689,12 +2856,8 @@ describe('runLiveLab', () => {
           githubCalls,
           githubRequest,
           reportDir,
-          registerDiscordApplicationCommandsMock: async () => ({
-            count: 14,
-            endpoint: '/applications/app-1/guilds/guild-1/commands',
-            names: ['run-this', 'retry-gates', 'show-status'],
-            responseBody: [],
-          }),
+          registerDiscordApplicationCommandsMock:
+            createRegisterDiscordApplicationCommandsMock(),
           runDeepTestMock: async () => {
             throw new Error('deep test failed');
           },
