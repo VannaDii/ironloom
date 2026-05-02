@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { isAbsolute, normalize, resolve, sep } from 'node:path';
+import { resolve } from 'node:path';
 
 import type { AnyAgentTool } from 'openclaw/plugin-sdk/plugin-entry';
 import type {
@@ -21,7 +21,10 @@ import {
   decodeWithCodec,
   DEVPLAT_ACTION_EXECUTE_COMMAND,
 } from '@vannadii/devplat-core';
-import { CommandExecutionService } from '@vannadii/devplat-execution';
+import {
+  CommandExecutionService,
+  normalizeCommandExecutionCwd,
+} from '@vannadii/devplat-execution';
 import { RuntimeConfigService } from '@vannadii/devplat-config';
 import {
   DiscordChannelBindingService,
@@ -339,45 +342,6 @@ function createDefaultDiscordControlPlaneService(): DiscordControlPlaneService {
   }
 
   return new DiscordControlPlaneService();
-}
-
-function normalizeExecutionCwd(cwd: string | undefined):
-  | {
-      ok: true;
-      value?: string;
-    }
-  | {
-      ok: false;
-      error: string;
-    } {
-  if (cwd === undefined) {
-    return { ok: true };
-  }
-
-  const trimmed = cwd.trim();
-  if (trimmed.length === 0) {
-    return { ok: true };
-  }
-
-  if (isAbsolute(trimmed)) {
-    return {
-      ok: false,
-      error: 'cwd must be a relative repository path.',
-    };
-  }
-
-  const normalized = normalize(trimmed);
-  if (normalized === '..' || normalized.startsWith(`..${sep}`)) {
-    return {
-      ok: false,
-      error: 'cwd must stay within the repository root.',
-    };
-  }
-
-  return {
-    ok: true,
-    value: normalized,
-  };
 }
 
 /**
@@ -841,7 +805,7 @@ export function createExecuteCommandTool(
         });
       }
 
-      const normalizedCwd = normalizeExecutionCwd(request.cwd);
+      const normalizedCwd = normalizeCommandExecutionCwd(request.cwd);
       if (!normalizedCwd.ok) {
         return createTextResult({
           status: 'failed',

@@ -1,8 +1,25 @@
+import { isAbsolute, normalize, sep } from 'node:path';
+
 import type {
   CommandExecutionOptions,
   CommandExecutionPolicy,
   CommandResult,
 } from './codec.js';
+import {
+  COMMAND_EXECUTION_CWD_ABSOLUTE_ERROR,
+  COMMAND_EXECUTION_CWD_TRAVERSAL_ERROR,
+} from './constants.js';
+
+/** Normalized command working-directory result. */
+export type NormalizedCommandExecutionCwd =
+  | {
+      ok: true;
+      value?: string;
+    }
+  | {
+      ok: false;
+      error: string;
+    };
 
 export function truncateCommandOutput(
   value: string,
@@ -20,6 +37,42 @@ export function truncateCommandOutput(
   return {
     value: buffer.subarray(0, maxOutputBytes).toString(),
     truncated: true,
+  };
+}
+
+/**
+ * Normalizes optional command cwd input without allowing repository escape.
+ */
+export function normalizeCommandExecutionCwd(
+  cwd: string | undefined,
+): NormalizedCommandExecutionCwd {
+  if (cwd === undefined) {
+    return { ok: true };
+  }
+
+  const trimmed = cwd.trim();
+  if (trimmed.length === 0) {
+    return { ok: true };
+  }
+
+  if (isAbsolute(trimmed)) {
+    return {
+      ok: false,
+      error: COMMAND_EXECUTION_CWD_ABSOLUTE_ERROR,
+    };
+  }
+
+  const normalized = normalize(trimmed);
+  if (normalized === '..' || normalized.startsWith(`..${sep}`)) {
+    return {
+      ok: false,
+      error: COMMAND_EXECUTION_CWD_TRAVERSAL_ERROR,
+    };
+  }
+
+  return {
+    ok: true,
+    value: normalized,
   };
 }
 

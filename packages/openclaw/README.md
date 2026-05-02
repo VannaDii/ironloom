@@ -30,6 +30,9 @@ live runtime containers and local tool calls read and write the same mounted
 `GITHUB_REPO` values so PR updates target the configured repository. Worktree
 allocation and dependent rebase tools use the trimmed `DEVPLAT_WORKTREE_ROOT`
 value so generated worktree paths stay inside the configured runtime layout.
+Command execution cwd validation is owned by `@vannadii/devplat-execution`; the
+OpenClaw tool only decodes input, asks policy, delegates cwd normalization and
+execution, then records telemetry.
 
 ## Exposed Tools
 

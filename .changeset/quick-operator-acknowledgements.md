@@ -2,6 +2,7 @@
 '@vannadii/devplat-branching': patch
 '@vannadii/devplat-core': patch
 '@vannadii/devplat-discord': patch
+'@vannadii/devplat-execution': patch
 '@vannadii/devplat-gates': patch
 '@vannadii/devplat-github': patch
 '@vannadii/devplat-openclaw': patch
@@ -42,3 +43,5 @@ The live-lab operator-hold documentation now describes the actual post-controls 
 The unit-test governance check now also rejects ad hoc `for (const testCase of cases)` loops, requiring the documented `it.each(cases)('$name', ...)` runner so every structured case table reports stable case names through Vitest.
 
 Live-lab progress routing now uses an explicit phase switch and a named pull-request tool vocabulary for channel selection. The helper coverage exercises spec, audit, project-management, pull-request, and implementation fallback routing so Discord live-lab updates keep landing in the expected test-category channels.
+
+Command working-directory normalization now lives in `@vannadii/devplat-execution` with package-owned error constants and direct coverage for blank, nested relative, absolute, and repository-escaping cwd inputs. The OpenClaw command tool delegates to that execution-domain helper instead of carrying its own adapter-local cwd validation.
