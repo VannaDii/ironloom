@@ -1649,6 +1649,115 @@ describe('tool surface service', () => {
     expect(result.details).toMatchObject({ status: 'failed' });
   });
 
+  describe('durable task lifecycle tools', () => {
+    const cases = [
+      {
+        name: 'claim preserves the current queue record transition history',
+        inputs: {
+          toolCallId: 'tool-call-task-lifecycle-1',
+          execute: createClaimTaskTool,
+          params: {
+            taskId: 'task-1',
+            sliceId: 'slice-1',
+            threadId: 'thread-1',
+            assigneeId: 'worker-1',
+            record: {
+              id: 'queue-task-1',
+              summary: 'Current queue task',
+              status: 'review',
+              trace: ['queue:task-1:review'],
+              updatedAt: '2026-04-04T00:00:00.000Z',
+              taskId: 'task-1',
+              sliceId: 'slice-1',
+              threadId: 'thread-1',
+              transitions: [
+                {
+                  toStatus: 'review',
+                  action: 'create',
+                  reason: 'Created task task-1',
+                  occurredAt: '2026-04-04T00:00:00.000Z',
+                },
+              ],
+            },
+          },
+        },
+        mock: async () => undefined,
+        assert: (result) => {
+          expect(result.details).toMatchObject({
+            id: 'queue-task-1',
+            status: 'claimed',
+            assigneeId: 'worker-1',
+            transitions: expect.arrayContaining([
+              expect.objectContaining({
+                fromStatus: 'review',
+                toStatus: 'claimed',
+                action: 'claim',
+              }),
+            ]),
+          });
+        },
+      },
+      {
+        name: 'update preserves the current queue record transition history',
+        inputs: {
+          toolCallId: 'tool-call-task-lifecycle-2',
+          execute: createUpdateTaskTool,
+          params: {
+            taskId: 'task-2',
+            sliceId: 'slice-2',
+            threadId: 'thread-2',
+            status: 'complete',
+            record: {
+              id: 'queue-task-2',
+              summary: 'Current claimed task',
+              status: 'claimed',
+              trace: ['queue:task-2:claimed'],
+              updatedAt: '2026-04-04T00:00:00.000Z',
+              taskId: 'task-2',
+              sliceId: 'slice-2',
+              threadId: 'thread-2',
+              assigneeId: 'worker-2',
+              transitions: [
+                {
+                  toStatus: 'claimed',
+                  action: 'claim',
+                  reason: 'Claimed task task-2',
+                  occurredAt: '2026-04-04T00:00:00.000Z',
+                  actorId: 'worker-2',
+                },
+              ],
+            },
+          },
+        },
+        mock: async () => undefined,
+        assert: (result) => {
+          expect(result.details).toMatchObject({
+            id: 'queue-task-2',
+            status: 'complete',
+            assigneeId: 'worker-2',
+            transitions: expect.arrayContaining([
+              expect.objectContaining({
+                fromStatus: 'claimed',
+                toStatus: 'complete',
+                action: 'complete',
+              }),
+            ]),
+          });
+        },
+      },
+    ];
+
+    it.each(cases)('$name', async (testCase) => {
+      await testCase.mock(testCase.inputs);
+      const tool = testCase.inputs.execute();
+      const result = await tool.execute(
+        testCase.inputs.toolCallId,
+        testCase.inputs.params,
+      );
+      testCase.assert(result);
+    });
+  });
+
   it('reads stored records from valid tool input', async () => {
     await createRememberMemoryEntryTool().execute('tool-call-sr0', {
       memoryId: 'memory-openclaw-read-1',

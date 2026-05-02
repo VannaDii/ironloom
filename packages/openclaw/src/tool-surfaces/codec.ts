@@ -203,12 +203,17 @@ export const SubmitGitHubActionToolInputCodec = t.type({
 
 export const CreateGitHubActionRequestToolInputCodec = GitHubActionRequestCodec;
 
-export const ClaimTaskToolInputCodec = t.type({
-  taskId: t.string,
-  sliceId: t.string,
-  threadId: t.string,
-  assigneeId: t.string,
-});
+export const ClaimTaskToolInputCodec = t.intersection([
+  t.type({
+    taskId: t.string,
+    sliceId: t.string,
+    threadId: t.string,
+    assigneeId: t.string,
+  }),
+  t.partial({
+    record: TaskRecordCodec,
+  }),
+]);
 
 export const UpdateTaskStatusCodec = t.union([
   t.literal('review'),
@@ -221,12 +226,17 @@ export const UpdateTaskStatusCodec = t.union([
   t.literal('complete'),
 ]);
 
-export const UpdateTaskToolInputCodec = t.type({
-  taskId: t.string,
-  sliceId: t.string,
-  threadId: t.string,
-  status: UpdateTaskStatusCodec,
-});
+export const UpdateTaskToolInputCodec = t.intersection([
+  t.type({
+    taskId: t.string,
+    sliceId: t.string,
+    threadId: t.string,
+    status: UpdateTaskStatusCodec,
+  }),
+  t.partial({
+    record: TaskRecordCodec,
+  }),
+]);
 
 export const ValidateArtifactToolInputCodec = t.type({
   artifact: t.UnknownRecord,

@@ -33,7 +33,7 @@ import { MemoryEntryService } from '@vannadii/devplat-memory';
 import { TelemetryEventService } from '@vannadii/devplat-observability';
 import { DecisionPolicyService } from '@vannadii/devplat-policy';
 import { PullRequestService } from '@vannadii/devplat-prs';
-import { TaskQueueService } from '@vannadii/devplat-queue';
+import { TaskQueueService, type TaskRecord } from '@vannadii/devplat-queue';
 import { ResearchBriefService } from '@vannadii/devplat-research';
 import { RemediationPlanService } from '@vannadii/devplat-remediation';
 import { ReviewFindingsService } from '@vannadii/devplat-review';
@@ -101,6 +101,15 @@ import {
 import type { OpenDiscordThreadToolInput } from './codec.js';
 
 type ToolParameterSchema = AnyAgentTool['parameters'] & Record<string, unknown>;
+
+/**
+ * Minimal task identity accepted by legacy task lifecycle tool calls.
+ */
+type TaskRecordIdentity = {
+  taskId: string;
+  sliceId: string;
+  threadId: string;
+};
 
 function isToolParameterSchema(value: unknown): value is ToolParameterSchema {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -219,6 +228,33 @@ function normalizeExecutionCwd(cwd: string | undefined):
     ok: true,
     value: normalized,
   };
+}
+
+/**
+ * Builds the synthetic queue record used by legacy ID-only task tool inputs.
+ */
+function createFallbackTaskRecord(input: TaskRecordIdentity): TaskRecord {
+  return {
+    id: `task-${input.taskId}`,
+    summary: `Task ${input.taskId}`,
+    status: 'queued',
+    trace: [],
+    updatedAt: new Date().toISOString(),
+    taskId: input.taskId,
+    sliceId: input.sliceId,
+    threadId: input.threadId,
+  };
+}
+
+/**
+ * Resolves the durable queue record that a task lifecycle tool should mutate.
+ */
+function resolveTaskRecord(
+  input: TaskRecordIdentity & {
+    record?: TaskRecord;
+  },
+): TaskRecord {
+  return input.record ?? createFallbackTaskRecord(input);
 }
 
 export function createRunGatesTool(
@@ -1479,16 +1515,7 @@ export function createClaimTaskTool(): AnyAgentTool {
       }
 
       const claimed = new TaskQueueService().claim(
-        {
-          id: `task-${decoded.value.taskId}`,
-          summary: `Task ${decoded.value.taskId}`,
-          status: 'queued',
-          trace: [],
-          updatedAt: new Date().toISOString(),
-          taskId: decoded.value.taskId,
-          sliceId: decoded.value.sliceId,
-          threadId: decoded.value.threadId,
-        },
+        resolveTaskRecord(decoded.value),
         decoded.value.assigneeId,
       );
       return Promise.resolve(createTextResult(claimed));
@@ -1514,16 +1541,7 @@ export function createUpdateTaskTool(): AnyAgentTool {
       }
 
       const task = new TaskQueueService().updateStatus(
-        {
-          id: `task-${decoded.value.taskId}`,
-          summary: `Task ${decoded.value.taskId}`,
-          status: 'queued',
-          trace: [],
-          updatedAt: new Date().toISOString(),
-          taskId: decoded.value.taskId,
-          sliceId: decoded.value.sliceId,
-          threadId: decoded.value.threadId,
-        },
+        resolveTaskRecord(decoded.value),
         decoded.value.status,
       );
       return Promise.resolve(createTextResult(task));

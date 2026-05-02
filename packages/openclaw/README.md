@@ -30,6 +30,9 @@ The plugin registers tools from `createDevplatOpenClawTools()`. Keep new
 tool factories in that inventory so the plugin entrypoint, exported package
 surface, and tests stay aligned.
 
+- `claim_task` and `update_task` accept an optional current task `record`; pass
+  it when OpenClaw already has the stored queue record so lifecycle transitions
+  preserve existing status, assignee, trace, and transition history.
 - `run_gates`: execute the configured DevPlat gate suite
 - `create_research_brief`: normalize a research brief artifact
 - `create_spec_record`: normalize a spec record artifact
