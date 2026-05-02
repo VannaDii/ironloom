@@ -119,7 +119,8 @@ ports. The storage package remains the only package that directly reads or
 writes the committed runtime state directory.
 
 The live lab posts compact operator payloads with safe `Show Status` and
-`Details` buttons, registers Discord operator commands in the sandbox guild, and
+`Details` buttons backed by the standard `show-status` and `show-last-artifact`
+control actions, registers Discord operator commands in the sandbox guild, and
 records callback-shaped interaction evidence in its report, including response
 endpoints, Discord message ids, posted content, and component custom ids.
 Human-triggered Discord client clicks remain a manual sandbox-guild acceptance

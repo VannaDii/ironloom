@@ -44,6 +44,10 @@ const discordComponentCustomIdField = 'custom_id';
  */
 const discordComponentCustomIdMaxLength = 100;
 /**
+ * Standard DevPlat control component prefix used by Discord control-plane routing.
+ */
+const discordControlComponentCustomIdPrefix = 'devplat:v1';
+/**
  * Discord action row component type used for live-lab status controls.
  */
 const discordActionRowComponentType = 1;
@@ -392,7 +396,7 @@ function createLiveLabStatusComponentRows(runLabel) {
     {
       components: [
         createLiveLabStatusButton('show-status', 'Show Status', runLabel),
-        createLiveLabStatusButton('details', 'Details', runLabel),
+        createLiveLabStatusButton('show-last-artifact', 'Details', runLabel),
       ],
       type: discordActionRowComponentType,
     },
@@ -418,7 +422,7 @@ function createLiveLabStatusButton(action, label, runLabel) {
  * Creates the live-lab component id that Discord returns on button clicks.
  */
 function createLiveLabStatusCustomId(action, runLabel) {
-  const customId = `devplat:live-lab:v1:${action}:${runLabel}`;
+  const customId = `${discordControlComponentCustomIdPrefix}:${action}:${runLabel}`;
 
   if (customId.length > discordComponentCustomIdMaxLength) {
     throw new Error(

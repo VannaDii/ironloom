@@ -687,7 +687,7 @@ describe('openclaw-live-lab helpers', () => {
                   /**
                    * Discord component wire key returned by button interactions.
                    */
-                  custom_id: 'devplat:live-lab:v1:show-status:200-3',
+                  custom_id: 'devplat:v1:show-status:200-3',
                   label: 'Show Status',
                   style: 2,
                   type: 2,
@@ -696,7 +696,7 @@ describe('openclaw-live-lab helpers', () => {
                   /**
                    * Discord component wire key returned by button interactions.
                    */
-                  custom_id: 'devplat:live-lab:v1:details:200-3',
+                  custom_id: 'devplat:v1:show-last-artifact:200-3',
                   label: 'Details',
                   style: 2,
                   type: 2,
