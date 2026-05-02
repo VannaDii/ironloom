@@ -350,6 +350,7 @@ export function createDiscordChannelPlan(
 }
 
 export function createStatusMessage({
+  controlThreadId,
   details,
   phase,
   ref,
@@ -382,7 +383,7 @@ export function createStatusMessage({
 
   return {
     allowed_mentions: { parse: [] },
-    components: createLiveLabStatusComponentRows(runLabel),
+    components: createLiveLabStatusComponentRows(controlThreadId),
     content: lines.join('\n'),
     flags: 4,
   };
@@ -391,12 +392,20 @@ export function createStatusMessage({
 /**
  * Creates compact live-lab status controls for Discord operator messages.
  */
-function createLiveLabStatusComponentRows(runLabel) {
+function createLiveLabStatusComponentRows(controlThreadId) {
   return [
     {
       components: [
-        createLiveLabStatusButton('show-status', 'Show Status', runLabel),
-        createLiveLabStatusButton('show-last-artifact', 'Details', runLabel),
+        createLiveLabStatusButton(
+          'show-status',
+          'Show Status',
+          controlThreadId,
+        ),
+        createLiveLabStatusButton(
+          'show-last-artifact',
+          'Details',
+          controlThreadId,
+        ),
       ],
       type: discordActionRowComponentType,
     },
@@ -406,11 +415,11 @@ function createLiveLabStatusComponentRows(runLabel) {
 /**
  * Creates one live-lab status button using Discord's component wire shape.
  */
-function createLiveLabStatusButton(action, label, runLabel) {
+function createLiveLabStatusButton(action, label, controlThreadId) {
   return {
     [discordComponentCustomIdField]: createLiveLabStatusCustomId(
       action,
-      runLabel,
+      controlThreadId,
     ),
     label,
     style: discordSecondaryButtonStyle,
@@ -421,8 +430,17 @@ function createLiveLabStatusButton(action, label, runLabel) {
 /**
  * Creates the live-lab component id that Discord returns on button clicks.
  */
-function createLiveLabStatusCustomId(action, runLabel) {
-  const customId = `${discordControlComponentCustomIdPrefix}:${action}:${runLabel}`;
+function createLiveLabStatusCustomId(action, controlThreadId) {
+  if (
+    typeof controlThreadId !== 'string' ||
+    controlThreadId.trim().length === 0
+  ) {
+    throw new Error(
+      'Discord live-lab component custom_id requires a thread context.',
+    );
+  }
+
+  const customId = `${discordControlComponentCustomIdPrefix}:${action}:${controlThreadId}`;
 
   if (customId.length > discordComponentCustomIdMaxLength) {
     throw new Error(
@@ -1347,6 +1365,7 @@ async function postStatus({
   return sendDiscordMessage(
     channelId,
     createStatusMessage({
+      controlThreadId: channelId,
       details,
       phase,
       ref,

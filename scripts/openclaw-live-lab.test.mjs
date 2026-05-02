@@ -655,6 +655,7 @@ describe('openclaw-live-lab helpers', () => {
           LIVE_TEST_SONAR_TOKEN: 'sonar-token-1',
         });
         const message = createStatusMessage({
+          controlThreadId: 'project-management-1',
           details: 'Bootstrapped the lab.',
           phase: 'bootstrap',
           ref: 'main',
@@ -687,7 +688,7 @@ describe('openclaw-live-lab helpers', () => {
                   /**
                    * Discord component wire key returned by button interactions.
                    */
-                  custom_id: 'devplat:v1:show-status:200-3',
+                  custom_id: 'devplat:v1:show-status:project-management-1',
                   label: 'Show Status',
                   style: 2,
                   type: 2,
@@ -696,7 +697,8 @@ describe('openclaw-live-lab helpers', () => {
                   /**
                    * Discord component wire key returned by button interactions.
                    */
-                  custom_id: 'devplat:v1:show-last-artifact:200-3',
+                  custom_id:
+                    'devplat:v1:show-last-artifact:project-management-1',
                   label: 'Details',
                   style: 2,
                   type: 2,
@@ -741,17 +743,39 @@ describe('openclaw-live-lab helpers', () => {
       assert: async () => {
         expect(() =>
           createStatusMessage({
+            controlThreadId: 'x'.repeat(90),
             details: 'Too long.',
             phase: 'bootstrap',
             ref: 'main',
             repoFullName: 'sandbox-org/devplat-test-long',
-            runLabel: 'x'.repeat(80),
+            runLabel: '200-4',
             sha: 'abc123',
             status: 'in-progress',
             workflowUrl: null,
           }),
         ).toThrow(
           'Discord live-lab component custom_id exceeds 100 characters.',
+        );
+      },
+    },
+    {
+      name: 'rejects live-lab status controls without a thread context',
+      inputs: {},
+      mock: async () => undefined,
+      assert: async () => {
+        expect(() =>
+          createStatusMessage({
+            details: 'Missing thread.',
+            phase: 'bootstrap',
+            ref: 'main',
+            repoFullName: 'sandbox-org/devplat-test-missing-thread',
+            runLabel: '200-5',
+            sha: 'abc123',
+            status: 'in-progress',
+            workflowUrl: null,
+          }),
+        ).toThrow(
+          'Discord live-lab component custom_id requires a thread context.',
         );
       },
     },

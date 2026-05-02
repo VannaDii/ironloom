@@ -120,9 +120,10 @@ writes the committed runtime state directory.
 
 The live lab posts compact operator payloads with safe `Show Status` and
 `Details` buttons backed by the standard `show-status` and `show-last-artifact`
-control actions, registers Discord operator commands in the sandbox guild, and
-records callback-shaped interaction evidence in its report, including response
-endpoints, Discord message ids, posted content, and component custom ids.
+control actions and the target channel context, registers Discord operator
+commands in the sandbox guild, and records callback-shaped interaction evidence
+in its report, including response endpoints, Discord message ids, posted
+content, and component custom ids.
 Human-triggered Discord client clicks remain a manual sandbox-guild acceptance
 check because Discord does not expose a supported bot API for clicking buttons
 as a user. Live-lab status posts suppress raw GitHub URL previews, and reports
