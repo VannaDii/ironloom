@@ -124,7 +124,9 @@ The first bootstrap message in `project-management` is not best effort: if it
 cannot be posted, the live lab fails before listing, creating, or deleting any
 sandbox repository. Later progress and failure notifications remain
 best-effort so the report can still be written when Discord has a transient
-error after the required operator-visible start signal.
+error after the required operator-visible start signal. The report records the
+bootstrap channel id, message id, posted content, and component custom ids so
+operators can audit the exact Discord message that started the run.
 
 Production operator channels use the same standard channel names from runtime
 configuration under a category named for the repository. OpenClaw test and

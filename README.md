@@ -125,7 +125,9 @@ commands in the sandbox guild, and records callback-shaped interaction evidence
 in its report, including response endpoints, Discord message ids, posted
 content, and component custom ids. The initial project-management bootstrap
 message is a required acceptance signal; if Discord cannot post it, the live
-lab fails before mutating sandbox repository state.
+lab fails before mutating sandbox repository state. The report preserves that
+bootstrap receipt with channel id, message id, posted content, and component
+custom ids so operators can audit the visible start signal.
 Human-triggered Discord client clicks remain a manual sandbox-guild acceptance
 check because Discord does not expose a supported bot API for clicking buttons
 as a user. Live-lab status posts suppress raw GitHub URL previews, and reports

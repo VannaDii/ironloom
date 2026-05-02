@@ -1350,6 +1350,19 @@ function readDiscordReceiptContent(receipt) {
   return readDiscordPayloadContent(receipt?.body);
 }
 
+/**
+ * Builds the auditable report projection for a posted Discord message.
+ */
+function createDiscordMessageReceiptReport({ channelId, receipt }) {
+  return {
+    channelId,
+    componentCustomIds: collectDiscordComponentCustomIds(receipt.body),
+    content: readDiscordReceiptContent(receipt),
+    endpoint: `/channels/${encodeURIComponent(channelId)}/messages`,
+    messageId: readDiscordReceiptMessageId(receipt),
+  };
+}
+
 async function postStatus({
   channelId,
   details,
@@ -1941,8 +1954,9 @@ export async function runLiveLab(options, dependencies = {}) {
         guildId: options.environment.discord.guildId,
       });
 
-    await postStatus({
-      channelId: discordChannels.channels.projectManagement.id,
+    const bootstrapChannelId = discordChannels.channels.projectManagement.id;
+    const bootstrapStatusReceipt = await postStatus({
+      channelId: bootstrapChannelId,
       details:
         'Bootstrapped the shared live-lab channels and external service preflight.',
       discordRequest,
@@ -1953,6 +1967,10 @@ export async function runLiveLab(options, dependencies = {}) {
       sha: options.environment.githubWorkflow.sha,
       status: 'in-progress',
       workflowUrl,
+    });
+    report.discord.bootstrapStatus = createDiscordMessageReceiptReport({
+      channelId: bootstrapChannelId,
+      receipt: bootstrapStatusReceipt,
     });
 
     const repositories = await listRepositories({

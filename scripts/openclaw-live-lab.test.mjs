@@ -1546,6 +1546,16 @@ describe('runLiveLab', () => {
           count: 14,
           endpoint: '/applications/app-1/guilds/guild-1/commands',
         });
+        expect(savedReport.discord.bootstrapStatus).toMatchObject({
+          channelId: 'project-management-1',
+          componentCustomIds: [
+            'devplat:v1:show-status:project-management-1',
+            'devplat:v1:show-last-artifact:project-management-1',
+          ],
+          content: expect.stringContaining('🟡 DevPlat · Live lab bootstrap'),
+          endpoint: '/channels/project-management-1/messages',
+          messageId: expect.any(String),
+        });
         expect(savedReport.discord.channels.projectManagement).toEqual({
           id: 'project-management-1',
           name: 'project-management',
