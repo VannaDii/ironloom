@@ -40,6 +40,10 @@ const testDiscordCategoryName = 'test';
  */
 const discordComponentCustomIdField = 'custom_id';
 /**
+ * Discord maximum length for component custom ids.
+ */
+const discordComponentCustomIdMaxLength = 100;
+/**
  * Discord action row component type used for live-lab status controls.
  */
 const discordActionRowComponentType = 1;
@@ -414,7 +418,15 @@ function createLiveLabStatusButton(action, label, runLabel) {
  * Creates the live-lab component id that Discord returns on button clicks.
  */
 function createLiveLabStatusCustomId(action, runLabel) {
-  return `devplat:live-lab:v1:${action}:${runLabel}`;
+  const customId = `devplat:live-lab:v1:${action}:${runLabel}`;
+
+  if (customId.length > discordComponentCustomIdMaxLength) {
+    throw new Error(
+      'Discord live-lab component custom_id exceeds 100 characters.',
+    );
+  }
+
+  return customId;
 }
 
 export function mapProgressToChannel(progress) {

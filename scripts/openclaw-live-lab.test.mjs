@@ -735,6 +735,27 @@ describe('openclaw-live-lab helpers', () => {
       },
     },
     {
+      name: 'rejects live-lab status controls when custom ids exceed Discord limits',
+      inputs: {},
+      mock: async () => undefined,
+      assert: async () => {
+        expect(() =>
+          createStatusMessage({
+            details: 'Too long.',
+            phase: 'bootstrap',
+            ref: 'main',
+            repoFullName: 'sandbox-org/devplat-test-long',
+            runLabel: 'x'.repeat(80),
+            sha: 'abc123',
+            status: 'in-progress',
+            workflowUrl: null,
+          }),
+        ).toThrow(
+          'Discord live-lab component custom_id exceeds 100 characters.',
+        );
+      },
+    },
+    {
       name: 'loads the environment by minting a GitHub App token',
       inputs: {},
       mock: async () => {
