@@ -625,9 +625,32 @@ describe('openclaw-live-lab helpers', () => {
     },
     {
       name: 'computes eviction, runtime env, and progress routing',
-      inputs: {},
+      inputs: {
+        sonarProjectKeyCases: [
+          {
+            owner: 'sandbox-org',
+            repo: 'devplat-test-200-3',
+            expected: 'sandbox-org_devplat-test-200-3',
+          },
+          {
+            owner: 'sandbox org',
+            repo: 'devplat/test 200',
+            expected: 'sandbox_org_devplat_test_200',
+          },
+          {
+            owner: 'sandbox:org',
+            repo: 'devplat.test_200',
+            expected: 'sandbox:org_devplat.test_200',
+          },
+          {
+            owner: 'måltid',
+            repo: 'devplat🔥test',
+            expected: 'm_ltid_devplat_test',
+          },
+        ],
+      },
       mock: async () => undefined,
-      assert: async () => {
+      assert: async (_context, inputs) => {
         const eviction = createEvictionPlan(
           [
             {
@@ -693,6 +716,11 @@ describe('openclaw-live-lab helpers', () => {
         expect(createSonarProjectKey('sandbox-org', 'devplat-test-200-3')).toBe(
           'sandbox-org_devplat-test-200-3',
         );
+        for (const testCase of inputs.sonarProjectKeyCases) {
+          expect(createSonarProjectKey(testCase.owner, testCase.repo)).toBe(
+            testCase.expected,
+          );
+        }
         expect(runtimeEnv).toMatchObject({
           GITHUB_OWNER: 'sandbox-org',
           GITHUB_REPO: 'devplat-test-200-3',

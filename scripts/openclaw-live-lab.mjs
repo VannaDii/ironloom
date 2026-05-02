@@ -40,6 +40,10 @@ const livePrefix = 'devplat-test-';
  */
 const discordSuppressEmbedsMessageFlag = 4;
 /**
+ * Characters outside Sonar's stable project-key vocabulary are normalized.
+ */
+const sonarProjectKeyUnsafeCharacterPattern = /[^a-zA-Z0-9_.:-]+/gu;
+/**
  * Shared Discord category used by live-lab and OpenClaw test runs.
  */
 const testDiscordCategoryName = 'test';
@@ -451,7 +455,7 @@ export function createEvictionPlan(repositories, maxParallelRepos) {
 
 export function createSonarProjectKey(githubOrganization, repoName) {
   return `${githubOrganization}_${repoName}`.replace(
-    /[^a-zA-Z0-9_.:-]+/gu,
+    sonarProjectKeyUnsafeCharacterPattern,
     '_',
   );
 }
