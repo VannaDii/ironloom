@@ -15,6 +15,12 @@ const ignoredDirectories = new Set([
   'node_modules',
 ]);
 
+/** Canonical Vitest case-table runner name for structured unit tests. */
+const canonicalCaseRunnerName = '$name';
+
+/** Human-readable canonical runner shape shown in failure messages. */
+const canonicalCaseRunnerDisplay = "it.each(cases)('$name', ...)";
+
 function isTestFile(filePath) {
   return /\.test\.(?:mjs|mts|ts)$/u.test(filePath);
 }
@@ -125,7 +131,7 @@ export async function collectTestCaseStyleFailures(
     }
 
     failures.push(
-      ...collectAdHocCaseLoopFailures({
+      ...collectCaseRunnerFailures({
         contents,
         relativePath,
         testFile,
@@ -137,9 +143,9 @@ export async function collectTestCaseStyleFailures(
 }
 
 /**
- * Collects style failures for tests that loop over case tables manually.
+ * Collects style failures for tests that skip the canonical case-table runner.
  */
-function collectAdHocCaseLoopFailures({ contents, relativePath, testFile }) {
+function collectCaseRunnerFailures({ contents, relativePath, testFile }) {
   const sourceFile = ts.createSourceFile(
     testFile,
     contents,
@@ -148,14 +154,23 @@ function collectAdHocCaseLoopFailures({ contents, relativePath, testFile }) {
     resolveScriptKind(testFile),
   );
   const failures = [];
+  let hasCanonicalRunner = false;
 
   walkSourceFile(sourceFile, (node) => {
     if (isAdHocCasesLoop(node)) {
       failures.push(
-        `${relativePath} must use it.each(cases)('$name', ...) instead of looping over cases.`,
+        `${relativePath} must use ${canonicalCaseRunnerDisplay} instead of looping over cases.`,
       );
     }
+
+    if (isCanonicalCaseRunner(node)) {
+      hasCanonicalRunner = true;
+    }
   });
+
+  if (!hasCanonicalRunner) {
+    failures.push(`${relativePath} is missing ${canonicalCaseRunnerDisplay}`);
+  }
 
   return failures;
 }
@@ -203,6 +218,56 @@ function isAdHocCasesLoop(node) {
     declaration !== undefined &&
     ts.isIdentifier(declaration.name) &&
     declaration.name.text === 'testCase'
+  );
+}
+
+/**
+ * Detects the required `it.each(cases)('$name', ...)` runner shape.
+ */
+function isCanonicalCaseRunner(node) {
+  if (!ts.isCallExpression(node)) {
+    return false;
+  }
+
+  const runnerFactory = node.expression;
+  if (!ts.isCallExpression(runnerFactory)) {
+    return false;
+  }
+
+  return (
+    isItEachCasesCall(runnerFactory) && isCaseNameLiteral(node.arguments[0])
+  );
+}
+
+/**
+ * Detects the inner `it.each(cases)` call expression.
+ */
+function isItEachCasesCall(node) {
+  if (!ts.isPropertyAccessExpression(node.expression)) {
+    return false;
+  }
+
+  const receiver = node.expression.expression;
+  const firstArgument = node.arguments[0];
+
+  return (
+    ts.isIdentifier(receiver) &&
+    receiver.text === 'it' &&
+    node.expression.name.text === 'each' &&
+    firstArgument !== undefined &&
+    ts.isIdentifier(firstArgument) &&
+    firstArgument.text === 'cases'
+  );
+}
+
+/**
+ * Detects the required `$name` case-name placeholder.
+ */
+function isCaseNameLiteral(node) {
+  return (
+    node !== undefined &&
+    (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) &&
+    node.text === canonicalCaseRunnerName
   );
 }
 
