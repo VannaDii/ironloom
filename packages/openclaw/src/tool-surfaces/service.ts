@@ -81,9 +81,11 @@ import {
   HandleDiscordApprovalToolInputCodec,
   HandleDiscordControlToolInputCodec,
   ListStoredRecordsToolInputCodec,
+  ListStoredIndexToolInputCodec,
   OpenDiscordThreadToolInputCodec,
   PlanRebaseDependentsToolInputCodec,
   ReadStoredRecordToolInputCodec,
+  ReadStoredIndexToolInputCodec,
   RecordTelemetryEventToolInputCodec,
   ReleaseWorktreeToolInputCodec,
   RememberMemoryEntryToolInputCodec,
@@ -105,11 +107,15 @@ import {
   sanitizeToolPayloadForDisplay,
 } from './logic.js';
 import {
+  LIST_STORED_INDEX_SCHEMA_FILE,
+  LIST_STORED_INDEX_TOOL_NAME,
   OPENCLAW_GITHUB_OWNER_ENVIRONMENT_VARIABLE,
   OPENCLAW_GITHUB_REPO_ENVIRONMENT_VARIABLE,
   OPENCLAW_STORAGE_ROOT_ENVIRONMENT_VARIABLE,
   OPENCLAW_TEST_MODE_ENVIRONMENT_VARIABLE,
   OPENCLAW_WORKTREE_ROOT_ENVIRONMENT_VARIABLE,
+  READ_STORED_INDEX_SCHEMA_FILE,
+  READ_STORED_INDEX_TOOL_NAME,
 } from './constants.js';
 import type { OpenDiscordThreadToolInput } from './codec.js';
 
@@ -1353,6 +1359,73 @@ export function createListStoredRecordsTool(): AnyAgentTool {
   return tool;
 }
 
+/** Creates the OpenClaw tool that reads a storage secondary index entry. */
+export function createReadStoredIndexTool(): AnyAgentTool {
+  const tool: AnyAgentTool = {
+    name: READ_STORED_INDEX_TOOL_NAME,
+    label: 'Read Stored Index',
+    description:
+      'Read a stored DevPlat secondary index entry from the file-backed storage layer.',
+    parameters: readSchema(READ_STORED_INDEX_SCHEMA_FILE),
+    async execute(_toolCallId: string, params: unknown) {
+      const decoded = decodeWithCodec(ReadStoredIndexToolInputCodec, params);
+      if (!decoded.ok) {
+        return createTextResult({ status: 'failed', error: decoded.error });
+      }
+
+      const result = await createDefaultFileStoreService().readIndex(
+        decoded.value.indexName,
+        decoded.value.key,
+      );
+      if (!result.ok) {
+        return createTextResult({
+          status: 'failed',
+          indexName: decoded.value.indexName,
+          key: decoded.value.key,
+          error: result.error,
+        });
+      }
+
+      return createTextResult({
+        status: 'ok',
+        indexName: decoded.value.indexName,
+        key: decoded.value.key,
+        entry: result.value,
+      });
+    },
+  };
+
+  return tool;
+}
+
+/** Creates the OpenClaw tool that lists storage secondary index keys. */
+export function createListStoredIndexTool(): AnyAgentTool {
+  const tool: AnyAgentTool = {
+    name: LIST_STORED_INDEX_TOOL_NAME,
+    label: 'List Stored Index',
+    description:
+      'List stored DevPlat secondary index keys from the file-backed storage layer.',
+    parameters: readSchema(LIST_STORED_INDEX_SCHEMA_FILE),
+    async execute(_toolCallId: string, params: unknown) {
+      const decoded = decodeWithCodec(ListStoredIndexToolInputCodec, params);
+      if (!decoded.ok) {
+        return createTextResult({ status: 'failed', error: decoded.error });
+      }
+
+      const keys = await createDefaultFileStoreService().listIndex(
+        decoded.value.indexName,
+      );
+      return createTextResult({
+        status: 'ok',
+        indexName: decoded.value.indexName,
+        keys,
+      });
+    },
+  };
+
+  return tool;
+}
+
 export function createStoreRecordTool(): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'store_record',
@@ -1778,6 +1851,8 @@ export function createDevplatOpenClawTools(): AnyAgentTool[] {
     createUpdateTaskTool(),
     createReadStoredRecordTool(),
     createListStoredRecordsTool(),
+    createReadStoredIndexTool(),
+    createListStoredIndexTool(),
     createStoreRecordTool(),
     createPullRequestRecordTool(),
     createSubmitPullRequestUpdateTool(),

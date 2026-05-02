@@ -1098,6 +1098,7 @@ export function createDeepScenario(runtimeEnv) {
           status: 'complete',
           trace: [],
           updatedAt: fixedTimestamp,
+          indexes: ['artifact'],
           payload: {
             artifactType: 'audit-log',
           },
@@ -1136,6 +1137,30 @@ export function createDeepScenario(runtimeEnv) {
       {
         status: 'ok',
         scope: 'memory',
+      },
+      'control',
+    ),
+    createStep(
+      'read_stored_index',
+      {
+        indexName: 'artifact',
+        key: 'storage-openclaw-artifact-1',
+      },
+      {
+        status: 'ok',
+        indexName: 'artifact',
+        key: 'storage-openclaw-artifact-1',
+      },
+      'control',
+    ),
+    createStep(
+      'list_stored_index',
+      {
+        indexName: 'artifact',
+      },
+      {
+        status: 'ok',
+        indexName: 'artifact',
       },
       'control',
     ),

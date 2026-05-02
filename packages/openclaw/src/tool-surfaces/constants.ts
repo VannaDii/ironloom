@@ -35,3 +35,25 @@ export const OPENCLAW_GITHUB_REPO_ENVIRONMENT_VARIABLE = 'GITHUB_REPO';
  * sensitive-name detection.
  */
 export const TOOL_PAYLOAD_KEY_IGNORED_CHARACTER_PATTERN = /[^a-z0-9]/giu;
+
+/**
+ * Tool name for reading a storage secondary index entry through the adapter.
+ */
+export const READ_STORED_INDEX_TOOL_NAME = 'read_stored_index';
+
+/**
+ * Tool name for listing storage secondary index keys through the adapter.
+ */
+export const LIST_STORED_INDEX_TOOL_NAME = 'list_stored_index';
+
+/**
+ * Generated schema file for the storage secondary index read tool.
+ */
+export const READ_STORED_INDEX_SCHEMA_FILE =
+  'tool-read-stored-index-params.schema.json';
+
+/**
+ * Generated schema file for the storage secondary index list tool.
+ */
+export const LIST_STORED_INDEX_SCHEMA_FILE =
+  'tool-list-stored-index-params.schema.json';

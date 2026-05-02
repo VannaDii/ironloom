@@ -26,10 +26,20 @@ const OPENCLAW_README_TOOL_LINE_PATTERN = /^- `([^`]+)`: /gmu;
 const OPENCLAW_DIRECT_REGISTRATION_PATTERN =
   /api\.registerTool\((create[A-Za-z0-9]+Tool)\(\)\);/gu;
 /**
- * Extracts exported OpenClaw tool factories and their tool names.
+ * Extracts exported OpenClaw tool factories and literal tool names.
  */
-const OPENCLAW_FACTORY_TOOL_NAME_PATTERN =
-  /export function (create[A-Za-z0-9]+Tool)[\s\S]*?name:\s*'([^']+)'/gu;
+const OPENCLAW_FACTORY_LITERAL_TOOL_NAME_PATTERN =
+  /export function (create[A-Za-z0-9]+Tool)(?:(?!\nexport function create[A-Za-z0-9]+Tool)[\s\S])*?name:\s*'([^']+)'/gu;
+/**
+ * Extracts exported OpenClaw tool factories and constant-backed tool names.
+ */
+const OPENCLAW_FACTORY_CONSTANT_TOOL_NAME_PATTERN =
+  /export function (create[A-Za-z0-9]+Tool)(?:(?!\nexport function create[A-Za-z0-9]+Tool)[\s\S])*?name:\s*([A-Z0-9_]+),/gu;
+/**
+ * Extracts string constants that can own shared OpenClaw tool vocabulary.
+ */
+const OPENCLAW_STRING_CONSTANT_PATTERN =
+  /export const ([A-Z0-9_]+) =\s*'([^']+)';/gu;
 /**
  * Detects use of the centralized OpenClaw tool inventory factory.
  */
@@ -93,6 +103,7 @@ export const REQUIRED_INSTRUCTION_FILES = [
   'site/guide-docs/guides/sonarcloud-integration.md',
   'packages/openclaw/README.md',
   'packages/openclaw/src/index.ts',
+  'packages/openclaw/src/tool-surfaces/constants.ts',
   'packages/openclaw/src/tool-surfaces/service.ts',
 ];
 
@@ -824,17 +835,22 @@ export async function getRegisteredOpenClawTools(rootDirectory) {
     resolve(rootDirectory, 'packages/openclaw/src/tool-surfaces/service.ts'),
     'utf8',
   );
+  const constantsText = await readFile(
+    resolve(rootDirectory, 'packages/openclaw/src/tool-surfaces/constants.ts'),
+    'utf8',
+  );
 
   const registeredFactories = getOpenClawRegisteredFactories({
     indexText,
     serviceText,
   });
 
-  const factoryToToolName = new Map(
-    [...serviceText.matchAll(OPENCLAW_FACTORY_TOOL_NAME_PATTERN)].map(
-      (match) => [match[1], match[2]],
-    ),
-  );
+  const factoryToToolName = new Map([
+    ...[
+      ...serviceText.matchAll(OPENCLAW_FACTORY_LITERAL_TOOL_NAME_PATTERN),
+    ].map((match) => [match[1], match[2]]),
+    ...resolveOpenClawConstantToolNames({ constantsText, serviceText }),
+  ]);
 
   const tools = new Set();
   for (const factoryName of registeredFactories) {
@@ -849,6 +865,30 @@ export async function getRegisteredOpenClawTools(rootDirectory) {
   }
 
   return tools;
+}
+
+/**
+ * Resolves factory tool names that are backed by package-owned constants.
+ */
+function resolveOpenClawConstantToolNames({ constantsText, serviceText }) {
+  const stringConstants = new Map(
+    [...constantsText.matchAll(OPENCLAW_STRING_CONSTANT_PATTERN)].map(
+      (match) => [match[1], match[2]],
+    ),
+  );
+
+  return [
+    ...serviceText.matchAll(OPENCLAW_FACTORY_CONSTANT_TOOL_NAME_PATTERN),
+  ].map((match) => {
+    const resolvedToolName = stringConstants.get(match[2]);
+    if (resolvedToolName === undefined) {
+      throw new Error(
+        `Could not resolve OpenClaw tool name constant ${match[2]} for factory ${match[1]}.`,
+      );
+    }
+
+    return [match[1], resolvedToolName];
+  });
 }
 
 /**

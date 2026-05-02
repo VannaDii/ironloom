@@ -11,8 +11,13 @@ import {
   createStoredRecordIndexEntry,
   describeStoredRecord,
 } from './logic.js';
-import { StoredRecordCodec } from './codec.js';
-import type { StoredRecord, StoreScope } from './codec.js';
+import { StoredRecordCodec, StoredRecordIndexEntryCodec } from './codec.js';
+import type {
+  StoredRecord,
+  StoredRecordIndexEntry,
+  StoreIndexName,
+  StoreScope,
+} from './codec.js';
 
 /**
  * File-backed implementation of the `.devplat` storage contract.
@@ -100,10 +105,57 @@ export class FileStoreService {
   }
 
   /**
+   * Reads a secondary index entry without exposing `.devplat/indexes` paths.
+   */
+  public async readIndex(
+    indexName: StoreIndexName,
+    key: string,
+  ): Promise<DevplatResult<StoredRecordIndexEntry>> {
+    try {
+      const filePath = resolve(
+        this.rootDirectory,
+        buildStorageIndexPath(indexName, key),
+      );
+      const raw = await readFile(filePath, 'utf8');
+      const parsed: unknown = JSON.parse(raw);
+      const decoded = decodeWithCodec(StoredRecordIndexEntryCodec, parsed);
+      if (!decoded.ok) {
+        return {
+          ok: false,
+          error: decoded.error,
+        };
+      }
+      return {
+        ok: true,
+        value: decoded.value,
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  /**
    * Lists JSON record keys for a storage scope.
    */
   public async list(scope: StoreScope): Promise<string[]> {
     const directory = resolve(this.rootDirectory, scope);
+    const entries = await readdir(directory, { withFileTypes: true }).catch(
+      () => [],
+    );
+    return entries
+      .filter((entry) => entry.isFile() && entry.name.endsWith('.json'))
+      .map((entry) => entry.name.replace(JSON_FILE_EXTENSION_PATTERN, ''))
+      .sort((left, right) => left.localeCompare(right));
+  }
+
+  /**
+   * Lists keys available under a secondary index.
+   */
+  public async listIndex(indexName: StoreIndexName): Promise<string[]> {
+    const directory = resolve(this.rootDirectory, 'indexes', indexName);
     const entries = await readdir(directory, { withFileTypes: true }).catch(
       () => [],
     );

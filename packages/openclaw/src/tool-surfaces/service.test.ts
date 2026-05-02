@@ -25,11 +25,13 @@ import {
   createRememberMemoryEntryTool,
   createRecordTelemetryEventTool,
   createReadStoredRecordTool,
+  createReadStoredIndexTool,
   createRebaseResultTool,
   createReviewFindingTool,
   createHandleDiscordApprovalTool,
   createHandleDiscordControlTool,
   createListStoredRecordsTool,
+  createListStoredIndexTool,
   createOpenDiscordThreadTool,
   createResolveRuntimeConfigTool,
   createPlanRebaseDependentsTool,
@@ -1932,6 +1934,174 @@ describe('tool surface service', () => {
     );
 
     expect(result.details).toMatchObject({ status: 'failed' });
+  });
+
+  describe('stored index tool inputs', () => {
+    const cases = [
+      {
+        name: 'reads and lists stored index entries from the configured storage root',
+        inputs: {
+          recordKey: 'indexed-openclaw-state-1',
+        },
+        mock: async () => {
+          const storageRoot = await mkdtemp(
+            join(tmpdir(), 'devplat-openclaw-index-env-'),
+          );
+          const previousStorageRoot = process.env['DEVPLAT_STORAGE_ROOT'];
+
+          return {
+            previousStorageRoot,
+            storageRoot,
+          };
+        },
+        assert: async (
+          context: {
+            previousStorageRoot: string | undefined;
+            storageRoot: string;
+          },
+          inputs: {
+            recordKey: string;
+          },
+        ) => {
+          try {
+            process.env['DEVPLAT_STORAGE_ROOT'] = `  ${context.storageRoot}  `;
+
+            await createStoreRecordTool().execute('tool-call-index-store-1', {
+              record: {
+                id: inputs.recordKey,
+                key: inputs.recordKey,
+                scope: 'state',
+                summary: 'Indexed OpenClaw state snapshot',
+                status: 'complete',
+                trace: [],
+                updatedAt: '2026-04-04T00:00:00.000Z',
+                indexes: ['task'],
+                payload: {
+                  state: 'complete',
+                },
+              },
+              actorId: 'operator-index-1',
+              privileged: false,
+            });
+            const readResult = await createReadStoredIndexTool().execute(
+              'tool-call-index-read-1',
+              {
+                indexName: 'task',
+                key: inputs.recordKey,
+              },
+            );
+            const listResult = await createListStoredIndexTool().execute(
+              'tool-call-index-list-1',
+              {
+                indexName: 'task',
+              },
+            );
+
+            expect(readResult.details).toMatchObject({
+              status: 'ok',
+              indexName: 'task',
+              key: inputs.recordKey,
+              entry: {
+                key: inputs.recordKey,
+                scope: 'state',
+              },
+            });
+            expect(listResult.details).toMatchObject({
+              status: 'ok',
+              indexName: 'task',
+              keys: [inputs.recordKey],
+            });
+          } finally {
+            if (context.previousStorageRoot === undefined) {
+              delete process.env['DEVPLAT_STORAGE_ROOT'];
+            } else {
+              process.env['DEVPLAT_STORAGE_ROOT'] = context.previousStorageRoot;
+            }
+            await rm(context.storageRoot, { force: true, recursive: true });
+          }
+        },
+      },
+      {
+        name: 'returns structured failures for missing stored index reads',
+        inputs: {
+          indexName: 'task',
+          key: 'missing-index-key',
+        },
+        mock: async () => {
+          const storageRoot = await mkdtemp(
+            join(tmpdir(), 'devplat-openclaw-index-missing-'),
+          );
+          const previousStorageRoot = process.env['DEVPLAT_STORAGE_ROOT'];
+
+          return {
+            previousStorageRoot,
+            storageRoot,
+          };
+        },
+        assert: async (
+          context: {
+            previousStorageRoot: string | undefined;
+            storageRoot: string;
+          },
+          inputs: {
+            indexName: 'task';
+            key: string;
+          },
+        ) => {
+          try {
+            process.env['DEVPLAT_STORAGE_ROOT'] = `  ${context.storageRoot}  `;
+
+            const result = await createReadStoredIndexTool().execute(
+              'tool-call-index-read-missing',
+              inputs,
+            );
+
+            expect(result.details).toMatchObject({
+              status: 'failed',
+              indexName: inputs.indexName,
+              key: inputs.key,
+            });
+          } finally {
+            if (context.previousStorageRoot === undefined) {
+              delete process.env['DEVPLAT_STORAGE_ROOT'];
+            } else {
+              process.env['DEVPLAT_STORAGE_ROOT'] = context.previousStorageRoot;
+            }
+            await rm(context.storageRoot, { force: true, recursive: true });
+          }
+        },
+      },
+      {
+        name: 'returns decode failures for invalid stored index tool inputs',
+        inputs: {
+          params: {},
+        },
+        mock: async () => ({
+          previousStorageRoot: undefined,
+          storageRoot: '',
+        }),
+        assert: async (_context, inputs: { params: object }) => {
+          const readResult = await createReadStoredIndexTool().execute(
+            'tool-call-index-read-invalid',
+            inputs.params,
+          );
+          const listResult = await createListStoredIndexTool().execute(
+            'tool-call-index-list-invalid',
+            inputs.params,
+          );
+
+          expect(readResult.details).toMatchObject({ status: 'failed' });
+          expect(listResult.details).toMatchObject({ status: 'failed' });
+        },
+      },
+    ];
+
+    it.each(cases)('$name', async (testCase) => {
+      expect.hasAssertions();
+      const context = await testCase.mock();
+
+      await testCase.assert(context, testCase.inputs);
+    });
   });
 
   it('creates task records from valid tool input', async () => {

@@ -9,6 +9,7 @@
 '@vannadii/devplat-policy': patch
 '@vannadii/devplat-prs': patch
 '@vannadii/devplat-remediation': patch
+'@vannadii/devplat-storage': patch
 '@vannadii/devplat-supervisor': patch
 ---
 
@@ -45,3 +46,5 @@ The unit-test governance check now also rejects ad hoc `for (const testCase of c
 Live-lab progress routing now uses an explicit phase switch and a named pull-request tool vocabulary for channel selection. The helper coverage exercises spec, audit, project-management, pull-request, and implementation fallback routing so Discord live-lab updates keep landing in the expected test-category channels.
 
 Command working-directory normalization now lives in `@vannadii/devplat-execution` with package-owned error constants and direct coverage for blank, nested relative, absolute, and repository-escaping cwd inputs. The OpenClaw command tool delegates to that execution-domain helper instead of carrying its own adapter-local cwd validation.
+
+Storage index entries can now be read and listed through `FileStoreService.readIndex()` and `FileStoreService.listIndex()`, keeping direct `.devplat/indexes` path knowledge inside `@vannadii/devplat-storage`. The OpenClaw adapter now exposes `read_stored_index` and `list_stored_index` tools that delegate to those storage APIs, fail closed on missing or invalid index entries, and cover sorted index listing for lifecycle lookup paths.

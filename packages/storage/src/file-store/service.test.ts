@@ -22,6 +22,14 @@ type FileStoreServiceInputs =
       records: StoredRecord<FileStorePayload>[];
     }
   | {
+      mode: 'index-lookup';
+      records: StoredRecord<FileStorePayload>[];
+    }
+  | {
+      mode: 'index-failure';
+      record: StoredRecord<FileStorePayload>;
+    }
+  | {
       mode: 'failure';
     }
   | {
@@ -154,6 +162,145 @@ describe('FileStoreService', () => {
         ).resolves.toMatchObject({
           ok: false,
         });
+      },
+    },
+    {
+      name: 'reads and lists secondary index entries without direct path access',
+      inputs: {
+        mode: 'index-lookup',
+        records: [
+          {
+            id: 'storage-index-b',
+            key: 'z-indexed-record',
+            scope: 'state',
+            summary: 'z indexed record',
+            status: 'complete',
+            trace: [],
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            indexes: ['task'],
+            payload: { state: 'z' },
+          },
+          {
+            id: 'storage-index-a',
+            key: 'a-indexed-record',
+            scope: 'state',
+            summary: 'a indexed record',
+            status: 'complete',
+            trace: [],
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            indexes: ['task'],
+            payload: { state: 'a' },
+          },
+        ],
+      },
+      mock: async () => {
+        const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-storage-'));
+
+        return {
+          rootDirectory,
+          service: new FileStoreService(rootDirectory),
+        };
+      },
+      assert: async (context, inputs) => {
+        if (inputs.mode !== 'index-lookup') {
+          throw new Error('expected index-lookup inputs');
+        }
+
+        await context.service.store(inputs.records[0]);
+        await context.service.store(inputs.records[1]);
+
+        const entry = await context.service.readIndex(
+          'task',
+          'a-indexed-record',
+        );
+
+        expect(entry).toMatchObject({
+          ok: true,
+          value: {
+            id: 'storage-index-a',
+            key: 'a-indexed-record',
+            scope: 'state',
+          },
+        });
+        expect(await context.service.listIndex('task')).toEqual([
+          'a-indexed-record',
+          'z-indexed-record',
+        ]);
+      },
+    },
+    {
+      name: 'fails closed for missing and invalid secondary index entries',
+      inputs: {
+        mode: 'index-failure',
+        record: {
+          id: 'storage-index-invalid',
+          key: 'invalid-index-record',
+          scope: 'state',
+          summary: 'Invalid index record',
+          status: 'failed',
+          trace: [],
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          indexes: ['task'],
+          payload: { state: 'failed' },
+        },
+      },
+      mock: async () => {
+        const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-storage-'));
+
+        return {
+          rootDirectory,
+          service: new FileStoreService(rootDirectory),
+        };
+      },
+      assert: async (context, inputs) => {
+        if (inputs.mode !== 'index-failure') {
+          throw new Error('expected index-failure inputs');
+        }
+
+        const missing = await context.service.readIndex('task', 'missing');
+        await context.service.store(inputs.record);
+        await writeFile(
+          resolve(
+            context.rootDirectory,
+            'indexes',
+            'task',
+            'invalid-index-record.json',
+          ),
+          JSON.stringify({ invalid: true }),
+          'utf8',
+        );
+        const invalid = await context.service.readIndex(
+          'task',
+          'invalid-index-record',
+        );
+        await writeFile(
+          resolve(
+            context.rootDirectory,
+            'indexes',
+            'task',
+            'string-error.json',
+          ),
+          JSON.stringify({
+            id: 'storage-index-string-error',
+            scope: 'state',
+            key: 'string-error',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+          }),
+          'utf8',
+        );
+        const parseSpy = vi.spyOn(JSON, 'parse').mockImplementationOnce(() => {
+          throw 'index boom';
+        });
+        const stringError = await context.service.readIndex(
+          'task',
+          'string-error',
+        );
+        parseSpy.mockRestore();
+
+        expect(missing.ok).toBe(false);
+        expect(invalid.ok).toBe(false);
+        expect(stringError).toEqual({ ok: false, error: 'index boom' });
+        expect(await context.service.listIndex('artifact')).toEqual([]);
       },
     },
     {
