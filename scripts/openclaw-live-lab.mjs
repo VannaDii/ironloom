@@ -30,7 +30,7 @@ const defaultSonarProjectTimeoutMs = 180_000;
 const defaultWorkflowTimeoutMs = 180_000;
 const defaultPollMs = 5_000;
 /**
- * Default window that keeps the private runtime online after success.
+ * Default window that keeps the private runtime online after operator controls are posted.
  */
 const defaultOperatorHoldMs = 150_000;
 const githubRepositoryListPageSize = 100;

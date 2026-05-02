@@ -37,7 +37,7 @@ entire analysis run to fail. If the local CLI is not authenticated, the helper
 reports verification as skipped with an explicit `sonar auth login` hint while
 CI remains the authoritative Sonar gate. The local pre-push gate always runs
 this helper; authenticate the CLI to make local changed-file verification
-enforcing before push. It derives the branch from the local checkout or GitHub
+enforced before push. It derives the branch from the local checkout or GitHub
 environment and defaults the project to `vannadii_devplat`. Pass `--base`,
 `--head`, `--project`, and `--branch` after `--` only when a local branch needs
 explicit comparison or SonarCloud context.
