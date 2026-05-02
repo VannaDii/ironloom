@@ -15,6 +15,10 @@ const defaultImageTagPrefix = 'devplat-openclaw-deep-test';
 const fixedTimestamp = '2026-04-04T00:00:00.000Z';
 const redactedValue = '[redacted]';
 /**
+ * Characters ignored while classifying snapshot keys for secret redaction.
+ */
+const snapshotKeyIgnoredCharacterPattern = /[^a-z0-9]/giu;
+/**
  * Worktree root used by the hermetic scenario and mirrored into the runtime.
  */
 const defaultWorktreeRoot = 'devplat-state/worktrees';
@@ -123,7 +127,9 @@ function createStep(tool, params, expected, phase) {
 }
 
 function isSensitiveKey(key) {
-  const normalized = key.replace(/[^a-z0-9]/gi, '').toLowerCase();
+  const normalized = key
+    .replace(snapshotKeyIgnoredCharacterPattern, '')
+    .toLowerCase();
 
   return (
     normalized === 'publickey' ||

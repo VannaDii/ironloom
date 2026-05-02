@@ -445,9 +445,19 @@ describe('openclaw-deep-test helpers', () => {
     },
     {
       name: 'renders an invocable script and redacts sensitive snapshot fields',
-      inputs: {},
+      inputs: {
+        sensitiveSnapshot: {
+          authToken: 'token-1',
+          'api-key': 'api-key-1',
+          db_password: 'password-1',
+          nested: {
+            publicKey: 'public-key-1',
+            notSensitive: 'kept',
+          },
+        },
+      },
       mock: async () => undefined,
-      assert: async () => {
+      assert: async (_context, inputs) => {
         const script = createInvokeScript({
           gatewayToken: 'gateway-token-1',
           request: {
@@ -455,21 +465,19 @@ describe('openclaw-deep-test helpers', () => {
             tool: 'list_stored_records',
           },
         });
-        const sanitized = sanitizeSnapshotForArtifacts({
-          authToken: 'token-1',
-          nested: {
-            publicKey: 'public-key-1',
-            value: 'kept',
-          },
-        });
+        const sanitized = sanitizeSnapshotForArtifacts(
+          inputs.sensitiveSnapshot,
+        );
 
         expect(script).toContain('(async () => {');
         expect(script).toContain('})().catch((error) => {');
         expect(sanitized).toEqual({
           authToken: '[redacted]',
+          'api-key': '[redacted]',
+          db_password: '[redacted]',
           nested: {
             publicKey: '[redacted]',
-            value: 'kept',
+            notSensitive: 'kept',
           },
         });
       },
