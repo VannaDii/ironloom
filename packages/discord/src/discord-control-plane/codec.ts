@@ -185,6 +185,7 @@ export const DiscordControlResultCodec = t.intersection([
     threadReceipt: DiscordResponseReceiptCodec,
     responsePayload: DiscordMessagePayloadCodec,
     threadPayload: DiscordMessagePayloadCodec,
+    responsePostError: t.string,
     threadPostError: t.string,
   }),
 ]);

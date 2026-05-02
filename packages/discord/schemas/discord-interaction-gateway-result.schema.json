@@ -355,6 +355,9 @@
                   "required": ["content"],
                   "additionalProperties": false
                 },
+                "responsePostError": {
+                  "type": "string"
+                },
                 "threadPostError": {
                   "type": "string"
                 }

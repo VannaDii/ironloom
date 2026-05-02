@@ -3,6 +3,8 @@ import { DecisionPolicyService } from '@vannadii/devplat-policy';
 import { FileStoreService } from '@vannadii/devplat-storage';
 
 import {
+  DISCORD_REST_SUCCESS_MAX_EXCLUSIVE_STATUS,
+  DISCORD_REST_SUCCESS_MIN_STATUS,
   DISCORD_INTERACTION_CHANNEL_MESSAGE_RESPONSE_TYPE,
   DISCORD_INTERACTION_DEFERRED_RESPONSE_TYPE,
 } from './constants.js';
@@ -86,6 +88,25 @@ function createDiscordRestMessageBody(
  */
 function describeDiscordTransportError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * Returns true when Discord accepted the REST request.
+ */
+function isDiscordRestSuccessStatus(statusCode: number): boolean {
+  return (
+    statusCode >= DISCORD_REST_SUCCESS_MIN_STATUS &&
+    statusCode < DISCORD_REST_SUCCESS_MAX_EXCLUSIVE_STATUS
+  );
+}
+
+/**
+ * Builds a stable diagnostic for rejected Discord interaction acknowledgements.
+ */
+function describeDiscordInteractionResponseRejection(
+  receipt: DiscordResponseReceipt,
+): string {
+  return `Discord interaction acknowledgement returned HTTP ${String(receipt.statusCode)}.`;
 }
 
 export class DiscordRestResponseTransport implements DiscordControlResponseTransport {
@@ -366,6 +387,49 @@ export class DiscordControlPlaneService {
     }
   }
 
+  /**
+   * Records an audit event when Discord rejects the initial acknowledgement.
+   */
+  private async recordInteractionResponseRejection(
+    request: DiscordControlRequest,
+    decision: DiscordControlActionDecision,
+    responseReceipt: DiscordResponseReceipt,
+  ): Promise<void> {
+    await this.telemetry.recordAudit({
+      auditId: `${request.id}:audit`,
+      runId: request.id,
+      eventId: request.id,
+      actorId: request.actorId,
+      action: request.action,
+      scope: 'discord',
+      outcome: 'blocked',
+      reason: describeDiscordInteractionResponseRejection(responseReceipt),
+      artifactIds:
+        request.workItem?.artifactId === undefined
+          ? []
+          : [request.workItem.artifactId],
+      recordedAt: request.updatedAt,
+      policyDecisionId: decision.id,
+      details:
+        request.workItem === undefined
+          ? {
+              threadId: request.threadId,
+              channelId: request.channelId,
+              resultStatus: 'response-rejected',
+              correlationId: request.id,
+              responseStatusCode: responseReceipt.statusCode,
+            }
+          : {
+              threadId: request.threadId,
+              channelId: request.channelId,
+              resultStatus: 'response-rejected',
+              correlationId: request.id,
+              responseStatusCode: responseReceipt.statusCode,
+              workItem: request.workItem,
+            },
+    });
+  }
+
   public async handleInteraction(
     input: DiscordOperatorInteraction,
   ): Promise<DiscordControlResult> {
@@ -434,6 +498,31 @@ export class DiscordControlPlaneService {
       input,
       responsePayload,
     );
+    if (!isDiscordRestSuccessStatus(responseReceipt.statusCode)) {
+      await this.recordInteractionResponseRejection(
+        request,
+        decision,
+        responseReceipt,
+      );
+      const result = {
+        request,
+        policyDecisionId: decision.id,
+        allowed: false,
+        persistedKey: request.id,
+        failedClosed: true,
+        responseReceipt,
+        responsePayload,
+        responsePostError:
+          describeDiscordInteractionResponseRejection(responseReceipt),
+      };
+
+      return request.workItem === undefined
+        ? result
+        : {
+            ...result,
+            workItem: request.workItem,
+          };
+    }
     const result = await this.persistAction(request, decision);
     const threadPostResult = await this.postThreadMessageAfterAcknowledgement(
       route.request.threadId,

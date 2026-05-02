@@ -115,6 +115,27 @@ function createThreadFailingResponseTransport(
   };
 }
 
+/**
+ * Creates a transport that returns a rejected interaction acknowledgement.
+ */
+function createAcknowledgementRejectingResponseTransport(): DiscordControlResponseTransport {
+  return {
+    async postInteractionResponse(input) {
+      return {
+        endpoint: `/interactions/${input.id}/${input.token}/callback`,
+        statusCode: 404,
+        responseBody: { message: 'Unknown interaction' },
+      };
+    },
+    async postInteractionDeferred(input) {
+      return createReceipt(`/interactions/${input.id}/${input.token}/callback`);
+    },
+    async postThreadMessage(threadId) {
+      return createReceipt(`/channels/${threadId}/messages`);
+    },
+  };
+}
+
 describe('DiscordControlPlaneService', () => {
   it('records thread-aware control actions with policy enforcement', async () => {
     const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
@@ -593,6 +614,142 @@ describe('DiscordControlPlaneService', () => {
     const context = await mock(inputs);
     await assert(context, inputs);
   });
+
+  const acknowledgementFailureCases = [
+    {
+      name: 'fails closed when Discord rejects the interaction acknowledgement',
+      inputs: {
+        interaction: {
+          id: 'interaction-ack-failure-001',
+          token: 'token-ack-failure-1',
+          actorId: 'user-ack-failure-1',
+          channelId: 'channel-ack-failure-1',
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          commandName: 'show status',
+          threadId: 'thread-ack-failure-1',
+        } satisfies DiscordOperatorInteraction,
+      },
+      mock: async () => {
+        const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+        const store = new FileStoreService(rootDirectory);
+        return {
+          store,
+          service: new DiscordControlPlaneService(
+            new DecisionPolicyService(),
+            new TelemetryEventService(store),
+            store,
+            createAcknowledgementRejectingResponseTransport(),
+          ),
+        };
+      },
+      assert: async (
+        context: {
+          store: FileStoreService;
+          service: DiscordControlPlaneService;
+        },
+        inputs: {
+          interaction: DiscordOperatorInteraction;
+        },
+      ) => {
+        const result = await context.service.handleInteraction(
+          inputs.interaction,
+        );
+
+        expect(result.allowed).toBe(false);
+        expect(result.failedClosed).toBe(true);
+        expect(result.responseReceipt?.statusCode).toBe(404);
+        expect(result.responsePostError).toBe(
+          'Discord interaction acknowledgement returned HTTP 404.',
+        );
+        expect(result.threadReceipt).toBeUndefined();
+        expect(await context.store.list('state')).not.toContain(
+          'interaction-ack-failure-001',
+        );
+        expect(await context.store.list('audit')).toContain(
+          'interaction-ack-failure-001:audit',
+        );
+      },
+    },
+    {
+      name: 'fails closed with work-item context when Discord rejects the interaction acknowledgement',
+      inputs: {
+        interaction: {
+          id: 'interaction-ack-failure-002',
+          token: 'token-ack-failure-2',
+          actorId: 'user-ack-failure-2',
+          channelId: 'channel-ack-failure-2',
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          commandName: 'show status',
+          boundSession: {
+            id: 'thread-session-ack-failure-2',
+            summary: 'Implementation session',
+            status: 'running',
+            trace: [],
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            guildId: 'guild-ack-failure-2',
+            channelId: 'thread-ack-failure-2',
+            parentChannelId: 'implementation-channel',
+            threadId: 'thread-ack-failure-2',
+            kind: 'implementation',
+            specId: 'spec-ack-failure-2',
+            sliceId: 'slice-ack-failure-2',
+            artifactId: 'artifact-ack-failure-2',
+          },
+        } satisfies DiscordOperatorInteraction,
+      },
+      mock: async () => {
+        const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+        const store = new FileStoreService(rootDirectory);
+        return {
+          store,
+          service: new DiscordControlPlaneService(
+            new DecisionPolicyService(),
+            new TelemetryEventService(store),
+            store,
+            createAcknowledgementRejectingResponseTransport(),
+          ),
+        };
+      },
+      assert: async (
+        context: {
+          store: FileStoreService;
+          service: DiscordControlPlaneService;
+        },
+        inputs: {
+          interaction: DiscordOperatorInteraction;
+        },
+      ) => {
+        const result = await context.service.handleInteraction(
+          inputs.interaction,
+        );
+
+        expect(result.allowed).toBe(false);
+        expect(result.failedClosed).toBe(true);
+        expect(result.workItem).toMatchObject({
+          artifactId: 'artifact-ack-failure-2',
+          threadKind: 'implementation',
+        });
+        expect(result.responseReceipt?.statusCode).toBe(404);
+        expect(result.responsePostError).toBe(
+          'Discord interaction acknowledgement returned HTTP 404.',
+        );
+        expect(await context.store.list('state')).not.toContain(
+          'interaction-ack-failure-002',
+        );
+        expect(await context.store.list('audit')).toContain(
+          'interaction-ack-failure-002:audit',
+        );
+      },
+    },
+  ];
+
+  it.each(acknowledgementFailureCases)(
+    '$name',
+    async ({ inputs, mock, assert }) => {
+      const context = await mock();
+      await assert(context, inputs);
+    },
+  );
 
   it('fails closed and responds when Discord thread binding is ambiguous', async () => {
     const cases = [

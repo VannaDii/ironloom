@@ -103,6 +103,34 @@ describe('discord control request codec', () => {
             },
             threadPostError: 'thread message rejected',
           },
+          {
+            request: {
+              id: 'control-result-2',
+              summary: 'Show status.',
+              status: 'blocked',
+              trace: [],
+              updatedAt: '2026-04-04T00:00:00.000Z',
+              actorId: 'operator-2',
+              threadId: 'thread-2',
+              channelId: 'channel-2',
+              action: 'show-status',
+              privileged: false,
+            },
+            policyDecisionId: 'discord-response-rejected',
+            allowed: false,
+            persistedKey: 'control-result-2',
+            failedClosed: true,
+            responseReceipt: {
+              endpoint: '/interactions/control-result-2/token/callback',
+              statusCode: 404,
+              responseBody: { message: 'Unknown interaction' },
+            },
+            responsePayload: {
+              content: 'blocked',
+            },
+            responsePostError:
+              'Discord interaction acknowledgement returned HTTP 404.',
+          },
         ],
       },
       mock: async ({ values }) =>

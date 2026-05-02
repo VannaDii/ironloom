@@ -57,3 +57,13 @@ export const DISCORD_CUSTOM_ID_MAX_LENGTH = 100;
  * Versioned prefix for DevPlat component custom ids.
  */
 export const DISCORD_COMPONENT_CUSTOM_ID_PREFIX = 'devplat:v1';
+
+/**
+ * Inclusive lower bound for successful Discord REST response status codes.
+ */
+export const DISCORD_REST_SUCCESS_MIN_STATUS = 200;
+
+/**
+ * Exclusive upper bound for successful Discord REST response status codes.
+ */
+export const DISCORD_REST_SUCCESS_MAX_EXCLUSIVE_STATUS = 300;
