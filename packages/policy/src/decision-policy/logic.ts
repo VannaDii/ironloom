@@ -9,6 +9,14 @@ import type {
   PolicyRiskLevel,
 } from './codec.js';
 import {
+  POLICY_ACTION_CATEGORY_AUTOFIX,
+  POLICY_ACTION_CATEGORY_COMMAND_EXECUTION,
+  POLICY_ACTION_CATEGORY_DESTRUCTIVE_CLEANUP,
+  POLICY_ACTION_CATEGORY_MERGE,
+  POLICY_ACTION_CATEGORY_PUBLISH,
+  POLICY_ACTION_CATEGORY_REBASE,
+  POLICY_ACTION_CATEGORY_ROUTINE,
+  POLICY_ACTION_CATEGORY_WORKTREE_RELEASE,
   POLICY_AUTOFIX_ACTIONS,
   POLICY_COMMAND_EXECUTION_ACTIONS,
   POLICY_DESTRUCTIVE_ACTIONS,
@@ -101,34 +109,34 @@ export function evaluateLifecyclePolicyAction(
 
 function resolveActionCategory(action: string): PolicyActionCategory {
   if (POLICY_MERGE_ACTIONS.includes(action)) {
-    return 'merge';
+    return POLICY_ACTION_CATEGORY_MERGE;
   }
 
   if (POLICY_COMMAND_EXECUTION_ACTIONS.includes(action)) {
-    return 'command-execution';
+    return POLICY_ACTION_CATEGORY_COMMAND_EXECUTION;
   }
 
   if (POLICY_DESTRUCTIVE_ACTIONS.includes(action)) {
-    return 'worktree-release';
+    return POLICY_ACTION_CATEGORY_WORKTREE_RELEASE;
   }
 
   if (POLICY_REBASE_ACTIONS.includes(action)) {
-    return 'rebase';
+    return POLICY_ACTION_CATEGORY_REBASE;
   }
 
   if (POLICY_EXTERNAL_PUBLISH_ACTIONS.includes(action)) {
-    return 'publish';
+    return POLICY_ACTION_CATEGORY_PUBLISH;
   }
 
   if (POLICY_AUTOFIX_ACTIONS.includes(action)) {
-    return 'autofix';
+    return POLICY_ACTION_CATEGORY_AUTOFIX;
   }
 
   if (POLICY_DESTRUCTIVE_CLEANUP_ACTIONS.includes(action)) {
-    return 'destructive-cleanup';
+    return POLICY_ACTION_CATEGORY_DESTRUCTIVE_CLEANUP;
   }
 
-  return 'routine';
+  return POLICY_ACTION_CATEGORY_ROUTINE;
 }
 
 function resolveRiskLevel(
@@ -136,20 +144,23 @@ function resolveRiskLevel(
   privileged: boolean,
 ): PolicyRiskLevel {
   if (
-    actionCategory === 'worktree-release' ||
-    actionCategory === 'destructive-cleanup'
+    actionCategory === POLICY_ACTION_CATEGORY_WORKTREE_RELEASE ||
+    actionCategory === POLICY_ACTION_CATEGORY_DESTRUCTIVE_CLEANUP
   ) {
     return 'critical';
   }
 
-  if (actionCategory === 'merge' || actionCategory === 'publish') {
+  if (
+    actionCategory === POLICY_ACTION_CATEGORY_MERGE ||
+    actionCategory === POLICY_ACTION_CATEGORY_PUBLISH
+  ) {
     return 'high';
   }
 
   if (
     privileged ||
-    actionCategory === 'rebase' ||
-    actionCategory === 'autofix'
+    actionCategory === POLICY_ACTION_CATEGORY_REBASE ||
+    actionCategory === POLICY_ACTION_CATEGORY_AUTOFIX
   ) {
     return 'medium';
   }
@@ -165,12 +176,12 @@ function resolveRequiresApproval(
   return (
     privileged ||
     POLICY_SENSITIVE_ACTIONS.includes(action) ||
-    actionCategory === 'merge' ||
-    actionCategory === 'worktree-release' ||
-    actionCategory === 'rebase' ||
-    actionCategory === 'publish' ||
-    actionCategory === 'autofix' ||
-    actionCategory === 'destructive-cleanup'
+    actionCategory === POLICY_ACTION_CATEGORY_MERGE ||
+    actionCategory === POLICY_ACTION_CATEGORY_WORKTREE_RELEASE ||
+    actionCategory === POLICY_ACTION_CATEGORY_REBASE ||
+    actionCategory === POLICY_ACTION_CATEGORY_PUBLISH ||
+    actionCategory === POLICY_ACTION_CATEGORY_AUTOFIX ||
+    actionCategory === POLICY_ACTION_CATEGORY_DESTRUCTIVE_CLEANUP
   );
 }
 
@@ -179,13 +190,13 @@ function resolvePrivilegeLevel(
   requiresApproval: boolean,
 ): PolicyPrivilegeLevel {
   if (
-    actionCategory === 'worktree-release' ||
-    actionCategory === 'destructive-cleanup'
+    actionCategory === POLICY_ACTION_CATEGORY_WORKTREE_RELEASE ||
+    actionCategory === POLICY_ACTION_CATEGORY_DESTRUCTIVE_CLEANUP
   ) {
     return 'destructive';
   }
 
-  if (actionCategory === 'publish') {
+  if (actionCategory === POLICY_ACTION_CATEGORY_PUBLISH) {
     return 'external-publish';
   }
 
@@ -204,7 +215,7 @@ function resolveEscalationTarget(
     return 'maintainer';
   }
 
-  if (actionCategory === 'publish') {
+  if (actionCategory === POLICY_ACTION_CATEGORY_PUBLISH) {
     return 'release-manager';
   }
 
@@ -220,27 +231,27 @@ function resolveNextAction(
   allowed: boolean,
 ): string {
   if (allowed) {
-    return actionCategory === 'command-execution'
+    return actionCategory === POLICY_ACTION_CATEGORY_COMMAND_EXECUTION
       ? 'execute-with-audit'
       : 'continue';
   }
 
   switch (actionCategory) {
-    case 'merge':
+    case POLICY_ACTION_CATEGORY_MERGE:
       return 'request-merge-approval';
-    case 'command-execution':
+    case POLICY_ACTION_CATEGORY_COMMAND_EXECUTION:
       return 'request-command-approval';
-    case 'worktree-release':
+    case POLICY_ACTION_CATEGORY_WORKTREE_RELEASE:
       return 'request-destructive-approval';
-    case 'rebase':
+    case POLICY_ACTION_CATEGORY_REBASE:
       return 'request-rebase-approval';
-    case 'publish':
+    case POLICY_ACTION_CATEGORY_PUBLISH:
       return 'request-publish-approval';
-    case 'autofix':
+    case POLICY_ACTION_CATEGORY_AUTOFIX:
       return 'request-autofix-approval';
-    case 'destructive-cleanup':
+    case POLICY_ACTION_CATEGORY_DESTRUCTIVE_CLEANUP:
       return 'request-destructive-approval';
-    case 'routine':
+    case POLICY_ACTION_CATEGORY_ROUTINE:
       return 'continue';
   }
 }

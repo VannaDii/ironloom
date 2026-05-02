@@ -54,6 +54,7 @@ Use the root `PLATFORM.md` file as the authoritative foundation-scope document. 
 - `npm run check:instructions`
 - `npm run check:naming`
 - `npm run check:policy-boundaries`
+- `npm run check:constants`
 - `npm run check:repo`
 
 ## Instruction Taxonomy
@@ -86,7 +87,7 @@ Use the root `PLATFORM.md` file as the authoritative foundation-scope document. 
 - keep pull request titles in conventional commit format
 - keep pull request bodies aligned with `.github/pull_request_template.md` and fill every section with concrete change details
 - keep tests in structured `const cases = [...]` tables where each case provides `inputs`, `mock`, and `assert`, then exercises a single `it.each(cases)('$name', ...)` implementation per suite; `npm run check:unit-tests` enforces the baseline case-table fields for `.test.ts`, `.test.mts`, and `.test.mjs` files
-- keep constants in package-local `constants.ts` files, promote cross-package constants into `@vannadii/devplat-core`, and test every regular-expression constant with matching and non-matching edge cases
+- keep constants in package-local `constants.ts` files, promote cross-package constants into `@vannadii/devplat-core`, rely on `npm run check:constants` to reject duplicated shared lifecycle action literals in authored package source, and test every regular-expression constant with matching and non-matching edge cases
 - keep JSDoc on authored constants, helpers, codecs, functions, classes, and public types so internal maintainers and API users can read the same intent at the symbol boundary
 - document release, rollback, and performance impact when a change touches those surfaces
 

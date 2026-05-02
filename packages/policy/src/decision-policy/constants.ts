@@ -22,6 +22,47 @@ import {
 } from '@vannadii/devplat-core';
 
 /**
+ * Policy category for pull-request merge actions.
+ */
+export const POLICY_ACTION_CATEGORY_MERGE = 'merge';
+
+/**
+ * Policy category for local command execution actions.
+ */
+export const POLICY_ACTION_CATEGORY_COMMAND_EXECUTION = 'command-execution';
+
+/**
+ * Policy category for worktree release actions.
+ */
+export const POLICY_ACTION_CATEGORY_WORKTREE_RELEASE = 'worktree-release';
+
+/**
+ * Policy category for branch rebase actions.
+ */
+export const POLICY_ACTION_CATEGORY_REBASE = 'rebase';
+
+/**
+ * Policy category for release publication actions.
+ */
+export const POLICY_ACTION_CATEGORY_PUBLISH = DEVPLAT_ACTION_PUBLISH;
+
+/**
+ * Policy category for autofix actions.
+ */
+export const POLICY_ACTION_CATEGORY_AUTOFIX = DEVPLAT_ACTION_AUTOFIX;
+
+/**
+ * Policy category for destructive cleanup actions.
+ */
+export const POLICY_ACTION_CATEGORY_DESTRUCTIVE_CLEANUP =
+  DEVPLAT_ACTION_DESTRUCTIVE_CLEANUP;
+
+/**
+ * Policy category for routine actions.
+ */
+export const POLICY_ACTION_CATEGORY_ROUTINE = 'routine';
+
+/**
  * Lifecycle actions that are sensitive even when not otherwise privileged.
  */
 export const POLICY_SENSITIVE_ACTIONS: readonly string[] = [

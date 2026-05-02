@@ -4,7 +4,10 @@ Downstream branch coordination contracts.
 
 ## Responsibility
 
-This package owns branch dependency planning and rebase execution result modeling after pull request merges. It coordinates with worktree synchronization rather than implementing GitHub review or merge behavior directly.
+This package owns branch dependency planning, branch-conflict next-action
+constants, and rebase execution result modeling after pull request merges. It
+coordinates with worktree synchronization rather than implementing GitHub review
+or merge behavior directly.
 
 ## Real-World Flow
 

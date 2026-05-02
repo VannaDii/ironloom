@@ -1,3 +1,5 @@
+import { DEVPLAT_ACTION_AUTOFIX } from '@vannadii/devplat-core';
+
 import type { SupervisorPhase } from './codec.js';
 
 /**
@@ -40,7 +42,7 @@ export const SUPERVISOR_PHASE_ACTION_KEYWORDS = {
   implementation: [],
   gates: ['gate'],
   review: ['review'],
-  remediation: ['remediation', 'autofix'],
+  remediation: ['remediation', DEVPLAT_ACTION_AUTOFIX],
   merge: ['merge'],
   continuation: ['continue', 'rebase'],
 } satisfies Readonly<Record<SupervisorPhase, readonly string[]>>;
