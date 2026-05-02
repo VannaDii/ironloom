@@ -449,7 +449,7 @@ describe('openclaw-deep-test helpers', () => {
         sensitiveSnapshot: {
           authToken: 'token-1',
           'api-key': 'api-key-1',
-          db_password: 'password-1',
+          db_secret: 'credential-fixture-1',
           nested: {
             publicKey: 'public-key-1',
             notSensitive: 'kept',
@@ -474,7 +474,7 @@ describe('openclaw-deep-test helpers', () => {
         expect(sanitized).toEqual({
           authToken: '[redacted]',
           'api-key': '[redacted]',
-          db_password: '[redacted]',
+          db_secret: '[redacted]',
           nested: {
             publicKey: '[redacted]',
             notSensitive: 'kept',
