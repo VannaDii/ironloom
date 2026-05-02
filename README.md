@@ -146,9 +146,12 @@ secret values redacted. The live container explicitly starts the private
 Discord Gateway worker and points `DEVPLAT_STORAGE_ROOT` at the mounted
 `.devplat` state directory so real sandbox-guild slash commands and button
 clicks are acknowledged through the same thread binding store used by OpenClaw
-tool execution. Valid operator interactions are acknowledged before state,
-telemetry, and audit persistence begins, then the bound thread receives the same
-structured status payload after the control result is durable. If Discord
+tool execution. OpenClaw storage, telemetry, and memory tools also honor that
+configured storage root, so tool-driven artifacts and Discord interaction state
+stay in the same repository-scoped store. Valid operator interactions are
+acknowledged before state, telemetry, and audit persistence begins, then the
+bound thread receives the same structured status payload after the control
+result is durable. If Discord
 rejects the initial acknowledgement, the acknowledgement transport throws, or a
 route-refusal acknowledgement is rejected, DevPlat fails the action closed,
 writes an audit event, and reports `responsePostError` without lifecycle state

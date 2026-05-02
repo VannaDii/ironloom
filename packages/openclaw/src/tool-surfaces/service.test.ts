@@ -3,6 +3,8 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { FileStoreService } from '@vannadii/devplat-storage';
+
 import {
   createApproveSpecRecordTool,
   createAllocateWorktreeTool,
@@ -1950,6 +1952,208 @@ describe('tool surface service', () => {
 
     expect(result.details).toMatchObject({ status: 'failed' });
   });
+
+  const environmentStorageToolCases = [
+    {
+      name: 'stores reads and lists records under the configured storage root',
+      inputs: {
+        recordKey: 'storage-openclaw-env-1',
+      },
+      mock: async () => {
+        const storageRoot = await mkdtemp(
+          join(tmpdir(), 'devplat-openclaw-storage-env-'),
+        );
+        const previousStorageRoot = process.env['DEVPLAT_STORAGE_ROOT'];
+
+        return {
+          previousStorageRoot,
+          storageRoot,
+        };
+      },
+      assert: async (
+        context: {
+          previousStorageRoot: string | undefined;
+          storageRoot: string;
+        },
+        inputs: {
+          recordKey: string;
+        },
+      ) => {
+        try {
+          process.env['DEVPLAT_STORAGE_ROOT'] = context.storageRoot;
+
+          await createStoreRecordTool().execute('tool-call-storage-env-1', {
+            record: {
+              id: inputs.recordKey,
+              key: inputs.recordKey,
+              scope: 'state',
+              summary: 'Environment-root state snapshot',
+              status: 'complete',
+              trace: [],
+              updatedAt: '2026-04-04T00:00:00.000Z',
+              payload: {
+                state: 'complete',
+              },
+            },
+            actorId: 'operator-env-1',
+            privileged: false,
+          });
+          const listResult = await createListStoredRecordsTool().execute(
+            'tool-call-storage-env-2',
+            {
+              scope: 'state',
+            },
+          );
+          const readResult = await createReadStoredRecordTool().execute(
+            'tool-call-storage-env-3',
+            {
+              scope: 'state',
+              key: inputs.recordKey,
+            },
+          );
+          const envStore = new FileStoreService(context.storageRoot);
+          const envRecord = await envStore.read('state', inputs.recordKey);
+
+          expect(listResult.details).toMatchObject({
+            status: 'ok',
+            keys: [inputs.recordKey],
+          });
+          expect(readResult.details).toMatchObject({
+            status: 'ok',
+            record: {
+              key: inputs.recordKey,
+            },
+          });
+          expect(envRecord.ok).toBe(true);
+        } finally {
+          if (context.previousStorageRoot === undefined) {
+            delete process.env['DEVPLAT_STORAGE_ROOT'];
+          } else {
+            process.env['DEVPLAT_STORAGE_ROOT'] = context.previousStorageRoot;
+          }
+          await rm(context.storageRoot, { force: true, recursive: true });
+        }
+      },
+    },
+    {
+      name: 'records telemetry under the configured storage root',
+      inputs: {
+        eventId: 'telemetry-openclaw-env-1',
+      },
+      mock: async () => {
+        const storageRoot = await mkdtemp(
+          join(tmpdir(), 'devplat-openclaw-telemetry-env-'),
+        );
+        const previousStorageRoot = process.env['DEVPLAT_STORAGE_ROOT'];
+
+        return {
+          previousStorageRoot,
+          storageRoot,
+        };
+      },
+      assert: async (
+        context: {
+          previousStorageRoot: string | undefined;
+          storageRoot: string;
+        },
+        inputs: {
+          eventId: string;
+        },
+      ) => {
+        try {
+          process.env['DEVPLAT_STORAGE_ROOT'] = context.storageRoot;
+
+          await createRecordTelemetryEventTool().execute(
+            'tool-call-telemetry-env-1',
+            {
+              id: inputs.eventId,
+              summary: 'OpenClaw telemetry uses env storage',
+              status: 'complete',
+              trace: [],
+              updatedAt: '2026-04-04T00:00:00.000Z',
+              actorId: 'operator-env-2',
+              action: 'show-status',
+              scope: 'discord',
+              details: {
+                threadId: 'thread-env-2',
+              },
+            },
+          );
+          const envStore = new FileStoreService(context.storageRoot);
+
+          expect(await envStore.list('telemetry')).toEqual([inputs.eventId]);
+        } finally {
+          if (context.previousStorageRoot === undefined) {
+            delete process.env['DEVPLAT_STORAGE_ROOT'];
+          } else {
+            process.env['DEVPLAT_STORAGE_ROOT'] = context.previousStorageRoot;
+          }
+          await rm(context.storageRoot, { force: true, recursive: true });
+        }
+      },
+    },
+    {
+      name: 'remembers memory entries under the configured storage root',
+      inputs: {
+        memoryId: 'memory-openclaw-env-1',
+      },
+      mock: async () => {
+        const storageRoot = await mkdtemp(
+          join(tmpdir(), 'devplat-openclaw-memory-env-'),
+        );
+        const previousStorageRoot = process.env['DEVPLAT_STORAGE_ROOT'];
+
+        return {
+          previousStorageRoot,
+          storageRoot,
+        };
+      },
+      assert: async (
+        context: {
+          previousStorageRoot: string | undefined;
+          storageRoot: string;
+        },
+        inputs: {
+          memoryId: string;
+        },
+      ) => {
+        try {
+          process.env['DEVPLAT_STORAGE_ROOT'] = context.storageRoot;
+
+          await createRememberMemoryEntryTool().execute(
+            'tool-call-memory-env-1',
+            {
+              memoryId: inputs.memoryId,
+              subject: 'OpenClaw storage-root memory',
+              kind: 'decision',
+              detail: 'Use the configured storage root.',
+              tags: ['DEVPLAT_STORAGE_ROOT'],
+              status: 'active',
+              updatedAt: '2026-04-04T00:00:00.000Z',
+            },
+          );
+          const envStore = new FileStoreService(context.storageRoot);
+
+          expect(await envStore.list('memory')).toEqual([inputs.memoryId]);
+        } finally {
+          if (context.previousStorageRoot === undefined) {
+            delete process.env['DEVPLAT_STORAGE_ROOT'];
+          } else {
+            process.env['DEVPLAT_STORAGE_ROOT'] = context.previousStorageRoot;
+          }
+          await rm(context.storageRoot, { force: true, recursive: true });
+        }
+      },
+    },
+  ];
+
+  it.each(environmentStorageToolCases)(
+    '$name',
+    async ({ inputs, mock, assert }) => {
+      const context = await mock();
+      await assert(context, inputs);
+    },
+  );
 
   it('stores records from valid tool input when policy allows it', async () => {
     const result = await createStoreRecordTool().execute('tool-call-ss1', {

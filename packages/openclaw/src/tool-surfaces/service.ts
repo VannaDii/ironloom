@@ -166,6 +166,16 @@ function createLoopbackDiscordResponseTransport(): DiscordControlResponseTranspo
   return new DiscordLoopbackResponseTransport();
 }
 
+/**
+ * Creates the file store for OpenClaw-invoked persistence tools.
+ */
+function createDefaultFileStoreService(): FileStoreService {
+  const storageRoot = process.env['DEVPLAT_STORAGE_ROOT'];
+  return storageRoot === undefined || storageRoot.trim().length === 0
+    ? new FileStoreService()
+    : new FileStoreService(storageRoot);
+}
+
 function createDefaultDiscordControlPlaneService(): DiscordControlPlaneService {
   const storageRoot = process.env['DEVPLAT_STORAGE_ROOT'];
   const testMode = process.env['DEVPLAT_TEST_MODE']?.trim();
@@ -180,7 +190,7 @@ function createDefaultDiscordControlPlaneService(): DiscordControlPlaneService {
       ? undefined
       : createLoopbackDiscordResponseTransport();
 
-  if (store !== undefined || transport !== undefined) {
+  if (telemetry !== undefined || transport !== undefined) {
     return new DiscordControlPlaneService(
       undefined,
       telemetry,
@@ -643,7 +653,8 @@ export function createExecuteCommandTool(
   const decisionPolicyService =
     dependencies.decisionPolicyService ?? new DecisionPolicyService();
   const telemetryEventService =
-    dependencies.telemetryEventService ?? new TelemetryEventService();
+    dependencies.telemetryEventService ??
+    new TelemetryEventService(createDefaultFileStoreService());
 
   const tool: AnyAgentTool = {
     name: 'execute_command',
@@ -1084,7 +1095,9 @@ export function createRememberMemoryEntryTool(): AnyAgentTool {
         return createTextResult({ status: 'failed', error: decoded.error });
       }
 
-      const entry = await new MemoryEntryService().execute(decoded.value);
+      const entry = await new MemoryEntryService(
+        createDefaultFileStoreService(),
+      ).execute(decoded.value);
       return createTextResult(entry);
     },
   };
@@ -1137,7 +1150,9 @@ export function createRecordTelemetryEventTool(): AnyAgentTool {
         return createTextResult({ status: 'failed', error: decoded.error });
       }
 
-      const event = await new TelemetryEventService().execute(decoded.value);
+      const event = await new TelemetryEventService(
+        createDefaultFileStoreService(),
+      ).execute(decoded.value);
       return createTextResult(event);
     },
   };
@@ -1181,7 +1196,7 @@ export function createReadStoredRecordTool(): AnyAgentTool {
         return createTextResult({ status: 'failed', error: decoded.error });
       }
 
-      const result = await new FileStoreService().read(
+      const result = await createDefaultFileStoreService().read(
         decoded.value.scope,
         decoded.value.key,
       );
@@ -1219,7 +1234,9 @@ export function createListStoredRecordsTool(): AnyAgentTool {
         return createTextResult({ status: 'failed', error: decoded.error });
       }
 
-      const keys = await new FileStoreService().list(decoded.value.scope);
+      const keys = await createDefaultFileStoreService().list(
+        decoded.value.scope,
+      );
       return createTextResult({
         status: 'ok',
         scope: decoded.value.scope,
@@ -1251,21 +1268,23 @@ export function createStoreRecordTool(): AnyAgentTool {
       );
 
       if (!policy.allowed) {
-        await new TelemetryEventService().record({
-          id: `telemetry:store-record:${String(Date.now())}`,
-          summary: `Blocked record storage for ${request.record.scope}/${request.record.key}`,
-          status: 'blocked',
-          trace: ['openclaw:store-record'],
-          updatedAt: new Date().toISOString(),
-          actorId: request.actorId,
-          action: 'store-record',
-          scope: 'storage',
-          details: {
-            scope: request.record.scope,
-            key: request.record.key,
-            blocked: true,
+        await new TelemetryEventService(createDefaultFileStoreService()).record(
+          {
+            id: `telemetry:store-record:${String(Date.now())}`,
+            summary: `Blocked record storage for ${request.record.scope}/${request.record.key}`,
+            status: 'blocked',
+            trace: ['openclaw:store-record'],
+            updatedAt: new Date().toISOString(),
+            actorId: request.actorId,
+            action: 'store-record',
+            scope: 'storage',
+            details: {
+              scope: request.record.scope,
+              key: request.record.key,
+              blocked: true,
+            },
           },
-        });
+        );
         return createTextResult({
           allowed: false,
           policyDecisionId: policy.id,
@@ -1274,8 +1293,9 @@ export function createStoreRecordTool(): AnyAgentTool {
         });
       }
 
-      const record = await new FileStoreService().store(request.record);
-      await new TelemetryEventService().record({
+      const store = createDefaultFileStoreService();
+      const record = await store.store(request.record);
+      await new TelemetryEventService(store).record({
         id: `telemetry:store-record:${String(Date.now())}`,
         summary: `Stored record ${record.scope}/${record.key}`,
         status: 'approved',

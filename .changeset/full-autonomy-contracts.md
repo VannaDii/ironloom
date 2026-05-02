@@ -30,7 +30,7 @@ Add the first full-autonomy contract slices:
 - richer spec revision rendering, slice dependency graphs, PR-sized work packets, gate classifications, remediation handoff hooks, command retry/truncation metadata, review/remediation-aware PR projections, review conformance summaries, and remediation results
 - Sonar issue normalization and review-finding projection, supervisor phase routing with blocker-aware route plans, observability audit records, and run metrics
 - real Discord command contracts, raw Discord interaction callback normalization, signature-verified Discord interaction webhook handling, real Discord interaction response routing, and bound Discord work-item projection
-- OpenClaw Discord control handling for normalized requests and operator interaction callbacks
+- OpenClaw Discord control handling for normalized requests and operator interaction callbacks, plus OpenClaw storage, memory, and telemetry tools that honor `DEVPLAT_STORAGE_ROOT`
 - hermetic OpenClaw deep-test validation of callback-shaped Discord interactions through loopback response receipts
 - live-lab Discord command registration and callback-shaped interaction probing with required callback/thread receipts
 - Helm chart values for enabling the private outbound Discord Gateway worker without public webhook ingress
