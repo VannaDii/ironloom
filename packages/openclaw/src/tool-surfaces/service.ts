@@ -103,6 +103,7 @@ import {
   OPENCLAW_GITHUB_REPO_ENVIRONMENT_VARIABLE,
   OPENCLAW_STORAGE_ROOT_ENVIRONMENT_VARIABLE,
   OPENCLAW_TEST_MODE_ENVIRONMENT_VARIABLE,
+  OPENCLAW_WORKTREE_ROOT_ENVIRONMENT_VARIABLE,
 } from './constants.js';
 import type { OpenDiscordThreadToolInput } from './codec.js';
 
@@ -184,6 +185,18 @@ function resolveConfiguredStorageRoot(): string | undefined {
 }
 
 /**
+ * Resolves the optional worktree root from the runtime environment.
+ */
+function resolveConfiguredWorktreeRoot(): string | undefined {
+  const worktreeRoot =
+    process.env[OPENCLAW_WORKTREE_ROOT_ENVIRONMENT_VARIABLE]?.trim();
+
+  return worktreeRoot === undefined || worktreeRoot.length === 0
+    ? undefined
+    : worktreeRoot;
+}
+
+/**
  * Resolves the optional repository identity from the runtime environment.
  */
 function resolveConfiguredRepositoryFullName(): string | undefined {
@@ -213,6 +226,24 @@ function createDefaultFileStoreService(): FileStoreService {
  */
 function createDefaultTelemetryEventService(): TelemetryEventService {
   return new TelemetryEventService(createDefaultFileStoreService());
+}
+
+/**
+ * Creates worktree allocation with the configured runtime worktree root.
+ */
+function createDefaultWorktreeAllocationService(): WorktreeAllocationService {
+  const worktreeRoot = resolveConfiguredWorktreeRoot();
+
+  return worktreeRoot === undefined
+    ? new WorktreeAllocationService()
+    : new WorktreeAllocationService(undefined, undefined, worktreeRoot);
+}
+
+/**
+ * Creates dependent rebase orchestration with the configured worktree root.
+ */
+function createDefaultRebaseDependentsService(): RebaseDependentsService {
+  return new RebaseDependentsService(createDefaultWorktreeAllocationService());
 }
 
 /**
@@ -881,7 +912,7 @@ export function createAllocateWorktreeTool(): AnyAgentTool {
         );
       }
 
-      const allocation = new WorktreeAllocationService().allocate(
+      const allocation = createDefaultWorktreeAllocationService().allocate(
         decoded.value.taskId,
         decoded.value.branchName,
       );
@@ -907,7 +938,7 @@ export function createSyncWorktreeTool(): AnyAgentTool {
         );
       }
 
-      const result = new WorktreeAllocationService().sync(
+      const result = createDefaultWorktreeAllocationService().sync(
         decoded.value.allocation,
         decoded.value.baseBranch,
         decoded.value.syncMode,
@@ -934,7 +965,7 @@ export function createReleaseWorktreeTool(): AnyAgentTool {
         );
       }
 
-      const result = new WorktreeAllocationService().release(
+      const result = createDefaultWorktreeAllocationService().release(
         decoded.value.allocation,
         decoded.value.releaseMode,
       );
@@ -1560,7 +1591,7 @@ export function createExecuteRebaseDependentsTool(): AnyAgentTool {
         );
       }
 
-      const result = new RebaseDependentsService().executeForMerge(
+      const result = createDefaultRebaseDependentsService().executeForMerge(
         decoded.value,
       );
       return Promise.resolve(createTextResult(result));

@@ -13,6 +13,13 @@ import type {
 } from './codec.js';
 
 export class RebaseDependentsService {
+  /**
+   * Creates the rebase service with the worktree allocator used for dependents.
+   */
+  public constructor(
+    private readonly worktrees = new WorktreeAllocationService(),
+  ) {}
+
   public create(input: RebasePlan): RebasePlan {
     return createRebasePlan(input);
   }
@@ -40,13 +47,12 @@ export class RebaseDependentsService {
   ): RebaseExecutionResult {
     const plan = this.createForMerge(input.record, input.dependentBranches);
     const syncMode = input.syncMode ?? 'rebase';
-    const worktrees = new WorktreeAllocationService();
     const syncResults = plan.dependentBranches.map((branchName, index) => {
-      const allocation = worktrees.allocate(
+      const allocation = this.worktrees.allocate(
         `pr-${String(input.record.prNumber)}-dependent-${String(index + 1)}`,
         branchName,
       );
-      return worktrees.sync(allocation, plan.baseBranch, syncMode);
+      return this.worktrees.sync(allocation, plan.baseBranch, syncMode);
     });
 
     return createRebaseExecutionResult({

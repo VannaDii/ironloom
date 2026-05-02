@@ -2529,6 +2529,112 @@ describe('tool surface service', () => {
         }
       },
     },
+    {
+      name: 'allocates worktrees under the configured worktree root',
+      inputs: {
+        branchName: 'feature/worktree-env',
+        worktreePath: '.devplat-worktrees/feature/worktree-env',
+      },
+      mock: async () => {
+        const previousWorktreeRoot = process.env['DEVPLAT_WORKTREE_ROOT'];
+
+        return {
+          previousWorktreeRoot,
+        };
+      },
+      assert: async (
+        context: {
+          previousWorktreeRoot: string | undefined;
+        },
+        inputs: {
+          branchName: string;
+          worktreePath: string;
+        },
+      ) => {
+        try {
+          process.env['DEVPLAT_WORKTREE_ROOT'] = '  .devplat-worktrees  ';
+
+          const result = await createAllocateWorktreeTool().execute(
+            'tool-call-worktree-env-1',
+            {
+              taskId: 'task-worktree-env-1',
+              branchName: inputs.branchName,
+            },
+          );
+
+          expect(result.details).toMatchObject({
+            branchName: inputs.branchName,
+            worktreePath: inputs.worktreePath,
+          });
+        } finally {
+          if (context.previousWorktreeRoot === undefined) {
+            delete process.env['DEVPLAT_WORKTREE_ROOT'];
+          } else {
+            process.env['DEVPLAT_WORKTREE_ROOT'] = context.previousWorktreeRoot;
+          }
+        }
+      },
+    },
+    {
+      name: 'rebases dependents with the configured worktree root',
+      inputs: {
+        branchName: 'feature/rebase-env',
+        worktreePath: '.devplat-worktrees/feature/rebase-env',
+      },
+      mock: async () => {
+        const previousWorktreeRoot = process.env['DEVPLAT_WORKTREE_ROOT'];
+
+        return {
+          previousWorktreeRoot,
+        };
+      },
+      assert: async (
+        context: {
+          previousWorktreeRoot: string | undefined;
+        },
+        inputs: {
+          branchName: string;
+          worktreePath: string;
+        },
+      ) => {
+        try {
+          process.env['DEVPLAT_WORKTREE_ROOT'] = '  .devplat-worktrees  ';
+
+          const result = await createExecuteRebaseDependentsTool().execute(
+            'tool-call-rebase-env-1',
+            {
+              record: {
+                prNumber: 78,
+                branchName: 'feature/pr-env',
+                baseBranch: 'main',
+                title: 'Configured worktree rebase',
+                labels: ['automation'],
+                reviewState: 'approved',
+                mergeReady: true,
+                updatedAt: '2026-04-04T00:00:00.000Z',
+              },
+              dependentBranches: [inputs.branchName],
+              syncMode: 'rebase',
+            },
+          );
+
+          expect(result.details).toMatchObject({
+            syncResults: [
+              {
+                branchName: inputs.branchName,
+                worktreePath: inputs.worktreePath,
+              },
+            ],
+          });
+        } finally {
+          if (context.previousWorktreeRoot === undefined) {
+            delete process.env['DEVPLAT_WORKTREE_ROOT'];
+          } else {
+            process.env['DEVPLAT_WORKTREE_ROOT'] = context.previousWorktreeRoot;
+          }
+        }
+      },
+    },
   ];
 
   it.each(environmentStorageToolCases)(

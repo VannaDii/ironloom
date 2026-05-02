@@ -27,7 +27,9 @@ lifecycle, GitHub submission, pull-request submission, and supervisor-step
 tools use the trimmed `DEVPLAT_STORAGE_ROOT` value when it is configured so
 live runtime containers and local tool calls read and write the same mounted
 `.devplat` state. Pull-request submission also uses trimmed `GITHUB_OWNER` and
-`GITHUB_REPO` values so PR updates target the configured repository.
+`GITHUB_REPO` values so PR updates target the configured repository. Worktree
+allocation and dependent rebase tools use the trimmed `DEVPLAT_WORKTREE_ROOT`
+value so generated worktree paths stay inside the configured runtime layout.
 
 ## Exposed Tools
 

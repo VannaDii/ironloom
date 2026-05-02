@@ -10,6 +10,12 @@ export const OPENCLAW_STORAGE_ROOT_ENVIRONMENT_VARIABLE =
   'DEVPLAT_STORAGE_ROOT';
 
 /**
+ * Environment variable that points OpenClaw worktree tools at the runtime root.
+ */
+export const OPENCLAW_WORKTREE_ROOT_ENVIRONMENT_VARIABLE =
+  'DEVPLAT_WORKTREE_ROOT';
+
+/**
  * Environment variable that enables loopback Discord responses for tests.
  */
 export const OPENCLAW_TEST_MODE_ENVIRONMENT_VARIABLE = 'DEVPLAT_TEST_MODE';
