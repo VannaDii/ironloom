@@ -42,6 +42,7 @@ flowchart LR
 - Deployment defaults target local Docker with the published OpenClaw runtime image and the `deploy/helm/devplat` chart.
 - GitHub defaults to `https://api.github.com`, `https://github.com`, and `GITHUB_TOKEN`.
 - Discord category names default to `GITHUB_REPO`; use `DISCORD_CATEGORY_NAME=test` only for OpenClaw test and live-lab traffic.
+- Discord operator interactions use the outbound Gateway transport by default, with `DISCORD_GATEWAY_URL` defaulting to `wss://gateway.discord.gg/?v=10&encoding=json` and `DISCORD_GATEWAY_INTENTS` defaulting to `0`.
 
 ## Development
 

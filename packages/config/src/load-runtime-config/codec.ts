@@ -22,6 +22,8 @@ export const DiscordPermissionCodec = t.union([
   t.literal('ReadMessageHistory'),
 ]);
 
+export const DiscordInteractionTransportCodec = t.literal('gateway');
+
 export const RepositoryRuntimeConfigCodec = t.type({
   owner: t.string,
   repo: t.string,
@@ -80,6 +82,9 @@ export const DiscordRuntimeConfigCodec = t.type({
   auditChannelId: t.string,
   projectManagementChannelId: t.string,
   threadBindingMode: t.literal('inherit-parent'),
+  interactionTransport: DiscordInteractionTransportCodec,
+  gatewayUrl: t.string,
+  gatewayIntents: t.number,
 });
 
 export const OpenClawGatewayConfigCodec = t.type({
@@ -136,6 +141,11 @@ export type DiscordInstallScope = t.TypeOf<typeof DiscordInstallScopeCodec>;
 
 /** Discord permission required by DevPlat. */
 export type DiscordPermission = t.TypeOf<typeof DiscordPermissionCodec>;
+
+/** Discord interaction transport supported by the private runtime. */
+export type DiscordInteractionTransport = t.TypeOf<
+  typeof DiscordInteractionTransportCodec
+>;
 
 /** Runtime Discord configuration. */
 export type DiscordRuntimeConfig = t.TypeOf<typeof DiscordRuntimeConfigCodec>;

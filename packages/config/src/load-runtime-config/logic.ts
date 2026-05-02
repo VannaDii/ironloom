@@ -61,6 +61,27 @@ function readEnvNumber(
 }
 
 /**
+ * Reads a non-negative integer environment value.
+ */
+function readEnvNonNegativeInteger(
+  env: Record<string, string | undefined>,
+  key: string,
+  fallback: number,
+): number {
+  const rawValue = env[key]?.trim();
+  if (!rawValue) {
+    return fallback;
+  }
+
+  const parsed = Number.parseInt(rawValue, 10);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    throw new Error(`${key} must be a non-negative integer.`);
+  }
+
+  return parsed;
+}
+
+/**
  * Reads the configured deployment target and rejects unsupported values.
  */
 function readDeploymentTarget(
@@ -189,6 +210,7 @@ export function validateDevplatConfig(
     ['github.apiBaseUrl', config.github.apiBaseUrl],
     ['github.webBaseUrl', config.github.webBaseUrl],
     ['discord.apiBaseUrl', config.discord.apiBaseUrl],
+    ['discord.gatewayUrl', config.discord.gatewayUrl],
   ];
   const urlIssues = urlChecks.flatMap(([field, value]) =>
     isValidUrl(value)
@@ -337,6 +359,17 @@ export function createDefaultDevplatConfig(
         env['DISCORD_PROJECT_MANAGEMENT_CHANNEL_ID'] ??
         'project-management-channel',
       threadBindingMode: 'inherit-parent',
+      interactionTransport: 'gateway',
+      gatewayUrl: readEnvUrl(
+        env,
+        'DISCORD_GATEWAY_URL',
+        'wss://gateway.discord.gg/?v=10&encoding=json',
+      ),
+      gatewayIntents: readEnvNonNegativeInteger(
+        env,
+        'DISCORD_GATEWAY_INTENTS',
+        0,
+      ),
     },
     openclaw: {
       pluginId: env['OPENCLAW_PLUGIN_ID'] ?? '@vannadii/devplat-openclaw',

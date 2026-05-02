@@ -48,6 +48,8 @@ Runtime configuration normalization reads:
 - `DISCORD_PULL_REQUEST_CHANNEL_ID`
 - `DISCORD_AUDIT_CHANNEL_ID`
 - `DISCORD_PROJECT_MANAGEMENT_CHANNEL_ID`
+- `DISCORD_GATEWAY_URL`
+- `DISCORD_GATEWAY_INTENTS`
 - `SONAR_ORGANIZATION`
 - `SONAR_PROJECT_KEY`
 
@@ -68,6 +70,12 @@ state directory.
 The normalized Discord runtime config also fixes:
 
 - API version `v10`
+- interaction transport `gateway`, so the runtime opens an outbound Discord
+  Gateway session instead of requiring public inbound webhook hosting
+- Gateway URL: defaults to
+  `wss://gateway.discord.gg/?v=10&encoding=json`
+- Gateway intents: defaults to `0` and can be overridden with
+  `DISCORD_GATEWAY_INTENTS`
 - category name: defaults to `GITHUB_REPO` for multi-repository guild
   separation; OpenClaw test and live-lab runs set this to `test`
 - OAuth install scopes `bot` and `applications.commands`

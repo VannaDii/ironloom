@@ -218,6 +218,15 @@
             },
             "threadBindingMode": {
               "const": "inherit-parent"
+            },
+            "interactionTransport": {
+              "const": "gateway"
+            },
+            "gatewayUrl": {
+              "type": "string"
+            },
+            "gatewayIntents": {
+              "type": "number"
             }
           },
           "required": [
@@ -235,7 +244,10 @@
             "pullRequestChannelId",
             "auditChannelId",
             "projectManagementChannelId",
-            "threadBindingMode"
+            "threadBindingMode",
+            "interactionTransport",
+            "gatewayUrl",
+            "gatewayIntents"
           ],
           "additionalProperties": false
         },

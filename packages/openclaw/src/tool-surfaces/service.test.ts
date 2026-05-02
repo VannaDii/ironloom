@@ -409,6 +409,9 @@ describe('tool surface service', () => {
           auditChannelId: 'audit-1',
           projectManagementChannelId: 'pm-1',
           threadBindingMode: 'inherit-parent',
+          interactionTransport: 'gateway',
+          gatewayUrl: 'wss://gateway.discord.gg/?v=10&encoding=json',
+          gatewayIntents: 0,
         },
         openclaw: {
           pluginId: '@vannadii/devplat-openclaw',

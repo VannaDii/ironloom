@@ -20,13 +20,16 @@
 ## Server and API Alignment
 
 - normalize Discord REST access against `https://discord.com/api/v10`
+- run production interactions through an outbound Discord Gateway session so the
+  operator runtime can stay private and does not require public ingress
 - provide an application id, public key, and bot token through runtime config or referenced secrets
 - install the app with the `bot` and `applications.commands` scopes
 - grant only the permissions needed for thread-aware operation: `ViewChannel`, `SendMessages`, `CreatePublicThreads`, `CreatePrivateThreads`, `SendMessagesInThreads`, `ManageThreads`, and `ReadMessageHistory`
 - keep thread creation anchored to the configured spec, implementation, and pull-request parent channels so thread inheritance stays explicit
-- return structured interaction payloads from the signature-verified webhook so
-  live slash commands and button callbacks keep the same compact status text,
-  safe mention configuration, and contextual controls as thread messages
+- return structured interaction payloads from both the Gateway runtime and the
+  explicit webhook helper so live slash commands and button callbacks keep the
+  same compact status text, safe mention configuration, and contextual controls
+  as thread messages
 
 ## Channel Layout
 

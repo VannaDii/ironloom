@@ -65,7 +65,9 @@ const devplatOpenClawPlugin = definePluginEntry({
     'OpenClaw capability bridge for the DevPlat Discord-first platform.',
   configSchema,
   register(api) {
-    createDevplatOpenClawTools().forEach((tool) => { api.registerTool(tool); });
+    createDevplatOpenClawTools().forEach((tool) => {
+      api.registerTool(tool);
+    });
   },
 });
 

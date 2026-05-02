@@ -150,14 +150,15 @@ normalization, routing, transport, and structured-message path with a
 callback-shaped payload. Human-triggered slash/button clicks in the sandbox guild
 remain a manual operator acceptance check.
 
-The Discord package also exposes a signature-verified interaction webhook
-service for production mounts. That service validates the Discord Ed25519
-signature headers, responds to Discord ping requests, decodes callback-shaped
-slash/button payloads through the package codecs, resolves live binding metadata
-through the supplied resolver, delegates the normalized operator interaction
-into the same control-plane service used by the live-lab probe, and returns the
-same structured operator payload with safe mentions and contextual buttons
-instead of reducing real Discord callbacks to plain text.
+The Discord package also exposes a private outbound Gateway runtime for
+production mounts. That runtime identifies with Discord Gateway, heartbeats,
+receives `INTERACTION_CREATE` dispatches without public ingress, resolves
+stored thread-session bindings from the configured state directory, delegates
+the normalized operator interaction into the same control-plane service used by
+the live-lab probe, and posts structured operator payloads with safe mentions
+and contextual buttons. A signature-verified webhook helper remains available
+for explicit inbound deployments, but it is not the default private runtime
+path.
 
 ## Public Repo Safety Model
 

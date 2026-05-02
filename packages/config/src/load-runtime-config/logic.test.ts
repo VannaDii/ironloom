@@ -30,6 +30,8 @@ describe('DevplatConfig logic', () => {
           DEVPLAT_HELM_CHART_PATH: 'deploy/helm/devplat',
           DEVPLAT_STATE_MOUNT_PATH: '/var/lib/acme-devplat',
           OPENCLAW_GATEWAY_PORT: '19000',
+          DISCORD_GATEWAY_URL: 'wss://gateway.discord.test/?v=10&encoding=json',
+          DISCORD_GATEWAY_INTENTS: '0',
         },
       },
       mock: ({ env }: { env: Record<string, string> }) =>
@@ -97,9 +99,36 @@ describe('DevplatConfig logic', () => {
           'project-management-channel',
         );
         expect(config.discord.threadBindingMode).toBe('inherit-parent');
+        expect(config.discord.interactionTransport).toBe('gateway');
+        expect(config.discord.gatewayUrl).toBe(
+          'wss://gateway.discord.test/?v=10&encoding=json',
+        );
+        expect(config.discord.gatewayIntents).toBe(0);
         expect(config.sonar.minimumCoverage).toBe(90);
         expect(validateDevplatConfig(config)).toEqual([]);
         expect(describeDevplatConfig(config)).toContain('VannaDii/devplat');
+      },
+    },
+    {
+      name: 'rejects invalid Discord Gateway intents',
+      inputs: {
+        env: {
+          DISCORD_APPLICATION_ID: 'application-1',
+          DISCORD_PUBLIC_KEY: 'public-key-1',
+          DISCORD_BOT_TOKEN: 'bot-token-1',
+          DISCORD_GATEWAY_INTENTS: '-1',
+        },
+      },
+      mock:
+        ({ env }: { env: Record<string, string> }) =>
+        () =>
+          createDefaultDevplatConfig(env),
+      assert: (
+        createConfig: () => ReturnType<typeof createDefaultDevplatConfig>,
+      ) => {
+        expect(createConfig).toThrow(
+          'DISCORD_GATEWAY_INTENTS must be a non-negative integer.',
+        );
       },
     },
     {

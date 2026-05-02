@@ -113,10 +113,12 @@ overrides, and the Discord/OpenClaw/Sonar variables documented in the
 configuration guide before running live operator flows. Config loading now
 normalizes those defaults, derives the Discord category name from `GITHUB_REPO`
 for multi-repository guild separation unless test traffic explicitly sets
-`DISCORD_CATEGORY_NAME=test`, and returns structured validation issues for bad
-URLs, empty required paths, invalid deployment targets, and invalid gateway
-ports. The storage package remains the only package that directly reads or
-writes the committed runtime state directory.
+`DISCORD_CATEGORY_NAME=test`, configures outbound Discord Gateway interaction
+handling with `DISCORD_GATEWAY_URL` and `DISCORD_GATEWAY_INTENTS`, and returns
+structured validation issues for bad URLs, empty required paths, invalid
+deployment targets, and invalid gateway ports. The storage package remains the
+only package that directly reads or writes the committed runtime state
+directory.
 
 The live lab posts compact operator payloads with safe `Show Status` and
 `Details` buttons backed by the standard `show-status` and `show-last-artifact`

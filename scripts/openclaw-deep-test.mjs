@@ -157,6 +157,8 @@ export function createRuntimeEnv(overrides = {}) {
     DISCORD_CATEGORY_NAME: 'test',
     DISCORD_PUBLIC_KEY: 'public-key-1',
     DISCORD_BOT_TOKEN: 'bot-token-1',
+    DISCORD_GATEWAY_URL: 'wss://gateway.discord.gg/?v=10&encoding=json',
+    DISCORD_GATEWAY_INTENTS: '0',
     DISCORD_DEFAULT_GUILD_ID: 'guild-1',
     DISCORD_SPEC_CHANNEL_ID: 'spec-1',
     DISCORD_IMPLEMENTATION_CHANNEL_ID: 'impl-1',
@@ -605,6 +607,9 @@ export function createDeepScenario(runtimeEnv) {
       projectManagementChannelId:
         runtimeEnv.DISCORD_PROJECT_MANAGEMENT_CHANNEL_ID,
       threadBindingMode: 'inherit-parent',
+      interactionTransport: 'gateway',
+      gatewayUrl: runtimeEnv.DISCORD_GATEWAY_URL,
+      gatewayIntents: Number.parseInt(runtimeEnv.DISCORD_GATEWAY_INTENTS, 10),
     },
     openclaw: {
       pluginId: '@vannadii/devplat-openclaw',

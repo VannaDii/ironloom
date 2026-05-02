@@ -11,6 +11,9 @@
       "path": "../artifacts"
     },
     {
+      "path": "../config"
+    },
+    {
       "path": "../core"
     },
     {

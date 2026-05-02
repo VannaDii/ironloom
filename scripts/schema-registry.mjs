@@ -221,6 +221,18 @@ export const schemaRegistry = [
   ],
   [
     'discord',
+    'interaction-gateway',
+    'DiscordGatewayDispatchEvent',
+    'schemas/discord-gateway-dispatch-event.schema.json',
+  ],
+  [
+    'discord',
+    'interaction-gateway',
+    'DiscordInteractionGatewayResult',
+    'schemas/discord-interaction-gateway-result.schema.json',
+  ],
+  [
+    'discord',
     'interaction-webhook',
     'DiscordInteractionWebhookRequest',
     'schemas/discord-interaction-webhook-request.schema.json',
