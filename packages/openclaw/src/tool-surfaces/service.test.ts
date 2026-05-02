@@ -1319,12 +1319,13 @@ describe('tool surface service', () => {
         ) => {
           try {
             process.env['DEVPLAT_TEST_MODE'] = inputs.testMode;
-            process.env['DEVPLAT_STORAGE_ROOT'] = context.storageRoot;
+            process.env['DEVPLAT_STORAGE_ROOT'] = `  ${context.storageRoot}  `;
 
             const tool = createHandleDiscordControlTool();
             const result = await tool.execute('tool-call-dc-test-mode', {
               ...createTestModeDiscordInteractionParams(),
             });
+            const envStore = new FileStoreService(context.storageRoot);
 
             expect(result.details).toMatchObject({
               allowed: true,
@@ -1344,6 +1345,9 @@ describe('tool surface service', () => {
                 },
               },
             });
+            expect(await envStore.list('state')).toContain(
+              'interaction-test-mode-1',
+            );
           } finally {
             if (context.previousTestMode === undefined) {
               delete process.env['DEVPLAT_TEST_MODE'];
@@ -1389,12 +1393,13 @@ describe('tool surface service', () => {
         ) => {
           try {
             process.env['DEVPLAT_TEST_MODE'] = inputs.testMode;
-            process.env['DEVPLAT_STORAGE_ROOT'] = context.storageRoot;
+            process.env['DEVPLAT_STORAGE_ROOT'] = `  ${context.storageRoot}  `;
 
             const tool = createHandleDiscordControlTool();
             const result = await tool.execute('tool-call-dc-test-mode', {
               ...createTestModeDiscordInteractionParams(),
             });
+            const envStore = new FileStoreService(context.storageRoot);
 
             expect(result.details).toMatchObject({
               allowed: true,
@@ -1414,6 +1419,9 @@ describe('tool surface service', () => {
                 },
               },
             });
+            expect(await envStore.list('state')).toContain(
+              'interaction-test-mode-1',
+            );
           } finally {
             if (context.previousTestMode === undefined) {
               delete process.env['DEVPLAT_TEST_MODE'];
@@ -1980,7 +1988,7 @@ describe('tool surface service', () => {
         },
       ) => {
         try {
-          process.env['DEVPLAT_STORAGE_ROOT'] = context.storageRoot;
+          process.env['DEVPLAT_STORAGE_ROOT'] = `  ${context.storageRoot}  `;
 
           await createStoreRecordTool().execute('tool-call-storage-env-1', {
             record: {
@@ -2061,7 +2069,7 @@ describe('tool surface service', () => {
         },
       ) => {
         try {
-          process.env['DEVPLAT_STORAGE_ROOT'] = context.storageRoot;
+          process.env['DEVPLAT_STORAGE_ROOT'] = `  ${context.storageRoot}  `;
 
           await createRecordTelemetryEventTool().execute(
             'tool-call-telemetry-env-1',
@@ -2118,7 +2126,7 @@ describe('tool surface service', () => {
         },
       ) => {
         try {
-          process.env['DEVPLAT_STORAGE_ROOT'] = context.storageRoot;
+          process.env['DEVPLAT_STORAGE_ROOT'] = `  ${context.storageRoot}  `;
 
           await createRememberMemoryEntryTool().execute(
             'tool-call-memory-env-1',

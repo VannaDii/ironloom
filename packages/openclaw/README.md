@@ -23,8 +23,9 @@ Runtime plugin config includes the Discord category name. Normal production
 configuration derives that category from the repository name so one guild can
 host multiple repositories without cross-thread ambiguity; OpenClaw test and
 live-lab runs set the category to `test`. Storage, memory, and telemetry tools
-use `DEVPLAT_STORAGE_ROOT` when it is configured so live runtime containers and
-local tool calls read and write the same mounted `.devplat` state.
+use the trimmed `DEVPLAT_STORAGE_ROOT` value when it is configured so live
+runtime containers and local tool calls read and write the same mounted
+`.devplat` state.
 
 ## Exposed Tools
 

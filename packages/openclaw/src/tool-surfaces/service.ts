@@ -167,22 +167,30 @@ function createLoopbackDiscordResponseTransport(): DiscordControlResponseTranspo
 }
 
 /**
+ * Resolves the optional storage root from the runtime environment.
+ */
+function resolveConfiguredStorageRoot(): string | undefined {
+  const storageRoot = process.env['DEVPLAT_STORAGE_ROOT']?.trim();
+  return storageRoot === undefined || storageRoot.length === 0
+    ? undefined
+    : storageRoot;
+}
+
+/**
  * Creates the file store for OpenClaw-invoked persistence tools.
  */
 function createDefaultFileStoreService(): FileStoreService {
-  const storageRoot = process.env['DEVPLAT_STORAGE_ROOT'];
-  return storageRoot === undefined || storageRoot.trim().length === 0
+  const storageRoot = resolveConfiguredStorageRoot();
+  return storageRoot === undefined
     ? new FileStoreService()
     : new FileStoreService(storageRoot);
 }
 
 function createDefaultDiscordControlPlaneService(): DiscordControlPlaneService {
-  const storageRoot = process.env['DEVPLAT_STORAGE_ROOT'];
+  const storageRoot = resolveConfiguredStorageRoot();
   const testMode = process.env['DEVPLAT_TEST_MODE']?.trim();
   const store =
-    storageRoot === undefined || storageRoot.trim().length === 0
-      ? undefined
-      : new FileStoreService(storageRoot);
+    storageRoot === undefined ? undefined : new FileStoreService(storageRoot);
   const telemetry =
     store === undefined ? undefined : new TelemetryEventService(store);
   const transport =
