@@ -51,6 +51,18 @@ const testDiscordCategoryName = 'test';
  * Discord component wire field for the developer-defined interaction id.
  */
 const discordComponentCustomIdField = 'custom_id';
+/**
+ * Deep-test tools whose progress belongs in the live-lab pull-request channel.
+ */
+const pullRequestProgressToolNames = new Set([
+  'create_pull_request_record',
+  'submit_pull_request_update',
+  'submit_pull_request_merge',
+  'plan_rebase_dependents',
+  'execute_rebase_dependents',
+  'create_github_action_request',
+  'submit_github_action',
+]);
 const liveLabGitHubAppPermissions = Object.freeze({
   actions: 'write',
   administration: 'write',
@@ -403,37 +415,23 @@ export function createStatusMessage({
 }
 
 export function mapProgressToChannel(progress) {
-  const pullRequestTools = new Set([
-    'create_pull_request_record',
-    'submit_pull_request_update',
-    'submit_pull_request_merge',
-    'plan_rebase_dependents',
-    'execute_rebase_dependents',
-    'create_github_action_request',
-    'submit_github_action',
-  ]);
-
-  if (progress.phase === 'planning') {
-    return 'spec';
+  switch (progress.phase) {
+    case 'planning':
+      return 'spec';
+    case 'config':
+    case 'contracts':
+      return 'audit';
+    case 'build':
+    case 'container':
+      return 'projectManagement';
+    case 'delivery':
+      return typeof progress.step === 'string' &&
+        pullRequestProgressToolNames.has(progress.step)
+        ? 'pullRequest'
+        : 'implementation';
+    default:
+      return 'implementation';
   }
-
-  if (progress.phase === 'config' || progress.phase === 'contracts') {
-    return 'audit';
-  }
-
-  if (progress.phase === 'build' || progress.phase === 'container') {
-    return 'projectManagement';
-  }
-
-  if (
-    progress.phase === 'delivery' &&
-    typeof progress.step === 'string' &&
-    pullRequestTools.has(progress.step)
-  ) {
-    return 'pullRequest';
-  }
-
-  return 'implementation';
 }
 
 export function createEvictionPlan(repositories, maxParallelRepos) {

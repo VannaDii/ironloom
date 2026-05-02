@@ -626,6 +626,64 @@ describe('openclaw-live-lab helpers', () => {
     {
       name: 'computes eviction, runtime env, and progress routing',
       inputs: {
+        progressChannelCases: [
+          {
+            expected: 'spec',
+            progress: {
+              phase: 'planning',
+              step: 'create_spec_record',
+            },
+          },
+          {
+            expected: 'audit',
+            progress: {
+              phase: 'config',
+              step: 'resolve_runtime_config',
+            },
+          },
+          {
+            expected: 'audit',
+            progress: {
+              phase: 'contracts',
+              step: 'create_artifact_envelope',
+            },
+          },
+          {
+            expected: 'projectManagement',
+            progress: {
+              phase: 'build',
+              step: 'docker-build',
+            },
+          },
+          {
+            expected: 'projectManagement',
+            progress: {
+              phase: 'container',
+              step: 'publish-image',
+            },
+          },
+          {
+            expected: 'pullRequest',
+            progress: {
+              phase: 'delivery',
+              step: 'submit_pull_request_update',
+            },
+          },
+          {
+            expected: 'implementation',
+            progress: {
+              phase: 'delivery',
+              step: 'run_gates',
+            },
+          },
+          {
+            expected: 'implementation',
+            progress: {
+              phase: 'unknown',
+              step: 'run_gates',
+            },
+          },
+        ],
         sonarProjectKeyCases: [
           {
             owner: 'sandbox-org',
@@ -716,11 +774,13 @@ describe('openclaw-live-lab helpers', () => {
         expect(createSonarProjectKey('sandbox-org', 'devplat-test-200-3')).toBe(
           'sandbox-org_devplat-test-200-3',
         );
-        for (const testCase of inputs.sonarProjectKeyCases) {
-          expect(createSonarProjectKey(testCase.owner, testCase.repo)).toBe(
-            testCase.expected,
-          );
-        }
+        expect(
+          inputs.sonarProjectKeyCases.map((testCase) =>
+            createSonarProjectKey(testCase.owner, testCase.repo),
+          ),
+        ).toEqual(
+          inputs.sonarProjectKeyCases.map((testCase) => testCase.expected),
+        );
         expect(runtimeEnv).toMatchObject({
           GITHUB_OWNER: 'sandbox-org',
           GITHUB_REPO: 'devplat-test-200-3',
@@ -748,17 +808,12 @@ describe('openclaw-live-lab helpers', () => {
           flags: 4,
         });
         expect(
-          mapProgressToChannel({
-            phase: 'planning',
-            step: 'create_spec_record',
-          }),
-        ).toBe('spec');
-        expect(
-          mapProgressToChannel({
-            phase: 'delivery',
-            step: 'submit_pull_request_update',
-          }),
-        ).toBe('pullRequest');
+          inputs.progressChannelCases.map((testCase) =>
+            mapProgressToChannel(testCase.progress),
+          ),
+        ).toEqual(
+          inputs.progressChannelCases.map((testCase) => testCase.expected),
+        );
       },
     },
     {
