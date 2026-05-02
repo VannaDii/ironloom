@@ -33,6 +33,7 @@ Add the first full-autonomy contract slices:
 - OpenClaw Discord control handling for normalized requests and operator interaction callbacks, plus OpenClaw storage, memory, telemetry, Discord lifecycle, GitHub submission, pull-request submission, and supervisor-step tools that honor the whitespace-normalized `DEVPLAT_STORAGE_ROOT`
 - OpenClaw pull-request submission tools that target the whitespace-normalized configured `GITHUB_OWNER`/`GITHUB_REPO` repository identity instead of the package fallback when those environment values are available
 - OpenClaw worktree allocation and dependent rebase tools that honor the whitespace-normalized configured `DEVPLAT_WORKTREE_ROOT`
+- Worktree allocation constants centralized in the worktrees package constants module instead of being embedded in logic/service implementation files
 - hermetic OpenClaw deep-test validation of callback-shaped Discord interactions through loopback response receipts
 - live-lab Discord command registration and callback-shaped interaction probing with required callback/thread receipts
 - Helm chart values for enabling the private outbound Discord Gateway worker without public webhook ingress
