@@ -14,10 +14,13 @@ control actions, must resolve exactly one bound thread or bound thread session,
 project that session into a typed spec/implementation/pull-request work item,
 render compact operator UI payloads with contextual buttons, and post both
 interaction acknowledgements and thread status messages through the structured
-Discord REST transport. The webhook helper returns the same structured payload
-shape for explicit deployments that choose inbound callbacks, but the production
-runtime path does not require public ingress. Route failures and policy denials
-use standard blocked/refused messages and still write audit records. The exported
+Discord REST transport. Interaction acknowledgements are sent before persistence
+and audit writes so live button clicks satisfy Discord's prompt response window;
+the bound-thread message and audit trail are then persisted through the same
+control result. The webhook helper returns the same structured payload shape for
+explicit deployments that choose inbound callbacks, but the production runtime
+path does not require public ingress. Route failures and policy denials use
+standard blocked/refused messages and still write audit records. The exported
 command contract registry is the source for guild slash-command registration.
 The live lab registers those commands and includes a Discord callback-shaped
 interaction probe so this response path is validated from raw slash-command
@@ -47,11 +50,11 @@ flowchart LR
   Binding --> WorkItem[Project bound work item]
   WorkItem -->|unambiguous| Policy[Policy evaluation]
   Binding -->|ambiguous| Deny[Fail closed response and audit]
-  Policy --> State[Persist state telemetry and audit]
-  State --> Render[Render compact operator UI]
+  Policy --> Render[Render compact operator UI]
   Render --> Components[Contextual buttons]
   Components --> Response[Interaction acknowledgement over REST]
-  Response --> Thread[Thread status message]
+  Response --> State[Persist state telemetry and audit]
+  State --> Thread[Thread status message]
 ```
 
 ## Boundaries

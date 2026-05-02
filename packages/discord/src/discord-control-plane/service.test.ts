@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { TelemetryEventService } from '@vannadii/devplat-observability';
 import { DecisionPolicyService } from '@vannadii/devplat-policy';
 import { FileStoreService } from '@vannadii/devplat-storage';
+import type { StoredRecord } from '@vannadii/devplat-storage';
 
 import {
   DiscordControlPlaneService,
@@ -43,6 +44,53 @@ function createResponseTransport(): DiscordControlResponseTransport {
       return createReceipt(`/interactions/${input.id}/${input.token}/callback`);
     },
     async postThreadMessage(threadId) {
+      return createReceipt(`/channels/${threadId}/messages`);
+    },
+  };
+}
+
+/**
+ * Test store that records persistence order without changing file-store behavior.
+ */
+class ObservedFileStoreService extends FileStoreService {
+  /**
+   * Creates a store rooted at a temporary directory with shared event capture.
+   */
+  public constructor(
+    rootDirectory: string,
+    private readonly events: string[],
+  ) {
+    super(rootDirectory);
+  }
+
+  /**
+   * Records store ordering before delegating to the real file-backed store.
+   */
+  public override async store<TPayload extends object>(
+    record: StoredRecord<TPayload>,
+  ): Promise<StoredRecord<TPayload>> {
+    this.events.push(`store:${record.scope}:${record.key}`);
+    return super.store(record);
+  }
+}
+
+/**
+ * Creates a transport that records response ordering for interaction tests.
+ */
+function createObservedResponseTransport(
+  events: string[],
+): DiscordControlResponseTransport {
+  return {
+    async postInteractionResponse(input) {
+      events.push(`interaction-response:${input.id}`);
+      return createReceipt(`/interactions/${input.id}/${input.token}/callback`);
+    },
+    async postInteractionDeferred(input) {
+      events.push(`interaction-deferred:${input.id}`);
+      return createReceipt(`/interactions/${input.id}/${input.token}/callback`);
+    },
+    async postThreadMessage(threadId) {
+      events.push(`thread-message:${threadId}`);
       return createReceipt(`/channels/${threadId}/messages`);
     },
   };
@@ -297,6 +345,114 @@ describe('DiscordControlPlaneService', () => {
       const context = await testCase.mock();
       await testCase.assert(context);
     }
+  });
+
+  const cases = [
+    {
+      name: 'acknowledges accepted interaction before persistence',
+      inputs: {
+        interaction: {
+          id: 'interaction-ack-001',
+          token: 'token-ack-1',
+          actorId: 'user-ack-1',
+          channelId: 'channel-ack-1',
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          commandName: 'show status',
+          threadId: 'thread-ack-1',
+        } satisfies DiscordOperatorInteraction,
+        expectedAllowed: true,
+      },
+      mock: async () => {
+        const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+        const events: string[] = [];
+        const store = new ObservedFileStoreService(rootDirectory, events);
+        return {
+          events,
+          service: new DiscordControlPlaneService(
+            new DecisionPolicyService(),
+            new TelemetryEventService(store),
+            store,
+            createObservedResponseTransport(events),
+          ),
+        };
+      },
+      assert: async (
+        context: {
+          events: string[];
+          service: DiscordControlPlaneService;
+        },
+        inputs: {
+          interaction: DiscordOperatorInteraction;
+          expectedAllowed: boolean;
+        },
+      ) => {
+        const result = await context.service.handleInteraction(
+          inputs.interaction,
+        );
+
+        expect(result.allowed).toBe(inputs.expectedAllowed);
+        expect(context.events[0]).toBe(
+          'interaction-response:interaction-ack-001',
+        );
+        expect(context.events).toContain('store:state:interaction-ack-001');
+        expect(context.events).toContain('thread-message:thread-ack-1');
+      },
+    },
+    {
+      name: 'acknowledges blocked interaction before persistence',
+      inputs: {
+        interaction: {
+          id: 'interaction-ack-002',
+          token: 'token-ack-2',
+          actorId: 'user-ack-2',
+          channelId: 'channel-ack-2',
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          commandName: 'release worktree',
+          threadId: 'thread-ack-2',
+        } satisfies DiscordOperatorInteraction,
+        expectedAllowed: false,
+      },
+      mock: async () => {
+        const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+        const events: string[] = [];
+        const store = new ObservedFileStoreService(rootDirectory, events);
+        return {
+          events,
+          service: new DiscordControlPlaneService(
+            new DecisionPolicyService(),
+            new TelemetryEventService(store),
+            store,
+            createObservedResponseTransport(events),
+          ),
+        };
+      },
+      assert: async (
+        context: {
+          events: string[];
+          service: DiscordControlPlaneService;
+        },
+        inputs: {
+          interaction: DiscordOperatorInteraction;
+          expectedAllowed: boolean;
+        },
+      ) => {
+        const result = await context.service.handleInteraction(
+          inputs.interaction,
+        );
+
+        expect(result.allowed).toBe(inputs.expectedAllowed);
+        expect(context.events[0]).toBe(
+          'interaction-response:interaction-ack-002',
+        );
+        expect(context.events).toContain('store:state:interaction-ack-002');
+        expect(context.events).toContain('thread-message:thread-ack-2');
+      },
+    },
+  ];
+
+  it.each(cases)('$name', async ({ inputs, mock, assert }) => {
+    const context = await mock();
+    await assert(context, inputs);
   });
 
   it('fails closed and responds when Discord thread binding is ambiguous', async () => {

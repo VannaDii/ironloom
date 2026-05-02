@@ -24,6 +24,13 @@ import type {
   DiscordResponseReceipt,
 } from './codec.js';
 
+/**
+ * Policy decision returned for a Discord control action before persistence.
+ */
+type DiscordControlActionDecision = ReturnType<
+  DecisionPolicyService['evaluateControlAction']
+>;
+
 export interface DiscordControlResponseTransport {
   postInteractionResponse(
     input: DiscordOperatorInteraction,
@@ -215,6 +222,16 @@ export class DiscordControlPlaneService {
       request.privileged,
     );
 
+    return this.persistAction(request, decision);
+  }
+
+  /**
+   * Persists a policy-evaluated control action and its audit trail.
+   */
+  private async persistAction(
+    request: DiscordControlRequest,
+    decision: DiscordControlActionDecision,
+  ): Promise<DiscordControlResult> {
     const payload =
       request.workItem === undefined
         ? {
@@ -361,8 +378,12 @@ export class DiscordControlPlaneService {
       };
     }
 
-    const result = await this.handleAction(route.request);
-    const responsePayload = result.allowed
+    const request = route.request;
+    const decision = this.policy.evaluateControlAction(
+      request.action,
+      request.privileged,
+    );
+    const responsePayload = decision.allowed
       ? renderDiscordControlAcceptedMessage(route.request)
       : renderDiscordControlBlockedMessage(route.request);
     const threadPayload = responsePayload;
@@ -370,6 +391,7 @@ export class DiscordControlPlaneService {
       input,
       responsePayload,
     );
+    const result = await this.persistAction(request, decision);
     const threadReceipt = await this.responses.postThreadMessage(
       route.request.threadId,
       threadPayload,
