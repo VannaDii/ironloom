@@ -27,4 +27,5 @@ helm upgrade --install devplat deploy/helm/devplat \
 - ConfigMap-backed config injection
 - Secret and ConfigMap environment references
 - Optional PVC for OpenClaw state
-- Optional Ingress for gateway exposure
+- Optional Ingress for non-Discord HTTP surfaces; Discord interaction routing
+  stays on the private outbound Gateway worker
