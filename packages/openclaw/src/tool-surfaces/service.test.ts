@@ -2449,6 +2449,86 @@ describe('tool surface service', () => {
         }
       },
     },
+    {
+      name: 'submits pull request updates with configured repository identity',
+      inputs: {
+        repoFullName: 'VannaDii/devplat-ops',
+      },
+      mock: async () => {
+        const storageRoot = await mkdtemp(
+          join(tmpdir(), 'devplat-openclaw-pr-env-'),
+        );
+        const previousGitHubOwner = process.env['GITHUB_OWNER'];
+        const previousGitHubRepo = process.env['GITHUB_REPO'];
+        const previousStorageRoot = process.env['DEVPLAT_STORAGE_ROOT'];
+
+        return {
+          previousGitHubOwner,
+          previousGitHubRepo,
+          previousStorageRoot,
+          storageRoot,
+        };
+      },
+      assert: async (
+        context: {
+          previousGitHubOwner: string | undefined;
+          previousGitHubRepo: string | undefined;
+          previousStorageRoot: string | undefined;
+          storageRoot: string;
+        },
+        inputs: {
+          repoFullName: string;
+        },
+      ) => {
+        try {
+          process.env['DEVPLAT_STORAGE_ROOT'] = `  ${context.storageRoot}  `;
+          process.env['GITHUB_OWNER'] = '  VannaDii  ';
+          process.env['GITHUB_REPO'] = '  devplat-ops  ';
+
+          const result = await createSubmitPullRequestUpdateTool().execute(
+            'tool-call-pr-env-1',
+            {
+              record: {
+                prNumber: 77,
+                branchName: 'feature/pr-env',
+                baseBranch: 'main',
+                title: 'Configured repo submission',
+                labels: ['automation'],
+                reviewState: 'review',
+                mergeReady: false,
+                updatedAt: '2026-04-04T00:00:00.000Z',
+              },
+              actorId: 'operator-env-8',
+            },
+          );
+          const envStore = new FileStoreService(context.storageRoot);
+
+          expect(result.details).toMatchObject({
+            request: {
+              repoFullName: inputs.repoFullName,
+            },
+          });
+          expect(await envStore.list('telemetry')).toHaveLength(1);
+        } finally {
+          if (context.previousGitHubOwner === undefined) {
+            delete process.env['GITHUB_OWNER'];
+          } else {
+            process.env['GITHUB_OWNER'] = context.previousGitHubOwner;
+          }
+          if (context.previousGitHubRepo === undefined) {
+            delete process.env['GITHUB_REPO'];
+          } else {
+            process.env['GITHUB_REPO'] = context.previousGitHubRepo;
+          }
+          if (context.previousStorageRoot === undefined) {
+            delete process.env['DEVPLAT_STORAGE_ROOT'];
+          } else {
+            process.env['DEVPLAT_STORAGE_ROOT'] = context.previousStorageRoot;
+          }
+          await rm(context.storageRoot, { force: true, recursive: true });
+        }
+      },
+    },
   ];
 
   it.each(environmentStorageToolCases)(

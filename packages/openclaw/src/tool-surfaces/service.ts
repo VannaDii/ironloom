@@ -98,6 +98,12 @@ import {
   formatToolPayloadText,
   sanitizeToolPayloadForDisplay,
 } from './logic.js';
+import {
+  OPENCLAW_GITHUB_OWNER_ENVIRONMENT_VARIABLE,
+  OPENCLAW_GITHUB_REPO_ENVIRONMENT_VARIABLE,
+  OPENCLAW_STORAGE_ROOT_ENVIRONMENT_VARIABLE,
+  OPENCLAW_TEST_MODE_ENVIRONMENT_VARIABLE,
+} from './constants.js';
 import type { OpenDiscordThreadToolInput } from './codec.js';
 
 type ToolParameterSchema = AnyAgentTool['parameters'] & Record<string, unknown>;
@@ -170,10 +176,26 @@ function createLoopbackDiscordResponseTransport(): DiscordControlResponseTranspo
  * Resolves the optional storage root from the runtime environment.
  */
 function resolveConfiguredStorageRoot(): string | undefined {
-  const storageRoot = process.env['DEVPLAT_STORAGE_ROOT']?.trim();
+  const storageRoot =
+    process.env[OPENCLAW_STORAGE_ROOT_ENVIRONMENT_VARIABLE]?.trim();
   return storageRoot === undefined || storageRoot.length === 0
     ? undefined
     : storageRoot;
+}
+
+/**
+ * Resolves the optional repository identity from the runtime environment.
+ */
+function resolveConfiguredRepositoryFullName(): string | undefined {
+  const owner = process.env[OPENCLAW_GITHUB_OWNER_ENVIRONMENT_VARIABLE]?.trim();
+  const repo = process.env[OPENCLAW_GITHUB_REPO_ENVIRONMENT_VARIABLE]?.trim();
+
+  return owner === undefined ||
+    owner.length === 0 ||
+    repo === undefined ||
+    repo.length === 0
+    ? undefined
+    : `${owner}/${repo}`;
 }
 
 /**
@@ -240,7 +262,12 @@ function createDefaultGitHubWorkflowService(): GitHubWorkflowService {
  * Creates the pull-request service with normalized GitHub telemetry persistence.
  */
 function createDefaultPullRequestService(): PullRequestService {
-  return new PullRequestService(createDefaultGitHubWorkflowService());
+  const repoFullName = resolveConfiguredRepositoryFullName();
+  const githubWorkflowService = createDefaultGitHubWorkflowService();
+
+  return repoFullName === undefined
+    ? new PullRequestService(githubWorkflowService)
+    : new PullRequestService(githubWorkflowService, repoFullName);
 }
 
 /**
@@ -258,7 +285,7 @@ function createDefaultSupervisorCycleService(): SupervisorCycleService {
  */
 function createDefaultDiscordControlPlaneService(): DiscordControlPlaneService {
   const storageRoot = resolveConfiguredStorageRoot();
-  const testMode = process.env['DEVPLAT_TEST_MODE']?.trim();
+  const testMode = process.env[OPENCLAW_TEST_MODE_ENVIRONMENT_VARIABLE]?.trim();
   const store =
     storageRoot === undefined ? undefined : new FileStoreService(storageRoot);
   const telemetry =

@@ -26,7 +26,8 @@ live-lab runs set the category to `test`. Storage, memory, telemetry, Discord
 lifecycle, GitHub submission, pull-request submission, and supervisor-step
 tools use the trimmed `DEVPLAT_STORAGE_ROOT` value when it is configured so
 live runtime containers and local tool calls read and write the same mounted
-`.devplat` state.
+`.devplat` state. Pull-request submission also uses trimmed `GITHUB_OWNER` and
+`GITHUB_REPO` values so PR updates target the configured repository.
 
 ## Exposed Tools
 
