@@ -1093,6 +1093,18 @@ describe('DiscordControlPlaneService', () => {
         expect(await context.store.list('audit')).toContain(
           'interaction-route-ack-failure-001:audit',
         );
+        const auditRecord = await context.store.read(
+          'audit',
+          'interaction-route-ack-failure-001:audit',
+        );
+        expect(auditRecord.ok).toBe(true);
+        if (auditRecord.ok) {
+          expect(auditRecord.value).toMatchObject({
+            payload: {
+              reason: 'Discord interaction acknowledgement returned HTTP 404.',
+            },
+          });
+        }
       },
     },
     {
@@ -1150,6 +1162,18 @@ describe('DiscordControlPlaneService', () => {
         expect(await context.store.list('audit')).toContain(
           'interaction-route-ack-failure-002:audit',
         );
+        const auditRecord = await context.store.read(
+          'audit',
+          'interaction-route-ack-failure-002:audit',
+        );
+        expect(auditRecord.ok).toBe(true);
+        if (auditRecord.ok) {
+          expect(auditRecord.value).toMatchObject({
+            payload: {
+              reason: 'Discord route refusal network failure',
+            },
+          });
+        }
       },
     },
   ];

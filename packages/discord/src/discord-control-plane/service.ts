@@ -540,6 +540,9 @@ export class DiscordControlPlaneService {
       input,
       responsePayload,
     );
+    const auditReason = acknowledgement.ok
+      ? 'Discord interaction refused because thread binding was ambiguous.'
+      : acknowledgement.responsePostError;
     await this.telemetry.recordAudit({
       auditId: `${input.id}:audit`,
       runId: input.id,
@@ -548,8 +551,7 @@ export class DiscordControlPlaneService {
       action: 'show-status',
       scope: 'discord',
       outcome: 'blocked',
-      reason:
-        'Discord interaction refused because thread binding was ambiguous.',
+      reason: auditReason,
       artifactIds: [],
       recordedAt: input.updatedAt,
       policyDecisionId: 'discord-fail-closed',
