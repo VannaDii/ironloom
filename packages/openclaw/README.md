@@ -26,6 +26,10 @@ live-lab runs set the category to `test`.
 
 ## Exposed Tools
 
+The plugin registers tools from `createDevplatOpenClawTools()`. Keep new
+tool factories in that inventory so the plugin entrypoint, exported package
+surface, and tests stay aligned.
+
 - `run_gates`: execute the configured DevPlat gate suite
 - `create_research_brief`: normalize a research brief artifact
 - `create_spec_record`: normalize a spec record artifact

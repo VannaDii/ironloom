@@ -7,6 +7,47 @@ import { fileURLToPath } from 'node:url';
 const defaultRootDirectory = resolve(import.meta.dirname, '..');
 const require = createRequire(import.meta.url);
 const installedTypeScriptVersion = require('typescript/package.json').version;
+/**
+ * Matches the leading `v` in the repository Node.js version pin.
+ */
+const NODE_VERSION_PREFIX_PATTERN = /^v/u;
+/**
+ * Extracts the OpenClaw README tool list section.
+ */
+const OPENCLAW_README_TOOL_SECTION_PATTERN =
+  /## Exposed Tools\n\n([\s\S]*?)\n## /u;
+/**
+ * Extracts a documented OpenClaw tool name from a README bullet.
+ */
+const OPENCLAW_README_TOOL_LINE_PATTERN = /^- `([^`]+)`: /gmu;
+/**
+ * Detects inline OpenClaw tool registration calls.
+ */
+const OPENCLAW_DIRECT_REGISTRATION_PATTERN =
+  /api\.registerTool\((create[A-Za-z0-9]+Tool)\(\)\);/gu;
+/**
+ * Extracts exported OpenClaw tool factories and their tool names.
+ */
+const OPENCLAW_FACTORY_TOOL_NAME_PATTERN =
+  /export function (create[A-Za-z0-9]+Tool)[\s\S]*?name:\s*'([^']+)'/gu;
+/**
+ * Detects use of the centralized OpenClaw tool inventory factory.
+ */
+const OPENCLAW_TOOL_INVENTORY_CALL_PATTERN =
+  /\bcreateDevplatOpenClawTools\(\)/u;
+/**
+ * Extracts the body of the centralized OpenClaw tool inventory factory.
+ */
+const OPENCLAW_TOOL_INVENTORY_BODY_PATTERN =
+  /export function createDevplatOpenClawTools\(\): AnyAgentTool\[\] \{\s*return \[([\s\S]*?)\];\s*\}/u;
+/**
+ * Extracts factory calls from the centralized OpenClaw tool inventory body.
+ */
+const OPENCLAW_INVENTORY_FACTORY_PATTERN = /\b(create[A-Za-z0-9]+Tool)\(\)/gu;
+/**
+ * Escapes characters that are special inside regular expressions.
+ */
+const REGEXP_SPECIAL_CHARACTERS_PATTERN = /[.*+?^${}()|[\]\\]/gu;
 
 export const REQUIRED_INSTRUCTION_FILES = [
   'AGENTS.md',
@@ -329,7 +370,10 @@ async function getInstructionVersionContext(rootDirectory) {
     expectedNodeVersion,
     expectedPackageManager: String(packageJson.packageManager ?? ''),
     expectedTypeScriptVersion: installedTypeScriptVersion,
-    normalizedNodeVersion: expectedNodeVersion.replace(/^v/u, ''),
+    normalizedNodeVersion: expectedNodeVersion.replace(
+      NODE_VERSION_PREFIX_PATTERN,
+      '',
+    ),
   };
 }
 
@@ -414,8 +458,15 @@ function validateRequiredText({
 }
 
 async function validateOpenClawToolDocumentation(rootDirectory, errors) {
-  const documentedTools = await getDocumentedOpenClawTools(rootDirectory);
-  const registeredTools = await getRegisteredOpenClawTools(rootDirectory);
+  let documentedTools;
+  let registeredTools;
+  try {
+    documentedTools = await getDocumentedOpenClawTools(rootDirectory);
+    registeredTools = await getRegisteredOpenClawTools(rootDirectory);
+  } catch (error) {
+    errors.push(normalizeInstructionError(error));
+    return;
+  }
 
   for (const toolName of registeredTools) {
     if (!documentedTools.has(toolName)) {
@@ -746,7 +797,7 @@ async function getDocumentedOpenClawTools(rootDirectory) {
     resolve(rootDirectory, 'packages/openclaw/README.md'),
     'utf8',
   );
-  const toolSectionMatch = readme.match(/## Exposed Tools\n\n([\s\S]*?)\n## /u);
+  const toolSectionMatch = readme.match(OPENCLAW_README_TOOL_SECTION_PATTERN);
   if (toolSectionMatch === null) {
     throw new Error(
       'packages/openclaw/README.md is missing the Exposed Tools section.',
@@ -755,7 +806,9 @@ async function getDocumentedOpenClawTools(rootDirectory) {
 
   const tools = new Set();
 
-  for (const match of toolSectionMatch[1].matchAll(/^- `([^`]+)`: /gmu)) {
+  for (const match of toolSectionMatch[1].matchAll(
+    OPENCLAW_README_TOOL_LINE_PATTERN,
+  )) {
     tools.add(match[1]);
   }
 
@@ -772,18 +825,15 @@ export async function getRegisteredOpenClawTools(rootDirectory) {
     'utf8',
   );
 
-  const registeredFactories = [
-    ...indexText.matchAll(
-      /api\.registerTool\((create[A-Za-z0-9]+Tool)\(\)\);/gu,
-    ),
-  ].map((match) => match[1]);
+  const registeredFactories = getOpenClawRegisteredFactories({
+    indexText,
+    serviceText,
+  });
 
   const factoryToToolName = new Map(
-    [
-      ...serviceText.matchAll(
-        /export function (create[A-Za-z0-9]+Tool)[\s\S]*?name:\s*'([^']+)'/gu,
-      ),
-    ].map((match) => [match[1], match[2]]),
+    [...serviceText.matchAll(OPENCLAW_FACTORY_TOOL_NAME_PATTERN)].map(
+      (match) => [match[1], match[2]],
+    ),
   );
 
   const tools = new Set();
@@ -799,6 +849,50 @@ export async function getRegisteredOpenClawTools(rootDirectory) {
   }
 
   return tools;
+}
+
+/**
+ * Resolves OpenClaw tool factory names from the plugin entrypoint.
+ */
+function getOpenClawRegisteredFactories({ indexText, serviceText }) {
+  const factories = [
+    ...indexText.matchAll(OPENCLAW_DIRECT_REGISTRATION_PATTERN),
+  ].map((match) => match[1]);
+
+  if (OPENCLAW_TOOL_INVENTORY_CALL_PATTERN.test(indexText)) {
+    factories.push(...getOpenClawInventoryFactories(serviceText));
+  }
+
+  return [...new Set(factories)];
+}
+
+/**
+ * Resolves OpenClaw tool factory names from the centralized inventory.
+ */
+function getOpenClawInventoryFactories(serviceText) {
+  const inventoryMatch = serviceText.match(
+    OPENCLAW_TOOL_INVENTORY_BODY_PATTERN,
+  );
+  if (inventoryMatch === null) {
+    throw new Error(
+      'packages/openclaw/src/tool-surfaces/service.ts is missing createDevplatOpenClawTools inventory.',
+    );
+  }
+
+  return [
+    ...inventoryMatch[1].matchAll(OPENCLAW_INVENTORY_FACTORY_PATTERN),
+  ].map((match) => match[1]);
+}
+
+/**
+ * Converts unknown checker errors into reportable instruction drift text.
+ */
+function normalizeInstructionError(error) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return String(error);
 }
 
 async function pathExists(path) {
@@ -819,7 +913,7 @@ function countOccurrences(content, needle) {
 }
 
 function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
+  return value.replace(REGEXP_SPECIAL_CHARACTERS_PATTERN, '\\$&');
 }
 
 async function main() {

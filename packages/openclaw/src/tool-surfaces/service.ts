@@ -1594,3 +1594,55 @@ export function createRunSupervisorStepTool(): AnyAgentTool {
 
   return tool;
 }
+
+/**
+ * Creates the full DevPlat OpenClaw tool inventory in registration order.
+ */
+export function createDevplatOpenClawTools(): AnyAgentTool[] {
+  return [
+    createResearchBriefTool(),
+    createSpecRecordTool(),
+    createApproveSpecRecordTool(),
+    createUpdateSpecRecordTool(),
+    createSlicePlanTool(),
+    createEvaluateSlicePlanReadinessTool(),
+    createResolveRuntimeConfigTool(),
+    createOpenClawPluginConfigTool(),
+    createArtifactEnvelopeTool(),
+    createApprovalRecordTool(),
+    createAuditLogTool(),
+    createMergeDecisionTool(),
+    createRebaseResultTool(),
+    createExecuteCommandTool(),
+    createRunGatesTool(),
+    createAllocateWorktreeTool(),
+    createSyncWorktreeTool(),
+    createReleaseWorktreeTool(),
+    createBindDiscordThreadTool(),
+    createOpenDiscordThreadTool(),
+    createHandleDiscordApprovalTool(),
+    createHandleDiscordControlTool(),
+    createVerifySonarBootstrapTool(),
+    createEvaluateSonarQualityGateTool(),
+    createReviewFindingTool(),
+    createRemediationPlanTool(),
+    createRememberMemoryEntryTool(),
+    createEvaluatePolicyActionTool(),
+    createRecordTelemetryEventTool(),
+    createTaskRecordTool(),
+    createClaimTaskTool(),
+    createUpdateTaskTool(),
+    createReadStoredRecordTool(),
+    createListStoredRecordsTool(),
+    createStoreRecordTool(),
+    createPullRequestRecordTool(),
+    createSubmitPullRequestUpdateTool(),
+    createSubmitPullRequestMergeTool(),
+    createPlanRebaseDependentsTool(),
+    createExecuteRebaseDependentsTool(),
+    createGitHubActionRequestTool(),
+    createSubmitGitHubActionTool(),
+    createValidateArtifactTool(),
+    createRunSupervisorStepTool(),
+  ];
+}
