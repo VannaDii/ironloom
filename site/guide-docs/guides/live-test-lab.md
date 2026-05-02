@@ -67,9 +67,9 @@ Run `.github/workflows/openclaw-live-lab.yml` with:
 
 - `ref`: optional git ref to validate
 - `max_parallel_repos`: default `6`
-- `operator_hold_ms`: default `0`; set to a positive millisecond value when a
-  human operator needs a short manual-click window while the private Gateway
-  worker is still alive
+- `operator_hold_ms`: default `150000`; set to another non-negative millisecond
+  value when a human operator needs a different manual-click window while the
+  private Gateway worker is still alive
 - `retain_failed_resources`: default `false`
 
 The workflow writes a report bundle under `$RUNNER_TEMP/openclaw-live-lab` and
@@ -151,10 +151,10 @@ buttons intact, and records the command registration, response receipt endpoints
 Discord message ids, posted content, and component custom ids in
 `live-lab-report.json`. The probe runs before the deep-test runtime is cleaned up
 so the private Gateway worker is still alive when the control message is posted.
-The optional `operator_hold_ms` input keeps that runtime open after the control
-message is visible, giving an operator a bounded manual-click window. The probe
-fails if either control-plane response loses the button rows, so the live-lab
-lane cannot silently regress to plain log-style messages. Only unbound
+The `operator_hold_ms` input keeps that runtime open for 150000 ms by default
+after the control message is visible, giving an operator a bounded manual-click
+window. The probe fails if either control-plane response loses the button rows,
+so the live-lab lane cannot silently regress to plain log-style messages. Only unbound
 bootstrap/progress status messages stay noninteractive to avoid stale clickable
 buttons after cleanup.
 

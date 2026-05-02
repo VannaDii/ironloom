@@ -549,6 +549,7 @@ describe('openclaw-live-lab helpers', () => {
           retainFailedResources: true,
           skipBuild: true,
         });
+        expect(parseLiveLabArgs([]).operatorHoldMs).toBe(150000);
         expect(identifiers).toMatchObject({
           branchName: 'live-test/101-2',
           categoryName: 'test',
@@ -2004,7 +2005,6 @@ describe('runLiveLab', () => {
               },
             },
             maxParallelRepos: 6,
-            operatorHoldMs: 25,
             ref: inputs.ref,
             reportDir: context.reportDir,
             retainFailedResources: inputs.retainFailedResources,
@@ -2042,7 +2042,7 @@ describe('runLiveLab', () => {
         expect(context.runtimeEvents).toEqual([
           'deep-test',
           'interaction-probe',
-          'hold:25',
+          'hold:150000',
           'cleanup-ready',
         ]);
         expect(report.sonar).toEqual({

@@ -38,7 +38,9 @@
   a route-refusal acknowledgement is rejected, without writing lifecycle state
 - preserve the acknowledgement receipt and durable control result with a
   `threadPostError` diagnostic when the post-acknowledgement thread status
-  message cannot be delivered
+  message cannot be delivered or returns a non-2xx Discord receipt
+- persist one Discord route trace marker for interaction-originated actions by
+  normalizing each routed interaction request once
 
 ## Channel Layout
 

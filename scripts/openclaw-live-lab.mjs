@@ -29,6 +29,10 @@ const defaultWorkflowFileName = 'live-dispatch-canary.yml';
 const defaultSonarProjectTimeoutMs = 180_000;
 const defaultWorkflowTimeoutMs = 180_000;
 const defaultPollMs = 5_000;
+/**
+ * Default window that keeps the private runtime online after success.
+ */
+const defaultOperatorHoldMs = 150_000;
 const githubRepositoryListPageSize = 100;
 const livePrefix = 'devplat-test-';
 /**
@@ -271,7 +275,7 @@ export function parseLiveLabArgs(argv) {
   const operatorHoldMs =
     typeof operatorHoldMsValue === 'string'
       ? Number.parseInt(operatorHoldMsValue, 10)
-      : undefined;
+      : defaultOperatorHoldMs;
   if (
     operatorHoldMsValue !== undefined &&
     (!Number.isInteger(operatorHoldMs) || operatorHoldMs < 0)
@@ -2080,8 +2084,10 @@ export async function runLiveLab(options, dependencies = {}) {
             reportDirectory,
             runLabel: identifiers.runLabel,
           });
-          if ((options.operatorHoldMs ?? 0) > 0) {
-            await sleepFn(options.operatorHoldMs);
+          const operatorHoldMs =
+            options.operatorHoldMs ?? defaultOperatorHoldMs;
+          if (operatorHoldMs > 0) {
+            await sleepFn(operatorHoldMs);
           }
         },
         image: options.image,

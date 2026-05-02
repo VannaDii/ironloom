@@ -116,6 +116,27 @@ function createThreadFailingResponseTransport(
 }
 
 /**
+ * Creates a transport that returns a rejected thread-message receipt.
+ */
+function createThreadRejectingResponseTransport(): DiscordControlResponseTransport {
+  return {
+    async postInteractionResponse(input) {
+      return createReceipt(`/interactions/${input.id}/${input.token}/callback`);
+    },
+    async postInteractionDeferred(input) {
+      return createReceipt(`/interactions/${input.id}/${input.token}/callback`);
+    },
+    async postThreadMessage(threadId) {
+      return {
+        endpoint: `/channels/${threadId}/messages`,
+        statusCode: 403,
+        responseBody: { message: 'Missing permissions' },
+      };
+    },
+  };
+}
+
+/**
  * Creates a transport that returns a rejected interaction acknowledgement.
  */
 function createAcknowledgementRejectingResponseTransport(): DiscordControlResponseTransport {
@@ -312,6 +333,15 @@ describe('DiscordControlPlaneService', () => {
           expect(await context.store.list('state')).toContain(
             'interaction-001',
           );
+          const stored = await context.store.read('state', 'interaction-001');
+          expect(stored.ok).toBe(true);
+          if (stored.ok) {
+            expect(
+              stored.value.trace.filter(
+                (entry) => entry === 'discord:thread-5:show-status',
+              ),
+            ).toHaveLength(1);
+          }
         },
       },
       {
@@ -406,7 +436,7 @@ describe('DiscordControlPlaneService', () => {
     }
   });
 
-  const cases = [
+  const acknowledgementOrderCases = [
     {
       name: 'acknowledges accepted interaction before persistence',
       inputs: {
@@ -564,12 +594,70 @@ describe('DiscordControlPlaneService', () => {
     },
   ];
 
-  it.each(cases)('$name', async ({ inputs, mock, assert }) => {
-    const context = await mock();
-    await assert(context, inputs);
-  });
+  it.each(acknowledgementOrderCases)(
+    '$name',
+    async ({ inputs, mock, assert }) => {
+      const context = await mock();
+      await assert(context, inputs);
+    },
+  );
 
   const threadFailureCases = [
+    {
+      name: 'returns the acknowledgement and durable result when thread posting returns a rejected receipt',
+      inputs: {
+        interaction: {
+          id: 'interaction-thread-failure-003',
+          token: 'token-thread-failure-3',
+          actorId: 'user-thread-failure-3',
+          channelId: 'channel-thread-failure-3',
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          commandName: 'show status',
+          threadId: 'thread-failure-3',
+        } satisfies DiscordOperatorInteraction,
+      },
+      mock: async () => {
+        const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+        const store = new FileStoreService(rootDirectory);
+        return {
+          store,
+          service: new DiscordControlPlaneService(
+            new DecisionPolicyService(),
+            new TelemetryEventService(store),
+            store,
+            createThreadRejectingResponseTransport(),
+          ),
+        };
+      },
+      assert: async (
+        context: {
+          store: FileStoreService;
+          service: DiscordControlPlaneService;
+        },
+        inputs: {
+          interaction: DiscordOperatorInteraction;
+        },
+      ) => {
+        const result = await context.service.handleInteraction(
+          inputs.interaction,
+        );
+
+        expect(result.allowed).toBe(true);
+        expect(result.responseReceipt?.endpoint).toBe(
+          '/interactions/interaction-thread-failure-003/token-thread-failure-3/callback',
+        );
+        expect(result.threadReceipt?.statusCode).toBe(403);
+        expect(result.threadPostError).toBe(
+          'Discord thread status message returned HTTP 403.',
+        );
+        expect(await context.store.list('state')).toContain(
+          'interaction-thread-failure-003',
+        );
+        expect(await context.store.list('audit')).toContain(
+          'interaction-thread-failure-003:audit',
+        );
+      },
+    },
     {
       name: 'returns the acknowledgement and durable result when thread posting throws an error',
       inputs: {

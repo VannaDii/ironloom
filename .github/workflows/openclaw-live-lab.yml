@@ -18,9 +18,9 @@ on:
         default: false
         type: boolean
       operator_hold_ms:
-        description: Optional milliseconds to keep the live runtime open after posting operator controls
+        description: Milliseconds to keep the live runtime open after posting operator controls
         required: false
-        default: '0'
+        default: '150000'
         type: string
 
 permissions:

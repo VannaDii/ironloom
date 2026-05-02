@@ -135,10 +135,11 @@ component id list so operators can audit the visible start signal without
 leaving unbound status buttons that outlive the ephemeral runner.
 Human-triggered Discord client clicks remain a manual sandbox-guild acceptance
 check because Discord does not expose a supported bot API for clicking buttons
-as a user. The `operator_hold_ms` live-lab input keeps the private Gateway
-runtime open for a bounded manual-click window after the control message is
-posted. Live-lab status posts suppress raw GitHub URL previews, and reports
-include selected channel `parentId` values so category placement can be audited.
+as a user. The `operator_hold_ms` live-lab input defaults to `150000`, keeping
+the private Gateway runtime open for a bounded 2.5 minute manual-click window
+after the control message is posted. Live-lab status posts suppress raw GitHub
+URL previews, and reports include selected channel `parentId` values so category
+placement can be audited.
 Live-lab runtime containers receive the same repo-scoped Discord/OpenClaw/Sonar
 environment through Docker env-name pass-through while report artifacts keep
 secret values redacted. The live container explicitly starts the private
@@ -153,7 +154,8 @@ route-refusal acknowledgement is rejected, DevPlat fails the action closed,
 writes an audit event, and reports `responsePostError` without lifecycle state
 changes. If the post-acknowledgement thread update fails, the control result
 keeps the interaction receipt and durable action record while reporting
-`threadPostError`.
+`threadPostError`. Interaction-originated requests are normalized once, so
+persisted traces contain one Discord route marker for the action.
 
 Public contract schemas are generated from exported `io-ts` codecs. For
 codec-owned lifecycle records, derive TypeScript types from those codecs rather
