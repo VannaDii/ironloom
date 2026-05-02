@@ -680,6 +680,31 @@ describe('openclaw-live-lab helpers', () => {
         });
         expect(message).toEqual({
           allowed_mentions: { parse: [] },
+          components: [
+            {
+              components: [
+                {
+                  /**
+                   * Discord component wire key returned by button interactions.
+                   */
+                  custom_id: 'devplat:live-lab:v1:show-status:200-3',
+                  label: 'Show Status',
+                  style: 2,
+                  type: 2,
+                },
+                {
+                  /**
+                   * Discord component wire key returned by button interactions.
+                   */
+                  custom_id: 'devplat:live-lab:v1:details:200-3',
+                  label: 'Details',
+                  style: 2,
+                  type: 2,
+                },
+              ],
+              type: 1,
+            },
+          ],
           content: [
             '🟡 DevPlat · Live lab bootstrap',
             '',

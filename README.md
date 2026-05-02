@@ -118,14 +118,14 @@ URLs, empty required paths, invalid deployment targets, and invalid gateway
 ports. The storage package remains the only package that directly reads or
 writes the committed runtime state directory.
 
-The live lab registers Discord operator commands in the sandbox guild and records
-callback-shaped interaction evidence in its report, including response endpoints,
-Discord message ids, posted content, and component custom ids. Human-triggered
-Discord client clicks remain a manual sandbox-guild acceptance check because
-Discord does not expose a supported bot API for clicking buttons as a user.
-Live-lab status posts use compact operator payloads without raw GitHub URLs, and
-reports include selected channel `parentId` values so category placement can be
-audited.
+The live lab posts compact operator payloads with safe `Show Status` and
+`Details` buttons, registers Discord operator commands in the sandbox guild, and
+records callback-shaped interaction evidence in its report, including response
+endpoints, Discord message ids, posted content, and component custom ids.
+Human-triggered Discord client clicks remain a manual sandbox-guild acceptance
+check because Discord does not expose a supported bot API for clicking buttons
+as a user. Live-lab status posts suppress raw GitHub URL previews, and reports
+include selected channel `parentId` values so category placement can be audited.
 Live-lab runtime containers receive the same repo-scoped Discord/OpenClaw/Sonar
 environment through Docker env-name pass-through while report artifacts keep
 secret values redacted.

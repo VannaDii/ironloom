@@ -39,6 +39,18 @@ const testDiscordCategoryName = 'test';
  * Discord component wire field for the developer-defined interaction id.
  */
 const discordComponentCustomIdField = 'custom_id';
+/**
+ * Discord action row component type used for live-lab status controls.
+ */
+const discordActionRowComponentType = 1;
+/**
+ * Discord button component type used for live-lab status controls.
+ */
+const discordButtonComponentType = 2;
+/**
+ * Discord secondary button style used for neutral live-lab controls.
+ */
+const discordSecondaryButtonStyle = 2;
 const liveLabGitHubAppPermissions = Object.freeze({
   actions: 'write',
   administration: 'write',
@@ -362,9 +374,47 @@ export function createStatusMessage({
 
   return {
     allowed_mentions: { parse: [] },
+    components: createLiveLabStatusComponentRows(runLabel),
     content: lines.join('\n'),
     flags: 4,
   };
+}
+
+/**
+ * Creates compact live-lab status controls for Discord operator messages.
+ */
+function createLiveLabStatusComponentRows(runLabel) {
+  return [
+    {
+      components: [
+        createLiveLabStatusButton('show-status', 'Show Status', runLabel),
+        createLiveLabStatusButton('details', 'Details', runLabel),
+      ],
+      type: discordActionRowComponentType,
+    },
+  ];
+}
+
+/**
+ * Creates one live-lab status button using Discord's component wire shape.
+ */
+function createLiveLabStatusButton(action, label, runLabel) {
+  return {
+    [discordComponentCustomIdField]: createLiveLabStatusCustomId(
+      action,
+      runLabel,
+    ),
+    label,
+    style: discordSecondaryButtonStyle,
+    type: discordButtonComponentType,
+  };
+}
+
+/**
+ * Creates the live-lab component id that Discord returns on button clicks.
+ */
+function createLiveLabStatusCustomId(action, runLabel) {
+  return `devplat:live-lab:v1:${action}:${runLabel}`;
 }
 
 export function mapProgressToChannel(progress) {

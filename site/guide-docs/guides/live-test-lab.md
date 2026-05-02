@@ -111,10 +111,12 @@ Use them this way:
 Every message is labeled with the run metadata, so operators can correlate
 activity without per-run channel trees.
 Status messages use the compact DevPlat state/scope/item format and suppress
-raw GitHub URL previews. The uploaded `live-lab-report.json` records each
-selected channel id and `parentId` so operators can confirm the run used the
-channels under the `test` category, not uncategorized duplicates with the same
-names.
+raw GitHub URL previews. They also include compact `Show Status` and `Details`
+button components keyed to the live-lab run label, so the visible payload shape
+stays aligned with the Discord operator UI contract instead of regressing to
+plain log output. The uploaded `live-lab-report.json` records each selected
+channel id and `parentId` so operators can confirm the run used the channels
+under the `test` category, not uncategorized duplicates with the same names.
 
 Production operator channels use the same standard channel names from runtime
 configuration under a category named for the repository. OpenClaw test and
