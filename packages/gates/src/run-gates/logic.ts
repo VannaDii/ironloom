@@ -168,7 +168,7 @@ export function createGateRemediationHook(
         (result) => result.failureKind === 'command-failed',
       ),
     approvalRequired: true,
-    nextAction: 'create-remediation-plan',
+    nextAction: GATE_NEXT_ACTION_CREATE_REMEDIATION_PLAN,
     createdAt: new Date(input.updatedAt).toISOString(),
   };
 }
