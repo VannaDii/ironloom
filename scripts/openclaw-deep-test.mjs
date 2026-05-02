@@ -1154,6 +1154,19 @@ export function createDeepScenario(runtimeEnv) {
       'control',
     ),
     createStep(
+      'read_indexed_record',
+      {
+        indexName: 'artifact',
+        key: 'storage-openclaw-artifact-1',
+      },
+      {
+        status: 'ok',
+        indexName: 'artifact',
+        key: 'storage-openclaw-artifact-1',
+      },
+      'control',
+    ),
+    createStep(
       'list_stored_index',
       {
         indexName: 'artifact',

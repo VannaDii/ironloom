@@ -178,6 +178,12 @@ export const ReadStoredIndexToolInputCodec = t.type({
   key: t.string,
 });
 
+/** Input codec for reading a stored record through a secondary index. */
+export const ReadIndexedRecordToolInputCodec = t.type({
+  indexName: StoreIndexNameCodec,
+  key: t.string,
+});
+
 /** Input codec for listing storage secondary index keys. */
 export const ListStoredIndexToolInputCodec = t.type({
   indexName: StoreIndexNameCodec,
@@ -427,6 +433,11 @@ export type ListStoredRecordsToolInput = t.TypeOf<
 /** Input for the read stored index OpenClaw tool. */
 export type ReadStoredIndexToolInput = t.TypeOf<
   typeof ReadStoredIndexToolInputCodec
+>;
+
+/** Input for the read indexed record OpenClaw tool. */
+export type ReadIndexedRecordToolInput = t.TypeOf<
+  typeof ReadIndexedRecordToolInputCodec
 >;
 
 /** Input for the list stored index OpenClaw tool. */

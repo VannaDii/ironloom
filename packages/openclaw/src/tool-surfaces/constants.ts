@@ -42,6 +42,11 @@ export const TOOL_PAYLOAD_KEY_IGNORED_CHARACTER_PATTERN = /[^a-z0-9]/giu;
 export const READ_STORED_INDEX_TOOL_NAME = 'read_stored_index';
 
 /**
+ * Tool name for reading a storage record through a secondary index.
+ */
+export const READ_INDEXED_RECORD_TOOL_NAME = 'read_indexed_record';
+
+/**
  * Tool name for listing storage secondary index keys through the adapter.
  */
 export const LIST_STORED_INDEX_TOOL_NAME = 'list_stored_index';
@@ -51,6 +56,12 @@ export const LIST_STORED_INDEX_TOOL_NAME = 'list_stored_index';
  */
 export const READ_STORED_INDEX_SCHEMA_FILE =
   'tool-read-stored-index-params.schema.json';
+
+/**
+ * Generated schema file for the storage indexed record read tool.
+ */
+export const READ_INDEXED_RECORD_SCHEMA_FILE =
+  'tool-read-indexed-record-params.schema.json';
 
 /**
  * Generated schema file for the storage secondary index list tool.

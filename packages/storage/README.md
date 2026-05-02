@@ -5,8 +5,8 @@ Lightweight file-backed adapter over `.devplat`.
 ## Responsibility
 
 This package owns direct `.devplat` reads and writes, layout versioning, storage
-paths, index materialization, and index lookup for active thread, task, pull
-request, branch, and artifact lookups.
+paths, index materialization, index lookup, and indexed-record resolution for
+active thread, task, pull request, branch, and artifact lookups.
 
 ## Real-World Flow
 
@@ -16,7 +16,7 @@ flowchart LR
   Record --> Layout[Versioned layout path]
   Record --> Index[Active thread task PR branch artifact index]
   Layout --> Disk[.devplat JSON]
-  Index --> Lookup[readIndex and listIndex]
+  Index --> Lookup[readIndex listIndex readIndexedRecord]
   Lookup --> Caller[Lifecycle service lookup]
 ```
 
@@ -26,6 +26,8 @@ flowchart LR
 - Keep storage format auditable JSON.
 - Keep stored record, scope, and index-name types derived from the exported codecs.
 - Expose index reads through storage APIs instead of direct path access.
+- Resolve indexed records through storage APIs so callers do not chain `.devplat`
+  path knowledge.
 - Do not own lifecycle transitions for stored domain records.
 
 ## Development

@@ -25,6 +25,7 @@ import {
   createRememberMemoryEntryTool,
   createRecordTelemetryEventTool,
   createReadStoredRecordTool,
+  createReadIndexedRecordTool,
   createReadStoredIndexTool,
   createRebaseResultTool,
   createReviewFindingTool,
@@ -2022,6 +2023,84 @@ describe('tool surface service', () => {
         },
       },
       {
+        name: 'reads indexed records from the configured storage root',
+        inputs: {
+          recordKey: 'indexed-openclaw-task-1',
+        },
+        mock: async () => {
+          const storageRoot = await mkdtemp(
+            join(tmpdir(), 'devplat-openclaw-indexed-record-env-'),
+          );
+          const previousStorageRoot = process.env['DEVPLAT_STORAGE_ROOT'];
+
+          return {
+            previousStorageRoot,
+            storageRoot,
+          };
+        },
+        assert: async (
+          context: {
+            previousStorageRoot: string | undefined;
+            storageRoot: string;
+          },
+          inputs: {
+            recordKey: string;
+          },
+        ) => {
+          try {
+            process.env['DEVPLAT_STORAGE_ROOT'] = `  ${context.storageRoot}  `;
+
+            await createStoreRecordTool().execute(
+              'tool-call-indexed-record-store-1',
+              {
+                record: {
+                  id: inputs.recordKey,
+                  key: inputs.recordKey,
+                  scope: 'tasks',
+                  summary: 'Indexed OpenClaw task snapshot',
+                  status: 'complete',
+                  trace: [],
+                  updatedAt: '2026-04-04T00:00:00.000Z',
+                  indexes: ['task'],
+                  payload: {
+                    state: 'complete',
+                  },
+                },
+                actorId: 'operator-index-1',
+                privileged: false,
+              },
+            );
+            const result = await createReadIndexedRecordTool().execute(
+              'tool-call-indexed-record-read-1',
+              {
+                indexName: 'task',
+                key: inputs.recordKey,
+              },
+            );
+
+            expect(result.details).toMatchObject({
+              status: 'ok',
+              indexName: 'task',
+              key: inputs.recordKey,
+              record: {
+                key: inputs.recordKey,
+                scope: 'tasks',
+                payload: {
+                  state: 'complete',
+                },
+              },
+            });
+          } finally {
+            if (context.previousStorageRoot === undefined) {
+              delete process.env['DEVPLAT_STORAGE_ROOT'];
+            } else {
+              process.env['DEVPLAT_STORAGE_ROOT'] = context.previousStorageRoot;
+            }
+            await rm(context.storageRoot, { force: true, recursive: true });
+          }
+        },
+      },
+      {
         name: 'returns structured failures for missing stored index reads',
         inputs: {
           indexName: 'task',
@@ -2055,8 +2134,18 @@ describe('tool surface service', () => {
               'tool-call-index-read-missing',
               inputs,
             );
+            const indexedRecordResult =
+              await createReadIndexedRecordTool().execute(
+                'tool-call-indexed-record-read-missing',
+                inputs,
+              );
 
             expect(result.details).toMatchObject({
+              status: 'failed',
+              indexName: inputs.indexName,
+              key: inputs.key,
+            });
+            expect(indexedRecordResult.details).toMatchObject({
               status: 'failed',
               indexName: inputs.indexName,
               key: inputs.key,
@@ -2089,9 +2178,17 @@ describe('tool surface service', () => {
             'tool-call-index-list-invalid',
             inputs.params,
           );
+          const indexedRecordResult =
+            await createReadIndexedRecordTool().execute(
+              'tool-call-indexed-record-read-invalid',
+              inputs.params,
+            );
 
           expect(readResult.details).toMatchObject({ status: 'failed' });
           expect(listResult.details).toMatchObject({ status: 'failed' });
+          expect(indexedRecordResult.details).toMatchObject({
+            status: 'failed',
+          });
         },
       },
     ];

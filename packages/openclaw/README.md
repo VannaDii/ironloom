@@ -83,6 +83,7 @@ surface, and tests stay aligned.
 - `read_stored_record`: fetch a record from the storage adapter
 - `list_stored_records`: enumerate storage records
 - `read_stored_index`: fetch a secondary storage index entry
+- `read_indexed_record`: resolve a secondary storage index to its record
 - `list_stored_index`: enumerate secondary storage index keys
 - `store_record`: persist a record through the storage adapter
 - `create_pull_request_record`: create a pull request record

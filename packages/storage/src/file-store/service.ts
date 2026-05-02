@@ -138,6 +138,21 @@ export class FileStoreService {
   }
 
   /**
+   * Resolves a secondary index entry to the stored record it references.
+   */
+  public async readIndexedRecord(
+    indexName: StoreIndexName,
+    key: string,
+  ): Promise<DevplatResult<StoredRecord>> {
+    const indexEntry = await this.readIndex(indexName, key);
+    if (!indexEntry.ok) {
+      return indexEntry;
+    }
+
+    return this.read(indexEntry.value.scope, indexEntry.value.key);
+  }
+
+  /**
    * Lists JSON record keys for a storage scope.
    */
   public async list(scope: StoreScope): Promise<string[]> {

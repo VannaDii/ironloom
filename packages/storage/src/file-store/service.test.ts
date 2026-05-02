@@ -26,6 +26,10 @@ type FileStoreServiceInputs =
       records: StoredRecord<FileStorePayload>[];
     }
   | {
+      mode: 'indexed-record';
+      record: StoredRecord<FileStorePayload>;
+    }
+  | {
       mode: 'index-failure';
       record: StoredRecord<FileStorePayload>;
     }
@@ -229,6 +233,54 @@ describe('FileStoreService', () => {
       },
     },
     {
+      name: 'reads stored records through secondary index ownership',
+      inputs: {
+        mode: 'indexed-record',
+        record: {
+          id: 'storage-indexed-record',
+          key: 'task-indexed-record',
+          scope: 'tasks',
+          summary: 'Task indexed record',
+          status: 'complete',
+          trace: [],
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          indexes: ['task'],
+          payload: { state: 'resolved' },
+        },
+      },
+      mock: async () => {
+        const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-storage-'));
+
+        return {
+          rootDirectory,
+          service: new FileStoreService(rootDirectory),
+        };
+      },
+      assert: async (context, inputs) => {
+        if (inputs.mode !== 'indexed-record') {
+          throw new Error('expected indexed-record inputs');
+        }
+
+        await context.service.store(inputs.record);
+        const result = await context.service.readIndexedRecord(
+          'task',
+          'task-indexed-record',
+        );
+
+        expect(result).toMatchObject({
+          ok: true,
+          value: {
+            id: 'storage-indexed-record',
+            key: 'task-indexed-record',
+            scope: 'tasks',
+            payload: {
+              state: 'resolved',
+            },
+          },
+        });
+      },
+    },
+    {
       name: 'fails closed for missing and invalid secondary index entries',
       inputs: {
         mode: 'index-failure',
@@ -258,6 +310,10 @@ describe('FileStoreService', () => {
         }
 
         const missing = await context.service.readIndex('task', 'missing');
+        const missingRecord = await context.service.readIndexedRecord(
+          'task',
+          'missing',
+        );
         await context.service.store(inputs.record);
         await writeFile(
           resolve(
@@ -298,6 +354,7 @@ describe('FileStoreService', () => {
         parseSpy.mockRestore();
 
         expect(missing.ok).toBe(false);
+        expect(missingRecord.ok).toBe(false);
         expect(invalid.ok).toBe(false);
         expect(stringError).toEqual({ ok: false, error: 'index boom' });
         expect(await context.service.listIndex('artifact')).toEqual([]);
