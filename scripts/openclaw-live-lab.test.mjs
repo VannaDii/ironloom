@@ -527,6 +527,8 @@ describe('openclaw-live-lab helpers', () => {
           '--skip-build',
           '--max-parallel-repos',
           '6',
+          '--operator-hold-ms',
+          '30000',
           '--retain-failed-resources',
         ],
       },
@@ -542,6 +544,7 @@ describe('openclaw-live-lab helpers', () => {
         expect(parsed).toMatchObject({
           image: 'ghcr.io/vannadii/devplat-openclaw:test',
           maxParallelRepos: 6,
+          operatorHoldMs: 30000,
           ref: 'main',
           retainFailedResources: true,
           skipBuild: true,
@@ -1084,7 +1087,14 @@ describe('openclaw-live-lab helpers', () => {
     {
       name: 'runs the CLI entrypoint with injected collaborators',
       inputs: {
-        argv: ['--ref', 'release-candidate', '--max-parallel-repos', '8'],
+        argv: [
+          '--ref',
+          'release-candidate',
+          '--max-parallel-repos',
+          '8',
+          '--operator-hold-ms',
+          '120000',
+        ],
       },
       mock: async () => {
         const writes = [];
@@ -1123,6 +1133,7 @@ describe('openclaw-live-lab helpers', () => {
         expect(capturedOptions).toMatchObject({
           environment,
           maxParallelRepos: 8,
+          operatorHoldMs: 120000,
           ref: 'release-candidate',
         });
         expect(report.status).toBe('passed');
@@ -1741,6 +1752,7 @@ describe('runLiveLab', () => {
         const discordCalls = [];
         const createdDiscordChannels = [];
         const githubCalls = [];
+        const runtimeEvents = [];
         const sonarCalls = [];
         const discordChannelResponses = [
           { id: 'test-category', name: 'test', type: 4 },
@@ -1951,20 +1963,31 @@ describe('runLiveLab', () => {
           reportDir,
           registerDiscordApplicationCommandsMock:
             createRegisterDiscordApplicationCommandsMock(),
-          runDiscordInteractionProbeMock: async () => ({
-            action: 'retry-gates',
-            allowed: true,
-            commandName: 'retry-gates',
-            failedClosed: false,
-            interactionEndpoint: '/interactions/live-lab/token/callback',
-            policyDecisionId: 'policy-retry-gates',
-            threadEndpoint: '/channels/implementation-1/messages',
-            threadId: 'implementation-1',
-          }),
-          runDeepTestMock: async () => ({
-            reportDirectory: resolve(reportDir, 'deep-test'),
-            steps: [{ tool: 'verify_sonar_bootstrap' }],
-          }),
+          runDiscordInteractionProbeMock: async () => {
+            runtimeEvents.push('interaction-probe');
+
+            return {
+              action: 'retry-gates',
+              allowed: true,
+              commandName: 'retry-gates',
+              failedClosed: false,
+              interactionEndpoint: '/interactions/live-lab/token/callback',
+              policyDecisionId: 'policy-retry-gates',
+              threadEndpoint: '/channels/implementation-1/messages',
+              threadId: 'implementation-1',
+            };
+          },
+          runDeepTestMock: async (options) => {
+            runtimeEvents.push('deep-test');
+            await options.beforeCleanup();
+            runtimeEvents.push('cleanup-ready');
+
+            return {
+              reportDirectory: resolve(reportDir, 'deep-test'),
+              steps: [{ tool: 'verify_sonar_bootstrap' }],
+            };
+          },
+          runtimeEvents,
           sonarCalls,
           sonarRequest,
           summaryEntries: [],
@@ -1981,6 +2004,7 @@ describe('runLiveLab', () => {
               },
             },
             maxParallelRepos: 6,
+            operatorHoldMs: 25,
             ref: inputs.ref,
             reportDir: context.reportDir,
             retainFailedResources: inputs.retainFailedResources,
@@ -2003,6 +2027,9 @@ describe('runLiveLab', () => {
               context.registerDiscordApplicationCommandsMock,
             runDeepTest: context.runDeepTestMock,
             runDiscordInteractionProbe: context.runDiscordInteractionProbeMock,
+            sleep: async (delayMs) => {
+              context.runtimeEvents.push(`hold:${String(delayMs)}`);
+            },
             sonarRequest: context.sonarRequest,
           },
         );
@@ -2012,6 +2039,12 @@ describe('runLiveLab', () => {
           action: 'retry-gates',
           failedClosed: false,
         });
+        expect(context.runtimeEvents).toEqual([
+          'deep-test',
+          'interaction-probe',
+          'hold:25',
+          'cleanup-ready',
+        ]);
         expect(report.sonar).toEqual({
           projectKey: 'sandbox-user_devplat-test-200-1',
           projectName: 'devplat-test-200-1',

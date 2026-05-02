@@ -17,6 +17,11 @@ on:
         required: false
         default: false
         type: boolean
+      operator_hold_ms:
+        description: Optional milliseconds to keep the live runtime open after posting operator controls
+        required: false
+        default: '0'
+        type: string
 
 permissions:
   contents: read
@@ -69,6 +74,7 @@ jobs:
             --ref "${{ inputs.ref || github.ref_name }}"
             --report-dir "$RUNNER_TEMP/openclaw-live-lab"
             --max-parallel-repos "${{ inputs.max_parallel_repos }}"
+            --operator-hold-ms "${{ inputs.operator_hold_ms }}"
           )
 
           if [[ "${{ inputs.retain_failed_resources }}" == 'true' ]]; then

@@ -498,7 +498,7 @@ This phase is complete when:
   Discord interaction-response probing through operator-visible Discord messages
   with actionable button components preserved in the structured control-plane
   payload, component custom ids, posted content, and Discord message receipt ids
-  preserved
+  preserved while the private Gateway runtime is still alive
 - the dispatchable live lab fails before sandbox repository mutation when the
   required project-management bootstrap status message cannot post
 - the dispatchable live lab records the required bootstrap status receipt with

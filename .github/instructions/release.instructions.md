@@ -7,6 +7,7 @@
 - Publish the chart through GHCR OCI Helm.
 - Publish the documentation site through GitHub Pages.
 - Keep public DevPlat packages in a single Changesets fixed release group.
+- Every pull request with code changes must carry a detailed Changesets entry that describes the runtime, operator, package, workflow, or validation impact; update it whenever subsequent branch work changes that impact.
 - Tag stable releases with `vN`, `vN.N`, and `vN.N.N` release-line tags.
 
 ## Publication Guardrails
