@@ -389,6 +389,48 @@ describe('openclaw-deep-test helpers', () => {
       },
     },
     {
+      name: 'threads the configured worktree root through runtime and scenario checks',
+      inputs: {
+        worktreeRoot: 'devplat-state/worktrees',
+        overrideRoot: '  custom-state/worktrees  ',
+        trimmedOverrideRoot: 'custom-state/worktrees',
+      },
+      mock: async () => undefined,
+      assert: async (_context, inputs) => {
+        const runtimeEnv = createRuntimeEnv();
+        const scenario = createDeepScenario(runtimeEnv);
+        const overrideScenario = createDeepScenario(
+          createRuntimeEnv({
+            DEVPLAT_WORKTREE_ROOT: inputs.overrideRoot,
+          }),
+        );
+        const allocateStep = scenario.find(
+          (step) => step.tool === 'allocate_worktree',
+        );
+        const overrideAllocateStep = overrideScenario.find(
+          (step) => step.tool === 'allocate_worktree',
+        );
+        const syncStep = scenario.find((step) => step.tool === 'sync_worktree');
+        const releaseStep = scenario.find(
+          (step) => step.tool === 'release_worktree',
+        );
+
+        expect(runtimeEnv.DEVPLAT_WORKTREE_ROOT).toBe(inputs.worktreeRoot);
+        expect(allocateStep?.expected).toMatchObject({
+          worktreePath: `${inputs.worktreeRoot}/feature/task-1`,
+        });
+        expect(syncStep?.params.allocation).toMatchObject({
+          worktreePath: `${inputs.worktreeRoot}/feature/task-1`,
+        });
+        expect(releaseStep?.params.allocation).toMatchObject({
+          worktreePath: `${inputs.worktreeRoot}/feature/task-1`,
+        });
+        expect(overrideAllocateStep?.expected).toMatchObject({
+          worktreePath: `${inputs.trimmedOverrideRoot}/feature/task-1`,
+        });
+      },
+    },
+    {
       name: 'matches array-valued result details structurally',
       inputs: {},
       mock: async () => undefined,
