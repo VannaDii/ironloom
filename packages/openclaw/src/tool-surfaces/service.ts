@@ -168,6 +168,7 @@ function createLoopbackDiscordResponseTransport(): DiscordControlResponseTranspo
 
 function createDefaultDiscordControlPlaneService(): DiscordControlPlaneService {
   const storageRoot = process.env['DEVPLAT_STORAGE_ROOT'];
+  const testMode = process.env['DEVPLAT_TEST_MODE']?.trim();
   const store =
     storageRoot === undefined || storageRoot.trim().length === 0
       ? undefined
@@ -175,9 +176,9 @@ function createDefaultDiscordControlPlaneService(): DiscordControlPlaneService {
   const telemetry =
     store === undefined ? undefined : new TelemetryEventService(store);
   const transport =
-    process.env['DEVPLAT_TEST_MODE'] === 'hermetic'
-      ? createLoopbackDiscordResponseTransport()
-      : undefined;
+    testMode === undefined || testMode.length === 0
+      ? undefined
+      : createLoopbackDiscordResponseTransport();
 
   if (store !== undefined || transport !== undefined) {
     return new DiscordControlPlaneService(

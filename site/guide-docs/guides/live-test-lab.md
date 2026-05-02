@@ -80,6 +80,11 @@ The live-lab runner passes the repository-scoped runtime environment into the
 OpenClaw container as named Docker environment variables. Secret values are not
 included in Docker arguments or report artifacts; `runtime-env.json` records only
 the redacted runtime snapshot for audit review.
+Live-mode containers also set `DISCORD_GATEWAY_ENABLED=true` and
+`DEVPLAT_STORAGE_ROOT=/app/.devplat`, so the private outbound Discord Gateway
+worker starts beside the OpenClaw gateway and resolves button or slash-command
+clicks against the same persisted thread-session state written by platform
+tools.
 
 The matching local invocation is:
 

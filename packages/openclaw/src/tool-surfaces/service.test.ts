@@ -1252,41 +1252,49 @@ describe('tool surface service', () => {
     }
   });
 
-  it('uses hermetic Discord response transport for callback-shaped control input', async () => {
+  describe('test-mode callback response transport', () => {
+    /**
+     * Builds the callback-shaped Discord control input shared by transport cases.
+     */
+    function createTestModeDiscordInteractionParams(): Record<string, unknown> {
+      return {
+        id: 'interaction-test-mode-1',
+        token: 'token-test-mode-1',
+        actorId: 'operator-1',
+        channelId: 'channel-1',
+        boundThreadId: 'thread-1',
+        commandName: 'retry-gates',
+        summary: 'Retry gates from slash command',
+        privileged: false,
+        updatedAt: '2026-04-04T00:00:00.000Z',
+        boundSession: {
+          id: 'session-test-mode-1',
+          summary: 'Implementation thread',
+          status: 'running',
+          trace: [],
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          guildId: 'guild-1',
+          channelId: 'channel-1',
+          parentChannelId: 'implementation-parent-1',
+          threadId: 'thread-1',
+          kind: 'implementation',
+          specId: 'spec-1',
+          sliceId: 'slice-1',
+          pullRequestNumber: null,
+          artifactId: 'session-artifact-1',
+        },
+      };
+    }
+
     const cases = [
       {
+        name: 'hermetic test mode',
         inputs: {
-          params: {
-            id: 'interaction-hermetic-1',
-            token: 'token-hermetic-1',
-            actorId: 'operator-1',
-            channelId: 'channel-1',
-            boundThreadId: 'thread-1',
-            commandName: 'retry-gates',
-            summary: 'Retry gates from slash command',
-            privileged: false,
-            updatedAt: '2026-04-04T00:00:00.000Z',
-            boundSession: {
-              id: 'session-hermetic-1',
-              summary: 'Implementation thread',
-              status: 'running',
-              trace: [],
-              updatedAt: '2026-04-04T00:00:00.000Z',
-              guildId: 'guild-1',
-              channelId: 'channel-1',
-              parentChannelId: 'implementation-parent-1',
-              threadId: 'thread-1',
-              kind: 'implementation',
-              specId: 'spec-1',
-              sliceId: 'slice-1',
-              pullRequestNumber: null,
-              artifactId: 'session-artifact-1',
-            },
-          },
+          testMode: 'hermetic',
         },
-        mock: async () => {
+        mock: async (inputs: { testMode: string }) => {
           const storageRoot = await mkdtemp(
-            join(tmpdir(), 'devplat-openclaw-hermetic-'),
+            join(tmpdir(), `devplat-openclaw-${inputs.testMode}-`),
           );
           const previousTestMode = process.env['DEVPLAT_TEST_MODE'];
           const previousStorageRoot = process.env['DEVPLAT_STORAGE_ROOT'];
@@ -1304,18 +1312,17 @@ describe('tool surface service', () => {
             storageRoot: string;
           },
           inputs: {
-            params: Record<string, unknown>;
+            testMode: string;
           },
         ) => {
           try {
-            process.env['DEVPLAT_TEST_MODE'] = 'hermetic';
+            process.env['DEVPLAT_TEST_MODE'] = inputs.testMode;
             process.env['DEVPLAT_STORAGE_ROOT'] = context.storageRoot;
 
             const tool = createHandleDiscordControlTool();
-            const result = await tool.execute(
-              'tool-call-dc-hermetic',
-              inputs.params,
-            );
+            const result = await tool.execute('tool-call-dc-test-mode', {
+              ...createTestModeDiscordInteractionParams(),
+            });
 
             expect(result.details).toMatchObject({
               allowed: true,
@@ -1323,7 +1330,77 @@ describe('tool surface service', () => {
               policyDecisionId: 'policy-retry-gates',
               responseReceipt: {
                 endpoint:
-                  '/interactions/interaction-hermetic-1/token-hermetic-1/callback',
+                  '/interactions/interaction-test-mode-1/token-test-mode-1/callback',
+                responseBody: {
+                  mode: 'loopback',
+                },
+              },
+              threadReceipt: {
+                endpoint: '/channels/thread-1/messages',
+                responseBody: {
+                  mode: 'loopback',
+                },
+              },
+            });
+          } finally {
+            if (context.previousTestMode === undefined) {
+              delete process.env['DEVPLAT_TEST_MODE'];
+            } else {
+              process.env['DEVPLAT_TEST_MODE'] = context.previousTestMode;
+            }
+            if (context.previousStorageRoot === undefined) {
+              delete process.env['DEVPLAT_STORAGE_ROOT'];
+            } else {
+              process.env['DEVPLAT_STORAGE_ROOT'] = context.previousStorageRoot;
+            }
+            await rm(context.storageRoot, { force: true, recursive: true });
+          }
+        },
+      },
+      {
+        name: 'live test mode',
+        inputs: {
+          testMode: 'live',
+        },
+        mock: async (inputs: { testMode: string }) => {
+          const storageRoot = await mkdtemp(
+            join(tmpdir(), `devplat-openclaw-${inputs.testMode}-`),
+          );
+          const previousTestMode = process.env['DEVPLAT_TEST_MODE'];
+          const previousStorageRoot = process.env['DEVPLAT_STORAGE_ROOT'];
+
+          return {
+            previousStorageRoot,
+            previousTestMode,
+            storageRoot,
+          };
+        },
+        assert: async (
+          context: {
+            previousStorageRoot: string | undefined;
+            previousTestMode: string | undefined;
+            storageRoot: string;
+          },
+          inputs: {
+            testMode: string;
+          },
+        ) => {
+          try {
+            process.env['DEVPLAT_TEST_MODE'] = inputs.testMode;
+            process.env['DEVPLAT_STORAGE_ROOT'] = context.storageRoot;
+
+            const tool = createHandleDiscordControlTool();
+            const result = await tool.execute('tool-call-dc-test-mode', {
+              ...createTestModeDiscordInteractionParams(),
+            });
+
+            expect(result.details).toMatchObject({
+              allowed: true,
+              failedClosed: false,
+              policyDecisionId: 'policy-retry-gates',
+              responseReceipt: {
+                endpoint:
+                  '/interactions/interaction-test-mode-1/token-test-mode-1/callback',
                 responseBody: {
                   mode: 'loopback',
                 },
@@ -1352,10 +1429,10 @@ describe('tool surface service', () => {
       },
     ];
 
-    for (const testCase of cases) {
-      const context = await testCase.mock();
+    it.each(cases)('$name', async (testCase) => {
+      const context = await testCase.mock(testCase.inputs);
       await testCase.assert(context, testCase.inputs);
-    }
+    });
   });
 
   it('returns decode failures for invalid Discord control input', async () => {

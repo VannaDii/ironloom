@@ -139,7 +139,11 @@ as a user. Live-lab status posts suppress raw GitHub URL previews, and reports
 include selected channel `parentId` values so category placement can be audited.
 Live-lab runtime containers receive the same repo-scoped Discord/OpenClaw/Sonar
 environment through Docker env-name pass-through while report artifacts keep
-secret values redacted.
+secret values redacted. The live container explicitly starts the private
+Discord Gateway worker and points `DEVPLAT_STORAGE_ROOT` at the mounted
+`.devplat` state directory so real sandbox-guild slash commands and button
+clicks are acknowledged through the same thread binding store used by OpenClaw
+tool execution.
 
 Public contract schemas are generated from exported `io-ts` codecs. For
 codec-owned lifecycle records, derive TypeScript types from those codecs rather

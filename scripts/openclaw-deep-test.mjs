@@ -280,6 +280,8 @@ export function buildDockerRunArgs({
     '-e',
     'OPENCLAW_CONFIG_PATH=/state/openclaw.json',
     '-e',
+    'DEVPLAT_STORAGE_ROOT=/app/.devplat',
+    '-e',
     'HOME=/state/home',
     '-e',
     'OPENCLAW_HOME=/state/openclaw-home',
@@ -300,6 +302,10 @@ export function buildDockerRunArgs({
 
   if (mode === 'hermetic') {
     args.push('--network', 'none');
+  }
+
+  if (mode === 'live') {
+    args.push('-e', 'DISCORD_GATEWAY_ENABLED=true');
   }
 
   args.push(

@@ -167,6 +167,8 @@ describe('openclaw-deep-test helpers', () => {
         expect(runArgs).toEqual(
           expect.arrayContaining([
             '-e',
+            'DEVPLAT_STORAGE_ROOT=/app/.devplat',
+            '-e',
             'HOME=/state/home',
             '-e',
             'OPENCLAW_HOME=/state/openclaw-home',
@@ -183,6 +185,33 @@ describe('openclaw-deep-test helpers', () => {
             'loopback',
           ]),
         );
+      },
+    },
+    {
+      name: 'enables the private Discord Gateway worker for live runs',
+      inputs: {},
+      mock: async () => undefined,
+      assert: async () => {
+        const runArgs = buildDockerRunArgs({
+          bundledExtensionsDirectory:
+            '/sandbox/openclaw-runtime/bundled-extensions',
+          containerName: 'devplat-live-container',
+          devplatStateDirectory: '/sandbox/devplat-state',
+          imageTag: 'devplat:live',
+          mode: 'live',
+          runtimeDirectory: '/sandbox/devplat-runtime',
+        });
+
+        expect(runArgs).toEqual(
+          expect.arrayContaining([
+            '-e',
+            'DEVPLAT_TEST_MODE=live',
+            '-e',
+            'DISCORD_GATEWAY_ENABLED=true',
+          ]),
+        );
+        expect(runArgs).not.toContain('--network');
+        expect(runArgs).not.toContain('none');
       },
     },
     {

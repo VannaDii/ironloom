@@ -25,6 +25,9 @@ Missing Discord credentials should fail during config load. Do not rely on place
 - run the private Discord Gateway worker with `DISCORD_GATEWAY_ENABLED=true`
   when the runtime should accept real slash commands and button clicks without
   public ingress
+- point `DEVPLAT_STORAGE_ROOT` at the same mounted `.devplat` directory used by
+  OpenClaw tools so Gateway interaction callbacks can resolve current thread
+  bindings
 - keep the project-management channel query-only and ensure every result points back to a bound work thread
 - rotate credentials through secret references instead of baking them into images
 - use the live lab only against the sandbox GitHub org, SonarQube Cloud org, and Discord guild
