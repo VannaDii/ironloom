@@ -123,6 +123,86 @@ describe('openclaw-deep-test helpers', () => {
       },
     },
     {
+      name: 'runs the cleanup hook before removing the live runtime container',
+      inputs: {
+        reportDir: resolve(tmpdir(), 'devplat-openclaw-before-cleanup'),
+      },
+      mock: async () => undefined,
+      assert: async (_context, inputs) => {
+        const events = [];
+        temporaryRoots.push(inputs.reportDir);
+        const report = await runDeepTest(
+          {
+            image: 'devplat:test',
+            mode: 'live',
+            reportDir: inputs.reportDir,
+            scenario: [
+              {
+                expected: { status: 'ok' },
+                params: { scope: 'state' },
+                phase: 'config',
+                tool: 'list_stored_records',
+              },
+            ],
+            skipBuild: true,
+            beforeCleanup: async ({ containerName, reportDirectory }) => {
+              events.push(['before-cleanup', containerName, reportDirectory]);
+            },
+          },
+          {
+            collectStoredKeys: async () => ({
+              artifacts: ['artifact-1'],
+              memory: ['memory-1'],
+              state: ['state-1'],
+              telemetry: ['telemetry-1'],
+            }),
+            commandRunner: async (_command, args) => {
+              if (args[0] === 'run') {
+                events.push(['run']);
+                return { stdout: 'container-1\n', stderr: '' };
+              }
+              if (args[0] === 'exec') {
+                events.push(['exec']);
+                return {
+                  stdout: JSON.stringify({
+                    status: 200,
+                    body: {
+                      ok: true,
+                      result: {
+                        details: { status: 'ok' },
+                      },
+                    },
+                  }),
+                  stderr: '',
+                };
+              }
+              if (args[0] === 'logs') {
+                events.push(['logs']);
+                return { stdout: '', stderr: '' };
+              }
+              if (args[0] === 'rm') {
+                events.push(['rm']);
+                return { stdout: '', stderr: '' };
+              }
+
+              throw new Error(`Unexpected docker args: ${args.join(' ')}`);
+            },
+            onProgress: () => undefined,
+          },
+        );
+
+        expect(report.mode).toBe('live');
+        expect(events).toEqual([
+          ['run'],
+          ['exec'],
+          ['exec'],
+          ['before-cleanup', report.containerName, inputs.reportDir],
+          ['logs'],
+          ['rm'],
+        ]);
+      },
+    },
+    {
       name: 'renders gateway and docker settings for hermetic runs',
       inputs: {},
       mock: async () => undefined,

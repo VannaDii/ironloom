@@ -267,6 +267,17 @@ export function parseLiveLabArgs(argv) {
   ) {
     throw new Error('--max-parallel-repos must be a positive integer.');
   }
+  const operatorHoldMsValue = args.get('--operator-hold-ms');
+  const operatorHoldMs =
+    typeof operatorHoldMsValue === 'string'
+      ? Number.parseInt(operatorHoldMsValue, 10)
+      : undefined;
+  if (
+    operatorHoldMsValue !== undefined &&
+    (!Number.isInteger(operatorHoldMs) || operatorHoldMs < 0)
+  ) {
+    throw new Error('--operator-hold-ms must be a non-negative integer.');
+  }
 
   const image = args.get('--image');
   const skipBuild = args.get('--skip-build') === true;
@@ -277,6 +288,7 @@ export function parseLiveLabArgs(argv) {
   return {
     image: typeof image === 'string' ? image : undefined,
     maxParallelRepos,
+    operatorHoldMs,
     ref: typeof args.get('--ref') === 'string' ? args.get('--ref') : undefined,
     reportDir:
       typeof args.get('--report-dir') === 'string'
@@ -1783,6 +1795,7 @@ export async function runLiveLab(options, dependencies = {}) {
   const registerDiscordApplicationCommandsFn =
     dependencies.registerDiscordApplicationCommands ??
     registerDiscordApplicationCommands;
+  const sleepFn = dependencies.sleep ?? sleep;
   const writeTextFile = dependencies.writeTextFile ?? writeFile;
 
   const identifiers = createRunIdentifiers({
@@ -2057,8 +2070,20 @@ export async function runLiveLab(options, dependencies = {}) {
       sonarOrganization: options.environment.sonar.organization,
     });
 
+    let interactionProbeReport = null;
     const deepTestReport = await runDeepTestFn(
       {
+        beforeCleanup: async () => {
+          interactionProbeReport = await runDiscordInteractionProbeFn({
+            discordChannels: discordChannels.channels,
+            discordRequest,
+            reportDirectory,
+            runLabel: identifiers.runLabel,
+          });
+          if ((options.operatorHoldMs ?? 0) > 0) {
+            await sleepFn(options.operatorHoldMs);
+          }
+        },
         image: options.image,
         mode: 'live',
         reportDir: resolve(reportDirectory, 'deep-test'),
@@ -2094,12 +2119,14 @@ export async function runLiveLab(options, dependencies = {}) {
       reportDirectory: deepTestReport.reportDirectory,
       steps: deepTestReport.steps.length,
     };
-    report.discord.interactionProbe = await runDiscordInteractionProbeFn({
-      discordChannels: discordChannels.channels,
-      discordRequest,
-      reportDirectory,
-      runLabel: identifiers.runLabel,
-    });
+    report.discord.interactionProbe =
+      interactionProbeReport ??
+      (await runDiscordInteractionProbeFn({
+        discordChannels: discordChannels.channels,
+        discordRequest,
+        reportDirectory,
+        runLabel: identifiers.runLabel,
+      }));
 
     report.status = 'passed';
   } catch (error) {

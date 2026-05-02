@@ -1590,6 +1590,7 @@ export async function runDeepTest(options, dependencies = {}) {
     dependencies.collectStoredKeys ?? collectStoredKeys;
   const validateReport = dependencies.validateReport ?? validateDeepTestReport;
   const onProgress = dependencies.onProgress ?? (() => undefined);
+  const beforeCleanup = options.beforeCleanup ?? (() => undefined);
   const scenario = options.scenario ?? createDeepScenario(options.runtimeEnv);
   const gatewayToken = options.gatewayToken ?? `deep-test-${randomUUID()}`;
   const reportDirectory =
@@ -1729,6 +1730,13 @@ export async function runDeepTest(options, dependencies = {}) {
     report.persisted = await collectStoredKeysFn(devplatStateDirectory);
     report.completedAt = new Date().toISOString();
     validateReport(report);
+    await beforeCleanup({
+      containerName,
+      devplatStateDirectory,
+      gatewayToken,
+      report,
+      reportDirectory,
+    });
   } catch (error) {
     report.error = serializeError(error);
     report.containerLogs = containerStarted

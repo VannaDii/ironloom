@@ -25,10 +25,12 @@ payload normalization through operator-visible Discord messages, not only local
 unit tests. The live-lab probe fails if the acknowledgement or thread message
 loses the structured button rows, posts those component-bearing payloads, and
 records the message ids, content, and component custom ids in the live-lab report
-for audit review. Bootstrap/progress status posts remain noninteractive so they
-do not leave stale buttons after the ephemeral runner exits. Discord does not
-provide a supported bot API for clicking buttons as a human user, so live human
-clicks in the sandbox guild remain a manual acceptance check.
+for audit review while the private Gateway runtime is still alive. The live-lab
+`operator_hold_ms` input can keep that runtime open briefly for manual click
+acceptance. Bootstrap/progress status posts remain noninteractive so they do not
+leave stale buttons after the ephemeral runner exits. Discord does not provide a
+supported bot API for clicking buttons as a human user, so live human clicks in
+the sandbox guild remain a manual acceptance check.
 Hermetic OpenClaw deep tests use the exported loopback response transport to
 verify the same callback-shaped interaction flow without external Discord
 access.
