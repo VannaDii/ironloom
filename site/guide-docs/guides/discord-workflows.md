@@ -24,6 +24,9 @@
 - install the app with the `bot` and `applications.commands` scopes
 - grant only the permissions needed for thread-aware operation: `ViewChannel`, `SendMessages`, `CreatePublicThreads`, `CreatePrivateThreads`, `SendMessagesInThreads`, `ManageThreads`, and `ReadMessageHistory`
 - keep thread creation anchored to the configured spec, implementation, and pull-request parent channels so thread inheritance stays explicit
+- return structured interaction payloads from the signature-verified webhook so
+  live slash commands and button callbacks keep the same compact status text,
+  safe mention configuration, and contextual controls as thread messages
 
 ## Channel Layout
 

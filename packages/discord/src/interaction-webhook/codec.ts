@@ -1,6 +1,9 @@
 import * as t from 'io-ts';
 
-import { DiscordInteractionCallbackCodec } from '../discord-control-plane/codec.js';
+import {
+  DiscordInteractionCallbackCodec,
+  DiscordMessagePayloadCodec,
+} from '../discord-control-plane/codec.js';
 
 export const DiscordInteractionWebhookHeadersCodec = t.type({
   'x-signature-ed25519': t.string,
@@ -19,9 +22,7 @@ export const DiscordInteractionWebhookPongResponseBodyCodec = t.type({
 
 export const DiscordInteractionWebhookMessageResponseBodyCodec = t.type({
   type: t.literal(4),
-  data: t.type({
-    content: t.string,
-  }),
+  data: DiscordMessagePayloadCodec,
 });
 
 export const DiscordInteractionWebhookDeferredResponseBodyCodec = t.type({

@@ -13,7 +13,11 @@ import {
   DiscordControlPlaneService,
   DiscordLoopbackResponseTransport,
 } from '../discord-control-plane/service.js';
-import type { DiscordInteractionCallbackOptions } from '../discord-control-plane/codec.js';
+import type {
+  DiscordControlRequest,
+  DiscordControlResult,
+  DiscordInteractionCallbackOptions,
+} from '../discord-control-plane/codec.js';
 import { DiscordInteractionWebhookService } from './service.js';
 import type { DiscordInteractionWebhookRequest } from './codec.js';
 
@@ -57,6 +61,37 @@ async function createControlPlane(): Promise<DiscordControlPlaneService> {
     store,
     new DiscordLoopbackResponseTransport(),
   );
+}
+
+class LegacyWebhookControlPlane extends DiscordControlPlaneService {
+  public constructor(private readonly failedClosedResult: boolean) {
+    super();
+  }
+
+  public override handleInteraction(): Promise<DiscordControlResult> {
+    const request = {
+      id: 'legacy-interaction',
+      summary: this.failedClosedResult
+        ? 'Legacy interaction failed closed.'
+        : 'Legacy webhook result.',
+      status: this.failedClosedResult ? 'blocked' : 'running',
+      trace: [],
+      updatedAt: '2026-05-01T00:00:00.000Z',
+      actorId: 'operator-legacy',
+      threadId: 'thread-legacy',
+      channelId: 'thread-legacy',
+      action: 'show-status',
+      privileged: false,
+    } satisfies DiscordControlRequest;
+
+    return Promise.resolve({
+      request,
+      policyDecisionId: 'legacy-policy',
+      allowed: !this.failedClosedResult,
+      persistedKey: request.id,
+      failedClosed: this.failedClosedResult,
+    });
+  }
 }
 
 describe('DiscordInteractionWebhookService', () => {
@@ -134,6 +169,103 @@ describe('DiscordInteractionWebhookService', () => {
         expect(result.handled).toBe(true);
         expect(result.persistedKey).toBe('interaction-1');
         expect(result.threadId).toBe('thread-1');
+        expect(result.responseBody).toMatchObject({
+          type: 4,
+          data: {
+            allowed_mentions: { parse: [] },
+            content: expect.stringContaining('🟡 DevPlat · Gates retry queued'),
+            components: expect.arrayContaining([
+              expect.objectContaining({
+                components: expect.arrayContaining([
+                  expect.objectContaining({
+                    custom_id: 'devplat:v1:show-status:thread-1',
+                    label: 'Show Status',
+                  }),
+                ]),
+              }),
+            ]),
+          },
+        });
+      },
+    },
+    {
+      name: 'falls back to described control text when old control planes omit response payloads',
+      inputs: {
+        request: createSignedWebhookRequest(
+          JSON.stringify({
+            id: 'interaction-legacy',
+            token: 'token-legacy',
+            channel_id: 'thread-legacy',
+            data: {
+              name: 'show-status',
+            },
+            user: {
+              id: 'operator-legacy',
+            },
+          }),
+        ),
+        options: {},
+      },
+      mock: async (inputs: {
+        request: DiscordInteractionWebhookRequest;
+        options: DiscordInteractionCallbackOptions;
+      }) => {
+        const service = new DiscordInteractionWebhookService(
+          new LegacyWebhookControlPlane(false),
+          async () => inputs.options,
+        );
+
+        return service.handle(inputs.request);
+      },
+      assert: async (
+        result: Awaited<ReturnType<DiscordInteractionWebhookService['handle']>>,
+      ) => {
+        expect(result.statusCode).toBe(200);
+        expect(result.responseBody).toMatchObject({
+          data: {
+            content: 'thread-legacy:show-status -> Legacy webhook result.',
+          },
+        });
+      },
+    },
+    {
+      name: 'falls back to failed-closed summaries when old control planes omit response payloads',
+      inputs: {
+        request: createSignedWebhookRequest(
+          JSON.stringify({
+            id: 'interaction-legacy-blocked',
+            token: 'token-legacy-blocked',
+            channel_id: 'thread-legacy',
+            data: {
+              name: 'show-status',
+            },
+            user: {
+              id: 'operator-legacy',
+            },
+          }),
+        ),
+        options: {},
+      },
+      mock: async (inputs: {
+        request: DiscordInteractionWebhookRequest;
+        options: DiscordInteractionCallbackOptions;
+      }) => {
+        const service = new DiscordInteractionWebhookService(
+          new LegacyWebhookControlPlane(true),
+          async () => inputs.options,
+        );
+
+        return service.handle(inputs.request);
+      },
+      assert: async (
+        result: Awaited<ReturnType<DiscordInteractionWebhookService['handle']>>,
+      ) => {
+        expect(result.statusCode).toBe(200);
+        expect(result.responseBody).toMatchObject({
+          data: {
+            content: 'Legacy interaction failed closed.',
+          },
+        });
       },
     },
     {
@@ -278,9 +410,20 @@ describe('DiscordInteractionWebhookService', () => {
         expect(result.handled).toBe(true);
         expect(result.threadId).toBe('unresolved');
         expect(result.responseBody).toMatchObject({
+          type: 4,
           data: {
-            content:
-              'Discord interaction must resolve to exactly one bound thread.',
+            allowed_mentions: { parse: [] },
+            content: expect.stringContaining('🔴 DevPlat · Action refused'),
+            components: expect.arrayContaining([
+              expect.objectContaining({
+                components: expect.arrayContaining([
+                  expect.objectContaining({
+                    custom_id: 'devplat:v1:show-last-artifact:unresolved',
+                    label: 'Details',
+                  }),
+                ]),
+              }),
+            ]),
           },
         });
       },

@@ -10,7 +10,11 @@ import {
   DiscordControlPlaneService,
   DiscordLoopbackResponseTransport,
 } from '../discord-control-plane/service.js';
-import type { DiscordInteractionCallbackOptions } from '../discord-control-plane/codec.js';
+import type {
+  DiscordControlResult,
+  DiscordInteractionCallbackOptions,
+  DiscordMessagePayload,
+} from '../discord-control-plane/codec.js';
 import {
   parseDiscordInteractionWebhookBody,
   verifyDiscordInteractionSignature,
@@ -34,15 +38,42 @@ function createDefaultControlPlane(): DiscordControlPlaneService {
   );
 }
 
-function createMessageResponse(
-  content: string,
+/**
+ * Wraps plain webhook error text in the structured Discord payload shape.
+ */
+function createWebhookMessagePayload(content: string): DiscordMessagePayload {
+  return {
+    content,
+  };
+}
+
+/**
+ * Builds a Discord interaction channel-message response from a payload.
+ */
+function createMessageResponsePayload(
+  data: DiscordMessagePayload,
 ): DiscordInteractionWebhookResponseBody {
   return {
     type: 4,
-    data: {
-      content,
-    },
+    data,
   };
+}
+
+/**
+ * Resolves the structured payload that should be returned to Discord.
+ */
+function resolveControlResultResponsePayload(
+  result: DiscordControlResult,
+): DiscordMessagePayload {
+  if (result.responsePayload !== undefined) {
+    return result.responsePayload;
+  }
+
+  return createWebhookMessagePayload(
+    result.failedClosed
+      ? result.request.summary
+      : describeDiscordControlRequest(result.request),
+  );
 }
 
 export class DiscordInteractionWebhookService {
@@ -60,8 +91,10 @@ export class DiscordInteractionWebhookService {
         statusCode: 401,
         verified: false,
         handled: false,
-        responseBody: createMessageResponse(
-          'Discord interaction signature verification failed.',
+        responseBody: createMessageResponsePayload(
+          createWebhookMessagePayload(
+            'Discord interaction signature verification failed.',
+          ),
         ),
         error: 'Discord interaction signature verification failed.',
       };
@@ -73,7 +106,9 @@ export class DiscordInteractionWebhookService {
         statusCode: 400,
         verified: true,
         handled: false,
-        responseBody: createMessageResponse(parsed.reason),
+        responseBody: createMessageResponsePayload(
+          createWebhookMessagePayload(parsed.reason),
+        ),
         error: parsed.reason,
       };
     }
@@ -99,10 +134,8 @@ export class DiscordInteractionWebhookService {
       statusCode: 200,
       verified: true,
       handled: true,
-      responseBody: createMessageResponse(
-        result.failedClosed
-          ? result.request.summary
-          : describeDiscordControlRequest(result.request),
+      responseBody: createMessageResponsePayload(
+        resolveControlResultResponsePayload(result),
       ),
       persistedKey: result.persistedKey,
       policyDecisionId: result.policyDecisionId,

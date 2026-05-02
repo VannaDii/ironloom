@@ -13,17 +13,20 @@ resolve exactly one bound thread or bound thread session, project that session
 into a typed spec/implementation/pull-request work item, render compact
 operator UI payloads with contextual buttons, and post both interaction
 acknowledgements and thread status messages through the structured Discord REST
-transport. Route failures and policy denials use standard blocked/refused
-messages and still write audit records. The exported command contract registry
-is the source for guild slash-command registration. The live lab registers those
-commands and includes a Discord callback-shaped interaction probe so this
-response path is validated from raw slash-command payload normalization through
-operator-visible Discord messages, not only local unit tests. The live-lab probe
-fails if the acknowledgement or thread message loses the structured button rows,
-and records the posted message ids, content, and component custom ids in the
-live-lab report for audit review. Discord does not provide a supported bot API
-for clicking buttons as a human user, so live human clicks in the sandbox guild
-remain a manual acceptance check.
+transport. The signature-verified webhook returns the same structured payload
+shape, including safe mention settings and contextual action rows, instead of
+downgrading real interaction callbacks to plain text. Route failures and policy
+denials use standard blocked/refused messages and still write audit records. The
+exported command contract registry is the source for guild slash-command
+registration. The live lab registers those commands and includes a Discord
+callback-shaped interaction probe so this response path is validated from raw
+slash-command payload normalization through operator-visible Discord messages,
+not only local unit tests. The live-lab probe fails if the acknowledgement or
+thread message loses the structured button rows, and records the posted message
+ids, content, and component custom ids in the live-lab report for audit review.
+Discord does not provide a supported bot API for clicking buttons as a human
+user, so live human clicks in the sandbox guild remain a manual acceptance
+check.
 Hermetic OpenClaw deep tests use the exported loopback response transport to
 verify the same callback-shaped interaction flow without external Discord
 access.
