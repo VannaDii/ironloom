@@ -148,10 +148,12 @@ clicks are acknowledged through the same thread binding store used by OpenClaw
 tool execution. Valid operator interactions are acknowledged before state,
 telemetry, and audit persistence begins, then the bound thread receives the same
 structured status payload after the control result is durable. If Discord
-rejects the initial acknowledgement, DevPlat fails the action closed, writes an
-audit event, and reports `responsePostError` without lifecycle state changes. If
-the post-acknowledgement thread update fails, the control result keeps the
-interaction receipt and durable action record while reporting `threadPostError`.
+rejects the initial acknowledgement, the acknowledgement transport throws, or a
+route-refusal acknowledgement is rejected, DevPlat fails the action closed,
+writes an audit event, and reports `responsePostError` without lifecycle state
+changes. If the post-acknowledgement thread update fails, the control result
+keeps the interaction receipt and durable action record while reporting
+`threadPostError`.
 
 Public contract schemas are generated from exported `io-ts` codecs. For
 codec-owned lifecycle records, derive TypeScript types from those codecs rather

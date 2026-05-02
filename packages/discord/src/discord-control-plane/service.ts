@@ -46,6 +46,20 @@ type DiscordThreadPostResult =
       readonly threadPostError: string;
     };
 
+/**
+ * Result of posting the initial Discord interaction acknowledgement.
+ */
+type DiscordInteractionAcknowledgementResult =
+  | {
+      readonly ok: true;
+      readonly responseReceipt: DiscordResponseReceipt;
+    }
+  | {
+      readonly ok: false;
+      readonly responsePostError: string;
+      readonly responseReceipt?: DiscordResponseReceipt;
+    };
+
 export interface DiscordControlResponseTransport {
   postInteractionResponse(
     input: DiscordOperatorInteraction,
@@ -107,6 +121,21 @@ function describeDiscordInteractionResponseRejection(
   receipt: DiscordResponseReceipt,
 ): string {
   return `Discord interaction acknowledgement returned HTTP ${String(receipt.statusCode)}.`;
+}
+
+/**
+ * Adds a work-item projection to result payloads when one is available.
+ */
+function createDiscordControlResultWithOptionalWorkItem(
+  result: Omit<DiscordControlResult, 'workItem'>,
+  request: DiscordControlRequest,
+): DiscordControlResult {
+  return request.workItem === undefined
+    ? result
+    : {
+        ...result,
+        workItem: request.workItem,
+      };
 }
 
 export class DiscordRestResponseTransport implements DiscordControlResponseTransport {
@@ -388,12 +417,45 @@ export class DiscordControlPlaneService {
   }
 
   /**
+   * Posts the initial acknowledgement and converts transport failures into data.
+   */
+  private async postInteractionAcknowledgement(
+    input: DiscordOperatorInteraction,
+    payload: DiscordMessagePayload,
+  ): Promise<DiscordInteractionAcknowledgementResult> {
+    try {
+      const responseReceipt = await this.responses.postInteractionResponse(
+        input,
+        payload,
+      );
+
+      return isDiscordRestSuccessStatus(responseReceipt.statusCode)
+        ? {
+            ok: true,
+            responseReceipt,
+          }
+        : {
+            ok: false,
+            responseReceipt,
+            responsePostError:
+              describeDiscordInteractionResponseRejection(responseReceipt),
+          };
+    } catch (error) {
+      return {
+        ok: false,
+        responsePostError: describeDiscordTransportError(error),
+      };
+    }
+  }
+
+  /**
    * Records an audit event when Discord rejects the initial acknowledgement.
    */
-  private async recordInteractionResponseRejection(
+  private async recordInteractionResponseFailure(
     request: DiscordControlRequest,
-    decision: DiscordControlActionDecision,
-    responseReceipt: DiscordResponseReceipt,
+    policyDecisionId: string,
+    responsePostError: string,
+    responseReceipt?: DiscordResponseReceipt,
   ): Promise<void> {
     await this.telemetry.recordAudit({
       auditId: `${request.id}:audit`,
@@ -403,13 +465,13 @@ export class DiscordControlPlaneService {
       action: request.action,
       scope: 'discord',
       outcome: 'blocked',
-      reason: describeDiscordInteractionResponseRejection(responseReceipt),
+      reason: responsePostError,
       artifactIds:
         request.workItem?.artifactId === undefined
           ? []
           : [request.workItem.artifactId],
       recordedAt: request.updatedAt,
-      policyDecisionId: decision.id,
+      policyDecisionId,
       details:
         request.workItem === undefined
           ? {
@@ -417,14 +479,18 @@ export class DiscordControlPlaneService {
               channelId: request.channelId,
               resultStatus: 'response-rejected',
               correlationId: request.id,
-              responseStatusCode: responseReceipt.statusCode,
+              ...(responseReceipt === undefined
+                ? {}
+                : { responseStatusCode: responseReceipt.statusCode }),
             }
           : {
               threadId: request.threadId,
               channelId: request.channelId,
               resultStatus: 'response-rejected',
               correlationId: request.id,
-              responseStatusCode: responseReceipt.statusCode,
+              ...(responseReceipt === undefined
+                ? {}
+                : { responseStatusCode: responseReceipt.statusCode }),
               workItem: request.workItem,
             },
     });
@@ -437,10 +503,6 @@ export class DiscordControlPlaneService {
 
     if (!route.ok) {
       const responsePayload = renderDiscordRouteFailureMessage(input);
-      const responseReceipt = await this.responses.postInteractionResponse(
-        input,
-        responsePayload,
-      );
       const request = createDiscordControlRequest({
         id: input.id,
         summary: route.reason,
@@ -453,6 +515,10 @@ export class DiscordControlPlaneService {
         action: 'show-status',
         privileged: false,
       });
+      const acknowledgement = await this.postInteractionAcknowledgement(
+        input,
+        responsePayload,
+      );
       await this.telemetry.recordAudit({
         auditId: `${input.id}:audit`,
         runId: input.id,
@@ -469,8 +535,14 @@ export class DiscordControlPlaneService {
         details: {
           threadId: 'unresolved',
           channelId: input.channelId,
-          resultStatus: 'refused',
+          resultStatus: acknowledgement.ok ? 'refused' : 'response-rejected',
           correlationId: input.id,
+          ...(acknowledgement.ok ||
+          acknowledgement.responseReceipt === undefined
+            ? {}
+            : {
+                responseStatusCode: acknowledgement.responseReceipt.statusCode,
+              }),
         },
       });
 
@@ -479,9 +551,16 @@ export class DiscordControlPlaneService {
         policyDecisionId: 'discord-fail-closed',
         allowed: false,
         persistedKey: input.id,
-        responseReceipt,
         responsePayload,
         failedClosed: true,
+        ...(acknowledgement.ok
+          ? { responseReceipt: acknowledgement.responseReceipt }
+          : {
+              responsePostError: acknowledgement.responsePostError,
+              ...(acknowledgement.responseReceipt === undefined
+                ? {}
+                : { responseReceipt: acknowledgement.responseReceipt }),
+            }),
       };
     }
 
@@ -494,15 +573,16 @@ export class DiscordControlPlaneService {
       ? renderDiscordControlAcceptedMessage(route.request)
       : renderDiscordControlBlockedMessage(route.request);
     const threadPayload = responsePayload;
-    const responseReceipt = await this.responses.postInteractionResponse(
+    const acknowledgement = await this.postInteractionAcknowledgement(
       input,
       responsePayload,
     );
-    if (!isDiscordRestSuccessStatus(responseReceipt.statusCode)) {
-      await this.recordInteractionResponseRejection(
+    if (!acknowledgement.ok) {
+      await this.recordInteractionResponseFailure(
         request,
-        decision,
-        responseReceipt,
+        decision.id,
+        acknowledgement.responsePostError,
+        acknowledgement.responseReceipt,
       );
       const result = {
         request,
@@ -510,18 +590,14 @@ export class DiscordControlPlaneService {
         allowed: false,
         persistedKey: request.id,
         failedClosed: true,
-        responseReceipt,
         responsePayload,
-        responsePostError:
-          describeDiscordInteractionResponseRejection(responseReceipt),
+        responsePostError: acknowledgement.responsePostError,
+        ...(acknowledgement.responseReceipt === undefined
+          ? {}
+          : { responseReceipt: acknowledgement.responseReceipt }),
       };
 
-      return request.workItem === undefined
-        ? result
-        : {
-            ...result,
-            workItem: request.workItem,
-          };
+      return createDiscordControlResultWithOptionalWorkItem(result, request);
     }
     const result = await this.persistAction(request, decision);
     const threadPostResult = await this.postThreadMessageAfterAcknowledgement(
@@ -531,7 +607,7 @@ export class DiscordControlPlaneService {
 
     return {
       ...result,
-      responseReceipt,
+      responseReceipt: acknowledgement.responseReceipt,
       responsePayload,
       threadPayload,
       ...(threadPostResult.ok

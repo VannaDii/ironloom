@@ -17,15 +17,16 @@ interaction acknowledgements and thread status messages through the structured
 Discord REST transport. Interaction acknowledgements are sent before persistence
 and audit writes so live button clicks satisfy Discord's prompt response window;
 the bound-thread message and audit trail are then persisted through the same
-control result. If Discord rejects the initial acknowledgement, the action fails
-closed, skips lifecycle state writes, writes an audit event, and exposes
-`responsePostError`. If the bound-thread status post fails after acknowledgement,
-the result preserves the interaction acknowledgement receipt and durable action
-record while exposing `threadPostError` for diagnostics. The webhook helper
-returns the same structured payload shape for explicit deployments that choose
-inbound callbacks, but the production runtime path does not require public
-ingress. Route failures and policy denials use standard blocked/refused messages
-and still write audit records. The exported
+control result. If Discord rejects the initial acknowledgement, the
+acknowledgement transport throws, or a route-refusal acknowledgement is rejected,
+the action fails closed, skips lifecycle state writes, writes an audit event,
+and exposes `responsePostError`. If the bound-thread status post fails after
+acknowledgement, the result preserves the interaction acknowledgement receipt
+and durable action record while exposing `threadPostError` for diagnostics. The
+webhook helper returns the same structured payload shape for explicit
+deployments that choose inbound callbacks, but the production runtime path does
+not require public ingress. Route failures and policy denials use standard
+blocked/refused messages and still write audit records. The exported
 command contract registry is the source for guild slash-command registration.
 The live lab registers those commands and includes a Discord callback-shaped
 interaction probe so this response path is validated from raw slash-command

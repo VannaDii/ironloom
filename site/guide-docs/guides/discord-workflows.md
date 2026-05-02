@@ -34,7 +34,8 @@
   audit writes, then persist the control result and post the bound-thread status
   message so live controls stay inside Discord's prompt response window
 - fail closed with `responsePostError` and audit logging when Discord rejects
-  the initial acknowledgement response, without writing lifecycle state
+  the initial acknowledgement response, the acknowledgement transport throws, or
+  a route-refusal acknowledgement is rejected, without writing lifecycle state
 - preserve the acknowledgement receipt and durable control result with a
   `threadPostError` diagnostic when the post-acknowledgement thread status
   message cannot be delivered

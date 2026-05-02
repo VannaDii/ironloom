@@ -136,6 +136,25 @@ function createAcknowledgementRejectingResponseTransport(): DiscordControlRespon
   };
 }
 
+/**
+ * Creates a transport that throws before Discord acknowledgement is recorded.
+ */
+function createAcknowledgementThrowingResponseTransport(
+  error: unknown,
+): DiscordControlResponseTransport {
+  return {
+    async postInteractionResponse() {
+      throw error;
+    },
+    async postInteractionDeferred(input) {
+      return createReceipt(`/interactions/${input.id}/${input.token}/callback`);
+    },
+    async postThreadMessage(threadId) {
+      return createReceipt(`/channels/${threadId}/messages`);
+    },
+  };
+}
+
 describe('DiscordControlPlaneService', () => {
   it('records thread-aware control actions with policy enforcement', async () => {
     const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
@@ -488,6 +507,61 @@ describe('DiscordControlPlaneService', () => {
         expect(context.events).toContain('thread-message:thread-ack-2');
       },
     },
+    {
+      name: 'fails closed when the acknowledgement transport throws',
+      inputs: {
+        interaction: {
+          id: 'interaction-ack-failure-003',
+          token: 'token-ack-failure-3',
+          actorId: 'user-ack-failure-3',
+          channelId: 'channel-ack-failure-3',
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          commandName: 'show status',
+          threadId: 'thread-ack-failure-3',
+        } satisfies DiscordOperatorInteraction,
+      },
+      mock: async () => {
+        const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+        const store = new FileStoreService(rootDirectory);
+        return {
+          store,
+          service: new DiscordControlPlaneService(
+            new DecisionPolicyService(),
+            new TelemetryEventService(store),
+            store,
+            createAcknowledgementThrowingResponseTransport(
+              new Error('Discord callback network failure'),
+            ),
+          ),
+        };
+      },
+      assert: async (
+        context: {
+          store: FileStoreService;
+          service: DiscordControlPlaneService;
+        },
+        inputs: {
+          interaction: DiscordOperatorInteraction;
+        },
+      ) => {
+        const result = await context.service.handleInteraction(
+          inputs.interaction,
+        );
+
+        expect(result.allowed).toBe(false);
+        expect(result.failedClosed).toBe(true);
+        expect(result.responseReceipt).toBeUndefined();
+        expect(result.responsePostError).toBe(
+          'Discord callback network failure',
+        );
+        expect(await context.store.list('state')).not.toContain(
+          'interaction-ack-failure-003',
+        );
+        expect(await context.store.list('audit')).toContain(
+          'interaction-ack-failure-003:audit',
+        );
+      },
+    },
   ];
 
   it.each(cases)('$name', async ({ inputs, mock, assert }) => {
@@ -741,6 +815,78 @@ describe('DiscordControlPlaneService', () => {
         );
       },
     },
+    {
+      name: 'fails closed with work-item context when acknowledgement transport throws',
+      inputs: {
+        interaction: {
+          id: 'interaction-ack-failure-004',
+          token: 'token-ack-failure-4',
+          actorId: 'user-ack-failure-4',
+          channelId: 'channel-ack-failure-4',
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          commandName: 'show status',
+          boundSession: {
+            id: 'thread-session-ack-failure-4',
+            summary: 'Spec session',
+            status: 'running',
+            trace: [],
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            guildId: 'guild-ack-failure-4',
+            channelId: 'thread-ack-failure-4',
+            parentChannelId: 'spec-channel',
+            threadId: 'thread-ack-failure-4',
+            kind: 'spec',
+            specId: 'spec-ack-failure-4',
+            artifactId: 'artifact-ack-failure-4',
+          },
+        } satisfies DiscordOperatorInteraction,
+      },
+      mock: async () => {
+        const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+        const store = new FileStoreService(rootDirectory);
+        return {
+          store,
+          service: new DiscordControlPlaneService(
+            new DecisionPolicyService(),
+            new TelemetryEventService(store),
+            store,
+            createAcknowledgementThrowingResponseTransport(
+              'Discord work-item acknowledgement network failure',
+            ),
+          ),
+        };
+      },
+      assert: async (
+        context: {
+          store: FileStoreService;
+          service: DiscordControlPlaneService;
+        },
+        inputs: {
+          interaction: DiscordOperatorInteraction;
+        },
+      ) => {
+        const result = await context.service.handleInteraction(
+          inputs.interaction,
+        );
+
+        expect(result.allowed).toBe(false);
+        expect(result.failedClosed).toBe(true);
+        expect(result.workItem).toMatchObject({
+          artifactId: 'artifact-ack-failure-4',
+          threadKind: 'spec',
+        });
+        expect(result.responseReceipt).toBeUndefined();
+        expect(result.responsePostError).toBe(
+          'Discord work-item acknowledgement network failure',
+        );
+        expect(await context.store.list('state')).not.toContain(
+          'interaction-ack-failure-004',
+        );
+        expect(await context.store.list('audit')).toContain(
+          'interaction-ack-failure-004:audit',
+        );
+      },
+    },
   ];
 
   it.each(acknowledgementFailureCases)(
@@ -751,64 +897,178 @@ describe('DiscordControlPlaneService', () => {
     },
   );
 
-  it('fails closed and responds when Discord thread binding is ambiguous', async () => {
-    const cases = [
-      {
-        inputs: {
-          interaction: {
-            id: 'interaction-002',
-            token: 'token-2',
-            actorId: 'user-6',
-            channelId: 'channel-6',
-            updatedAt: '2026-04-04T00:00:00.000Z',
-            commandName: 'merge now',
-            threadId: 'thread-6',
-            boundThreadId: 'thread-7',
-            privileged: true,
-          } satisfies DiscordOperatorInteraction,
-        },
-        mock: async () => {
-          const rootDirectory = await mkdtemp(
-            join(tmpdir(), 'devplat-discord-'),
-          );
-          const store = new FileStoreService(rootDirectory);
-          return {
+  const routeFailureCases = [
+    {
+      name: 'fails closed and responds when Discord thread binding is ambiguous',
+      inputs: {
+        interaction: {
+          id: 'interaction-002',
+          token: 'token-2',
+          actorId: 'user-6',
+          channelId: 'channel-6',
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          commandName: 'merge now',
+          threadId: 'thread-6',
+          boundThreadId: 'thread-7',
+          privileged: true,
+        } satisfies DiscordOperatorInteraction,
+      },
+      mock: async () => {
+        const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+        const store = new FileStoreService(rootDirectory);
+        return {
+          store,
+          service: new DiscordControlPlaneService(
+            new DecisionPolicyService(),
+            new TelemetryEventService(store),
             store,
-            service: new DiscordControlPlaneService(
-              new DecisionPolicyService(),
-              new TelemetryEventService(store),
-              store,
-              createResponseTransport(),
-            ),
-          };
-        },
-        assert: async (context: {
+            createResponseTransport(),
+          ),
+        };
+      },
+      assert: async (
+        context: {
           store: FileStoreService;
           service: DiscordControlPlaneService;
-        }) => {
-          const result = await context.service.handleInteraction(
-            cases[0].inputs.interaction,
-          );
-
-          expect(result.allowed).toBe(false);
-          expect(result.failedClosed).toBe(true);
-          expect(result.responseReceipt?.endpoint).toBe(
-            '/interactions/interaction-002/token-2/callback',
-          );
-          expect(await context.store.list('state')).not.toContain(
-            'interaction-002',
-          );
-          expect(await context.store.list('audit')).toContain(
-            'interaction-002:audit',
-          );
         },
-      },
-    ];
+        inputs: {
+          interaction: DiscordOperatorInteraction;
+        },
+      ) => {
+        const result = await context.service.handleInteraction(
+          inputs.interaction,
+        );
 
-    for (const testCase of cases) {
-      const context = await testCase.mock();
-      await testCase.assert(context);
-    }
+        expect(result.allowed).toBe(false);
+        expect(result.failedClosed).toBe(true);
+        expect(result.responseReceipt?.endpoint).toBe(
+          '/interactions/interaction-002/token-2/callback',
+        );
+        expect(await context.store.list('state')).not.toContain(
+          'interaction-002',
+        );
+        expect(await context.store.list('audit')).toContain(
+          'interaction-002:audit',
+        );
+      },
+    },
+    {
+      name: 'reports route refusal acknowledgement rejection',
+      inputs: {
+        interaction: {
+          id: 'interaction-route-ack-failure-001',
+          token: 'token-route-ack-failure-1',
+          actorId: 'user-route-ack-failure-1',
+          channelId: 'channel-route-ack-failure-1',
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          commandName: 'merge now',
+          threadId: 'thread-route-ack-failure-1',
+          boundThreadId: 'thread-route-ack-failure-2',
+          privileged: true,
+        } satisfies DiscordOperatorInteraction,
+      },
+      mock: async () => {
+        const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+        const store = new FileStoreService(rootDirectory);
+        return {
+          store,
+          service: new DiscordControlPlaneService(
+            new DecisionPolicyService(),
+            new TelemetryEventService(store),
+            store,
+            createAcknowledgementRejectingResponseTransport(),
+          ),
+        };
+      },
+      assert: async (
+        context: {
+          store: FileStoreService;
+          service: DiscordControlPlaneService;
+        },
+        inputs: {
+          interaction: DiscordOperatorInteraction;
+        },
+      ) => {
+        const result = await context.service.handleInteraction(
+          inputs.interaction,
+        );
+
+        expect(result.allowed).toBe(false);
+        expect(result.failedClosed).toBe(true);
+        expect(result.responseReceipt?.statusCode).toBe(404);
+        expect(result.responsePostError).toBe(
+          'Discord interaction acknowledgement returned HTTP 404.',
+        );
+        expect(await context.store.list('state')).not.toContain(
+          'interaction-route-ack-failure-001',
+        );
+        expect(await context.store.list('audit')).toContain(
+          'interaction-route-ack-failure-001:audit',
+        );
+      },
+    },
+    {
+      name: 'reports route refusal acknowledgement transport failures',
+      inputs: {
+        interaction: {
+          id: 'interaction-route-ack-failure-002',
+          token: 'token-route-ack-failure-2',
+          actorId: 'user-route-ack-failure-2',
+          channelId: 'channel-route-ack-failure-2',
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          commandName: 'merge now',
+          threadId: 'thread-route-ack-failure-2',
+          boundThreadId: 'thread-route-ack-failure-3',
+          privileged: true,
+        } satisfies DiscordOperatorInteraction,
+      },
+      mock: async () => {
+        const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+        const store = new FileStoreService(rootDirectory);
+        return {
+          store,
+          service: new DiscordControlPlaneService(
+            new DecisionPolicyService(),
+            new TelemetryEventService(store),
+            store,
+            createAcknowledgementThrowingResponseTransport(
+              'Discord route refusal network failure',
+            ),
+          ),
+        };
+      },
+      assert: async (
+        context: {
+          store: FileStoreService;
+          service: DiscordControlPlaneService;
+        },
+        inputs: {
+          interaction: DiscordOperatorInteraction;
+        },
+      ) => {
+        const result = await context.service.handleInteraction(
+          inputs.interaction,
+        );
+
+        expect(result.allowed).toBe(false);
+        expect(result.failedClosed).toBe(true);
+        expect(result.responseReceipt).toBeUndefined();
+        expect(result.responsePostError).toBe(
+          'Discord route refusal network failure',
+        );
+        expect(await context.store.list('state')).not.toContain(
+          'interaction-route-ack-failure-002',
+        );
+        expect(await context.store.list('audit')).toContain(
+          'interaction-route-ack-failure-002:audit',
+        );
+      },
+    },
+  ];
+
+  it.each(routeFailureCases)('$name', async ({ inputs, mock, assert }) => {
+    const context = await mock();
+    await assert(context, inputs);
   });
 
   it('posts Discord REST interaction and thread responses', async () => {
