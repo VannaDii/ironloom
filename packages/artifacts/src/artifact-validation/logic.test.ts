@@ -268,7 +268,7 @@ describe('ArtifactValidation logic', () => {
       },
     },
     {
-      name: 'falls back to the generic artifact envelope for unknown artifact types',
+      name: 'falls back to the generic artifact envelope for registry-supported artifact types without local payload codecs',
       inputs: {
         artifact: {
           id: 'artifact-generic-1',
@@ -292,6 +292,29 @@ describe('ArtifactValidation logic', () => {
           expect(result.value.summary).toBe('Generic artifact');
           expect(result.value.trace).toContain('artifact:review-finding');
         }
+      },
+    },
+    {
+      name: 'rejects unsupported artifact types before generic envelope normalization',
+      inputs: {
+        artifact: {
+          id: 'artifact-unknown-1',
+          artifactType: 'unknown-artifact',
+          version: 1,
+          summary: ' Unknown artifact ',
+          status: 'approved',
+          trace: [],
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          payload: {
+            findingId: 'finding-1',
+          },
+        },
+      },
+      mock: () => ({}),
+      assert: (context, inputs) => {
+        const result = validateArtifact(inputs.artifact);
+
+        expect(result.ok).toBe(false);
       },
     },
   ] satisfies ArtifactValidationLogicCase[];

@@ -3,6 +3,7 @@ import {
   ARTIFACT_TYPE_AUDIT_LOG,
   ARTIFACT_TYPE_MERGE_DECISION,
   ARTIFACT_TYPE_REBASE_RESULT,
+  SupportedArtifactTypeCodec,
   decodeWithCodec,
   type DevplatResult,
 } from '@vannadii/devplat-core';
@@ -51,7 +52,15 @@ export function validateArtifact(input: unknown): DevplatResult<KnownArtifact> {
     return envelope;
   }
 
-  switch (envelope.value.artifactType) {
+  const supportedArtifactType = decodeWithCodec(
+    SupportedArtifactTypeCodec,
+    envelope.value.artifactType,
+  );
+  if (!supportedArtifactType.ok) {
+    return supportedArtifactType;
+  }
+
+  switch (supportedArtifactType.value) {
     case ARTIFACT_TYPE_APPROVAL_RECORD: {
       const artifact = decodeWithCodec(ApprovalRecordArtifactCodec, input);
       if (!artifact.ok) {
