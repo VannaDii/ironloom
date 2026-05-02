@@ -8,34 +8,16 @@ import type {
   PolicyPrivilegeLevel,
   PolicyRiskLevel,
 } from './codec.js';
-
-const sensitiveActions = new Set([
-  'approve-this',
-  'merge-now',
-  'rebase-all-dependents',
-  'sync-worktree',
-  'release-worktree',
-  'update-spec',
-]);
-
-const destructiveActions = new Set(['release-worktree']);
-
-const externalPublishActions = new Set(['publish', 'publish-release']);
-
-const mergeActions = new Set(['merge-now', 'merge-pr']);
-const commandExecutionActions = new Set([
-  'execute-command',
-  'run-command',
-  'run-gates',
-  'retry-gates',
-]);
-const rebaseActions = new Set(['rebase-dependents', 'rebase-all-dependents']);
-const autofixActions = new Set(['autofix-review', 'autofix', 'apply-autofix']);
-const destructiveCleanupActions = new Set([
-  'destructive-cleanup',
-  'delete-worktree',
-  'cleanup-artifacts',
-]);
+import {
+  POLICY_AUTOFIX_ACTIONS,
+  POLICY_COMMAND_EXECUTION_ACTIONS,
+  POLICY_DESTRUCTIVE_ACTIONS,
+  POLICY_DESTRUCTIVE_CLEANUP_ACTIONS,
+  POLICY_EXTERNAL_PUBLISH_ACTIONS,
+  POLICY_MERGE_ACTIONS,
+  POLICY_REBASE_ACTIONS,
+  POLICY_SENSITIVE_ACTIONS,
+} from './constants.js';
 
 export function createPolicyDecision(input: PolicyDecision): PolicyDecision {
   return appendTrace(
@@ -118,31 +100,31 @@ export function evaluateLifecyclePolicyAction(
 }
 
 function resolveActionCategory(action: string): PolicyActionCategory {
-  if (mergeActions.has(action)) {
+  if (POLICY_MERGE_ACTIONS.includes(action)) {
     return 'merge';
   }
 
-  if (commandExecutionActions.has(action)) {
+  if (POLICY_COMMAND_EXECUTION_ACTIONS.includes(action)) {
     return 'command-execution';
   }
 
-  if (destructiveActions.has(action)) {
+  if (POLICY_DESTRUCTIVE_ACTIONS.includes(action)) {
     return 'worktree-release';
   }
 
-  if (rebaseActions.has(action)) {
+  if (POLICY_REBASE_ACTIONS.includes(action)) {
     return 'rebase';
   }
 
-  if (externalPublishActions.has(action)) {
+  if (POLICY_EXTERNAL_PUBLISH_ACTIONS.includes(action)) {
     return 'publish';
   }
 
-  if (autofixActions.has(action)) {
+  if (POLICY_AUTOFIX_ACTIONS.includes(action)) {
     return 'autofix';
   }
 
-  if (destructiveCleanupActions.has(action)) {
+  if (POLICY_DESTRUCTIVE_CLEANUP_ACTIONS.includes(action)) {
     return 'destructive-cleanup';
   }
 
@@ -182,7 +164,7 @@ function resolveRequiresApproval(
 ): boolean {
   return (
     privileged ||
-    sensitiveActions.has(action) ||
+    POLICY_SENSITIVE_ACTIONS.includes(action) ||
     actionCategory === 'merge' ||
     actionCategory === 'worktree-release' ||
     actionCategory === 'rebase' ||

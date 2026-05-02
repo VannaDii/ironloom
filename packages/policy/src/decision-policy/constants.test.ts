@@ -1,0 +1,84 @@
+import { describe, expect, it } from 'vitest';
+
+import {
+  POLICY_ACTION_AUTOFIX,
+  POLICY_ACTION_CLEANUP_ARTIFACTS,
+  POLICY_ACTION_DELETE_WORKTREE,
+  POLICY_ACTION_DESTRUCTIVE_CLEANUP,
+  POLICY_ACTION_EXECUTE_COMMAND,
+  POLICY_ACTION_MERGE_NOW,
+  POLICY_ACTION_MERGE_PR,
+  POLICY_ACTION_PUBLISH,
+  POLICY_ACTION_PUBLISH_RELEASE,
+  POLICY_ACTION_REBASE_ALL_DEPENDENTS,
+  POLICY_ACTION_REBASE_DEPENDENTS,
+  POLICY_ACTION_RELEASE_WORKTREE,
+  POLICY_ACTION_RETRY_GATES,
+  POLICY_ACTION_RUN_COMMAND,
+  POLICY_ACTION_RUN_GATES,
+  POLICY_ACTION_SYNC_WORKTREE,
+  POLICY_ACTION_UPDATE_SPEC,
+  POLICY_AUTOFIX_ACTIONS,
+  POLICY_COMMAND_EXECUTION_ACTIONS,
+  POLICY_DESTRUCTIVE_ACTIONS,
+  POLICY_DESTRUCTIVE_CLEANUP_ACTIONS,
+  POLICY_EXTERNAL_PUBLISH_ACTIONS,
+  POLICY_MERGE_ACTIONS,
+  POLICY_REBASE_ACTIONS,
+  POLICY_SENSITIVE_ACTIONS,
+} from './constants.js';
+
+describe('decision-policy constants', () => {
+  const cases = [
+    {
+      name: 'exports policy action sets from a constants module',
+      inputs: {},
+      mock: () => ({}),
+      assert: () => {
+        expect(POLICY_SENSITIVE_ACTIONS).toContain(POLICY_ACTION_MERGE_NOW);
+        expect(POLICY_SENSITIVE_ACTIONS).toContain(
+          POLICY_ACTION_REBASE_ALL_DEPENDENTS,
+        );
+        expect(POLICY_SENSITIVE_ACTIONS).toContain(POLICY_ACTION_SYNC_WORKTREE);
+        expect(POLICY_SENSITIVE_ACTIONS).toContain(
+          POLICY_ACTION_RELEASE_WORKTREE,
+        );
+        expect(POLICY_SENSITIVE_ACTIONS).toContain(POLICY_ACTION_UPDATE_SPEC);
+        expect(POLICY_DESTRUCTIVE_ACTIONS).toEqual([
+          POLICY_ACTION_RELEASE_WORKTREE,
+        ]);
+        expect(POLICY_EXTERNAL_PUBLISH_ACTIONS).toEqual([
+          POLICY_ACTION_PUBLISH,
+          POLICY_ACTION_PUBLISH_RELEASE,
+        ]);
+        expect(POLICY_MERGE_ACTIONS).toEqual([
+          POLICY_ACTION_MERGE_NOW,
+          POLICY_ACTION_MERGE_PR,
+        ]);
+        expect(POLICY_COMMAND_EXECUTION_ACTIONS).toEqual([
+          POLICY_ACTION_EXECUTE_COMMAND,
+          POLICY_ACTION_RUN_COMMAND,
+          POLICY_ACTION_RUN_GATES,
+          POLICY_ACTION_RETRY_GATES,
+        ]);
+        expect(POLICY_REBASE_ACTIONS).toEqual([
+          POLICY_ACTION_REBASE_DEPENDENTS,
+          POLICY_ACTION_REBASE_ALL_DEPENDENTS,
+        ]);
+        expect(POLICY_AUTOFIX_ACTIONS).toContain(POLICY_ACTION_AUTOFIX);
+        expect(POLICY_DESTRUCTIVE_CLEANUP_ACTIONS).toEqual([
+          POLICY_ACTION_DESTRUCTIVE_CLEANUP,
+          POLICY_ACTION_DELETE_WORKTREE,
+          POLICY_ACTION_CLEANUP_ARTIFACTS,
+        ]);
+      },
+    },
+  ];
+
+  it.each(cases)('$name', (testCase) => {
+    expect.hasAssertions();
+    const context = testCase.mock();
+
+    testCase.assert(context, testCase.inputs);
+  });
+});
