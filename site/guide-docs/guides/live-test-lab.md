@@ -142,14 +142,14 @@ The live lab also registers the exported Discord operator command contracts into
 the sandbox guild. After registration, it runs a Discord interaction probe. The
 probe simulates the operator `/retry-gates` path, routes it through the Discord
 control-plane service, renders the compact operator message payload with
-contextual buttons, posts noninteractive copies of the interaction
-acknowledgement into the audit channel and bound-thread status into the
-implementation channel, and records the command registration, response receipt
-endpoints, Discord message ids, posted content, and structured component custom
-ids in `live-lab-report.json`. The probe fails if either control-plane response
-loses the structured button rows, so the live-lab lane cannot silently regress
-to plain log-style messages while avoiding stale clickable buttons in Discord
-after cleanup.
+contextual buttons, posts the interaction acknowledgement into the audit channel
+and bound-thread status into the implementation channel with those contextual
+buttons intact, and records the command registration, response receipt endpoints,
+Discord message ids, posted content, and component custom ids in
+`live-lab-report.json`. The probe fails if either control-plane response loses
+the button rows, so the live-lab lane cannot silently regress to plain log-style
+messages. Only unbound bootstrap/progress status messages stay noninteractive to
+avoid stale clickable buttons after cleanup.
 
 Discord does not provide a supported bot API for clicking buttons as a human
 operator. The automated live lab therefore validates the production registration,

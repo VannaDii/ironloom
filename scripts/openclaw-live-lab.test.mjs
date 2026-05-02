@@ -234,6 +234,22 @@ describe('openclaw-live-lab helpers', () => {
                * Discord message payload wire key used to suppress operator pings.
                */
               allowed_mentions: { parse: [] },
+              components: [
+                {
+                  type: 1,
+                  components: [
+                    {
+                      type: 2,
+                      label: 'Show Status',
+                      style: 2,
+                      /**
+                       * Discord component wire key returned by button interactions.
+                       */
+                      custom_id: 'devplat:v1:show-status:implementation-1',
+                    },
+                  ],
+                },
+              ],
               content:
                 'simulated interaction callback: DevPlat accepted retry-gates.',
             },
@@ -245,6 +261,22 @@ describe('openclaw-live-lab helpers', () => {
                * Discord message payload wire key used to suppress operator pings.
                */
               allowed_mentions: { parse: [] },
+              components: [
+                {
+                  type: 1,
+                  components: [
+                    {
+                      type: 2,
+                      label: 'Show Status',
+                      style: 2,
+                      /**
+                       * Discord component wire key returned by button interactions.
+                       */
+                      custom_id: 'devplat:v1:show-status:implementation-1',
+                    },
+                  ],
+                },
+              ],
               content: 'DevPlat accepted retry-gates.',
             },
           ],

@@ -367,24 +367,6 @@ export function createStatusMessage({
   };
 }
 
-/**
- * Removes interactive components before posting ephemeral live-lab messages.
- */
-function createNonInteractiveLiveLabPayload(payload) {
-  return {
-    content: payload.content,
-    ...(payload.allowed_mentions === undefined
-      ? {}
-      : {
-          /**
-           * Discord message payload wire key used to suppress operator pings.
-           */
-          allowed_mentions: payload.allowed_mentions,
-        }),
-    ...(payload.flags === undefined ? {} : { flags: payload.flags }),
-  };
-}
-
 export function mapProgressToChannel(progress) {
   const pullRequestTools = new Set([
     'create_pull_request_record',
@@ -1193,7 +1175,7 @@ function createDiscordMessageBody(payload) {
 }
 
 /**
- * Prefixes visible content while stripping stale live-lab interaction controls.
+ * Prefixes visible content while preserving structured Discord controls.
  */
 function prefixDiscordMessageContent(prefix, payload) {
   if (typeof payload === 'string') {
@@ -1201,20 +1183,16 @@ function prefixDiscordMessageContent(prefix, payload) {
   }
 
   return {
-    ...createNonInteractiveLiveLabPayload(payload),
+    ...payload,
     content: `${prefix}${payload.content}`,
   };
 }
 
 /**
- * Posts a Discord message body after applying live-lab transport policy.
+ * Posts a Discord message body without changing structured Discord controls.
  */
 async function sendDiscordMessage(channelId, payload, discordRequest) {
-  const projectedPayload =
-    typeof payload === 'string'
-      ? payload
-      : createNonInteractiveLiveLabPayload(payload);
-  const body = createDiscordMessageBody(projectedPayload);
+  const body = createDiscordMessageBody(payload);
   const responseBody = await discordRequest(
     `/channels/${encodeURIComponent(channelId)}/messages`,
     {
