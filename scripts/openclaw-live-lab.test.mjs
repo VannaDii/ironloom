@@ -234,22 +234,6 @@ describe('openclaw-live-lab helpers', () => {
                * Discord message payload wire key used to suppress operator pings.
                */
               allowed_mentions: { parse: [] },
-              components: [
-                {
-                  components: [
-                    {
-                      /**
-                       * Discord component wire key returned by button interactions.
-                       */
-                      custom_id: 'devplat:v1:show-status:implementation-1',
-                      label: 'Show Status',
-                      style: 2,
-                      type: 2,
-                    },
-                  ],
-                  type: 1,
-                },
-              ],
               content:
                 'simulated interaction callback: DevPlat accepted retry-gates.',
             },
@@ -261,22 +245,6 @@ describe('openclaw-live-lab helpers', () => {
                * Discord message payload wire key used to suppress operator pings.
                */
               allowed_mentions: { parse: [] },
-              components: [
-                {
-                  components: [
-                    {
-                      /**
-                       * Discord component wire key returned by button interactions.
-                       */
-                      custom_id: 'devplat:v1:show-status:implementation-1',
-                      label: 'Show Status',
-                      style: 2,
-                      type: 2,
-                    },
-                  ],
-                  type: 1,
-                },
-              ],
               content: 'DevPlat accepted retry-gates.',
             },
           ],
@@ -700,32 +668,6 @@ describe('openclaw-live-lab helpers', () => {
         });
         expect(message).toEqual({
           allowed_mentions: { parse: [] },
-          components: [
-            {
-              components: [
-                {
-                  /**
-                   * Discord component wire key returned by button interactions.
-                   */
-                  custom_id: 'devplat:v1:show-status:project-management-1',
-                  label: 'Show Status',
-                  style: 2,
-                  type: 2,
-                },
-                {
-                  /**
-                   * Discord component wire key returned by button interactions.
-                   */
-                  custom_id:
-                    'devplat:v1:show-last-artifact:project-management-1',
-                  label: 'Details',
-                  style: 2,
-                  type: 2,
-                },
-              ],
-              type: 1,
-            },
-          ],
           content: [
             '🟡 DevPlat · Live lab bootstrap',
             '',
@@ -756,46 +698,23 @@ describe('openclaw-live-lab helpers', () => {
       },
     },
     {
-      name: 'rejects live-lab status controls when custom ids exceed Discord limits',
+      name: 'omits stale interactive controls from live-lab status messages',
       inputs: {},
       mock: async () => undefined,
       assert: async () => {
-        expect(() =>
-          createStatusMessage({
-            controlThreadId: 'x'.repeat(90),
-            details: 'Too long.',
-            phase: 'bootstrap',
-            ref: 'main',
-            repoFullName: 'sandbox-org/devplat-test-long',
-            runLabel: '200-4',
-            sha: 'abc123',
-            status: 'in-progress',
-            workflowUrl: null,
-          }),
-        ).toThrow(
-          'Discord live-lab component custom_id exceeds 100 characters.',
-        );
-      },
-    },
-    {
-      name: 'rejects live-lab status controls without a thread context',
-      inputs: {},
-      mock: async () => undefined,
-      assert: async () => {
-        expect(() =>
-          createStatusMessage({
-            details: 'Missing thread.',
-            phase: 'bootstrap',
-            ref: 'main',
-            repoFullName: 'sandbox-org/devplat-test-missing-thread',
-            runLabel: '200-5',
-            sha: 'abc123',
-            status: 'in-progress',
-            workflowUrl: null,
-          }),
-        ).toThrow(
-          'Discord live-lab component custom_id requires a thread context.',
-        );
+        const message = createStatusMessage({
+          controlThreadId: 'project-management-1',
+          details: 'Status only.',
+          phase: 'bootstrap',
+          ref: 'main',
+          repoFullName: 'sandbox-org/devplat-test-status-only',
+          runLabel: '200-4',
+          sha: 'abc123',
+          status: 'in-progress',
+          workflowUrl: null,
+        });
+
+        expect(message).not.toHaveProperty('components');
       },
     },
     {
@@ -1548,10 +1467,7 @@ describe('runLiveLab', () => {
         });
         expect(savedReport.discord.bootstrapStatus).toMatchObject({
           channelId: 'project-management-1',
-          componentCustomIds: [
-            'devplat:v1:show-status:project-management-1',
-            'devplat:v1:show-last-artifact:project-management-1',
-          ],
+          componentCustomIds: [],
           content: expect.stringContaining('🟡 DevPlat · Live lab bootstrap'),
           endpoint: '/channels/project-management-1/messages',
           messageId: expect.any(String),

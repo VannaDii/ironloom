@@ -39,26 +39,6 @@ const testDiscordCategoryName = 'test';
  * Discord component wire field for the developer-defined interaction id.
  */
 const discordComponentCustomIdField = 'custom_id';
-/**
- * Discord maximum length for component custom ids.
- */
-const discordComponentCustomIdMaxLength = 100;
-/**
- * Standard DevPlat control component prefix used by Discord control-plane routing.
- */
-const discordControlComponentCustomIdPrefix = 'devplat:v1';
-/**
- * Discord action row component type used for live-lab status controls.
- */
-const discordActionRowComponentType = 1;
-/**
- * Discord button component type used for live-lab status controls.
- */
-const discordButtonComponentType = 2;
-/**
- * Discord secondary button style used for neutral live-lab controls.
- */
-const discordSecondaryButtonStyle = 2;
 const liveLabGitHubAppPermissions = Object.freeze({
   actions: 'write',
   administration: 'write',
@@ -350,7 +330,6 @@ export function createDiscordChannelPlan(
 }
 
 export function createStatusMessage({
-  controlThreadId,
   details,
   phase,
   ref,
@@ -383,72 +362,27 @@ export function createStatusMessage({
 
   return {
     allowed_mentions: { parse: [] },
-    components: createLiveLabStatusComponentRows(controlThreadId),
     content: lines.join('\n'),
     flags: 4,
   };
 }
 
 /**
- * Creates compact live-lab status controls for Discord operator messages.
+ * Removes interactive components before posting ephemeral live-lab messages.
  */
-function createLiveLabStatusComponentRows(controlThreadId) {
-  return [
-    {
-      components: [
-        createLiveLabStatusButton(
-          'show-status',
-          'Show Status',
-          controlThreadId,
-        ),
-        createLiveLabStatusButton(
-          'show-last-artifact',
-          'Details',
-          controlThreadId,
-        ),
-      ],
-      type: discordActionRowComponentType,
-    },
-  ];
-}
-
-/**
- * Creates one live-lab status button using Discord's component wire shape.
- */
-function createLiveLabStatusButton(action, label, controlThreadId) {
+function createNonInteractiveLiveLabPayload(payload) {
   return {
-    [discordComponentCustomIdField]: createLiveLabStatusCustomId(
-      action,
-      controlThreadId,
-    ),
-    label,
-    style: discordSecondaryButtonStyle,
-    type: discordButtonComponentType,
+    content: payload.content,
+    ...(payload.allowed_mentions === undefined
+      ? {}
+      : {
+          /**
+           * Discord message payload wire key used to suppress operator pings.
+           */
+          allowed_mentions: payload.allowed_mentions,
+        }),
+    ...(payload.flags === undefined ? {} : { flags: payload.flags }),
   };
-}
-
-/**
- * Creates the live-lab component id that Discord returns on button clicks.
- */
-function createLiveLabStatusCustomId(action, controlThreadId) {
-  if (
-    typeof controlThreadId !== 'string' ||
-    controlThreadId.trim().length === 0
-  ) {
-    throw new Error(
-      'Discord live-lab component custom_id requires a thread context.',
-    );
-  }
-
-  const customId = `${discordControlComponentCustomIdPrefix}:${action}:${controlThreadId}`;
-
-  if (customId.length > discordComponentCustomIdMaxLength) {
-    throw new Error(
-      'Discord live-lab component custom_id exceeds 100 characters.',
-    );
-  }
-
-  return customId;
 }
 
 export function mapProgressToChannel(progress) {
@@ -1259,7 +1193,7 @@ function createDiscordMessageBody(payload) {
 }
 
 /**
- * Prefixes the visible content while preserving structured Discord controls.
+ * Prefixes visible content while stripping stale live-lab interaction controls.
  */
 function prefixDiscordMessageContent(prefix, payload) {
   if (typeof payload === 'string') {
@@ -1267,16 +1201,20 @@ function prefixDiscordMessageContent(prefix, payload) {
   }
 
   return {
-    ...payload,
+    ...createNonInteractiveLiveLabPayload(payload),
     content: `${prefix}${payload.content}`,
   };
 }
 
 /**
- * Posts a Discord message body without dropping structured components.
+ * Posts a Discord message body after applying live-lab transport policy.
  */
 async function sendDiscordMessage(channelId, payload, discordRequest) {
-  const body = createDiscordMessageBody(payload);
+  const projectedPayload =
+    typeof payload === 'string'
+      ? payload
+      : createNonInteractiveLiveLabPayload(payload);
+  const body = createDiscordMessageBody(projectedPayload);
   const responseBody = await discordRequest(
     `/channels/${encodeURIComponent(channelId)}/messages`,
     {

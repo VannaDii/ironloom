@@ -23,10 +23,11 @@ The live lab registers those commands and includes a Discord callback-shaped
 interaction probe so this response path is validated from raw slash-command
 payload normalization through operator-visible Discord messages, not only local
 unit tests. The live-lab probe fails if the acknowledgement or thread message
-loses the structured button rows, and records the posted message ids, content,
-and component custom ids in the live-lab report for audit review. Discord does
-not provide a supported bot API for clicking buttons as a human user, so live
-human clicks in the sandbox guild remain a manual acceptance check.
+loses the structured button rows before transport projection, then posts
+noninteractive copies and records the message ids, content, and structured
+component custom ids in the live-lab report for audit review. Discord does not
+provide a supported bot API for clicking buttons as a human user, so live human
+clicks in the sandbox guild remain a manual acceptance check.
 Hermetic OpenClaw deep tests use the exported loopback response transport to
 verify the same callback-shaped interaction flow without external Discord
 access.

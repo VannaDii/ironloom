@@ -118,20 +118,20 @@ Use them this way:
 Every message is labeled with the run metadata, so operators can correlate
 activity without per-run channel trees.
 Status messages use the compact DevPlat state/scope/item format and suppress
-raw GitHub URL previews. They also include compact `Show Status` and `Details`
-button components keyed to the standard `show-status` and `show-last-artifact`
-control actions plus the target Discord channel context, so the visible payload
-shape stays aligned with the Discord operator UI contract instead of regressing
-to plain log output. The uploaded `live-lab-report.json` records each selected
-channel id and `parentId` so operators can confirm the run used the channels
-under the `test` category, not uncategorized duplicates with the same names.
+raw GitHub URL previews. They do not include interactive components because the
+live-lab runner is intentionally ephemeral and project-management updates are
+not bound lifecycle threads. The uploaded `live-lab-report.json` records each
+selected channel id and `parentId` so operators can confirm the run used the
+channels under the `test` category, not uncategorized duplicates with the same
+names.
 The first bootstrap message in `project-management` is not best effort: if it
 cannot be posted, the live lab fails before listing, creating, or deleting any
 sandbox repository. Later progress and failure notifications remain
 best-effort so the report can still be written when Discord has a transient
 error after the required operator-visible start signal. The report records the
-bootstrap channel id, message id, posted content, and component custom ids so
-operators can audit the exact Discord message that started the run.
+bootstrap channel id, message id, posted content, and empty component id list so
+operators can audit the exact Discord message that started the run without
+leaving buttons that outlive the runner.
 
 Production operator channels use the same standard channel names from runtime
 configuration under a category named for the repository. OpenClaw test and
@@ -142,12 +142,14 @@ The live lab also registers the exported Discord operator command contracts into
 the sandbox guild. After registration, it runs a Discord interaction probe. The
 probe simulates the operator `/retry-gates` path, routes it through the Discord
 control-plane service, renders the compact operator message payload with
-contextual buttons, posts the interaction acknowledgement into the audit
-channel, posts the bound-thread status into the implementation channel, and
-records the command registration, response receipt endpoints, Discord message
-ids, posted content, and component custom ids in `live-lab-report.json`. The
-probe fails if either response loses the structured button rows, so the live-lab
-lane cannot silently regress to plain log-style messages.
+contextual buttons, posts noninteractive copies of the interaction
+acknowledgement into the audit channel and bound-thread status into the
+implementation channel, and records the command registration, response receipt
+endpoints, Discord message ids, posted content, and structured component custom
+ids in `live-lab-report.json`. The probe fails if either control-plane response
+loses the structured button rows, so the live-lab lane cannot silently regress
+to plain log-style messages while avoiding stale clickable buttons in Discord
+after cleanup.
 
 Discord does not provide a supported bot API for clicking buttons as a human
 operator. The automated live lab therefore validates the production registration,

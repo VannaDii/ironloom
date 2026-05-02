@@ -169,7 +169,7 @@ the package responsibilities below. Current completion work focuses on:
 - `@vannadii/devplat-observability`: current code covers telemetry events, audit records, run metrics, run summaries, and persisted audit/telemetry evidence.
 - `@vannadii/devplat-github`: current code covers GitHub action requests, policy-aware submission semantics, concrete REST request submission for PR create/update/comment/merge and branch sync, normalized repository state, normalized pull request state, and issue/spec/PR link contracts.
 - `@vannadii/devplat-openclaw`: current code covers deterministic plugin config, broad tool validation, adapter delegation, a single tool inventory factory used by plugin registration, task lifecycle tools that can preserve durable queue transition history from the current stored record, lifecycle policy evaluation output with action category, risk, escalation target, audit reason, privilege, and next-action metadata, Discord control handling for both normalized control requests and operator interaction callbacks, and hermetic deep-test coverage of durable queue transitions plus callback-shaped Discord interactions through the loopback response transport; remaining gap is deepening delegated platform behavior as package behavior becomes more concrete.
-- `@vannadii/devplat-discord`: current code covers thread-aware bindings, approvals, expanded operator actions, explicit `pull-request` thread sessions, codec-backed slash command contracts, raw Discord callback normalization, outbound Discord Gateway `INTERACTION_CREATE` routing with identify and heartbeat support, storage-backed bound-thread resolution for private runtimes, Helm values that start the private Gateway worker without a public webhook host, signature-verified interaction webhook helpers with structured component-bearing interaction responses for explicit inbound deployments, Discord ping responses, live-lab guild command registration, slash/button interaction routing, fail-closed thread ambiguity handling, typed bound work-item projection from Discord thread sessions, REST response posting that names the resolved work item, live-lab status payloads with compact state/scope/item content plus safe control buttons, and a live-lab interaction probe that routes a callback-shaped operator command through the Discord response path while failing if callback/thread receipts are missing, the bound thread is wrong, actionable button components are dropped, or component custom ids and message receipt ids are not recorded; remaining gap is human operator-triggered slash/button invocation in the sandbox guild because Discord does not provide a supported bot API for clicking buttons as a user.
+- `@vannadii/devplat-discord`: current code covers thread-aware bindings, approvals, expanded operator actions, explicit `pull-request` thread sessions, codec-backed slash command contracts, raw Discord callback normalization, outbound Discord Gateway `INTERACTION_CREATE` routing with identify and heartbeat support, storage-backed bound-thread resolution for private runtimes, Helm values that start the private Gateway worker without a public webhook host, signature-verified interaction webhook helpers with structured component-bearing interaction responses for explicit inbound deployments, Discord ping responses, live-lab guild command registration, slash/button interaction routing, fail-closed thread ambiguity handling, typed bound work-item projection from Discord thread sessions, REST response posting that names the resolved work item, live-lab status payloads with compact state/scope/item content and no stale interactive buttons, and a live-lab interaction probe that routes a callback-shaped operator command through the Discord response path while failing if callback/thread receipts are missing, the bound thread is wrong, actionable button components are dropped from the structured control-plane payload, or component custom ids and message receipt ids are not recorded; remaining gap is human operator-triggered slash/button invocation in the sandbox guild because Discord does not provide a supported bot API for clicking buttons as a user.
 - `@vannadii/devplat-policy`: current code covers privileged-action decisions, explicit approval requirements, lifecycle action categories for merge, command execution, worktree release, rebase, publish, autofix, and destructive cleanup, risk levels, escalation targets, next-action hints, and audit reasons.
 - `@vannadii/devplat-storage`: current code covers filesystem-backed record storage under `.devplat`, explicit layout contracts, and active thread/task/PR/branch/artifact indexes.
 
@@ -496,12 +496,13 @@ This phase is complete when:
   records for accepted, blocked, and refused interactions
 - the dispatchable live lab registers Discord command contracts and records
   Discord interaction-response probing through operator-visible Discord messages
-  with actionable button components, component custom ids, posted content, and
-  Discord message receipt ids preserved
+  with actionable button components preserved in the structured control-plane
+  payload, component custom ids, posted content, and Discord message receipt ids
+  preserved
 - the dispatchable live lab fails before sandbox repository mutation when the
   required project-management bootstrap status message cannot post
 - the dispatchable live lab records the required bootstrap status receipt with
-  channel id, message id, posted content, and component custom ids
+  channel id, message id, posted content, and an empty component id list
 - the Discord package exposes a private outbound Gateway runtime for real
   slash/button callbacks without public ingress, plus a reusable
   signature-verified interaction webhook helper for explicit inbound
@@ -528,8 +529,8 @@ Live-lab acceptance must also verify the Discord interactive UX path directly:
 2. route it through the outbound Gateway or callback-shaped Discord
    control-plane service
 3. post an interaction acknowledgement and bound-thread status through the Discord response transport
-4. record callback and thread-message receipts, message ids, posted content, and component custom ids in the live-lab report
-5. record the required bootstrap status receipt with channel id, message id, posted content, and component custom ids
+4. record callback and thread-message receipts, message ids, posted content, and structured component custom ids in the live-lab report
+5. record the required bootstrap status receipt with channel id, message id, posted content, and an empty component id list
 6. fail the live lab before sandbox repository mutation when the required bootstrap status message cannot post
 7. fail the live lab if the interaction fails closed, does not resolve to one bound thread, or drops actionable controls
 
