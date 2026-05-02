@@ -137,9 +137,9 @@ Human-triggered Discord client clicks remain a manual sandbox-guild acceptance
 check because Discord does not expose a supported bot API for clicking buttons
 as a user. The `operator_hold_ms` live-lab input defaults to `150000`, keeping
 the private Gateway runtime open for a bounded 2.5 minute manual-click window
-after the control message is posted. Live-lab status posts suppress raw GitHub
-URL previews, and reports include selected channel `parentId` values so category
-placement can be audited.
+after the control message is posted. Live-lab status posts render compact
+workflow links with URL previews suppressed, and reports include selected
+channel `parentId` values so category placement can be audited.
 Live-lab runtime containers receive the same repo-scoped Discord/OpenClaw/Sonar
 environment through Docker env-name pass-through while report artifacts keep
 secret values redacted. The live container explicitly starts the private

@@ -36,6 +36,10 @@ const defaultOperatorHoldMs = 150_000;
 const githubRepositoryListPageSize = 100;
 const livePrefix = 'devplat-test-';
 /**
+ * Discord message flag that suppresses URL embeds on status posts.
+ */
+const discordSuppressEmbedsMessageFlag = 4;
+/**
  * Shared Discord category used by live-lab and OpenClaw test runs.
  */
 const testDiscordCategoryName = 'test';
@@ -345,6 +349,20 @@ export function createDiscordChannelPlan(
   ];
 }
 
+/**
+ * Resolves the canonical status indicator for live-lab operator messages.
+ */
+function resolveLiveLabStatusIndicator(status) {
+  switch (status) {
+    case 'failed':
+      return '🔴';
+    case 'passed':
+      return '🟢';
+    default:
+      return '🟡';
+  }
+}
+
 export function createStatusMessage({
   details,
   phase,
@@ -355,10 +373,7 @@ export function createStatusMessage({
   status,
   workflowUrl,
 }) {
-  const title =
-    status === 'passed'
-      ? `🟢 DevPlat · Live lab ${phase}`
-      : `🟡 DevPlat · Live lab ${phase}`;
+  const title = `${resolveLiveLabStatusIndicator(status)} DevPlat · Live lab ${phase}`;
   const lines = [
     title,
     '',
@@ -373,13 +388,13 @@ export function createStatusMessage({
   ];
 
   if (workflowUrl !== null) {
-    lines.push(`Workflow: ${runLabel}`);
+    lines.push(`Workflow: <${workflowUrl}>`);
   }
 
   return {
     allowed_mentions: { parse: [] },
     content: lines.join('\n'),
-    flags: 4,
+    flags: discordSuppressEmbedsMessageFlag,
   };
 }
 

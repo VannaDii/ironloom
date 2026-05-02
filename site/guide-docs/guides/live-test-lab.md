@@ -120,12 +120,13 @@ Use them this way:
 
 Every message is labeled with the run metadata, so operators can correlate
 activity without per-run channel trees.
-Status messages use the compact DevPlat state/scope/item format and suppress
-raw GitHub URL previews. They do not include interactive components because the
-live-lab runner is intentionally ephemeral and project-management updates are
-not bound lifecycle threads. The uploaded `live-lab-report.json` records each
-selected channel id and `parentId` so operators can confirm the run used the
-channels under the `test` category, not uncategorized duplicates with the same
+Status messages use the compact DevPlat state/scope/item format, render
+workflow URLs as compact links, and suppress raw GitHub previews. They do not
+include interactive components because the live-lab runner is intentionally
+ephemeral and project-management updates are not bound lifecycle threads. The
+uploaded `live-lab-report.json` records each selected channel id and `parentId`
+so operators can confirm the run used the channels under the `test` category,
+not uncategorized duplicates with the same
 names.
 The first bootstrap message in `project-management` is not best effort: if it
 cannot be posted, the live lab fails before listing, creating, or deleting any

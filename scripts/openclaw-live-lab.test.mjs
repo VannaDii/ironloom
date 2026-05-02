@@ -715,7 +715,7 @@ describe('openclaw-live-lab helpers', () => {
             '→ Bootstrapped the lab.',
             '',
             'Ref: main',
-            'Workflow: 200-3',
+            'Workflow: <https://github.com/VannaDii/devplat/actions/runs/9001>',
           ].join('\n'),
           flags: 4,
         });
@@ -751,6 +751,31 @@ describe('openclaw-live-lab helpers', () => {
         });
 
         expect(message).not.toHaveProperty('components');
+      },
+    },
+    {
+      name: 'renders failed live-lab status messages with the blocked status anchor',
+      inputs: {
+        workflowUrl: 'https://github.com/VannaDii/devplat/actions/runs/9002',
+      },
+      mock: async () => undefined,
+      assert: async (_context, inputs) => {
+        const message = createStatusMessage({
+          controlThreadId: 'project-management-1',
+          details: 'Deep test failed.',
+          phase: 'failure',
+          ref: 'main',
+          repoFullName: 'sandbox-org/devplat-test-status-failed',
+          runLabel: '200-5',
+          sha: 'def456',
+          status: 'failed',
+          workflowUrl: inputs.workflowUrl,
+        });
+
+        expect(message.content).toContain('🔴 DevPlat · Live lab failure');
+        expect(message.content).toContain('Status: failed');
+        expect(message.content).toContain(`Workflow: <${inputs.workflowUrl}>`);
+        expect(message.flags).toBe(4);
       },
     },
     {
@@ -1564,9 +1589,11 @@ describe('runLiveLab', () => {
         const discordMessageLines = context.discordMessages.flatMap((message) =>
           message.content.split('\n'),
         );
-        expect(discordMessageLines).not.toContain(
-          `Workflow: ${inputs.workflowUrl}`,
-        );
+        expect(
+          discordMessageLines.some(
+            (line) => line.startsWith('Workflow: <') && line.endsWith('>'),
+          ),
+        ).toBe(true);
         expect(context.summaryEntries[0]).toContain('Status: passed');
         expect(context.summaryEntries[0]).toContain(`Ref: ${inputs.ref}`);
         expect(context.summaryEntries[0]).toContain('Discord category: test');
