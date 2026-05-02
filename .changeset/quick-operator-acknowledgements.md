@@ -1,5 +1,7 @@
 ---
+'@vannadii/devplat-core': patch
 '@vannadii/devplat-discord': patch
+'@vannadii/devplat-github': patch
 '@vannadii/devplat-policy': patch
 ---
 
@@ -15,4 +17,4 @@ The OpenClaw deep-test artifact redaction helper now also uses a named regex con
 
 The local pre-push gate now runs the same repository lint command used by CI before Sonar and build/doc validation, preventing lint-only CI failures from reaching the remote PR path.
 
-Policy lifecycle action vocabulary now lives in a dedicated constants module with explicit coverage for sensitive, destructive, publish, merge, command-execution, rebase, autofix, and destructive-cleanup action sets.
+Shared lifecycle action names now live in `@vannadii/devplat-core`, and GitHub and policy action constants consume that shared vocabulary instead of redefining cross-package action strings. Policy lifecycle action grouping now lives in a dedicated constants module with explicit coverage for sensitive, destructive, publish, merge, command-execution, rebase, autofix, and destructive-cleanup action sets.
