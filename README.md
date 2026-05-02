@@ -101,10 +101,12 @@ agent-readable reports. SQAA/A3S analysis is intentionally disabled unless
 is supplied; when enabled it also runs per-file `sonar analyze sqaa --file`
 commands. If SQAA returns
 `A3S analysis is not activated for this organization`, the helper reports that
-capability as skipped instead of allowing the whole analysis run to fail. The
-wrapper derives the current branch and defaults the project to `vannadii_devplat`;
-override with `--project`, `--branch`, `--base`, or `--head` only for exceptional
-local comparisons.
+capability as skipped instead of allowing the whole analysis run to fail. If the
+local CLI is not authenticated, the helper reports changed-file verification as
+skipped with an explicit `sonar auth login` hint while CI remains the
+authoritative Sonar gate. The wrapper derives the current branch and defaults
+the project to `vannadii_devplat`; override with `--project`, `--branch`,
+`--base`, or `--head` only for exceptional local comparisons.
 
 Runtime configuration is repository-scoped for the single-repo production path.
 Set `GITHUB_OWNER`, `GITHUB_REPO`, `GITHUB_DEFAULT_BRANCH`, GitHub API/token

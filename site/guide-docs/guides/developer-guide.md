@@ -33,12 +33,14 @@ analyses in parallel. SQAA/A3S analysis is intentionally disabled unless
 is supplied; when enabled it also runs `sonar analyze sqaa --file` for each
 changed file. If the organization is not configured for A3S, the helper reports
 the SQAA capability as skipped with the reason preserved instead of allowing the
-entire analysis run to fail. The local pre-push gate requires this changed-file
-SonarQube analysis, so install and authenticate the CLI before pushing. It
-derives the branch from the local checkout or GitHub environment and defaults
-the project to `vannadii_devplat`. Pass `--base`, `--head`, `--project`, and
-`--branch` after `--` only when a local branch needs explicit comparison or
-SonarCloud context.
+entire analysis run to fail. If the local CLI is not authenticated, the helper
+reports verification as skipped with an explicit `sonar auth login` hint while
+CI remains the authoritative Sonar gate. The local pre-push gate always runs
+this helper; authenticate the CLI to make local changed-file verification
+enforcing before push. It derives the branch from the local checkout or GitHub
+environment and defaults the project to `vannadii_devplat`. Pass `--base`,
+`--head`, `--project`, and `--branch` after `--` only when a local branch needs
+explicit comparison or SonarCloud context.
 
 Use the root `PLATFORM.md` file as the authoritative foundation-scope document. This guide focuses on the implementation discipline that keeps work aligned with that objective.
 
