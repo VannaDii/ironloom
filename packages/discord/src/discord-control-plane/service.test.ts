@@ -285,9 +285,10 @@ describe('DiscordControlPlaneService', () => {
     expect(await store.list('state')).toContain('discord-004');
   });
 
-  it('handles Discord interactions through responses and thread updates', async () => {
+  describe('Discord interaction responses and thread updates', () => {
     const cases = [
       {
+        name: 'persists accepted thread interactions',
         inputs: {
           interaction: {
             id: 'interaction-001',
@@ -314,12 +315,15 @@ describe('DiscordControlPlaneService', () => {
             ),
           };
         },
-        assert: async (context: {
-          store: FileStoreService;
-          service: DiscordControlPlaneService;
-        }) => {
+        assert: async (
+          context: {
+            store: FileStoreService;
+            service: DiscordControlPlaneService;
+          },
+          inputs: { interaction: DiscordOperatorInteraction },
+        ) => {
           const result = await context.service.handleInteraction(
-            cases[0].inputs.interaction,
+            inputs.interaction,
           );
 
           expect(result.allowed).toBe(true);
@@ -345,6 +349,7 @@ describe('DiscordControlPlaneService', () => {
         },
       },
       {
+        name: 'projects pull request thread sessions into responses',
         inputs: {
           interaction: {
             id: 'interaction-001b',
@@ -404,13 +409,16 @@ describe('DiscordControlPlaneService', () => {
             ),
           };
         },
-        assert: async (context: {
-          messages: string[];
-          store: FileStoreService;
-          service: DiscordControlPlaneService;
-        }) => {
+        assert: async (
+          context: {
+            messages: string[];
+            store: FileStoreService;
+            service: DiscordControlPlaneService;
+          },
+          inputs: { interaction: DiscordOperatorInteraction },
+        ) => {
           const result = await context.service.handleInteraction(
-            cases[1].inputs.interaction,
+            inputs.interaction,
           );
 
           expect(result.allowed).toBe(true);
@@ -430,10 +438,11 @@ describe('DiscordControlPlaneService', () => {
       },
     ];
 
-    for (const testCase of cases) {
+    it.each(cases)('$name', async (testCase) => {
+      expect.hasAssertions();
       const context = await testCase.mock();
-      await testCase.assert(context);
-    }
+      await testCase.assert(context, testCase.inputs);
+    });
   });
 
   const acknowledgementOrderCases = [
@@ -1183,9 +1192,10 @@ describe('DiscordControlPlaneService', () => {
     await assert(context, inputs);
   });
 
-  it('posts Discord REST interaction and thread responses', async () => {
+  describe('Discord REST interaction and thread responses', () => {
     const cases = [
       {
+        name: 'posts structured interaction and thread payloads',
         inputs: {
           interaction: {
             id: 'interaction-003',
@@ -1218,14 +1228,17 @@ describe('DiscordControlPlaneService', () => {
             ),
           };
         },
-        assert: async (context: {
-          bodies: string[];
-          calls: string[];
-          transport: DiscordRestResponseTransport;
-        }) => {
+        assert: async (
+          context: {
+            bodies: string[];
+            calls: string[];
+            transport: DiscordRestResponseTransport;
+          },
+          inputs: { interaction: DiscordOperatorInteraction },
+        ) => {
           const interactionReceipt =
             await context.transport.postInteractionResponse(
-              cases[0].inputs.interaction,
+              inputs.interaction,
               {
                 allowed_mentions: { parse: [] },
                 content: 'accepted',
@@ -1290,15 +1303,17 @@ describe('DiscordControlPlaneService', () => {
       },
     ];
 
-    for (const testCase of cases) {
+    it.each(cases)('$name', async (testCase) => {
+      expect.hasAssertions();
       const context = testCase.mock();
-      await testCase.assert(context);
-    }
+      await testCase.assert(context, testCase.inputs);
+    });
   });
 
-  it('handles empty Discord REST response bodies', async () => {
+  describe('Discord REST empty response bodies', () => {
     const cases = [
       {
+        name: 'normalizes empty interaction response bodies to null',
         inputs: {
           interaction: {
             id: 'interaction-004',
@@ -1319,9 +1334,12 @@ describe('DiscordControlPlaneService', () => {
             fetchImpl,
           );
         },
-        assert: async (transport: DiscordRestResponseTransport) => {
+        assert: async (
+          transport: DiscordRestResponseTransport,
+          inputs: { interaction: DiscordOperatorInteraction },
+        ) => {
           const receipt = await transport.postInteractionResponse(
-            cases[0].inputs.interaction,
+            inputs.interaction,
             createMessagePayload('accepted'),
           );
 
@@ -1331,14 +1349,16 @@ describe('DiscordControlPlaneService', () => {
       },
     ];
 
-    for (const testCase of cases) {
-      await testCase.assert(testCase.mock());
-    }
+    it.each(cases)('$name', async (testCase) => {
+      expect.hasAssertions();
+      await testCase.assert(testCase.mock(), testCase.inputs);
+    });
   });
 
-  it('returns loopback receipts for hermetic interaction probes', async () => {
+  describe('loopback receipts for hermetic interaction probes', () => {
     const cases = [
       {
+        name: 'returns loopback interaction, thread, and deferred receipts',
         inputs: {
           interaction: {
             id: 'interaction-006',
@@ -1400,14 +1420,16 @@ describe('DiscordControlPlaneService', () => {
       },
     ];
 
-    for (const testCase of cases) {
+    it.each(cases)('$name', async (testCase) => {
+      expect.hasAssertions();
       await testCase.assert(testCase.mock(), testCase.inputs);
-    }
+    });
   });
 
-  it('posts blocked action responses to the bound thread', async () => {
+  describe('blocked action thread responses', () => {
     const cases = [
       {
+        name: 'posts blocked worktree release responses to the bound thread',
         inputs: {
           interaction: {
             id: 'interaction-005',
@@ -1433,9 +1455,12 @@ describe('DiscordControlPlaneService', () => {
             ),
           };
         },
-        assert: async (context: { service: DiscordControlPlaneService }) => {
+        assert: async (
+          context: { service: DiscordControlPlaneService },
+          inputs: { interaction: DiscordOperatorInteraction },
+        ) => {
           const result = await context.service.handleInteraction(
-            cases[0].inputs.interaction,
+            inputs.interaction,
           );
 
           expect(result.allowed).toBe(false);
@@ -1446,23 +1471,28 @@ describe('DiscordControlPlaneService', () => {
       },
     ];
 
-    for (const testCase of cases) {
-      await testCase.assert(await testCase.mock());
-    }
+    it.each(cases)('$name', async (testCase) => {
+      expect.hasAssertions();
+      await testCase.assert(await testCase.mock(), testCase.inputs);
+    });
   });
 
-  it('requires a Discord bot token before posting thread messages', async () => {
+  describe('Discord bot token requirements', () => {
     const cases = [
       {
+        name: 'requires a bot token before posting thread messages',
         inputs: {
           threadId: 'thread-8',
         },
         mock: () =>
           new DiscordRestResponseTransport('', 'https://discord.test/api/v10'),
-        assert: async (transport: DiscordRestResponseTransport) => {
+        assert: async (
+          transport: DiscordRestResponseTransport,
+          inputs: { threadId: string },
+        ) => {
           await expect(
             transport.postThreadMessage(
-              cases[0].inputs.threadId,
+              inputs.threadId,
               createMessagePayload('blocked'),
             ),
           ).rejects.toThrow('DISCORD_BOT_TOKEN');
@@ -1470,14 +1500,16 @@ describe('DiscordControlPlaneService', () => {
       },
     ];
 
-    for (const testCase of cases) {
-      await testCase.assert(testCase.mock());
-    }
+    it.each(cases)('$name', async (testCase) => {
+      expect.hasAssertions();
+      await testCase.assert(testCase.mock(), testCase.inputs);
+    });
   });
 
-  it('posts Discord REST responses and rejects missing bot tokens for thread messages', async () => {
+  describe('Discord REST response edge cases', () => {
     const cases = [
       {
+        name: 'posts interaction responses and rejects thread messages without bot tokens',
         inputs: {
           interaction: {
             id: 'interaction/rest 1',
@@ -1506,18 +1538,19 @@ describe('DiscordControlPlaneService', () => {
             ),
           };
         },
-        assert: async (context: {
-          calls: string[];
-          transport: DiscordRestResponseTransport;
-        }) => {
+        assert: async (
+          context: {
+            calls: string[];
+            transport: DiscordRestResponseTransport;
+          },
+          inputs: { interaction: DiscordOperatorInteraction },
+        ) => {
           const receipt = await context.transport.postInteractionResponse(
-            cases[0].inputs.interaction,
+            inputs.interaction,
             createMessagePayload('Accepted.'),
           );
           const deferredReceipt =
-            await context.transport.postInteractionDeferred(
-              cases[0].inputs.interaction,
-            );
+            await context.transport.postInteractionDeferred(inputs.interaction);
 
           expect(receipt.statusCode).toBe(202);
           expect(deferredReceipt.statusCode).toBe(202);
@@ -1538,6 +1571,7 @@ describe('DiscordControlPlaneService', () => {
         },
       },
       {
+        name: 'posts encoded thread messages with bot tokens',
         inputs: {
           threadId: 'thread/rest 2',
         },
@@ -1558,12 +1592,15 @@ describe('DiscordControlPlaneService', () => {
             ),
           };
         },
-        assert: async (context: {
-          calls: string[];
-          transport: DiscordRestResponseTransport;
-        }) => {
+        assert: async (
+          context: {
+            calls: string[];
+            transport: DiscordRestResponseTransport;
+          },
+          inputs: { threadId: string },
+        ) => {
           const receipt = await context.transport.postThreadMessage(
-            cases[1].inputs.threadId,
+            inputs.threadId,
             createMessagePayload('Accepted.'),
           );
 
@@ -1577,9 +1614,10 @@ describe('DiscordControlPlaneService', () => {
       },
     ];
 
-    for (const testCase of cases) {
+    it.each(cases)('$name', async (testCase) => {
+      expect.hasAssertions();
       const context = testCase.mock();
-      await testCase.assert(context);
-    }
+      await testCase.assert(context, testCase.inputs);
+    });
   });
 });

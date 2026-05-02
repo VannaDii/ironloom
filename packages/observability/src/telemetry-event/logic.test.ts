@@ -228,12 +228,10 @@ describe('TelemetryEvent logic', () => {
     },
   ];
 
-  for (const testCase of cases) {
-    it(testCase.name, () => {
-      expect.hasAssertions();
+  it.each(cases)('$name', (testCase) => {
+    expect.hasAssertions();
 
-      testCase.mock();
-      testCase.assert(testCase.inputs);
-    });
-  }
+    testCase.mock();
+    testCase.assert(testCase.inputs);
+  });
 });

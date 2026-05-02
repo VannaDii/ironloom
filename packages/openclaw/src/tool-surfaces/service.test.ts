@@ -1090,7 +1090,7 @@ describe('tool surface service', () => {
     expect(result.details).toMatchObject({ status: 'failed' });
   });
 
-  it('handles Discord control requests and operator interactions from valid tool input', async () => {
+  describe('Discord control and operator interaction tool inputs', () => {
     const cases = [
       {
         name: 'delegates normalized control requests to the action handler',
@@ -1248,10 +1248,11 @@ describe('tool surface service', () => {
       },
     ];
 
-    for (const testCase of cases) {
+    it.each(cases)('$name', async (testCase) => {
+      expect.hasAssertions();
       const context = testCase.mock();
       await testCase.assert(context, testCase.inputs);
-    }
+    });
   });
 
   describe('test-mode callback response transport', () => {
@@ -1622,7 +1623,7 @@ describe('tool surface service', () => {
     expect(result.details).toMatchObject({ status: 'failed' });
   });
 
-  it('evaluates policy actions from valid tool input', async () => {
+  describe('policy action tool inputs', () => {
     const cases = [
       {
         name: 'returns lifecycle policy metadata for merge requests',
@@ -1664,10 +1665,11 @@ describe('tool surface service', () => {
       },
     ];
 
-    for (const testCase of cases) {
+    it.each(cases)('$name', async (testCase) => {
+      expect.hasAssertions();
       const context = testCase.mock();
       await testCase.assert(context, testCase.inputs);
-    }
+    });
   });
 
   it('returns decode failures for invalid policy action input', async () => {
@@ -2962,9 +2964,10 @@ describe('tool surface service', () => {
     expect(result.details).toMatchObject({ status: 'failed' });
   });
 
-  it('submits GitHub actions from valid tool input', async () => {
+  describe('GitHub action submission tool inputs', () => {
     const cases = [
       {
+        name: 'submits branch sync requests through the GitHub action service',
         inputs: {
           params: {
             request: {
@@ -3011,14 +3014,15 @@ describe('tool surface service', () => {
       },
     ];
 
-    for (const testCase of cases) {
+    it.each(cases)('$name', async (testCase) => {
+      expect.hasAssertions();
       const tool = testCase.mock();
       const result = await tool.execute(
         'tool-call-gh1',
         testCase.inputs.params,
       );
       testCase.assert(result);
-    }
+    });
   });
 
   it('returns decode failures for invalid GitHub action input', async () => {

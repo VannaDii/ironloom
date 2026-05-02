@@ -2,6 +2,8 @@ import { readdir, readFile, stat } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 
+import ts from 'typescript';
+
 const rootDirectory = resolve(import.meta.dirname, '..');
 
 const ignoredUnitFiles = new Set(['index.ts']);
@@ -121,9 +123,87 @@ export async function collectTestCaseStyleFailures(
         failures.push(`${relativePath} is missing ${fragment}`);
       }
     }
+
+    failures.push(
+      ...collectAdHocCaseLoopFailures({
+        contents,
+        relativePath,
+        testFile,
+      }),
+    );
   }
 
   return failures;
+}
+
+/**
+ * Collects style failures for tests that loop over case tables manually.
+ */
+function collectAdHocCaseLoopFailures({ contents, relativePath, testFile }) {
+  const sourceFile = ts.createSourceFile(
+    testFile,
+    contents,
+    ts.ScriptTarget.Latest,
+    true,
+    resolveScriptKind(testFile),
+  );
+  const failures = [];
+
+  walkSourceFile(sourceFile, (node) => {
+    if (isAdHocCasesLoop(node)) {
+      failures.push(
+        `${relativePath} must use it.each(cases)('$name', ...) instead of looping over cases.`,
+      );
+    }
+  });
+
+  return failures;
+}
+
+/**
+ * Resolves the TypeScript parser mode for supported test file extensions.
+ */
+function resolveScriptKind(filePath) {
+  return filePath.endsWith('.ts') || filePath.endsWith('.mts')
+    ? ts.ScriptKind.TS
+    : ts.ScriptKind.JS;
+}
+
+/**
+ * Visits every AST node in a source file.
+ */
+function walkSourceFile(sourceFile, visitor) {
+  function visit(node) {
+    visitor(node);
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sourceFile);
+}
+
+/**
+ * Detects the forbidden `for (const testCase of cases)` runner shape.
+ */
+function isAdHocCasesLoop(node) {
+  if (!ts.isForOfStatement(node) || !ts.isIdentifier(node.expression)) {
+    return false;
+  }
+
+  if (node.expression.text !== 'cases') {
+    return false;
+  }
+
+  const initializer = node.initializer;
+  if (!ts.isVariableDeclarationList(initializer)) {
+    return false;
+  }
+
+  const [declaration] = initializer.declarations;
+  return (
+    declaration !== undefined &&
+    ts.isIdentifier(declaration.name) &&
+    declaration.name.text === 'testCase'
+  );
 }
 
 export async function collectUnitTestFailures(repositoryRoot = rootDirectory) {

@@ -104,21 +104,19 @@ describe('check-changed-coverage', () => {
     },
   ];
 
-  for (const testCase of cases) {
-    it(testCase.name, async () => {
-      expect.hasAssertions();
-      await testCase.mock(testCase.inputs);
+  it.each(cases)('$name', async (testCase) => {
+    expect.hasAssertions();
+    await testCase.mock(testCase.inputs);
 
-      const outcome =
-        testCase.inputs.mode === 'coverage'
-          ? await collectChangedCoverageErrors({
-              rootDirectory: '/repo',
-              changedFiles: testCase.inputs.changedFiles,
-              coverageText: testCase.inputs.coverageText,
-            })
-          : isExecutableSourceFile(testCase.inputs.filePath);
+    const outcome =
+      testCase.inputs.mode === 'coverage'
+        ? await collectChangedCoverageErrors({
+            rootDirectory: '/repo',
+            changedFiles: testCase.inputs.changedFiles,
+            coverageText: testCase.inputs.coverageText,
+          })
+        : isExecutableSourceFile(testCase.inputs.filePath);
 
-      testCase.assert(outcome);
-    });
-  }
+    testCase.assert(outcome);
+  });
 });

@@ -244,12 +244,10 @@ describe('SonarQualityGateResult logic', () => {
     },
   ] satisfies SonarQualityGateLogicCase[];
 
-  for (const testCase of cases) {
-    it(testCase.name, () => {
-      expect.hasAssertions();
-      testCase.mock();
+  it.each(cases)('$name', (testCase) => {
+    expect.hasAssertions();
+    testCase.mock();
 
-      testCase.assert(testCase.inputs);
-    });
-  }
+    testCase.assert(testCase.inputs);
+  });
 });

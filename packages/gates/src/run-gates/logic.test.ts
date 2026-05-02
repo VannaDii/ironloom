@@ -327,12 +327,10 @@ describe('GateRunReport logic', () => {
     },
   ] satisfies GateLogicCase[];
 
-  for (const testCase of cases) {
-    it(testCase.name, async () => {
-      expect.hasAssertions();
-      const context = testCase.mock(testCase.inputs);
+  it.each(cases)('$name', async (testCase) => {
+    expect.hasAssertions();
+    const context = testCase.mock(testCase.inputs);
 
-      await testCase.assert(context, testCase.inputs);
-    });
-  }
+    await testCase.assert(context, testCase.inputs);
+  });
 });

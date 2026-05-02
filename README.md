@@ -76,7 +76,8 @@ npm run sonar:analyze:changed
 `npm run check:unit-tests`, included in `check:repo`, verifies that every
 non-trivial `logic.ts` and `service.ts` has a sibling test and that every
 `.test.ts`, `.test.mts`, and `.test.mjs` file uses the structured
-`const cases = [...]` table with `inputs`, `mock`, and `assert` fields.
+`const cases = [...]` table with `inputs`, `mock`, and `assert` fields plus a
+single `it.each(cases)('$name', ...)` runner instead of ad hoc loops.
 `npm run check:regex-governance`, also included in `check:repo`, verifies that
 package regular-expression patterns are named constants in `constants.ts`, use
 the `PATTERN` suffix, and are referenced by package tests.
