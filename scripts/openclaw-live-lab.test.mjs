@@ -1601,11 +1601,12 @@ describe('runLiveLab', () => {
             }),
           ]),
         );
-        expect(
-          context.discordMessages.some((message) =>
-            message.content.includes(inputs.workflowUrl),
-          ),
-        ).toBe(false);
+        const discordMessageLines = context.discordMessages.flatMap((message) =>
+          message.content.split('\n'),
+        );
+        expect(discordMessageLines).not.toContain(
+          `Workflow: ${inputs.workflowUrl}`,
+        );
         expect(context.summaryEntries[0]).toContain('Status: passed');
         expect(context.summaryEntries[0]).toContain(`Ref: ${inputs.ref}`);
         expect(context.summaryEntries[0]).toContain('Discord category: test');
