@@ -33,6 +33,9 @@
 - acknowledge valid slash-command and button interactions before persistence and
   audit writes, then persist the control result and post the bound-thread status
   message so live controls stay inside Discord's prompt response window
+- preserve the acknowledgement receipt and durable control result with a
+  `threadPostError` diagnostic when the post-acknowledgement thread status
+  message cannot be delivered
 
 ## Channel Layout
 

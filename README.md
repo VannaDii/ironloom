@@ -147,7 +147,9 @@ Discord Gateway worker and points `DEVPLAT_STORAGE_ROOT` at the mounted
 clicks are acknowledged through the same thread binding store used by OpenClaw
 tool execution. Valid operator interactions are acknowledged before state,
 telemetry, and audit persistence begins, then the bound thread receives the same
-structured status payload after the control result is durable.
+structured status payload after the control result is durable. If that
+post-acknowledgement thread update fails, the control result keeps the
+interaction receipt and durable action record while reporting `threadPostError`.
 
 Public contract schemas are generated from exported `io-ts` codecs. For
 codec-owned lifecycle records, derive TypeScript types from those codecs rather

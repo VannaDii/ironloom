@@ -354,6 +354,9 @@
                   },
                   "required": ["content"],
                   "additionalProperties": false
+                },
+                "threadPostError": {
+                  "type": "string"
                 }
               },
               "required": [

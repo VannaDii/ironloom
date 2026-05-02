@@ -96,6 +96,25 @@ function createObservedResponseTransport(
   };
 }
 
+/**
+ * Creates a transport that acknowledges callbacks but fails the thread copy.
+ */
+function createThreadFailingResponseTransport(
+  error: unknown,
+): DiscordControlResponseTransport {
+  return {
+    async postInteractionResponse(input) {
+      return createReceipt(`/interactions/${input.id}/${input.token}/callback`);
+    },
+    async postInteractionDeferred(input) {
+      return createReceipt(`/interactions/${input.id}/${input.token}/callback`);
+    },
+    async postThreadMessage() {
+      throw error;
+    },
+  };
+}
+
 describe('DiscordControlPlaneService', () => {
   it('records thread-aware control actions with policy enforcement', async () => {
     const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
@@ -452,6 +471,126 @@ describe('DiscordControlPlaneService', () => {
 
   it.each(cases)('$name', async ({ inputs, mock, assert }) => {
     const context = await mock();
+    await assert(context, inputs);
+  });
+
+  const threadFailureCases = [
+    {
+      name: 'returns the acknowledgement and durable result when thread posting throws an error',
+      inputs: {
+        interaction: {
+          id: 'interaction-thread-failure-001',
+          token: 'token-thread-failure-1',
+          actorId: 'user-thread-failure-1',
+          channelId: 'channel-thread-failure-1',
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          commandName: 'show status',
+          threadId: 'thread-failure-1',
+        } satisfies DiscordOperatorInteraction,
+        error: new Error('thread message rejected'),
+        expectedError: 'thread message rejected',
+      },
+      mock: async (inputs: { error: unknown }) => {
+        const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+        const store = new FileStoreService(rootDirectory);
+        return {
+          store,
+          service: new DiscordControlPlaneService(
+            new DecisionPolicyService(),
+            new TelemetryEventService(store),
+            store,
+            createThreadFailingResponseTransport(inputs.error),
+          ),
+        };
+      },
+      assert: async (
+        context: {
+          store: FileStoreService;
+          service: DiscordControlPlaneService;
+        },
+        inputs: {
+          interaction: DiscordOperatorInteraction;
+          expectedError: string;
+        },
+      ) => {
+        const result = await context.service.handleInteraction(
+          inputs.interaction,
+        );
+
+        expect(result.allowed).toBe(true);
+        expect(result.responseReceipt?.endpoint).toBe(
+          '/interactions/interaction-thread-failure-001/token-thread-failure-1/callback',
+        );
+        expect(result.threadReceipt).toBeUndefined();
+        expect(result.threadPostError).toBe(inputs.expectedError);
+        expect(await context.store.list('state')).toContain(
+          'interaction-thread-failure-001',
+        );
+        expect(await context.store.list('audit')).toContain(
+          'interaction-thread-failure-001:audit',
+        );
+      },
+    },
+    {
+      name: 'returns the acknowledgement and durable result when thread posting throws a non-error',
+      inputs: {
+        interaction: {
+          id: 'interaction-thread-failure-002',
+          token: 'token-thread-failure-2',
+          actorId: 'user-thread-failure-2',
+          channelId: 'channel-thread-failure-2',
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          commandName: 'show status',
+          threadId: 'thread-failure-2',
+        } satisfies DiscordOperatorInteraction,
+        error: 'thread message rejected as text',
+        expectedError: 'thread message rejected as text',
+      },
+      mock: async (inputs: { error: unknown }) => {
+        const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+        const store = new FileStoreService(rootDirectory);
+        return {
+          store,
+          service: new DiscordControlPlaneService(
+            new DecisionPolicyService(),
+            new TelemetryEventService(store),
+            store,
+            createThreadFailingResponseTransport(inputs.error),
+          ),
+        };
+      },
+      assert: async (
+        context: {
+          store: FileStoreService;
+          service: DiscordControlPlaneService;
+        },
+        inputs: {
+          interaction: DiscordOperatorInteraction;
+          expectedError: string;
+        },
+      ) => {
+        const result = await context.service.handleInteraction(
+          inputs.interaction,
+        );
+
+        expect(result.allowed).toBe(true);
+        expect(result.responseReceipt?.endpoint).toBe(
+          '/interactions/interaction-thread-failure-002/token-thread-failure-2/callback',
+        );
+        expect(result.threadReceipt).toBeUndefined();
+        expect(result.threadPostError).toBe(inputs.expectedError);
+        expect(await context.store.list('state')).toContain(
+          'interaction-thread-failure-002',
+        );
+        expect(await context.store.list('audit')).toContain(
+          'interaction-thread-failure-002:audit',
+        );
+      },
+    },
+  ];
+
+  it.each(threadFailureCases)('$name', async ({ inputs, mock, assert }) => {
+    const context = await mock(inputs);
     await assert(context, inputs);
   });
 

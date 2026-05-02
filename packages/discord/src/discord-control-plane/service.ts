@@ -31,6 +31,19 @@ type DiscordControlActionDecision = ReturnType<
   DecisionPolicyService['evaluateControlAction']
 >;
 
+/**
+ * Result of posting the post-acknowledgement thread status message.
+ */
+type DiscordThreadPostResult =
+  | {
+      readonly ok: true;
+      readonly threadReceipt: DiscordResponseReceipt;
+    }
+  | {
+      readonly ok: false;
+      readonly threadPostError: string;
+    };
+
 export interface DiscordControlResponseTransport {
   postInteractionResponse(
     input: DiscordOperatorInteraction,
@@ -66,6 +79,13 @@ function createDiscordRestMessageBody(
       : { components: payload.components }),
     ...(payload.flags === undefined ? {} : { flags: payload.flags }),
   };
+}
+
+/**
+ * Converts unknown transport failures into stable result text.
+ */
+function describeDiscordTransportError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 export class DiscordRestResponseTransport implements DiscordControlResponseTransport {
@@ -323,6 +343,29 @@ export class DiscordControlPlaneService {
         };
   }
 
+  /**
+   * Posts the bound-thread copy without losing the already-sent acknowledgement.
+   */
+  private async postThreadMessageAfterAcknowledgement(
+    threadId: string,
+    payload: DiscordMessagePayload,
+  ): Promise<DiscordThreadPostResult> {
+    try {
+      return {
+        ok: true,
+        threadReceipt: await this.responses.postThreadMessage(
+          threadId,
+          payload,
+        ),
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        threadPostError: describeDiscordTransportError(error),
+      };
+    }
+  }
+
   public async handleInteraction(
     input: DiscordOperatorInteraction,
   ): Promise<DiscordControlResult> {
@@ -392,7 +435,7 @@ export class DiscordControlPlaneService {
       responsePayload,
     );
     const result = await this.persistAction(request, decision);
-    const threadReceipt = await this.responses.postThreadMessage(
+    const threadPostResult = await this.postThreadMessageAfterAcknowledgement(
       route.request.threadId,
       threadPayload,
     );
@@ -400,9 +443,11 @@ export class DiscordControlPlaneService {
     return {
       ...result,
       responseReceipt,
-      threadReceipt,
       responsePayload,
       threadPayload,
+      ...(threadPostResult.ok
+        ? { threadReceipt: threadPostResult.threadReceipt }
+        : { threadPostError: threadPostResult.threadPostError }),
     };
   }
 }
