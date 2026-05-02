@@ -8,70 +8,72 @@ import type {
   SupervisorPhase,
   SupervisorRoutePlan,
 } from './codec.js';
+import {
+  SUPERVISOR_PHASE_ACTION_KEYWORDS,
+  SUPERVISOR_PHASE_ORDER,
+  SUPERVISOR_ROUTE_TARGETS,
+} from './constants.js';
 
-const supervisorPhaseOrder = [
-  'research',
-  'spec',
-  'slicing',
-  'implementation',
-  'gates',
-  'review',
-  'remediation',
-  'merge',
-  'continuation',
-] satisfies SupervisorPhase[];
-
-const routeTargets: Record<SupervisorPhase, string> = {
-  research: 'research-brief-service',
-  spec: 'spec-record-service',
-  slicing: 'slice-plan-service',
-  implementation: 'task-queue-service',
-  gates: 'gate-run-service',
-  review: 'review-findings-service',
-  remediation: 'remediation-plan-service',
-  merge: 'pull-request-service',
-  continuation: 'branching-service',
-};
-
+/**
+ * Returns unique non-empty values after trimming operator or artifact input.
+ */
 function uniqueTrimmed(values: readonly string[]): string[] {
   return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
 }
 
-export function inferSupervisorPhase(action: string): SupervisorPhase {
-  if (action.includes('research')) {
-    return 'research';
-  }
-  if (action.includes('spec')) {
-    return 'spec';
-  }
-  if (action.includes('slice')) {
-    return 'slicing';
-  }
-  if (action.includes('gate')) {
-    return 'gates';
-  }
-  if (action.includes('review')) {
-    return 'review';
-  }
-  if (action.includes('remediation') || action.includes('autofix')) {
-    return 'remediation';
-  }
-  if (action.includes('merge')) {
-    return 'merge';
-  }
-  if (action.includes('continue') || action.includes('rebase')) {
-    return 'continuation';
-  }
-  return 'implementation';
+/**
+ * Checks whether an action contains any keyword registered for a phase.
+ */
+function actionContainsPhaseKeyword(
+  action: string,
+  phase: SupervisorPhase,
+): boolean {
+  return SUPERVISOR_PHASE_ACTION_KEYWORDS[phase].some((keyword) =>
+    action.includes(keyword),
+  );
 }
 
+/**
+ * Infers the lifecycle phase implied by an operator or policy action.
+ */
+export function inferSupervisorPhase(action: string): SupervisorPhase {
+  const normalizedAction = action.trim();
+
+  switch (true) {
+    case actionContainsPhaseKeyword(normalizedAction, 'research'):
+      return 'research';
+    case actionContainsPhaseKeyword(normalizedAction, 'spec'):
+      return 'spec';
+    case actionContainsPhaseKeyword(normalizedAction, 'slicing'):
+      return 'slicing';
+    case actionContainsPhaseKeyword(normalizedAction, 'gates'):
+      return 'gates';
+    case actionContainsPhaseKeyword(normalizedAction, 'review'):
+      return 'review';
+    case actionContainsPhaseKeyword(normalizedAction, 'remediation'):
+      return 'remediation';
+    case actionContainsPhaseKeyword(normalizedAction, 'merge'):
+      return 'merge';
+    case actionContainsPhaseKeyword(normalizedAction, 'continuation'):
+      return 'continuation';
+    default:
+      return 'implementation';
+  }
+}
+
+/**
+ * Resolves the next lifecycle phase, keeping continuation terminal.
+ */
 function getNextPhase(currentPhase: SupervisorPhase): SupervisorPhase {
-  const currentIndex = supervisorPhaseOrder.indexOf(currentPhase);
-  const nextPhase = supervisorPhaseOrder[currentIndex + 1];
+  const currentIndex = SUPERVISOR_PHASE_ORDER.indexOf(currentPhase);
+  const nextPhase = SUPERVISOR_PHASE_ORDER[currentIndex + 1];
 
   return nextPhase ?? 'continuation';
 }
 
+/**
+ * Normalizes a lifecycle signal before route planning.
+ */
 function normalizeLifecycleSignal(
   signal: SupervisorLifecycleSignal,
 ): SupervisorLifecycleSignal {
@@ -84,6 +86,9 @@ function normalizeLifecycleSignal(
   };
 }
 
+/**
+ * Finds the current lifecycle signal for a phase.
+ */
 function findLifecycleSignal(
   phase: SupervisorPhase,
   signals: readonly SupervisorLifecycleSignal[],
@@ -124,7 +129,7 @@ export function createSupervisorRoutePlan(input: {
     return {
       currentPhase: input.currentPhase,
       nextPhase: input.currentPhase,
-      routedTo: routeTargets[input.currentPhase],
+      routedTo: SUPERVISOR_ROUTE_TARGETS[input.currentPhase],
       nextAction: currentSignal.nextAction,
       status: 'waiting',
       blockers: uniqueTrimmed(currentSignal.blockers),
@@ -137,7 +142,7 @@ export function createSupervisorRoutePlan(input: {
   return {
     currentPhase: input.currentPhase,
     nextPhase,
-    routedTo: routeTargets[nextPhase],
+    routedTo: SUPERVISOR_ROUTE_TARGETS[nextPhase],
     nextAction: `run-${nextPhase}`,
     status: 'ready',
     blockers: [],

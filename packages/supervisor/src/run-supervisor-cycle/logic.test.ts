@@ -246,12 +246,10 @@ describe('SupervisorDecision logic', () => {
     },
   ] satisfies SupervisorLogicCase[];
 
-  for (const testCase of cases) {
-    it(testCase.name, () => {
-      expect.hasAssertions();
-      testCase.mock();
+  it.each(cases)('$name', ({ inputs, mock, assert }) => {
+    expect.hasAssertions();
+    mock();
 
-      testCase.assert(testCase.inputs);
-    });
-  }
+    assert(inputs);
+  });
 });

@@ -4,7 +4,11 @@ Lifecycle orchestration brain.
 
 ## Responsibility
 
-This package owns deterministic supervisor decisions and lifecycle routing across research, specs, slicing, implementation, gates, review, remediation, merge, and continuation.
+This package owns deterministic supervisor decisions and lifecycle routing
+across research, specs, slicing, implementation, gates, review, remediation,
+merge, and continuation. Route owners, phase order, and action keyword
+vocabulary live in `constants.ts` so classifier behavior is shared, named, and
+testable.
 
 ## Real-World Flow
 
