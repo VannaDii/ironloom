@@ -13,6 +13,7 @@
 - Branch names and pull request titles must describe intent, not reuse any registered tool name.
 - Pull request titles must use conventional commit format.
 - Pull request bodies must use the repository template at `.github/pull_request_template.md` and fill every section with concrete change data.
+- Pull requests containing any code change must include a detailed Changesets entry before opening or updating the PR, and that entry must stay current with follow-up commits on the branch.
 - Reviews, approvals, rebases, retries, and merges must leave an auditable GitHub trail.
 
 ## Review and Merge

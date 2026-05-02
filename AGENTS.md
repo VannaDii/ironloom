@@ -10,6 +10,7 @@
 - Branch names and pull request titles must not include any registered tool name.
 - Pull request titles must use conventional commit format.
 - Pull request bodies must follow `.github/pull_request_template.md` and fill every section with repo-specific content.
+- Every pull request containing any code change must include a detailed Changesets entry before it is opened or updated; keep that changeset accurate as the branch evolves.
 - Keep GitHub as the source of truth for specs, pull requests, reviews, and merge history.
 - Keep Discord and OpenClaw control flows auditable.
 

@@ -1,0 +1,12 @@
+---
+'@vannadii/devplat-discord': patch
+'@vannadii/devplat-openclaw': patch
+---
+
+Keep live-lab operator controls usable while the private Discord Gateway runtime is still active.
+
+The live lab now runs its Discord interaction probe from the deep-test runtime's before-cleanup hook, after the autonomous OpenClaw cycle has completed and before the container is removed. That keeps the private Discord Gateway worker alive when the callback-shaped operator control message is posted, so manual sandbox-guild button acceptance can exercise the same Gateway-backed response path instead of seeing controls after the listener has already shut down.
+
+A new `operator_hold_ms` workflow/script option keeps that runtime open for a bounded manual-click window after the control payload is visible. The default remains `0`, so normal automated live-lab runs do not wait longer. The bootstrap and progress status messages remain noninteractive, while bound control-plane messages continue to preserve contextual Discord button components and report their custom ids for audit review.
+
+Validation coverage now asserts that the deep-test before-cleanup hook runs before container removal, that the live-lab probe and optional hold execute before runtime cleanup, and that the live-lab documentation describes the manual operator acceptance path.
