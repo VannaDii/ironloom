@@ -77,6 +77,9 @@ npm run sonar:analyze:changed
 non-trivial `logic.ts` and `service.ts` has a sibling test and that every
 `.test.ts`, `.test.mts`, and `.test.mjs` file uses the structured
 `const cases = [...]` table with `inputs`, `mock`, and `assert` fields.
+`npm run check:regex-governance`, also included in `check:repo`, verifies that
+package regular-expression patterns are named constants in `constants.ts`, use
+the `PATTERN` suffix, and are referenced by package tests.
 
 `npm run act:pr` runs the pull-request CI and TypeScript matrix workflows
 locally through Docker using `act`, `.actrc`, and
