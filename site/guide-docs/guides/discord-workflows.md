@@ -30,7 +30,7 @@
   explicit webhook helper so live slash commands and button callbacks keep the
   same compact status text, safe mention configuration, and contextual controls
   as thread messages
-- acknowledge valid slash-command and button interactions before persistence and
+- acknowledge valid slash commands and button interactions before persistence and
   audit writes, then persist the control result and post the bound-thread status
   message so live controls stay inside Discord's prompt response window
 - fail closed with `responsePostError` and audit logging when Discord rejects
