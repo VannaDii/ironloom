@@ -21,6 +21,14 @@ const a3sInactiveMessage =
   'A3S analysis is not activated for this organization';
 const sqaaDisabledReason =
   'SQAA/A3S analysis is not enabled for this run. Set SONAR_A3S_ENABLED=true or pass --sqaa enabled to run it.';
+const retryableSonarServiceFailureReason =
+  'SonarQube service unavailable during local analysis; retry this gate after the upstream service recovers.';
+const retryableSonarServiceFailureSignals = [
+  '502 Bad Gateway',
+  '503 Service Unavailable',
+  '504 Gateway Timeout',
+  'CloudFront',
+];
 const truthyEnvValues = ['1', 'true', 'yes', 'enabled'];
 const localSonarBinDirectory = resolve(
   process.env.HOME ?? '',
@@ -333,10 +341,26 @@ export function classifySonarAnalysisFailure(error) {
     };
   }
 
+  if (isRetryableSonarServiceFailure(output)) {
+    return {
+      reason: retryableSonarServiceFailureReason,
+      status: 'skipped',
+    };
+  }
+
   return {
     reason: output.length === 0 ? 'SonarQube CLI command failed.' : output,
     status: 'failed',
   };
+}
+
+/**
+ * Detects transient SonarQube service errors that should not block local gates.
+ */
+function isRetryableSonarServiceFailure(output) {
+  return retryableSonarServiceFailureSignals.some((signal) =>
+    output.includes(signal),
+  );
 }
 
 /**

@@ -718,6 +718,24 @@ describe('sonarqube-cli-analyze-changed', () => {
       },
     },
     {
+      name: 'classifies retryable SonarQube service outages as skipped',
+      inputs: {
+        error: {
+          stderr:
+            'SonarQube API error: 502 Bad Gateway - The request could not be satisfied',
+          stdout: '',
+        },
+      },
+      mock: async () => undefined,
+      assert: async (_context, inputs) => {
+        expect(classifySonarAnalysisFailure(inputs.error)).toEqual({
+          reason:
+            'SonarQube service unavailable during local analysis; retry this gate after the upstream service recovers.',
+          status: 'skipped',
+        });
+      },
+    },
+    {
       name: 'formats plain text and JSON reports',
       inputs: {
         report: {
