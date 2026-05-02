@@ -219,6 +219,46 @@ describe('openclaw-deep-test helpers', () => {
               }),
             }),
             expect.objectContaining({
+              tool: 'claim_task',
+              phase: 'planning',
+              params: expect.objectContaining({
+                record: expect.objectContaining({
+                  id: 'queue-openclaw-1',
+                  status: 'queued',
+                }),
+              }),
+              expected: expect.objectContaining({
+                id: 'queue-openclaw-1',
+                transitions: expect.arrayContaining([
+                  expect.objectContaining({
+                    action: 'claim',
+                    fromStatus: 'queued',
+                    toStatus: 'claimed',
+                  }),
+                ]),
+              }),
+            }),
+            expect.objectContaining({
+              tool: 'update_task',
+              phase: 'planning',
+              params: expect.objectContaining({
+                record: expect.objectContaining({
+                  id: 'queue-openclaw-1',
+                  status: 'claimed',
+                }),
+              }),
+              expected: expect.objectContaining({
+                id: 'queue-openclaw-1',
+                transitions: expect.arrayContaining([
+                  expect.objectContaining({
+                    action: 'complete',
+                    fromStatus: 'claimed',
+                    toStatus: 'complete',
+                  }),
+                ]),
+              }),
+            }),
+            expect.objectContaining({
               tool: 'validate_artifact',
               phase: 'contracts',
             }),

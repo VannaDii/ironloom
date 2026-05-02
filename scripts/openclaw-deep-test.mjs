@@ -466,6 +466,58 @@ function createBaseWorktreeAllocation() {
   };
 }
 
+/**
+ * Creates the queued task record used to verify durable task transitions.
+ */
+function createQueuedTaskRecord() {
+  return {
+    id: 'queue-openclaw-1',
+    summary: 'Queue a Discord implementation slice',
+    status: 'queued',
+    trace: ['queue:task-1:queued'],
+    updatedAt: fixedTimestamp,
+    taskId: 'task-1',
+    sliceId: 'slice-1',
+    threadId: 'thread-1',
+    transitions: [
+      {
+        toStatus: 'queued',
+        action: 'create',
+        reason: 'Created task task-1',
+        occurredAt: fixedTimestamp,
+      },
+    ],
+  };
+}
+
+/**
+ * Creates the claimed task record used to verify status updates preserve history.
+ */
+function createClaimedTaskRecord() {
+  return {
+    ...createQueuedTaskRecord(),
+    status: 'claimed',
+    assigneeId: 'worker-1',
+    trace: ['queue:task-1:queued', 'queue:task-1:claimed'],
+    transitions: [
+      {
+        toStatus: 'queued',
+        action: 'create',
+        reason: 'Created task task-1',
+        occurredAt: fixedTimestamp,
+      },
+      {
+        fromStatus: 'queued',
+        toStatus: 'claimed',
+        action: 'claim',
+        actorId: 'worker-1',
+        reason: 'Claimed task task-1',
+        occurredAt: fixedTimestamp,
+      },
+    ],
+  };
+}
+
 function createApprovalArtifact() {
   return {
     id: 'artifact-approval-1',
@@ -770,8 +822,29 @@ export function createDeepScenario(runtimeEnv) {
         sliceId: 'slice-1',
         threadId: 'thread-1',
         assigneeId: 'worker-1',
+        record: createQueuedTaskRecord(),
       },
-      { status: 'claimed', assigneeId: 'worker-1' },
+      {
+        id: 'queue-openclaw-1',
+        status: 'claimed',
+        assigneeId: 'worker-1',
+        transitions: [
+          {
+            toStatus: 'queued',
+            action: 'create',
+            reason: 'Created task task-1',
+            occurredAt: fixedTimestamp,
+          },
+          {
+            fromStatus: 'queued',
+            toStatus: 'claimed',
+            action: 'claim',
+            actorId: 'worker-1',
+            reason: 'Claimed task task-1',
+            occurredAt: fixedTimestamp,
+          },
+        ],
+      },
       'planning',
     ),
     createStep(
@@ -780,9 +853,37 @@ export function createDeepScenario(runtimeEnv) {
         taskId: 'task-1',
         sliceId: 'slice-1',
         threadId: 'thread-1',
-        status: 'merged',
+        status: 'complete',
+        record: createClaimedTaskRecord(),
       },
-      { status: 'merged' },
+      {
+        id: 'queue-openclaw-1',
+        status: 'complete',
+        assigneeId: 'worker-1',
+        transitions: [
+          {
+            toStatus: 'queued',
+            action: 'create',
+            reason: 'Created task task-1',
+            occurredAt: fixedTimestamp,
+          },
+          {
+            fromStatus: 'queued',
+            toStatus: 'claimed',
+            action: 'claim',
+            actorId: 'worker-1',
+            reason: 'Claimed task task-1',
+            occurredAt: fixedTimestamp,
+          },
+          {
+            fromStatus: 'claimed',
+            toStatus: 'complete',
+            action: 'complete',
+            reason: 'Moved task task-1 to complete',
+            occurredAt: fixedTimestamp,
+          },
+        ],
+      },
       'planning',
     ),
     createStep(
