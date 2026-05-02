@@ -186,6 +186,76 @@ function createDefaultFileStoreService(): FileStoreService {
     : new FileStoreService(storageRoot);
 }
 
+/**
+ * Creates telemetry recording backed by the configured OpenClaw storage root.
+ */
+function createDefaultTelemetryEventService(): TelemetryEventService {
+  return new TelemetryEventService(createDefaultFileStoreService());
+}
+
+/**
+ * Creates the Discord binding service with normalized runtime persistence.
+ */
+function createDefaultDiscordChannelBindingService(): DiscordChannelBindingService {
+  return new DiscordChannelBindingService(
+    createDefaultTelemetryEventService(),
+    createDefaultFileStoreService(),
+  );
+}
+
+/**
+ * Creates the Discord thread-session service with normalized runtime persistence.
+ */
+function createDefaultDiscordThreadSessionService(): DiscordThreadSessionService {
+  return new DiscordThreadSessionService(
+    new ArtifactEnvelopeService(),
+    createDefaultTelemetryEventService(),
+    createDefaultFileStoreService(),
+  );
+}
+
+/**
+ * Creates the Discord approval service with normalized runtime persistence.
+ */
+function createDefaultDiscordInteractiveApprovalService(): DiscordInteractiveApprovalService {
+  return new DiscordInteractiveApprovalService(
+    new DecisionPolicyService(),
+    new ArtifactEnvelopeService(),
+    createDefaultTelemetryEventService(),
+    createDefaultFileStoreService(),
+  );
+}
+
+/**
+ * Creates the GitHub workflow service with normalized telemetry persistence.
+ */
+function createDefaultGitHubWorkflowService(): GitHubWorkflowService {
+  return new GitHubWorkflowService(
+    new DecisionPolicyService(),
+    createDefaultTelemetryEventService(),
+  );
+}
+
+/**
+ * Creates the pull-request service with normalized GitHub telemetry persistence.
+ */
+function createDefaultPullRequestService(): PullRequestService {
+  return new PullRequestService(createDefaultGitHubWorkflowService());
+}
+
+/**
+ * Creates the supervisor service with normalized telemetry persistence.
+ */
+function createDefaultSupervisorCycleService(): SupervisorCycleService {
+  return new SupervisorCycleService(
+    new DecisionPolicyService(),
+    createDefaultTelemetryEventService(),
+  );
+}
+
+/**
+ * Creates the Discord control-plane service with normalized runtime persistence.
+ */
 function createDefaultDiscordControlPlaneService(): DiscordControlPlaneService {
   const storageRoot = resolveConfiguredStorageRoot();
   const testMode = process.env['DEVPLAT_TEST_MODE']?.trim();
@@ -861,22 +931,23 @@ export function createBindDiscordThreadTool(): AnyAgentTool {
         return createTextResult({ status: 'failed', error: decoded.error });
       }
 
-      const result = await new DiscordChannelBindingService().bindThread(
-        {
-          id: decoded.value.id,
-          summary: decoded.value.summary,
-          status: decoded.value.status,
-          trace: decoded.value.trace,
-          updatedAt: decoded.value.updatedAt,
-          guildId: decoded.value.guildId,
-          channelId: decoded.value.channelId,
-          kind: decoded.value.kind,
-          threadBindingMode: decoded.value.threadBindingMode,
-        },
-        decoded.value.threadId,
-        decoded.value.parentChannelId,
-        decoded.value.actorId,
-      );
+      const result =
+        await createDefaultDiscordChannelBindingService().bindThread(
+          {
+            id: decoded.value.id,
+            summary: decoded.value.summary,
+            status: decoded.value.status,
+            trace: decoded.value.trace,
+            updatedAt: decoded.value.updatedAt,
+            guildId: decoded.value.guildId,
+            channelId: decoded.value.channelId,
+            kind: decoded.value.kind,
+            threadBindingMode: decoded.value.threadBindingMode,
+          },
+          decoded.value.threadId,
+          decoded.value.parentChannelId,
+          decoded.value.actorId,
+        );
       return createTextResult(result);
     },
   };
@@ -897,10 +968,11 @@ export function createOpenDiscordThreadTool(): AnyAgentTool {
         return createTextResult({ status: 'failed', error: decoded.error });
       }
 
-      const result = await new DiscordThreadSessionService().openThread(
-        toDiscordThreadSession(decoded.value),
-        decoded.value.actorId,
-      );
+      const result =
+        await createDefaultDiscordThreadSessionService().openThread(
+          toDiscordThreadSession(decoded.value),
+          decoded.value.actorId,
+        );
       return createTextResult(result);
     },
   };
@@ -925,7 +997,7 @@ export function createHandleDiscordApprovalTool(): AnyAgentTool {
       }
 
       const result =
-        await new DiscordInteractiveApprovalService().handleApproval(
+        await createDefaultDiscordInteractiveApprovalService().handleApproval(
           decoded.value,
         );
       return createTextResult(result);
@@ -1376,7 +1448,7 @@ export function createSubmitPullRequestUpdateTool(): AnyAgentTool {
         return createTextResult({ status: 'failed', error: decoded.error });
       }
 
-      const result = await new PullRequestService().submitUpdate(
+      const result = await createDefaultPullRequestService().submitUpdate(
         decoded.value.record,
         decoded.value.actorId,
       );
@@ -1403,7 +1475,7 @@ export function createSubmitPullRequestMergeTool(): AnyAgentTool {
         return createTextResult({ status: 'failed', error: decoded.error });
       }
 
-      const result = await new PullRequestService().submitMerge(
+      const result = await createDefaultPullRequestService().submitMerge(
         decoded.value.record,
         decoded.value.actorId,
       );
@@ -1475,7 +1547,7 @@ export function createSubmitGitHubActionTool(
   gitHubWorkflowService: Pick<
     GitHubWorkflowService,
     'submit'
-  > = new GitHubWorkflowService(),
+  > = createDefaultGitHubWorkflowService(),
 ): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'submit_github_action',
@@ -1632,7 +1704,7 @@ export function createRunSupervisorStepTool(): AnyAgentTool {
         return createTextResult({ status: 'failed', error: decoded.error });
       }
 
-      const decision = await new SupervisorCycleService().runStep(
+      const decision = await createDefaultSupervisorCycleService().runStep(
         decoded.value,
       );
       return createTextResult(decision);
