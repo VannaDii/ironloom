@@ -5,246 +5,268 @@
     "DiscordThreadSession": {
       "anyOf": [
         {
-          "$ref": "#/definitions/DiscordSpecThreadSession"
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "status": {
+              "enum": [
+                "draft",
+                "queued",
+                "claimed",
+                "running",
+                "review",
+                "blocked",
+                "approved",
+                "merge-ready",
+                "merged",
+                "failed",
+                "rebasing",
+                "complete"
+              ]
+            },
+            "trace": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "updatedAt": {
+              "type": "string"
+            },
+            "guildId": {
+              "type": "string"
+            },
+            "channelId": {
+              "type": "string"
+            },
+            "parentChannelId": {
+              "type": "string"
+            },
+            "threadId": {
+              "type": "string"
+            },
+            "artifactId": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "spec"
+            },
+            "specId": {
+              "type": "string"
+            },
+            "sliceId": {
+              "type": "null"
+            },
+            "pullRequestNumber": {
+              "type": "null"
+            }
+          },
+          "required": [
+            "id",
+            "summary",
+            "status",
+            "trace",
+            "updatedAt",
+            "guildId",
+            "channelId",
+            "parentChannelId",
+            "threadId",
+            "artifactId",
+            "kind",
+            "specId",
+            "sliceId",
+            "pullRequestNumber"
+          ],
+          "additionalProperties": false
         },
         {
-          "$ref": "#/definitions/DiscordImplementationThreadSession"
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "status": {
+              "enum": [
+                "draft",
+                "queued",
+                "claimed",
+                "running",
+                "review",
+                "blocked",
+                "approved",
+                "merge-ready",
+                "merged",
+                "failed",
+                "rebasing",
+                "complete"
+              ]
+            },
+            "trace": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "updatedAt": {
+              "type": "string"
+            },
+            "guildId": {
+              "type": "string"
+            },
+            "channelId": {
+              "type": "string"
+            },
+            "parentChannelId": {
+              "type": "string"
+            },
+            "threadId": {
+              "type": "string"
+            },
+            "artifactId": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "implementation"
+            },
+            "specId": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sliceId": {
+              "type": "string"
+            },
+            "pullRequestNumber": {
+              "type": "null"
+            }
+          },
+          "required": [
+            "id",
+            "summary",
+            "status",
+            "trace",
+            "updatedAt",
+            "guildId",
+            "channelId",
+            "parentChannelId",
+            "threadId",
+            "artifactId",
+            "kind",
+            "specId",
+            "sliceId",
+            "pullRequestNumber"
+          ],
+          "additionalProperties": false
         },
         {
-          "$ref": "#/definitions/DiscordPullRequestThreadSession"
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "status": {
+              "enum": [
+                "draft",
+                "queued",
+                "claimed",
+                "running",
+                "review",
+                "blocked",
+                "approved",
+                "merge-ready",
+                "merged",
+                "failed",
+                "rebasing",
+                "complete"
+              ]
+            },
+            "trace": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "updatedAt": {
+              "type": "string"
+            },
+            "guildId": {
+              "type": "string"
+            },
+            "channelId": {
+              "type": "string"
+            },
+            "parentChannelId": {
+              "type": "string"
+            },
+            "threadId": {
+              "type": "string"
+            },
+            "artifactId": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "pull-request"
+            },
+            "specId": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sliceId": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "pullRequestNumber": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "id",
+            "summary",
+            "status",
+            "trace",
+            "updatedAt",
+            "guildId",
+            "channelId",
+            "parentChannelId",
+            "threadId",
+            "artifactId",
+            "kind",
+            "specId",
+            "sliceId",
+            "pullRequestNumber"
+          ],
+          "additionalProperties": false
         }
       ]
-    },
-    "DiscordSpecThreadSession": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "summary": {
-          "type": "string"
-        },
-        "status": {
-          "$ref": "#/definitions/LifecycleStatus"
-        },
-        "trace": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "updatedAt": {
-          "type": "string"
-        },
-        "guildId": {
-          "type": "string"
-        },
-        "channelId": {
-          "type": "string"
-        },
-        "parentChannelId": {
-          "type": "string"
-        },
-        "threadId": {
-          "type": "string"
-        },
-        "artifactId": {
-          "type": "string"
-        },
-        "kind": {
-          "type": "string",
-          "const": "spec"
-        },
-        "specId": {
-          "type": "string"
-        },
-        "sliceId": {
-          "type": "null"
-        },
-        "pullRequestNumber": {
-          "type": "null"
-        }
-      },
-      "required": [
-        "artifactId",
-        "channelId",
-        "guildId",
-        "id",
-        "kind",
-        "parentChannelId",
-        "pullRequestNumber",
-        "sliceId",
-        "specId",
-        "status",
-        "summary",
-        "threadId",
-        "trace",
-        "updatedAt"
-      ],
-      "additionalProperties": false
-    },
-    "LifecycleStatus": {
-      "type": "string",
-      "enum": [
-        "draft",
-        "queued",
-        "claimed",
-        "running",
-        "review",
-        "blocked",
-        "approved",
-        "merge-ready",
-        "merged",
-        "failed",
-        "rebasing",
-        "complete"
-      ]
-    },
-    "DiscordImplementationThreadSession": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "summary": {
-          "type": "string"
-        },
-        "status": {
-          "$ref": "#/definitions/LifecycleStatus"
-        },
-        "trace": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "updatedAt": {
-          "type": "string"
-        },
-        "guildId": {
-          "type": "string"
-        },
-        "channelId": {
-          "type": "string"
-        },
-        "parentChannelId": {
-          "type": "string"
-        },
-        "threadId": {
-          "type": "string"
-        },
-        "artifactId": {
-          "type": "string"
-        },
-        "kind": {
-          "type": "string",
-          "const": "implementation"
-        },
-        "specId": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "sliceId": {
-          "type": "string"
-        },
-        "pullRequestNumber": {
-          "type": "null"
-        }
-      },
-      "required": [
-        "artifactId",
-        "channelId",
-        "guildId",
-        "id",
-        "kind",
-        "parentChannelId",
-        "pullRequestNumber",
-        "sliceId",
-        "specId",
-        "status",
-        "summary",
-        "threadId",
-        "trace",
-        "updatedAt"
-      ],
-      "additionalProperties": false
-    },
-    "DiscordPullRequestThreadSession": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "summary": {
-          "type": "string"
-        },
-        "status": {
-          "$ref": "#/definitions/LifecycleStatus"
-        },
-        "trace": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "updatedAt": {
-          "type": "string"
-        },
-        "guildId": {
-          "type": "string"
-        },
-        "channelId": {
-          "type": "string"
-        },
-        "parentChannelId": {
-          "type": "string"
-        },
-        "threadId": {
-          "type": "string"
-        },
-        "artifactId": {
-          "type": "string"
-        },
-        "kind": {
-          "type": "string",
-          "const": "pull-request"
-        },
-        "specId": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "sliceId": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "pullRequestNumber": {
-          "type": "integer",
-          "minimum": 1
-        }
-      },
-      "required": [
-        "artifactId",
-        "channelId",
-        "guildId",
-        "id",
-        "kind",
-        "parentChannelId",
-        "pullRequestNumber",
-        "sliceId",
-        "specId",
-        "status",
-        "summary",
-        "threadId",
-        "trace",
-        "updatedAt"
-      ],
-      "additionalProperties": false
     }
   }
 }

@@ -5,7 +5,7 @@ import {
   createOpenClawPluginConfigFromRuntimeConfig,
   describeOpenClawPluginConfig,
 } from './logic.js';
-import type { OpenClawPluginConfig } from './types.js';
+import type { OpenClawPluginConfig } from './codec.js';
 
 export class PluginConfigService {
   public execute(input: OpenClawPluginConfig): OpenClawPluginConfig {

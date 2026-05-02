@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { TOOL_PAYLOAD_KEY_IGNORED_CHARACTER_PATTERN } from './constants.js';
 import {
   createToolPayloadText,
   formatToolPayloadText,
@@ -61,6 +62,33 @@ describe('tool surface logic', () => {
           },
           projectKey: 'vannadii_devplat',
         });
+      },
+    },
+    {
+      name: 'keeps the sensitive-key normalization pattern explicit and tested',
+      inputs: {
+        matchingKeys: ['bot-token', 'api_key', 'public key'],
+        nonMatchingKeys: ['botToken', 'apiKey', 'publicKey'],
+      },
+      mock: (inputs: { matchingKeys: string[]; nonMatchingKeys: string[] }) =>
+        inputs,
+      assert: (inputs: {
+        matchingKeys: string[];
+        nonMatchingKeys: string[];
+      }) => {
+        for (const key of inputs.matchingKeys) {
+          expect(TOOL_PAYLOAD_KEY_IGNORED_CHARACTER_PATTERN.test(key)).toBe(
+            true,
+          );
+          TOOL_PAYLOAD_KEY_IGNORED_CHARACTER_PATTERN.lastIndex = 0;
+        }
+
+        for (const key of inputs.nonMatchingKeys) {
+          expect(TOOL_PAYLOAD_KEY_IGNORED_CHARACTER_PATTERN.test(key)).toBe(
+            false,
+          );
+          TOOL_PAYLOAD_KEY_IGNORED_CHARACTER_PATTERN.lastIndex = 0;
+        }
       },
     },
   ];

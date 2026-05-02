@@ -12,52 +12,7 @@ import {
   OpenClawPluginConfigCodec,
   PluginConfigService,
 } from './plugin-config/index.js';
-import {
-  createApproveSpecRecordTool,
-  createAllocateWorktreeTool,
-  createApprovalRecordTool,
-  createArtifactEnvelopeTool,
-  createAuditLogTool,
-  createBindDiscordThreadTool,
-  createClaimTaskTool,
-  createEvaluateSlicePlanReadinessTool,
-  createExecuteCommandTool,
-  createEvaluatePolicyActionTool,
-  createEvaluateSonarQualityGateTool,
-  createGitHubActionRequestTool,
-  createMergeDecisionTool,
-  createRemediationPlanTool,
-  createRememberMemoryEntryTool,
-  createRecordTelemetryEventTool,
-  createTaskRecordTool,
-  createReadStoredRecordTool,
-  createRebaseResultTool,
-  createReviewFindingTool,
-  createHandleDiscordApprovalTool,
-  createHandleDiscordControlTool,
-  createListStoredRecordsTool,
-  createOpenDiscordThreadTool,
-  createResolveRuntimeConfigTool,
-  createReleaseWorktreeTool,
-  createOpenClawPluginConfigTool,
-  createResearchBriefTool,
-  createRunGatesTool,
-  createRunSupervisorStepTool,
-  createSubmitPullRequestMergeTool,
-  createSyncWorktreeTool,
-  createPlanRebaseDependentsTool,
-  createPullRequestRecordTool,
-  createSlicePlanTool,
-  createSpecRecordTool,
-  createStoreRecordTool,
-  createSubmitGitHubActionTool,
-  createSubmitPullRequestUpdateTool,
-  createUpdateTaskTool,
-  createUpdateSpecRecordTool,
-  createValidateArtifactTool,
-  createVerifySonarBootstrapTool,
-  createExecuteRebaseDependentsTool,
-} from './tool-surfaces/service.js';
+import { createDevplatOpenClawTools } from './tool-surfaces/service.js';
 
 type PluginJsonSchema = NonNullable<OpenClawPluginConfigSchema['jsonSchema']>;
 
@@ -110,50 +65,9 @@ const devplatOpenClawPlugin = definePluginEntry({
     'OpenClaw capability bridge for the DevPlat Discord-first platform.',
   configSchema,
   register(api) {
-    api.registerTool(createResearchBriefTool());
-    api.registerTool(createSpecRecordTool());
-    api.registerTool(createApproveSpecRecordTool());
-    api.registerTool(createUpdateSpecRecordTool());
-    api.registerTool(createSlicePlanTool());
-    api.registerTool(createEvaluateSlicePlanReadinessTool());
-    api.registerTool(createResolveRuntimeConfigTool());
-    api.registerTool(createOpenClawPluginConfigTool());
-    api.registerTool(createArtifactEnvelopeTool());
-    api.registerTool(createApprovalRecordTool());
-    api.registerTool(createAuditLogTool());
-    api.registerTool(createMergeDecisionTool());
-    api.registerTool(createRebaseResultTool());
-    api.registerTool(createExecuteCommandTool());
-    api.registerTool(createRunGatesTool());
-    api.registerTool(createAllocateWorktreeTool());
-    api.registerTool(createSyncWorktreeTool());
-    api.registerTool(createReleaseWorktreeTool());
-    api.registerTool(createBindDiscordThreadTool());
-    api.registerTool(createOpenDiscordThreadTool());
-    api.registerTool(createHandleDiscordApprovalTool());
-    api.registerTool(createHandleDiscordControlTool());
-    api.registerTool(createVerifySonarBootstrapTool());
-    api.registerTool(createEvaluateSonarQualityGateTool());
-    api.registerTool(createReviewFindingTool());
-    api.registerTool(createRemediationPlanTool());
-    api.registerTool(createRememberMemoryEntryTool());
-    api.registerTool(createEvaluatePolicyActionTool());
-    api.registerTool(createRecordTelemetryEventTool());
-    api.registerTool(createTaskRecordTool());
-    api.registerTool(createClaimTaskTool());
-    api.registerTool(createUpdateTaskTool());
-    api.registerTool(createReadStoredRecordTool());
-    api.registerTool(createListStoredRecordsTool());
-    api.registerTool(createStoreRecordTool());
-    api.registerTool(createPullRequestRecordTool());
-    api.registerTool(createSubmitPullRequestUpdateTool());
-    api.registerTool(createSubmitPullRequestMergeTool());
-    api.registerTool(createPlanRebaseDependentsTool());
-    api.registerTool(createExecuteRebaseDependentsTool());
-    api.registerTool(createGitHubActionRequestTool());
-    api.registerTool(createSubmitGitHubActionTool());
-    api.registerTool(createValidateArtifactTool());
-    api.registerTool(createRunSupervisorStepTool());
+    createDevplatOpenClawTools().forEach((tool) => {
+      api.registerTool(tool);
+    });
   },
 });
 

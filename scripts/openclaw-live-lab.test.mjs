@@ -22,7 +22,9 @@ import {
   createStatusMessage,
   mapProgressToChannel,
   parseLiveLabArgs,
+  registerDiscordApplicationCommands,
   resolveGitHubOwnerKind,
+  runDiscordInteractionProbe,
   runLiveLab,
 } from './openclaw-live-lab.mjs';
 
@@ -63,8 +65,457 @@ function createTrackedRouteHandler(label, calls, routes) {
   };
 }
 
+/**
+ * Creates the stable Discord command-registration result used by live-lab tests.
+ */
+function createRegisteredDiscordCommandsFixture() {
+  return {
+    count: 14,
+    endpoint: '/applications/app-1/guilds/guild-1/commands',
+    names: ['run-this', 'retry-gates', 'show-status'],
+    responseBody: [],
+  };
+}
+
+/**
+ * Creates a Discord command-registration mock without duplicating callback bodies.
+ */
+function createRegisterDiscordApplicationCommandsMock() {
+  return async () => createRegisteredDiscordCommandsFixture();
+}
+
 describe('openclaw-live-lab helpers', () => {
   const cases = [
+    {
+      name: 'exercises simulated Discord interaction callbacks through the response transport',
+      inputs: {
+        runLabel: '200-1',
+      },
+      mock: async () => {
+        const discordMessages = [];
+        const serviceCalls = [];
+        const discordRequest = async (path, options = {}) => {
+          discordMessages.push([path, options.body]);
+          return { id: `message-${discordMessages.length}` };
+        };
+        const createDiscordControlPlaneService = async ({ transport }) => ({
+          async handleInteraction(input) {
+            serviceCalls.push(input);
+            const acceptedPayload = {
+              content: 'DevPlat accepted retry-gates.',
+              /**
+               * Discord message payload wire key used to suppress operator pings.
+               */
+              allowed_mentions: { parse: [] },
+              components: [
+                {
+                  type: 1,
+                  components: [
+                    {
+                      type: 2,
+                      label: 'Show Status',
+                      style: 2,
+                      /**
+                       * Discord component wire key returned by button interactions.
+                       */
+                      custom_id: 'devplat:v1:show-status:implementation-1',
+                    },
+                  ],
+                },
+              ],
+            };
+            const responseReceipt = await transport.postInteractionResponse(
+              input,
+              acceptedPayload,
+            );
+            const threadReceipt = await transport.postThreadMessage(
+              input.boundThreadId,
+              acceptedPayload,
+            );
+
+            return {
+              allowed: true,
+              failedClosed: false,
+              persistedKey: input.id,
+              policyDecisionId: 'policy-retry-gates',
+              request: {
+                action: 'retry-gates',
+                actorId: input.actorId,
+                channelId: input.channelId,
+                id: input.id,
+                privileged: false,
+                status: 'approved',
+                summary: input.summary,
+                threadId: input.boundThreadId,
+                trace: [],
+                updatedAt: input.updatedAt,
+              },
+              responseReceipt,
+              responsePayload: acceptedPayload,
+              threadReceipt,
+              threadPayload: acceptedPayload,
+            };
+          },
+        });
+
+        return {
+          createDiscordControlPlaneService,
+          createDiscordOperatorInteractionFromCallback: async (
+            callback,
+            options,
+          ) => ({
+            id: callback.id,
+            token: callback.token,
+            actorId: callback.member.user.id,
+            channelId: callback.channel_id,
+            threadId: options.threadId,
+            boundThreadId: options.boundThreadId,
+            boundSession: options.boundSession,
+            commandName: callback.data.name,
+            summary: options.summary,
+            privileged: options.privileged,
+            updatedAt: options.updatedAt,
+          }),
+          discordMessages,
+          discordRequest,
+          serviceCalls,
+        };
+      },
+      assert: async (context, inputs) => {
+        const result = await runDiscordInteractionProbe(
+          {
+            discordChannels: {
+              audit: { id: 'audit-1' },
+              implementation: { id: 'implementation-1' },
+            },
+            discordRequest: context.discordRequest,
+            reportDirectory: resolve(tmpdir(), 'devplat-live-lab-probe'),
+            runLabel: inputs.runLabel,
+            updatedAt: '2026-04-30T00:00:00.000Z',
+          },
+          {
+            createDiscordControlPlaneService:
+              context.createDiscordControlPlaneService,
+            createDiscordOperatorInteractionFromCallback:
+              context.createDiscordOperatorInteractionFromCallback,
+          },
+        );
+
+        expect(result).toMatchObject({
+          action: 'retry-gates',
+          allowed: true,
+          componentCustomIds: ['devplat:v1:show-status:implementation-1'],
+          componentRows: 1,
+          commandName: 'retry-gates',
+          failedClosed: false,
+          interactionMessageId: 'message-1',
+          interactionEndpoint:
+            '/interactions/live-lab-200-1-retry-gates/simulated-token-200-1/callback',
+          responseContent:
+            'simulated interaction callback: DevPlat accepted retry-gates.',
+          threadContent: 'DevPlat accepted retry-gates.',
+          threadEndpoint: '/channels/implementation-1/messages',
+          threadMessageId: 'message-2',
+        });
+        expect(context.serviceCalls[0]).toMatchObject({
+          actorId: 'live-lab-operator',
+          boundThreadId: 'implementation-1',
+          boundSession: {
+            threadId: 'implementation-1',
+            kind: 'implementation',
+          },
+          commandName: 'retry-gates',
+        });
+        expect(context.discordMessages).toEqual([
+          [
+            '/channels/audit-1/messages',
+            {
+              /**
+               * Discord message payload wire key used to suppress operator pings.
+               */
+              allowed_mentions: { parse: [] },
+              components: [
+                {
+                  type: 1,
+                  components: [
+                    {
+                      type: 2,
+                      label: 'Show Status',
+                      style: 2,
+                      /**
+                       * Discord component wire key returned by button interactions.
+                       */
+                      custom_id: 'devplat:v1:show-status:implementation-1',
+                    },
+                  ],
+                },
+              ],
+              content:
+                'simulated interaction callback: DevPlat accepted retry-gates.',
+            },
+          ],
+          [
+            '/channels/implementation-1/messages',
+            {
+              /**
+               * Discord message payload wire key used to suppress operator pings.
+               */
+              allowed_mentions: { parse: [] },
+              components: [
+                {
+                  type: 1,
+                  components: [
+                    {
+                      type: 2,
+                      label: 'Show Status',
+                      style: 2,
+                      /**
+                       * Discord component wire key returned by button interactions.
+                       */
+                      custom_id: 'devplat:v1:show-status:implementation-1',
+                    },
+                  ],
+                },
+              ],
+              content: 'DevPlat accepted retry-gates.',
+            },
+          ],
+        ]);
+      },
+    },
+    {
+      name: 'registers Discord application command contracts in the sandbox guild',
+      inputs: {
+        applicationId: 'app-1',
+        guildId: 'guild-1',
+      },
+      mock: async () => {
+        const discordCalls = [];
+        const discordRequest = async (path, options = {}) => {
+          discordCalls.push([path, options.method ?? 'GET', options.body]);
+          return [{ id: 'command-1', name: 'retry-gates' }];
+        };
+        const createDiscordApplicationCommandPayloads = async () => [
+          {
+            name: 'retry-gates',
+            description: 'Retry gates for this thread.',
+            type: 1,
+          },
+          {
+            name: 'show-status',
+            description: 'Show status for this thread.',
+            type: 1,
+          },
+        ];
+
+        return {
+          createDiscordApplicationCommandPayloads,
+          discordCalls,
+          discordRequest,
+        };
+      },
+      assert: async (context, inputs) => {
+        const result = await registerDiscordApplicationCommands(
+          {
+            applicationId: inputs.applicationId,
+            discordRequest: context.discordRequest,
+            guildId: inputs.guildId,
+          },
+          {
+            createDiscordApplicationCommandPayloads:
+              context.createDiscordApplicationCommandPayloads,
+          },
+        );
+
+        expect(result).toMatchObject({
+          count: 2,
+          endpoint: '/applications/app-1/guilds/guild-1/commands',
+          names: ['retry-gates', 'show-status'],
+        });
+        expect(context.discordCalls).toEqual([
+          [
+            '/applications/app-1/guilds/guild-1/commands',
+            'PUT',
+            [
+              {
+                name: 'retry-gates',
+                description: 'Retry gates for this thread.',
+                type: 1,
+              },
+              {
+                name: 'show-status',
+                description: 'Show status for this thread.',
+                type: 1,
+              },
+            ],
+          ],
+        ]);
+      },
+    },
+    {
+      name: 'fails the simulated Discord interaction probe when response receipts are missing',
+      inputs: {
+        runLabel: '200-2',
+      },
+      mock: async () => {
+        const createDiscordControlPlaneService = async () => ({
+          async handleInteraction(input) {
+            return {
+              allowed: true,
+              failedClosed: false,
+              persistedKey: input.id,
+              policyDecisionId: 'policy-retry-gates',
+              request: {
+                action: 'retry-gates',
+                actorId: input.actorId,
+                channelId: input.channelId,
+                id: input.id,
+                privileged: false,
+                status: 'approved',
+                summary: input.summary,
+                threadId: input.boundThreadId,
+                trace: [],
+                updatedAt: input.updatedAt,
+              },
+            };
+          },
+        });
+
+        return {
+          createDiscordControlPlaneService,
+          createDiscordOperatorInteractionFromCallback: async (
+            callback,
+            options,
+          ) => ({
+            id: callback.id,
+            token: callback.token,
+            actorId: callback.member.user.id,
+            channelId: callback.channel_id,
+            threadId: options.threadId,
+            boundThreadId: options.boundThreadId,
+            boundSession: options.boundSession,
+            commandName: callback.data.name,
+            summary: options.summary,
+            privileged: options.privileged,
+            updatedAt: options.updatedAt,
+          }),
+          discordRequest: async () => ({ id: 'message-1' }),
+        };
+      },
+      assert: async (context, inputs) => {
+        await expect(
+          runDiscordInteractionProbe(
+            {
+              discordChannels: {
+                audit: { id: 'audit-1' },
+                implementation: { id: 'implementation-1' },
+              },
+              discordRequest: context.discordRequest,
+              reportDirectory: resolve(tmpdir(), 'devplat-live-lab-probe'),
+              runLabel: inputs.runLabel,
+              updatedAt: '2026-04-30T00:00:00.000Z',
+            },
+            {
+              createDiscordControlPlaneService:
+                context.createDiscordControlPlaneService,
+              createDiscordOperatorInteractionFromCallback:
+                context.createDiscordOperatorInteractionFromCallback,
+            },
+          ),
+        ).rejects.toThrow('Discord interaction probe did not record receipts');
+      },
+    },
+    {
+      name: 'fails the simulated Discord interaction probe when actionable components are missing',
+      inputs: {
+        runLabel: '200-3',
+      },
+      mock: async () => {
+        const createDiscordControlPlaneService = async ({ transport }) => ({
+          async handleInteraction(input) {
+            const payload = {
+              content: 'DevPlat accepted retry-gates without controls.',
+            };
+            const responseReceipt = await transport.postInteractionResponse(
+              input,
+              payload,
+            );
+            const threadReceipt = await transport.postThreadMessage(
+              input.boundThreadId,
+              payload,
+            );
+
+            return {
+              allowed: true,
+              failedClosed: false,
+              persistedKey: input.id,
+              policyDecisionId: 'policy-retry-gates',
+              request: {
+                action: 'retry-gates',
+                actorId: input.actorId,
+                channelId: input.channelId,
+                id: input.id,
+                privileged: false,
+                status: 'approved',
+                summary: input.summary,
+                threadId: input.boundThreadId,
+                trace: [],
+                updatedAt: input.updatedAt,
+              },
+              responsePayload: payload,
+              responseReceipt,
+              threadPayload: payload,
+              threadReceipt,
+            };
+          },
+        });
+
+        return {
+          createDiscordControlPlaneService,
+          createDiscordOperatorInteractionFromCallback: async (
+            callback,
+            options,
+          ) => ({
+            id: callback.id,
+            token: callback.token,
+            actorId: callback.member.user.id,
+            channelId: callback.channel_id,
+            threadId: options.threadId,
+            boundThreadId: options.boundThreadId,
+            boundSession: options.boundSession,
+            commandName: callback.data.name,
+            summary: options.summary,
+            privileged: options.privileged,
+            updatedAt: options.updatedAt,
+          }),
+          discordRequest: async () => ({ id: 'message-1' }),
+        };
+      },
+      assert: async (context, inputs) => {
+        await expect(
+          runDiscordInteractionProbe(
+            {
+              discordChannels: {
+                audit: { id: 'audit-1' },
+                implementation: { id: 'implementation-1' },
+              },
+              discordRequest: context.discordRequest,
+              reportDirectory: resolve(tmpdir(), 'devplat-live-lab-probe'),
+              runLabel: inputs.runLabel,
+              updatedAt: '2026-04-30T00:00:00.000Z',
+            },
+            {
+              createDiscordControlPlaneService:
+                context.createDiscordControlPlaneService,
+              createDiscordOperatorInteractionFromCallback:
+                context.createDiscordOperatorInteractionFromCallback,
+            },
+          ),
+        ).rejects.toThrow(
+          'Discord interaction probe did not publish actionable controls',
+        );
+      },
+    },
     {
       name: 'parses CLI flags and derives run metadata',
       inputs: {
@@ -97,7 +548,7 @@ describe('openclaw-live-lab helpers', () => {
         });
         expect(identifiers).toMatchObject({
           branchName: 'live-test/101-2',
-          categoryName: 'devplat-test-101-2',
+          categoryName: 'test',
           repoName: 'devplat-test-101-2',
         });
         expect(channelPlan.map((channel) => channel.name)).toEqual([
@@ -106,6 +557,24 @@ describe('openclaw-live-lab helpers', () => {
           'pull-request',
           'audit',
           'project-management',
+        ]);
+        expect(channelPlan.map((channel) => channel.categoryName)).toEqual([
+          'test',
+          'test',
+          'test',
+          'test',
+          'test',
+        ]);
+        expect(
+          createDiscordChannelPlan('repo-alpha').map(
+            (channel) => channel.categoryName,
+          ),
+        ).toEqual([
+          'repo-alpha',
+          'repo-alpha',
+          'repo-alpha',
+          'repo-alpha',
+          'repo-alpha',
         ]);
       },
     },
@@ -178,6 +647,7 @@ describe('openclaw-live-lab helpers', () => {
           },
           discordConfig: {
             applicationId: 'app-1',
+            categoryName: 'test',
             botToken: 'bot-token-1',
             guildId: 'guild-1',
             publicKey: 'public-key-1',
@@ -204,6 +674,7 @@ describe('openclaw-live-lab helpers', () => {
           LIVE_TEST_SONAR_TOKEN: 'sonar-token-1',
         });
         const message = createStatusMessage({
+          controlThreadId: 'project-management-1',
           details: 'Bootstrapped the lab.',
           phase: 'bootstrap',
           ref: 'main',
@@ -227,7 +698,23 @@ describe('openclaw-live-lab helpers', () => {
           runAttempt: '4',
           runNumber: '300',
         });
-        expect(message).toContain('status: in-progress');
+        expect(message).toEqual({
+          allowed_mentions: { parse: [] },
+          content: [
+            '🟡 DevPlat · Live lab bootstrap',
+            '',
+            'Status: in-progress',
+            'Scope: live-lab · 200-3',
+            'Item: sandbox-org/devplat-test-200-3',
+            'Actor: workflow',
+            'Updated: abc123',
+            '→ Bootstrapped the lab.',
+            '',
+            'Ref: main',
+            'Workflow: 200-3',
+          ].join('\n'),
+          flags: 4,
+        });
         expect(
           mapProgressToChannel({
             phase: 'planning',
@@ -240,6 +727,26 @@ describe('openclaw-live-lab helpers', () => {
             step: 'submit_pull_request_update',
           }),
         ).toBe('pullRequest');
+      },
+    },
+    {
+      name: 'omits stale interactive controls from live-lab status messages',
+      inputs: {},
+      mock: async () => undefined,
+      assert: async () => {
+        const message = createStatusMessage({
+          controlThreadId: 'project-management-1',
+          details: 'Status only.',
+          phase: 'bootstrap',
+          ref: 'main',
+          repoFullName: 'sandbox-org/devplat-test-status-only',
+          runLabel: '200-4',
+          sha: 'abc123',
+          status: 'in-progress',
+          workflowUrl: null,
+        });
+
+        expect(message).not.toHaveProperty('components');
       },
     },
     {
@@ -640,6 +1147,7 @@ describe('runLiveLab', () => {
   const baseEnvironment = {
     discord: {
       applicationId: 'app-1',
+      categoryName: 'test',
       baseUrl: 'https://discord.example/api/v10',
       botToken: 'bot-token-1',
       guildId: 'guild-1',
@@ -682,13 +1190,31 @@ describe('runLiveLab', () => {
         const discordMessages = [];
         const sonarCalls = [];
         const sharedDiscordChannels = [
-          { id: 'spec-1', name: 'spec', type: 0 },
-          { id: 'implementation-1', name: 'implementation', type: 0 },
-          { id: 'pull-request-1', name: 'pull-request', type: 0 },
-          { id: 'audit-1', name: 'audit', type: 0 },
+          { id: 'test-category', name: 'test', type: 4 },
+          {
+            id: 'uncategorized-project-management-1',
+            name: 'project-management',
+            parent_id: null,
+            type: 0,
+          },
+          { id: 'spec-1', name: 'spec', parent_id: 'test-category', type: 0 },
+          {
+            id: 'implementation-1',
+            name: 'implementation',
+            parent_id: 'test-category',
+            type: 0,
+          },
+          {
+            id: 'pull-request-1',
+            name: 'pull-request',
+            parent_id: 'test-category',
+            type: 0,
+          },
+          { id: 'audit-1', name: 'audit', parent_id: 'test-category', type: 0 },
           {
             id: 'project-management-1',
             name: 'project-management',
+            parent_id: 'test-category',
             type: 0,
           },
         ];
@@ -829,7 +1355,7 @@ describe('runLiveLab', () => {
             path.endsWith('/messages') &&
             options.method === 'POST'
           ) {
-            discordMessages.push(options.body.content);
+            discordMessages.push(options.body);
             return { id: `message-${discordCalls.length}` };
           }
 
@@ -891,6 +1417,18 @@ describe('runLiveLab', () => {
             ],
           };
         };
+        const runDiscordInteractionProbeMock = async () => ({
+          action: 'retry-gates',
+          allowed: true,
+          commandName: 'retry-gates',
+          failedClosed: false,
+          interactionEndpoint: '/interactions/live-lab/token/callback',
+          policyDecisionId: 'policy-retry-gates',
+          threadEndpoint: '/channels/implementation-1/messages',
+          threadId: 'implementation-1',
+        });
+        const registerDiscordApplicationCommandsMock =
+          createRegisterDiscordApplicationCommandsMock();
 
         return {
           collectFixtureFiles: async () => fixtureFiles,
@@ -900,7 +1438,9 @@ describe('runLiveLab', () => {
           githubCalls,
           githubRequest,
           reportDir,
+          registerDiscordApplicationCommandsMock,
           runDeepTestMock,
+          runDiscordInteractionProbeMock,
           sonarCalls,
           sonarRequest,
           summaryEntries,
@@ -923,7 +1463,10 @@ describe('runLiveLab', () => {
             collectFixtureFiles: context.collectFixtureFiles,
             discordRequest: context.discordRequest,
             githubRequest: context.githubRequest,
+            registerDiscordApplicationCommands:
+              context.registerDiscordApplicationCommandsMock,
             runDeepTest: context.runDeepTestMock,
+            runDiscordInteractionProbe: context.runDiscordInteractionProbeMock,
             sonarRequest: context.sonarRequest,
           },
         );
@@ -945,6 +1488,27 @@ describe('runLiveLab', () => {
           'sandbox-org/devplat-test-200-1',
         );
         expect(savedReport.deepTest.steps).toBe(2);
+        expect(savedReport.discord.interactionProbe).toMatchObject({
+          action: 'retry-gates',
+          failedClosed: false,
+          threadId: 'implementation-1',
+        });
+        expect(savedReport.discord.commandRegistration).toMatchObject({
+          count: 14,
+          endpoint: '/applications/app-1/guilds/guild-1/commands',
+        });
+        expect(savedReport.discord.bootstrapStatus).toMatchObject({
+          channelId: 'project-management-1',
+          componentCustomIds: [],
+          content: expect.stringContaining('🟡 DevPlat · Live lab bootstrap'),
+          endpoint: '/channels/project-management-1/messages',
+          messageId: expect.any(String),
+        });
+        expect(savedReport.discord.channels.projectManagement).toEqual({
+          id: 'project-management-1',
+          name: 'project-management',
+          parentId: 'test-category',
+        });
         expect(context.githubCalls).toEqual(
           expect.arrayContaining([
             ['/orgs/sandbox-org/repos', 'POST'],
@@ -973,16 +1537,193 @@ describe('runLiveLab', () => {
         ]);
         expect(context.discordMessages).toEqual(
           expect.arrayContaining([
-            expect.stringContaining(`ref: ${inputs.ref}`),
-            expect.stringContaining(
-              'Bootstrapped the shared live-lab channels and external service preflight.',
-            ),
+            expect.objectContaining({
+              allowed_mentions: { parse: [] },
+              content: expect.stringContaining(`Ref: ${inputs.ref}`),
+              flags: 4,
+            }),
+            expect.objectContaining({
+              content: expect.stringContaining(
+                '→ Bootstrapped the shared live-lab channels and external service preflight.',
+              ),
+            }),
           ]),
+        );
+        const discordMessageLines = context.discordMessages.flatMap((message) =>
+          message.content.split('\n'),
+        );
+        expect(discordMessageLines).not.toContain(
+          `Workflow: ${inputs.workflowUrl}`,
         );
         expect(context.summaryEntries[0]).toContain('Status: passed');
         expect(context.summaryEntries[0]).toContain(`Ref: ${inputs.ref}`);
+        expect(context.summaryEntries[0]).toContain('Discord category: test');
         expect(context.summaryEntries[0]).toContain(
           'Discord channels: spec, implementation, pull-request, audit, project-management',
+        );
+      },
+    },
+    {
+      name: 'fails before repository mutation when the bootstrap Discord status cannot post',
+      inputs: {
+        ref: 'main',
+        retainFailedResources: false,
+      },
+      mock: async () => {
+        const reportDir = await mkdtemp(
+          resolve(tmpdir(), 'devplat-live-lab-bootstrap-status-'),
+        );
+        temporaryRoots.push(reportDir);
+        const discordCalls = [];
+        const githubCalls = [];
+        const sonarCalls = [];
+        const sharedDiscordChannels = [
+          { id: 'test-category', name: 'test', type: 4 },
+          { id: 'spec-1', name: 'spec', parent_id: 'test-category', type: 0 },
+          {
+            id: 'implementation-1',
+            name: 'implementation',
+            parent_id: 'test-category',
+            type: 0,
+          },
+          {
+            id: 'pull-request-1',
+            name: 'pull-request',
+            parent_id: 'test-category',
+            type: 0,
+          },
+          { id: 'audit-1', name: 'audit', parent_id: 'test-category', type: 0 },
+          {
+            id: 'project-management-1',
+            name: 'project-management',
+            parent_id: 'test-category',
+            type: 0,
+          },
+        ];
+        const githubRoutes = new Map([
+          ['GET /orgs/sandbox-org', { login: 'sandbox-org' }],
+          [
+            'GET /orgs/sandbox-org/repos?type=public&sort=created&direction=asc&per_page=100',
+            () => {
+              throw new Error(
+                'Live lab continued after Discord bootstrap status failed.',
+              );
+            },
+          ],
+        ]);
+        const githubRequest = createTrackedRouteHandler(
+          'GitHub',
+          githubCalls,
+          githubRoutes,
+        );
+        const discordRequest = async (path, options = {}) => {
+          discordCalls.push([path, options.method ?? 'GET']);
+
+          if (path === '/guilds/guild-1' && options.method === undefined) {
+            return { id: 'guild-1' };
+          }
+          if (
+            path === '/guilds/guild-1/channels' &&
+            options.method === undefined
+          ) {
+            return sharedDiscordChannels;
+          }
+          if (
+            path === '/channels/project-management-1/messages' &&
+            options.method === 'POST'
+          ) {
+            throw new Error('Discord bootstrap status failed.');
+          }
+          if (
+            path === '/channels/audit-1/messages' &&
+            options.method === 'POST'
+          ) {
+            return { id: 'failure-message-1' };
+          }
+
+          throw new Error(
+            `Unexpected Discord request: ${path} ${options.method ?? 'GET'}`,
+          );
+        };
+        const sonarRequest = async (path, options = {}) => {
+          sonarCalls.push([path, options.method ?? 'GET']);
+
+          if (
+            path === '/api/projects/search?organization=sandbox-sonar&ps=1' &&
+            options.method === undefined
+          ) {
+            return { components: [] };
+          }
+
+          throw new Error(
+            `Unexpected Sonar request: ${path} ${options.method ?? 'GET'}`,
+          );
+        };
+        const registerDiscordApplicationCommandsMock =
+          createRegisterDiscordApplicationCommandsMock();
+
+        return {
+          discordCalls,
+          discordRequest,
+          githubCalls,
+          githubRequest,
+          registerDiscordApplicationCommandsMock,
+          reportDir,
+          sonarCalls,
+          sonarRequest,
+        };
+      },
+      assert: async (context, inputs) => {
+        await expect(
+          runLiveLab(
+            {
+              environment: baseEnvironment,
+              maxParallelRepos: 6,
+              ref: inputs.ref,
+              reportDir: context.reportDir,
+              retainFailedResources: inputs.retainFailedResources,
+              skipBuild: true,
+            },
+            {
+              appendSummary: async () => undefined,
+              collectFixtureFiles: async () => [],
+              discordRequest: context.discordRequest,
+              githubRequest: context.githubRequest,
+              registerDiscordApplicationCommands:
+                context.registerDiscordApplicationCommandsMock,
+              runDeepTest: async () => ({
+                reportDirectory: context.reportDir,
+                steps: [],
+              }),
+              runDiscordInteractionProbe: async () => ({
+                allowed: true,
+                failedClosed: false,
+              }),
+              sonarRequest: context.sonarRequest,
+            },
+          ),
+        ).rejects.toThrow('Discord bootstrap status failed.');
+
+        const savedReport = JSON.parse(
+          await readFile(
+            resolve(context.reportDir, 'live-lab-report.json'),
+            'utf8',
+          ),
+        );
+
+        expect(savedReport.status).toBe('failed');
+        expect(savedReport.error.message).toBe(
+          'Discord bootstrap status failed.',
+        );
+        expect(context.githubCalls).not.toContainEqual([
+          '/orgs/sandbox-org/repos?type=public&sort=created&direction=asc&per_page=100',
+          'GET',
+        ]);
+        expect(context.discordCalls).toEqual(
+          expect.arrayContaining([
+            ['/channels/project-management-1/messages', 'POST'],
+            ['/channels/audit-1/messages', 'POST'],
+          ]),
         );
       },
     },
@@ -998,14 +1739,31 @@ describe('runLiveLab', () => {
         );
         temporaryRoots.push(reportDir);
         const discordCalls = [];
+        const createdDiscordChannels = [];
         const githubCalls = [];
         const sonarCalls = [];
         const discordChannelResponses = [
-          { id: 'spec-1', name: 'spec', type: 0 },
-          { id: 'implementation-1', name: 'implementation', type: 0 },
-          { id: 'pull-request-1', name: 'pull-request', type: 0 },
-          { id: 'audit-1', name: 'audit', type: 0 },
-          { id: 'project-management-1', name: 'project-management', type: 0 },
+          { id: 'test-category', name: 'test', type: 4 },
+          { id: 'spec-1', name: 'spec', parent_id: 'test-category', type: 0 },
+          {
+            id: 'implementation-1',
+            name: 'implementation',
+            parent_id: 'test-category',
+            type: 0,
+          },
+          {
+            id: 'pull-request-1',
+            name: 'pull-request',
+            parent_id: 'test-category',
+            type: 0,
+          },
+          { id: 'audit-1', name: 'audit', parent_id: 'test-category', type: 0 },
+          {
+            id: 'project-management-1',
+            name: 'project-management',
+            parent_id: 'test-category',
+            type: 0,
+          },
         ];
 
         const githubRoutes = new Map([
@@ -1171,6 +1929,7 @@ describe('runLiveLab', () => {
               path === '/guilds/guild-1/channels' &&
               options.method === 'POST'
             ) {
+              createdDiscordChannels.push(options.body);
               return discordChannelResponses.shift();
             }
             if (
@@ -1186,9 +1945,22 @@ describe('runLiveLab', () => {
             );
           },
           discordCalls,
+          createdDiscordChannels,
           githubCalls,
           githubRequest,
           reportDir,
+          registerDiscordApplicationCommandsMock:
+            createRegisterDiscordApplicationCommandsMock(),
+          runDiscordInteractionProbeMock: async () => ({
+            action: 'retry-gates',
+            allowed: true,
+            commandName: 'retry-gates',
+            failedClosed: false,
+            interactionEndpoint: '/interactions/live-lab/token/callback',
+            policyDecisionId: 'policy-retry-gates',
+            threadEndpoint: '/channels/implementation-1/messages',
+            threadId: 'implementation-1',
+          }),
           runDeepTestMock: async () => ({
             reportDirectory: resolve(reportDir, 'deep-test'),
             steps: [{ tool: 'verify_sonar_bootstrap' }],
@@ -1227,12 +1999,19 @@ describe('runLiveLab', () => {
             ],
             discordRequest: context.discordRequest,
             githubRequest: context.githubRequest,
+            registerDiscordApplicationCommands:
+              context.registerDiscordApplicationCommandsMock,
             runDeepTest: context.runDeepTestMock,
+            runDiscordInteractionProbe: context.runDiscordInteractionProbeMock,
             sonarRequest: context.sonarRequest,
           },
         );
 
         expect(report.status).toBe('passed');
+        expect(report.discord.interactionProbe).toMatchObject({
+          action: 'retry-gates',
+          failedClosed: false,
+        });
         expect(report.sonar).toEqual({
           projectKey: 'sandbox-user_devplat-test-200-1',
           projectName: 'devplat-test-200-1',
@@ -1253,6 +2032,17 @@ describe('runLiveLab', () => {
             ['/guilds/guild-1/channels', 'POST'],
           ]),
         );
+        /**
+         * `parent_id` is the Discord channel creation wire key for category nesting.
+         */
+        expect(context.createdDiscordChannels).toEqual([
+          { name: 'test', type: 4 },
+          { name: 'spec', parent_id: 'test-category', type: 0 },
+          { name: 'implementation', parent_id: 'test-category', type: 0 },
+          { name: 'pull-request', parent_id: 'test-category', type: 0 },
+          { name: 'audit', parent_id: 'test-category', type: 0 },
+          { name: 'project-management', parent_id: 'test-category', type: 0 },
+        ]);
         expect(context.sonarCalls).toEqual(
           expect.arrayContaining([
             [
@@ -1278,11 +2068,27 @@ describe('runLiveLab', () => {
         const summaryEntries = [];
         const githubCalls = [];
         const sharedDiscordChannels = [
-          { id: 'spec-1', name: 'spec', type: 0 },
-          { id: 'implementation-1', name: 'implementation', type: 0 },
-          { id: 'pull-request-1', name: 'pull-request', type: 0 },
-          { id: 'audit-1', name: 'audit', type: 0 },
-          { id: 'project-management-1', name: 'project-management', type: 0 },
+          { id: 'test-category', name: 'test', type: 4 },
+          { id: 'spec-1', name: 'spec', parent_id: 'test-category', type: 0 },
+          {
+            id: 'implementation-1',
+            name: 'implementation',
+            parent_id: 'test-category',
+            type: 0,
+          },
+          {
+            id: 'pull-request-1',
+            name: 'pull-request',
+            parent_id: 'test-category',
+            type: 0,
+          },
+          { id: 'audit-1', name: 'audit', parent_id: 'test-category', type: 0 },
+          {
+            id: 'project-management-1',
+            name: 'project-management',
+            parent_id: 'test-category',
+            type: 0,
+          },
         ];
 
         const githubRoutes = new Map([
@@ -1418,9 +2224,21 @@ describe('runLiveLab', () => {
           },
           githubRequest,
           reportDir,
+          registerDiscordApplicationCommandsMock:
+            createRegisterDiscordApplicationCommandsMock(),
           runDeepTestMock: async () => ({
             reportDirectory: resolve(reportDir, 'deep-test'),
             steps: [{ tool: 'resolve_runtime_config' }],
+          }),
+          runDiscordInteractionProbeMock: async () => ({
+            action: 'retry-gates',
+            allowed: true,
+            commandName: 'retry-gates',
+            failedClosed: false,
+            interactionEndpoint: '/interactions/live-lab/token/callback',
+            policyDecisionId: 'policy-retry-gates',
+            threadEndpoint: '/channels/implementation-1/messages',
+            threadId: 'implementation-1',
           }),
           sonarRequest: async (path, options = {}) => {
             if (
@@ -1478,7 +2296,11 @@ describe('runLiveLab', () => {
               ],
               discordRequest: context.discordRequest,
               githubRequest: context.githubRequest,
+              registerDiscordApplicationCommands:
+                context.registerDiscordApplicationCommandsMock,
               runDeepTest: context.runDeepTestMock,
+              runDiscordInteractionProbe:
+                context.runDiscordInteractionProbeMock,
               sonarRequest: context.sonarRequest,
             },
           ),
@@ -1511,11 +2333,27 @@ describe('runLiveLab', () => {
         const githubCalls = [];
         const sonarCalls = [];
         const sharedDiscordChannels = [
-          { id: 'spec-1', name: 'spec', type: 0 },
-          { id: 'implementation-1', name: 'implementation', type: 0 },
-          { id: 'pull-request-1', name: 'pull-request', type: 0 },
-          { id: 'audit-1', name: 'audit', type: 0 },
-          { id: 'project-management-1', name: 'project-management', type: 0 },
+          { id: 'test-category', name: 'test', type: 4 },
+          { id: 'spec-1', name: 'spec', parent_id: 'test-category', type: 0 },
+          {
+            id: 'implementation-1',
+            name: 'implementation',
+            parent_id: 'test-category',
+            type: 0,
+          },
+          {
+            id: 'pull-request-1',
+            name: 'pull-request',
+            parent_id: 'test-category',
+            type: 0,
+          },
+          { id: 'audit-1', name: 'audit', parent_id: 'test-category', type: 0 },
+          {
+            id: 'project-management-1',
+            name: 'project-management',
+            parent_id: 'test-category',
+            type: 0,
+          },
         ];
 
         const githubRoutes = new Map([
@@ -1720,6 +2558,8 @@ describe('runLiveLab', () => {
           githubCalls,
           githubRequest,
           reportDir,
+          registerDiscordApplicationCommandsMock:
+            createRegisterDiscordApplicationCommandsMock(),
           runDeepTestMock: async () => {
             throw new Error('deep test failed');
           },
@@ -1743,6 +2583,8 @@ describe('runLiveLab', () => {
               ],
               discordRequest: context.discordRequest,
               githubRequest: context.githubRequest,
+              registerDiscordApplicationCommands:
+                context.registerDiscordApplicationCommandsMock,
               runDeepTest: context.runDeepTestMock,
               sonarRequest: context.sonarRequest,
             },
@@ -1804,11 +2646,27 @@ describe('runLiveLab', () => {
         const githubCalls = [];
         const sonarCalls = [];
         const sharedDiscordChannels = [
-          { id: 'spec-1', name: 'spec', type: 0 },
-          { id: 'implementation-1', name: 'implementation', type: 0 },
-          { id: 'pull-request-1', name: 'pull-request', type: 0 },
-          { id: 'audit-1', name: 'audit', type: 0 },
-          { id: 'project-management-1', name: 'project-management', type: 0 },
+          { id: 'test-category', name: 'test', type: 4 },
+          { id: 'spec-1', name: 'spec', parent_id: 'test-category', type: 0 },
+          {
+            id: 'implementation-1',
+            name: 'implementation',
+            parent_id: 'test-category',
+            type: 0,
+          },
+          {
+            id: 'pull-request-1',
+            name: 'pull-request',
+            parent_id: 'test-category',
+            type: 0,
+          },
+          { id: 'audit-1', name: 'audit', parent_id: 'test-category', type: 0 },
+          {
+            id: 'project-management-1',
+            name: 'project-management',
+            parent_id: 'test-category',
+            type: 0,
+          },
         ];
 
         const githubRoutes = new Map([
@@ -1957,6 +2815,8 @@ describe('runLiveLab', () => {
           githubCalls,
           githubRequest,
           reportDir,
+          registerDiscordApplicationCommandsMock:
+            createRegisterDiscordApplicationCommandsMock(),
           runDeepTestMock: async () => {
             throw new Error('deep test failed');
           },
@@ -1980,6 +2840,8 @@ describe('runLiveLab', () => {
               ],
               discordRequest: context.discordRequest,
               githubRequest: context.githubRequest,
+              registerDiscordApplicationCommands:
+                context.registerDiscordApplicationCommandsMock,
               runDeepTest: context.runDeepTestMock,
               sonarRequest: context.sonarRequest,
             },

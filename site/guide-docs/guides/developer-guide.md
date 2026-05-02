@@ -9,9 +9,36 @@ npm run check:repo
 npm run check:changed-coverage
 npm run test:coverage
 npm run docs:build
+npm run sonar:analyze:changed
 ```
 
 Use `npm run check:pre-push` as the canonical local gate before pushing.
+Use `npm run act:pr` when Docker is available and you want to exercise the
+pull-request GitHub Actions path locally before spending remote CI minutes. The
+local wrapper cleans up `act-*` Docker containers and `.artifacts/act` after
+each workflow, then runs the hermetic OpenClaw deep test outside `act` so nested
+Docker volume paths resolve on the host. The event fixture skips
+secret-backed publish, Sonar upload, remote artifact-transfer paths, and the
+nested-Docker deep-test job while running the normal PR validation jobs.
+
+Install the SonarQube CLI with `npm run sonar:install-cli`; the repo helper
+selects the documented SonarSource installer for macOS, Linux, or Windows. Then
+authenticate with `sonar auth login` before running the changed-file analysis
+command. The analysis wrapper selects files changed from the merge base and runs
+`sonar analyze secrets` once for the changed-file set and
+`sonar verify --file` for each changed file. It prints a plain-text summary by
+default, supports `--json` for agent-readable output, and runs configured
+analyses in parallel. SQAA/A3S analysis is intentionally disabled unless
+`SONAR_A3S_ENABLED=true`, `DEVPLAT_SONAR_A3S_ENABLED=true`, or `--sqaa enabled`
+is supplied; when enabled it also runs `sonar analyze sqaa --file` for each
+changed file. If the organization is not configured for A3S, the helper reports
+the SQAA capability as skipped with the reason preserved instead of allowing the
+entire analysis run to fail. The local pre-push gate requires this changed-file
+SonarQube analysis, so install and authenticate the CLI before pushing. It
+derives the branch from the local checkout or GitHub environment and defaults
+the project to `vannadii_devplat`. Pass `--base`, `--head`, `--project`, and
+`--branch` after `--` only when a local branch needs explicit comparison or
+SonarCloud context.
 
 Use the root `PLATFORM.md` file as the authoritative foundation-scope document. This guide focuses on the implementation discipline that keeps work aligned with that objective.
 
@@ -45,8 +72,7 @@ Use the root `PLATFORM.md` file as the authoritative foundation-scope document. 
 - Keep package responsibilities aligned with `PLATFORM.md`.
 - For package normalization work, add or preserve `package.json`, `tsconfig.json`, `src/index.ts`, strict exports, and repo-standard scripts.
 - Use public package entrypoints only and keep adapter packages out of domain-logic ownership.
-- Treat package `README.md` coverage as part of package completion when publishability or operator-facing behavior changes.
-- Keep package `README.md` coverage on the remaining normalization backlog until every publishable package has one.
+- Keep package `README.md` coverage current; repository validation requires one for every package.
 
 ## Complete Change Standard
 
@@ -55,9 +81,19 @@ Use the root `PLATFORM.md` file as the authoritative foundation-scope document. 
 - keep GitHub, Discord, OpenClaw, and operator-facing behavior auditable
 - keep Discord interactions thread-aware and fail closed on missing or ambiguous thread context
 - keep branch names and pull request titles free of registered tool names
-- treat `codex` as a reserved tool name and keep it out of branch names and pull request titles
 - keep pull request titles in conventional commit format
 - keep pull request bodies aligned with `.github/pull_request_template.md` and fill every section with concrete change details
-- do not open or update a pull request until `npm run check:changed-coverage` confirms 100% automated unit-test coverage for every changed executable source file
-- keep tests in structured `const cases = [...]` tables where each case provides `inputs`, `mock`, and `assert`, then exercises a single implementation per suite
+- keep tests in structured `const cases = [...]` tables where each case provides `inputs`, `mock`, and `assert`, then exercises a single `it.each(cases)('$name', ...)` implementation per suite; `npm run check:unit-tests` enforces the baseline case-table fields for `.test.ts`, `.test.mts`, and `.test.mjs` files
+- keep constants in package-local `constants.ts` files, promote cross-package constants into `@vannadii/devplat-core`, and test every regular-expression constant with matching and non-matching edge cases
+- keep JSDoc on authored constants, helpers, codecs, functions, classes, and public types so internal maintainers and API users can read the same intent at the symbol boundary
 - document release, rollback, and performance impact when a change touches those surfaces
+
+## Pull Request Feedback
+
+Review feedback work is part of implementation, not a separate courtesy pass:
+
+- review every comment and confirm the code path and edge cases before editing
+- make the smallest complete fix that preserves package boundaries and generated-contract flow
+- add or update targeted tests before broad validation
+- reply directly on each review thread with a brief concrete note about what changed
+- leave thread resolution to the PR author

@@ -16,14 +16,130 @@
         },
         "assigneeId": {
           "type": "string"
+        },
+        "record": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "status": {
+              "enum": [
+                "draft",
+                "queued",
+                "claimed",
+                "running",
+                "review",
+                "blocked",
+                "approved",
+                "merge-ready",
+                "merged",
+                "failed",
+                "rebasing",
+                "complete"
+              ]
+            },
+            "trace": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "updatedAt": {
+              "type": "string"
+            },
+            "taskId": {
+              "type": "string"
+            },
+            "sliceId": {
+              "type": "string"
+            },
+            "threadId": {
+              "type": "string"
+            },
+            "assigneeId": {
+              "type": "string"
+            },
+            "transitions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "toStatus": {
+                    "enum": [
+                      "draft",
+                      "queued",
+                      "claimed",
+                      "running",
+                      "review",
+                      "blocked",
+                      "approved",
+                      "merge-ready",
+                      "merged",
+                      "failed",
+                      "rebasing",
+                      "complete"
+                    ]
+                  },
+                  "action": {
+                    "enum": [
+                      "create",
+                      "claim",
+                      "status-update",
+                      "complete",
+                      "block",
+                      "release",
+                      "resume"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "occurredAt": {
+                    "type": "string"
+                  },
+                  "fromStatus": {
+                    "enum": [
+                      "draft",
+                      "queued",
+                      "claimed",
+                      "running",
+                      "review",
+                      "blocked",
+                      "approved",
+                      "merge-ready",
+                      "merged",
+                      "failed",
+                      "rebasing",
+                      "complete"
+                    ]
+                  },
+                  "actorId": {
+                    "type": "string"
+                  }
+                },
+                "required": ["toStatus", "action", "reason", "occurredAt"],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "id",
+            "summary",
+            "status",
+            "trace",
+            "updatedAt",
+            "taskId",
+            "sliceId",
+            "threadId"
+          ],
+          "additionalProperties": false
         }
       },
-      "required": [
-        "taskId",
-        "sliceId",
-        "threadId",
-        "assigneeId"
-      ],
+      "required": ["taskId", "sliceId", "threadId", "assigneeId"],
       "additionalProperties": false
     }
   }

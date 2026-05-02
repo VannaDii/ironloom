@@ -3,9 +3,6 @@
   "$ref": "#/definitions/CreateResearchBriefToolInput",
   "definitions": {
     "CreateResearchBriefToolInput": {
-      "$ref": "#/definitions/ResearchBrief"
-    },
-    "ResearchBrief": {
       "type": "object",
       "properties": {
         "researchId": {
@@ -40,6 +37,75 @@
         },
         "updatedAt": {
           "type": "string"
+        },
+        "sourceAttributions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "claim": {
+                "type": "string"
+              },
+              "confidence": {
+                "enum": ["low", "medium", "high"]
+              }
+            },
+            "required": ["url", "title", "claim", "confidence"],
+            "additionalProperties": false
+          }
+        },
+        "capabilityComparisons": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "option": {
+                "type": "string"
+              },
+              "strengths": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "tradeoffs": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": ["option", "strengths", "tradeoffs"],
+            "additionalProperties": false
+          }
+        },
+        "feasibility": {
+          "type": "object",
+          "properties": {
+            "feasible": {
+              "type": "boolean"
+            },
+            "blockers": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "nextQuestions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": ["feasible", "blockers", "nextQuestions"],
+          "additionalProperties": false
         }
       },
       "required": [

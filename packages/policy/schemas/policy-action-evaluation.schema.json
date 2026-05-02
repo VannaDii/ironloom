@@ -1,0 +1,88 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/PolicyActionEvaluation",
+  "definitions": {
+    "PolicyActionEvaluation": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "action": {
+          "type": "string"
+        },
+        "actionCategory": {
+          "enum": [
+            "merge",
+            "command-execution",
+            "worktree-release",
+            "rebase",
+            "publish",
+            "autofix",
+            "destructive-cleanup",
+            "routine"
+          ]
+        },
+        "privileged": {
+          "type": "boolean"
+        },
+        "allowed": {
+          "type": "boolean"
+        },
+        "requiresApproval": {
+          "type": "boolean"
+        },
+        "auditRequired": {
+          "type": "boolean"
+        },
+        "privilegeLevel": {
+          "enum": [
+            "automatic",
+            "human-approval",
+            "destructive",
+            "external-publish"
+          ]
+        },
+        "riskLevel": {
+          "enum": ["low", "medium", "high", "critical"]
+        },
+        "escalationRequired": {
+          "type": "boolean"
+        },
+        "escalationTarget": {
+          "enum": ["none", "operator", "maintainer", "release-manager"]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "auditReason": {
+          "type": "string"
+        },
+        "nextAction": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "action",
+        "actionCategory",
+        "privileged",
+        "allowed",
+        "requiresApproval",
+        "auditRequired",
+        "privilegeLevel",
+        "riskLevel",
+        "escalationRequired",
+        "escalationTarget",
+        "reason",
+        "auditReason",
+        "nextAction",
+        "updatedAt"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

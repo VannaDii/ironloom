@@ -2,7 +2,7 @@ import {
   createRebaseResultArtifact,
   describeRebaseResultArtifact,
 } from './logic.js';
-import type { RebaseResultArtifact } from './types.js';
+import type { RebaseResultArtifact } from './codec.js';
 
 export class RebaseResultArtifactService {
   public execute(input: RebaseResultArtifact): RebaseResultArtifact {

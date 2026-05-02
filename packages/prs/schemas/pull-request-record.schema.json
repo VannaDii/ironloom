@@ -24,13 +24,137 @@
           }
         },
         "reviewState": {
-          "$ref": "#/definitions/PullRequestReviewState"
+          "enum": ["draft", "review", "approved", "changes-requested"]
         },
         "mergeReady": {
           "type": "boolean"
         },
         "updatedAt": {
           "type": "string"
+        },
+        "projection": {
+          "type": "object",
+          "properties": {
+            "body": {
+              "type": "string"
+            },
+            "checklist": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "riskSummary": {
+              "type": "string"
+            },
+            "validationSummary": {
+              "type": "string"
+            },
+            "artifactIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "body",
+            "checklist",
+            "riskSummary",
+            "validationSummary",
+            "artifactIds"
+          ],
+          "additionalProperties": false
+        },
+        "reviewProjection": {
+          "type": "object",
+          "properties": {
+            "summaryId": {
+              "type": "string"
+            },
+            "findingIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "blockingFindingIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "missingCriteria": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "implementationMatchesSpec": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "summaryId",
+            "findingIds",
+            "blockingFindingIds",
+            "missingCriteria",
+            "implementationMatchesSpec"
+          ],
+          "additionalProperties": false
+        },
+        "remediationProjection": {
+          "type": "object",
+          "properties": {
+            "planId": {
+              "type": "string"
+            },
+            "successfulActions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "failedActions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "artifactIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "unresolvedFindingIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "complete": {
+              "type": "boolean"
+            },
+            "nextAction": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "planId",
+            "successfulActions",
+            "failedActions",
+            "artifactIds",
+            "unresolvedFindingIds",
+            "complete"
+          ],
+          "additionalProperties": false
+        },
+        "sourceArtifactIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "required": [
@@ -44,15 +168,6 @@
         "updatedAt"
       ],
       "additionalProperties": false
-    },
-    "PullRequestReviewState": {
-      "type": "string",
-      "enum": [
-        "draft",
-        "review",
-        "approved",
-        "changes-requested"
-      ]
     }
   }
 }

@@ -5,7 +5,15 @@ import {
   type CommandResult,
 } from '@vannadii/devplat-execution';
 
-import type { GateCheckResult, GateRunReport } from './types.js';
+import type {
+  GateCheckResult,
+  GateFailureClassification,
+  GateFailureKind,
+  GateRemediationHook,
+  GateRunReport,
+} from './codec.js';
+
+type GateNextAction = 'retry-gates' | 'remediate-failure' | 'continue';
 
 export interface GateCommandSpec {
   command: string;
@@ -35,19 +43,141 @@ export function createGateCheckResult(
   gateName: string,
   commandResult: CommandResult,
 ): GateCheckResult {
+  const success = isSuccessfulCommandResult(commandResult);
+  const failureKind = resolveGateFailureKind(success, commandResult);
+  const nextAction = resolveGateNextAction(failureKind);
   return {
     name: gateName.trim(),
-    success: isSuccessfulCommandResult(commandResult),
+    success,
     detail: `${describeCommandResult(commandResult)}${commandResult.timedOut ? ' (timed out)' : ''}`,
+    failureKind,
+    nextAction,
+  };
+}
+
+function resolveGateFailureKind(
+  success: boolean,
+  commandResult: CommandResult,
+): GateFailureKind {
+  if (success) {
+    return 'passed';
+  }
+
+  if (commandResult.timedOut) {
+    return 'timeout';
+  }
+
+  return 'command-failed';
+}
+
+function resolveGateNextAction(failureKind: GateFailureKind): GateNextAction {
+  if (failureKind === 'timeout') {
+    return 'retry-gates';
+  }
+
+  if (failureKind === 'command-failed') {
+    return 'remediate-failure';
+  }
+
+  return 'continue';
+}
+
+export function classifyGateRun(
+  results: readonly GateCheckResult[],
+): GateFailureClassification {
+  const failedGateNames = results
+    .filter((result) => !result.success)
+    .map((result) => result.name);
+
+  if (failedGateNames.length === 0) {
+    return {
+      kind: 'passed',
+      failedGateNames,
+      nextAction: 'continue',
+    };
+  }
+
+  const onlyTimeouts = results
+    .filter((result) => !result.success)
+    .every((result) => result.failureKind === 'timeout');
+
+  return {
+    kind: onlyTimeouts ? 'retryable' : 'requires-remediation',
+    failedGateNames,
+    nextAction: onlyTimeouts ? 'retry-gates' : 'create-remediation-plan',
+  };
+}
+
+function uniqueTrimmed(values: readonly string[]): string[] {
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+}
+
+function createGateFindingId(gateName: string): string {
+  return `gate:${gateName.trim()}`;
+}
+
+function createGateRemediationAction(result: GateCheckResult): string {
+  return `Fix ${result.name.trim()} gate failure: ${result.detail.trim()}`;
+}
+
+export function createGateRemediationHook(
+  input: GateRunReport,
+): GateRemediationHook {
+  const classification = input.classification ?? classifyGateRun(input.results);
+  const failedResults = input.results.filter((result) => !result.success);
+  const remediationResults = failedResults.filter(
+    (result) => result.failureKind !== 'timeout',
+  );
+  const retryableGateNames = uniqueTrimmed(
+    failedResults
+      .filter((result) => result.failureKind === 'timeout')
+      .map((result) => result.name),
+  );
+  const failedGateNames = uniqueTrimmed(
+    classification.failedGateNames.length === 0
+      ? failedResults.map((result) => result.name)
+      : classification.failedGateNames,
+  );
+  const remediationGateNames = uniqueTrimmed(
+    remediationResults.map((result) => result.name),
+  );
+
+  return {
+    hookId: `${input.id.trim()}:remediation-hook`,
+    gateRunReportId: input.id.trim(),
+    failedGateNames,
+    retryableGateNames,
+    remediationFindingIds: remediationGateNames.map(createGateFindingId),
+    actions: uniqueTrimmed(remediationResults.map(createGateRemediationAction)),
+    autofixEligible:
+      remediationResults.length > 0 &&
+      remediationResults.every(
+        (result) => result.failureKind === 'command-failed',
+      ),
+    approvalRequired: true,
+    nextAction: 'create-remediation-plan',
+    createdAt: new Date(input.updatedAt).toISOString(),
   };
 }
 
 export function createGateRunReport(input: GateRunReport): GateRunReport {
+  const classification = input.classification ?? classifyGateRun(input.results);
+  const normalizedInput: GateRunReport = {
+    ...input,
+    summary: input.summary.trim(),
+    updatedAt: new Date(input.updatedAt).toISOString(),
+    classification,
+    nextAction: input.nextAction ?? classification.nextAction,
+  };
+  const remediationHook =
+    input.remediationHook ??
+    (classification.kind === 'requires-remediation'
+      ? createGateRemediationHook(normalizedInput)
+      : undefined);
   return appendTrace(
     {
-      ...input,
-      summary: input.summary.trim(),
-      updatedAt: new Date(input.updatedAt).toISOString(),
+      ...normalizedInput,
+      ...(remediationHook === undefined ? {} : { remediationHook }),
     },
     `gates:${input.passed ? 'passed' : 'failed'}`,
   );

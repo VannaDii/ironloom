@@ -1,0 +1,135 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/DiscordInteractionWebhookResult",
+  "definitions": {
+    "DiscordInteractionWebhookResult": {
+      "type": "object",
+      "properties": {
+        "statusCode": {
+          "type": "number"
+        },
+        "verified": {
+          "type": "boolean"
+        },
+        "handled": {
+          "type": "boolean"
+        },
+        "responseBody": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": 1
+                }
+              },
+              "required": ["type"],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": 4
+                },
+                "data": {
+                  "type": "object",
+                  "properties": {
+                    "content": {
+                      "type": "string"
+                    },
+                    "allowed_mentions": {
+                      "type": "object",
+                      "properties": {
+                        "parse": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": ["parse"],
+                      "additionalProperties": false
+                    },
+                    "components": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "const": 1
+                          },
+                          "components": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "const": 2
+                                },
+                                "label": {
+                                  "type": "string"
+                                },
+                                "style": {
+                                  "enum": [1, 2, 3, 4, 5]
+                                },
+                                "custom_id": {
+                                  "type": "string"
+                                },
+                                "url": {
+                                  "type": "string"
+                                },
+                                "disabled": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": ["type", "label", "style"],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": ["type", "components"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "flags": {
+                      "type": "number"
+                    }
+                  },
+                  "required": ["content"],
+                  "additionalProperties": false
+                }
+              },
+              "required": ["type", "data"],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": 5
+                }
+              },
+              "required": ["type"],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "persistedKey": {
+          "type": "string"
+        },
+        "policyDecisionId": {
+          "type": "string"
+        },
+        "threadId": {
+          "type": "string"
+        },
+        "error": {
+          "type": "string"
+        }
+      },
+      "required": ["statusCode", "verified", "handled", "responseBody"],
+      "additionalProperties": false
+    }
+  }
+}

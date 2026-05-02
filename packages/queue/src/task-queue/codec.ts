@@ -1,8 +1,27 @@
 import * as t from 'io-ts';
 
-import { LifecycleStatusCodec, type Exact } from '@vannadii/devplat-core';
+import { LifecycleStatusCodec } from '@vannadii/devplat-core';
 
-import type { TaskRecord } from './types.js';
+export const TaskTransitionEventCodec = t.intersection([
+  t.type({
+    toStatus: LifecycleStatusCodec,
+    action: t.union([
+      t.literal('create'),
+      t.literal('claim'),
+      t.literal('status-update'),
+      t.literal('complete'),
+      t.literal('block'),
+      t.literal('release'),
+      t.literal('resume'),
+    ]),
+    reason: t.string,
+    occurredAt: t.string,
+  }),
+  t.partial({
+    fromStatus: LifecycleStatusCodec,
+    actorId: t.string,
+  }),
+]);
 
 export const TaskRecordCodec = t.intersection([
   t.type({
@@ -17,10 +36,15 @@ export const TaskRecordCodec = t.intersection([
   }),
   t.partial({
     assigneeId: t.string,
+    transitions: t.array(TaskTransitionEventCodec),
   }),
 ]);
 
-export type _TaskRecordExact = Exact<
-  TaskRecord,
-  t.TypeOf<typeof TaskRecordCodec>
->;
+/** Durable task transition event. */
+export type TaskTransitionEvent = t.TypeOf<typeof TaskTransitionEventCodec>;
+
+/** Supported task transition action. */
+export type TaskTransitionAction = TaskTransitionEvent['action'];
+
+/** Durable task record. */
+export type TaskRecord = t.TypeOf<typeof TaskRecordCodec>;

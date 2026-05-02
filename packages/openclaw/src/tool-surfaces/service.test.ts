@@ -1,4 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import {
   createApproveSpecRecordTool,
@@ -303,6 +306,7 @@ describe('tool surface service', () => {
         apiBaseUrl: 'https://discord.com/api/v10',
         apiVersion: 'v10',
         applicationId: 'application-1',
+        categoryName: 'devplat',
         publicKey: '[redacted]',
         botToken: '[redacted]',
         installScopes: ['bot', 'applications.commands'],
@@ -349,10 +353,43 @@ describe('tool surface service', () => {
         updatedAt: '2026-04-04T00:00:00.000Z',
         githubOwner: 'VannaDii',
         githubRepo: 'devplat',
+        repository: {
+          owner: 'VannaDii',
+          repo: 'devplat',
+          defaultBranch: 'main',
+          repositoryKey: 'VannaDii/devplat',
+        },
+        github: {
+          apiBaseUrl: 'https://api.github.com',
+          webBaseUrl: 'https://github.com',
+          tokenEnvironmentVariable: 'GITHUB_TOKEN',
+        },
+        storage: {
+          rootDirectory: '.devplat',
+          layoutVersion: 1,
+          artifactDirectory: '.devplat/artifacts',
+          indexDirectory: '.devplat/indexes',
+          auditLogDirectory: '.devplat/audit',
+        },
+        worktrees: {
+          rootDirectory: '.devplat/worktrees',
+          baseBranch: 'main',
+          syncStrategy: 'rebase-or-fast-forward',
+        },
+        deployment: {
+          target: 'local-docker',
+          dockerImageRepository: 'ghcr.io/vannadii/devplat-openclaw-runtime',
+          dockerImageTag: 'latest',
+          helmReleaseName: 'devplat',
+          helmNamespace: 'devplat',
+          helmChartPath: 'deploy/helm/devplat',
+          stateMountPath: '/var/lib/devplat',
+        },
         discord: {
           apiBaseUrl: 'https://discord.com/api/v10',
           apiVersion: 'v10',
           applicationId: 'application-1',
+          categoryName: 'devplat',
           publicKey: '[redacted]',
           botToken: '[redacted]',
           installScopes: ['bot', 'applications.commands'],
@@ -372,9 +409,17 @@ describe('tool surface service', () => {
           auditChannelId: 'audit-1',
           projectManagementChannelId: 'pm-1',
           threadBindingMode: 'inherit-parent',
+          interactionTransport: 'gateway',
+          gatewayUrl: 'wss://gateway.discord.gg/?v=10&encoding=json',
+          gatewayIntents: 0,
         },
         openclaw: {
           pluginId: '@vannadii/devplat-openclaw',
+          gateway: {
+            bind: 'loopback',
+            port: 18789,
+            authMode: 'token',
+          },
           actionGates: {
             approveThis: true,
             mergeNow: false,
@@ -393,6 +438,7 @@ describe('tool surface service', () => {
     expect(result.details).toMatchObject({
       id: '@vannadii/devplat-openclaw:config',
       apiVersion: 'v10',
+      categoryName: 'devplat',
       defaultGuildId: 'guild-1',
       specChannelId: 'spec-1',
       implementationChannelId: 'impl-1',
@@ -1042,26 +1088,350 @@ describe('tool surface service', () => {
     expect(result.details).toMatchObject({ status: 'failed' });
   });
 
-  it('handles Discord control actions from valid tool input', async () => {
-    const result = await createHandleDiscordControlTool().execute(
-      'tool-call-dc1',
+  it('handles Discord control requests and operator interactions from valid tool input', async () => {
+    const cases = [
       {
-        id: 'control-1',
-        summary: 'Retry gates',
-        status: 'review',
-        trace: [],
-        updatedAt: '2026-04-04T00:00:00.000Z',
-        actorId: 'operator-1',
-        threadId: 'thread-1',
-        channelId: 'channel-1',
-        action: 'retry-gates',
-        privileged: false,
-      },
-    );
+        name: 'delegates normalized control requests to the action handler',
+        inputs: {
+          params: {
+            id: 'control-1',
+            summary: 'Retry gates',
+            status: 'review',
+            trace: [],
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            actorId: 'operator-1',
+            threadId: 'thread-1',
+            channelId: 'channel-1',
+            action: 'retry-gates',
+            privileged: false,
+          },
+        },
+        mock: () => ({
+          tool: createHandleDiscordControlTool({
+            discordControlPlaneService: {
+              async handleAction(input) {
+                return {
+                  request: input,
+                  policyDecisionId: 'policy-retry-gates',
+                  allowed: true,
+                  persistedKey: input.id,
+                  failedClosed: false,
+                };
+              },
+              async handleInteraction() {
+                throw new Error('Unexpected interaction handler call.');
+              },
+            },
+          }),
+        }),
+        assert: async (context, inputs) => {
+          const result = await context.tool.execute(
+            'tool-call-dc1',
+            inputs.params,
+          );
 
-    expect(result.details).toMatchObject({
-      allowed: true,
-      policyDecisionId: 'policy-retry-gates',
+          expect(result.details).toMatchObject({
+            allowed: true,
+            failedClosed: false,
+            policyDecisionId: 'policy-retry-gates',
+          });
+        },
+      },
+      {
+        name: 'delegates operator interactions to the interaction handler',
+        inputs: {
+          params: {
+            id: 'interaction-1',
+            token: 'interaction-token-1',
+            actorId: 'operator-1',
+            channelId: 'channel-1',
+            boundThreadId: 'thread-1',
+            commandName: 'retry-gates',
+            summary: 'Retry gates from slash command',
+            privileged: false,
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            boundSession: {
+              id: 'session-1',
+              summary: 'Implementation thread',
+              status: 'running',
+              trace: [],
+              updatedAt: '2026-04-04T00:00:00.000Z',
+              guildId: 'guild-1',
+              channelId: 'channel-1',
+              parentChannelId: 'implementation-parent-1',
+              threadId: 'thread-1',
+              kind: 'implementation',
+              specId: 'spec-1',
+              sliceId: 'slice-1',
+              pullRequestNumber: null,
+              artifactId: 'session-artifact-1',
+            },
+          },
+        },
+        mock: () => ({
+          tool: createHandleDiscordControlTool({
+            discordControlPlaneService: {
+              async handleAction() {
+                throw new Error('Unexpected action handler call.');
+              },
+              async handleInteraction(input) {
+                const workItem = {
+                  threadKind: 'implementation',
+                  threadId: input.boundThreadId,
+                  artifactId: 'session-artifact-1',
+                  specId: 'spec-1',
+                  sliceId: 'slice-1',
+                };
+
+                return {
+                  request: {
+                    id: input.id,
+                    summary: input.summary ?? 'retry-gates',
+                    status: 'running',
+                    trace: [],
+                    updatedAt: input.updatedAt,
+                    actorId: input.actorId,
+                    threadId: input.boundThreadId,
+                    channelId: input.channelId,
+                    action: 'retry-gates',
+                    privileged: input.privileged ?? false,
+                    workItem,
+                  },
+                  policyDecisionId: 'policy-retry-gates',
+                  allowed: true,
+                  persistedKey: input.id,
+                  failedClosed: false,
+                  workItem,
+                  responseReceipt: {
+                    endpoint:
+                      '/interactions/interaction-1/interaction-token-1/callback',
+                    statusCode: 200,
+                    responseBody: { ok: true },
+                  },
+                  threadReceipt: {
+                    endpoint: '/channels/thread-1/messages',
+                    statusCode: 200,
+                    responseBody: { ok: true },
+                  },
+                };
+              },
+            },
+          }),
+        }),
+        assert: async (context, inputs) => {
+          const result = await context.tool.execute(
+            'tool-call-dc2',
+            inputs.params,
+          );
+
+          expect(result.details).toMatchObject({
+            allowed: true,
+            failedClosed: false,
+            policyDecisionId: 'policy-retry-gates',
+            responseReceipt: {
+              endpoint:
+                '/interactions/interaction-1/interaction-token-1/callback',
+            },
+            threadReceipt: {
+              endpoint: '/channels/thread-1/messages',
+            },
+            workItem: {
+              sliceId: 'slice-1',
+              specId: 'spec-1',
+              threadId: 'thread-1',
+              threadKind: 'implementation',
+            },
+          });
+        },
+      },
+    ];
+
+    for (const testCase of cases) {
+      const context = testCase.mock();
+      await testCase.assert(context, testCase.inputs);
+    }
+  });
+
+  describe('test-mode callback response transport', () => {
+    /**
+     * Builds the callback-shaped Discord control input shared by transport cases.
+     */
+    function createTestModeDiscordInteractionParams(): Record<string, unknown> {
+      return {
+        id: 'interaction-test-mode-1',
+        token: 'token-test-mode-1',
+        actorId: 'operator-1',
+        channelId: 'channel-1',
+        boundThreadId: 'thread-1',
+        commandName: 'retry-gates',
+        summary: 'Retry gates from slash command',
+        privileged: false,
+        updatedAt: '2026-04-04T00:00:00.000Z',
+        boundSession: {
+          id: 'session-test-mode-1',
+          summary: 'Implementation thread',
+          status: 'running',
+          trace: [],
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          guildId: 'guild-1',
+          channelId: 'channel-1',
+          parentChannelId: 'implementation-parent-1',
+          threadId: 'thread-1',
+          kind: 'implementation',
+          specId: 'spec-1',
+          sliceId: 'slice-1',
+          pullRequestNumber: null,
+          artifactId: 'session-artifact-1',
+        },
+      };
+    }
+
+    const cases = [
+      {
+        name: 'hermetic test mode',
+        inputs: {
+          testMode: 'hermetic',
+        },
+        mock: async (inputs: { testMode: string }) => {
+          const storageRoot = await mkdtemp(
+            join(tmpdir(), `devplat-openclaw-${inputs.testMode}-`),
+          );
+          const previousTestMode = process.env['DEVPLAT_TEST_MODE'];
+          const previousStorageRoot = process.env['DEVPLAT_STORAGE_ROOT'];
+
+          return {
+            previousStorageRoot,
+            previousTestMode,
+            storageRoot,
+          };
+        },
+        assert: async (
+          context: {
+            previousStorageRoot: string | undefined;
+            previousTestMode: string | undefined;
+            storageRoot: string;
+          },
+          inputs: {
+            testMode: string;
+          },
+        ) => {
+          try {
+            process.env['DEVPLAT_TEST_MODE'] = inputs.testMode;
+            process.env['DEVPLAT_STORAGE_ROOT'] = context.storageRoot;
+
+            const tool = createHandleDiscordControlTool();
+            const result = await tool.execute('tool-call-dc-test-mode', {
+              ...createTestModeDiscordInteractionParams(),
+            });
+
+            expect(result.details).toMatchObject({
+              allowed: true,
+              failedClosed: false,
+              policyDecisionId: 'policy-retry-gates',
+              responseReceipt: {
+                endpoint:
+                  '/interactions/interaction-test-mode-1/token-test-mode-1/callback',
+                responseBody: {
+                  mode: 'loopback',
+                },
+              },
+              threadReceipt: {
+                endpoint: '/channels/thread-1/messages',
+                responseBody: {
+                  mode: 'loopback',
+                },
+              },
+            });
+          } finally {
+            if (context.previousTestMode === undefined) {
+              delete process.env['DEVPLAT_TEST_MODE'];
+            } else {
+              process.env['DEVPLAT_TEST_MODE'] = context.previousTestMode;
+            }
+            if (context.previousStorageRoot === undefined) {
+              delete process.env['DEVPLAT_STORAGE_ROOT'];
+            } else {
+              process.env['DEVPLAT_STORAGE_ROOT'] = context.previousStorageRoot;
+            }
+            await rm(context.storageRoot, { force: true, recursive: true });
+          }
+        },
+      },
+      {
+        name: 'live test mode',
+        inputs: {
+          testMode: 'live',
+        },
+        mock: async (inputs: { testMode: string }) => {
+          const storageRoot = await mkdtemp(
+            join(tmpdir(), `devplat-openclaw-${inputs.testMode}-`),
+          );
+          const previousTestMode = process.env['DEVPLAT_TEST_MODE'];
+          const previousStorageRoot = process.env['DEVPLAT_STORAGE_ROOT'];
+
+          return {
+            previousStorageRoot,
+            previousTestMode,
+            storageRoot,
+          };
+        },
+        assert: async (
+          context: {
+            previousStorageRoot: string | undefined;
+            previousTestMode: string | undefined;
+            storageRoot: string;
+          },
+          inputs: {
+            testMode: string;
+          },
+        ) => {
+          try {
+            process.env['DEVPLAT_TEST_MODE'] = inputs.testMode;
+            process.env['DEVPLAT_STORAGE_ROOT'] = context.storageRoot;
+
+            const tool = createHandleDiscordControlTool();
+            const result = await tool.execute('tool-call-dc-test-mode', {
+              ...createTestModeDiscordInteractionParams(),
+            });
+
+            expect(result.details).toMatchObject({
+              allowed: true,
+              failedClosed: false,
+              policyDecisionId: 'policy-retry-gates',
+              responseReceipt: {
+                endpoint:
+                  '/interactions/interaction-test-mode-1/token-test-mode-1/callback',
+                responseBody: {
+                  mode: 'loopback',
+                },
+              },
+              threadReceipt: {
+                endpoint: '/channels/thread-1/messages',
+                responseBody: {
+                  mode: 'loopback',
+                },
+              },
+            });
+          } finally {
+            if (context.previousTestMode === undefined) {
+              delete process.env['DEVPLAT_TEST_MODE'];
+            } else {
+              process.env['DEVPLAT_TEST_MODE'] = context.previousTestMode;
+            }
+            if (context.previousStorageRoot === undefined) {
+              delete process.env['DEVPLAT_STORAGE_ROOT'];
+            } else {
+              process.env['DEVPLAT_STORAGE_ROOT'] = context.previousStorageRoot;
+            }
+            await rm(context.storageRoot, { force: true, recursive: true });
+          }
+        },
+      },
+    ];
+
+    it.each(cases)('$name', async (testCase) => {
+      const context = await testCase.mock(testCase.inputs);
+      await testCase.assert(context, testCase.inputs);
     });
   });
 
@@ -1243,19 +1613,51 @@ describe('tool surface service', () => {
   });
 
   it('evaluates policy actions from valid tool input', async () => {
-    const result = await createEvaluatePolicyActionTool().execute(
-      'tool-call-pa1',
+    const cases = [
       {
-        action: 'merge-now',
-        privileged: false,
-      },
-    );
+        name: 'returns lifecycle policy metadata for merge requests',
+        inputs: {
+          params: {
+            action: 'merge-now',
+            privileged: false,
+          },
+        },
+        mock: () => undefined,
+        assert: async (
+          _context: undefined,
+          inputs: {
+            params: {
+              action: string;
+              privileged: boolean;
+            };
+          },
+        ) => {
+          const result = await createEvaluatePolicyActionTool().execute(
+            'tool-call-pa1',
+            inputs.params,
+          );
 
-    expect(result.details).toMatchObject({
-      action: 'merge-now',
-      allowed: false,
-      requiresApproval: true,
-    });
+          expect(result.details).toMatchObject({
+            action: 'merge-now',
+            actionCategory: 'merge',
+            allowed: false,
+            auditRequired: true,
+            escalationRequired: true,
+            escalationTarget: 'operator',
+            nextAction: 'request-merge-approval',
+            privileged: false,
+            requiresApproval: true,
+            riskLevel: 'high',
+          });
+          expect(result.details).toHaveProperty('auditReason');
+        },
+      },
+    ];
+
+    for (const testCase of cases) {
+      const context = testCase.mock();
+      await testCase.assert(context, testCase.inputs);
+    }
   });
 
   it('returns decode failures for invalid policy action input', async () => {
@@ -1325,6 +1727,115 @@ describe('tool surface service', () => {
     });
 
     expect(result.details).toMatchObject({ status: 'failed' });
+  });
+
+  describe('durable task lifecycle tools', () => {
+    const cases = [
+      {
+        name: 'claim preserves the current queue record transition history',
+        inputs: {
+          toolCallId: 'tool-call-task-lifecycle-1',
+          execute: createClaimTaskTool,
+          params: {
+            taskId: 'task-1',
+            sliceId: 'slice-1',
+            threadId: 'thread-1',
+            assigneeId: 'worker-1',
+            record: {
+              id: 'queue-task-1',
+              summary: 'Current queue task',
+              status: 'review',
+              trace: ['queue:task-1:review'],
+              updatedAt: '2026-04-04T00:00:00.000Z',
+              taskId: 'task-1',
+              sliceId: 'slice-1',
+              threadId: 'thread-1',
+              transitions: [
+                {
+                  toStatus: 'review',
+                  action: 'create',
+                  reason: 'Created task task-1',
+                  occurredAt: '2026-04-04T00:00:00.000Z',
+                },
+              ],
+            },
+          },
+        },
+        mock: async () => undefined,
+        assert: (result) => {
+          expect(result.details).toMatchObject({
+            id: 'queue-task-1',
+            status: 'claimed',
+            assigneeId: 'worker-1',
+            transitions: expect.arrayContaining([
+              expect.objectContaining({
+                fromStatus: 'review',
+                toStatus: 'claimed',
+                action: 'claim',
+              }),
+            ]),
+          });
+        },
+      },
+      {
+        name: 'update preserves the current queue record transition history',
+        inputs: {
+          toolCallId: 'tool-call-task-lifecycle-2',
+          execute: createUpdateTaskTool,
+          params: {
+            taskId: 'task-2',
+            sliceId: 'slice-2',
+            threadId: 'thread-2',
+            status: 'complete',
+            record: {
+              id: 'queue-task-2',
+              summary: 'Current claimed task',
+              status: 'claimed',
+              trace: ['queue:task-2:claimed'],
+              updatedAt: '2026-04-04T00:00:00.000Z',
+              taskId: 'task-2',
+              sliceId: 'slice-2',
+              threadId: 'thread-2',
+              assigneeId: 'worker-2',
+              transitions: [
+                {
+                  toStatus: 'claimed',
+                  action: 'claim',
+                  reason: 'Claimed task task-2',
+                  occurredAt: '2026-04-04T00:00:00.000Z',
+                  actorId: 'worker-2',
+                },
+              ],
+            },
+          },
+        },
+        mock: async () => undefined,
+        assert: (result) => {
+          expect(result.details).toMatchObject({
+            id: 'queue-task-2',
+            status: 'complete',
+            assigneeId: 'worker-2',
+            transitions: expect.arrayContaining([
+              expect.objectContaining({
+                fromStatus: 'claimed',
+                toStatus: 'complete',
+                action: 'complete',
+              }),
+            ]),
+          });
+        },
+      },
+    ];
+
+    it.each(cases)('$name', async (testCase) => {
+      await testCase.mock(testCase.inputs);
+      const tool = testCase.inputs.execute();
+      const result = await tool.execute(
+        testCase.inputs.toolCallId,
+        testCase.inputs.params,
+      );
+      testCase.assert(result);
+    });
   });
 
   it('reads stored records from valid tool input', async () => {
@@ -1758,25 +2269,62 @@ describe('tool surface service', () => {
   });
 
   it('submits GitHub actions from valid tool input', async () => {
-    const result = await createSubmitGitHubActionTool().execute(
-      'tool-call-gh1',
+    const cases = [
       {
-        request: {
-          repoFullName: 'VannaDii/devplat',
-          action: 'sync-branch',
-          summary: 'Sync downstream branch',
-          privileged: false,
-          branchName: 'feature/downstream',
-          updatedAt: '2026-04-04T00:00:00.000Z',
+        inputs: {
+          params: {
+            request: {
+              repoFullName: 'VannaDii/devplat',
+              action: 'sync-branch',
+              summary: 'Sync downstream branch',
+              privileged: false,
+              branchName: 'feature/downstream',
+              updatedAt: '2026-04-04T00:00:00.000Z',
+            },
+            actorId: 'operator-1',
+          },
         },
-        actorId: 'operator-1',
+        mock: () =>
+          createSubmitGitHubActionTool({
+            async submit(request) {
+              return {
+                request,
+                allowed: true,
+                policyDecisionId: 'policy-sync-branch',
+                submitted: true,
+                receipt: {
+                  method: 'PUT',
+                  endpoint: '/repos/VannaDii/devplat/pulls/42/update-branch',
+                  statusCode: 202,
+                  responseBody: { ok: true },
+                },
+              };
+            },
+          }),
+        assert: (
+          result: Awaited<
+            ReturnType<
+              ReturnType<typeof createSubmitGitHubActionTool>['execute']
+            >
+          >,
+        ) => {
+          expect(result.details).toMatchObject({
+            allowed: true,
+            submitted: true,
+            request: { action: 'sync-branch' },
+          });
+        },
       },
-    );
+    ];
 
-    expect(result.details).toMatchObject({
-      allowed: true,
-      request: { action: 'sync-branch' },
-    });
+    for (const testCase of cases) {
+      const tool = testCase.mock();
+      const result = await tool.execute(
+        'tool-call-gh1',
+        testCase.inputs.params,
+      );
+      testCase.assert(result);
+    }
   });
 
   it('returns decode failures for invalid GitHub action input', async () => {
@@ -1885,11 +2433,24 @@ describe('tool surface service', () => {
       action: 'retry-gates',
       actorId: 'operator-1',
       privileged: false,
+      lifecycleSignals: [
+        {
+          phase: 'gates',
+          ready: true,
+          artifactIds: ['gate-run-1'],
+          blockers: [],
+          nextAction: 'review-findings',
+        },
+      ],
     });
 
     expect(result.details).toMatchObject({
       approved: true,
       nextState: 'approved',
+      routePlan: {
+        nextPhase: 'review',
+        routedTo: 'review-findings-service',
+      },
     });
   });
 

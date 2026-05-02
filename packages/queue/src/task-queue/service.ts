@@ -4,7 +4,7 @@ import {
   describeTaskRecord,
   updateTaskStatus,
 } from './logic.js';
-import type { TaskRecord } from './types.js';
+import type { TaskRecord } from './codec.js';
 
 export class TaskQueueService {
   public execute(input: TaskRecord): TaskRecord {

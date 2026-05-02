@@ -1,11 +1,13 @@
 import * as t from 'io-ts';
 
-import { LifecycleStatusCodec, type Exact } from '@vannadii/devplat-core';
+import { LifecycleStatusCodec } from '@vannadii/devplat-core';
 
-import type {
-  DiscordChannelBinding,
-  DiscordThreadBindingResult,
-} from './types.js';
+export const DiscordBindingKindCodec = t.union([
+  t.literal('spec'),
+  t.literal('implementation'),
+  t.literal('pull-request'),
+  t.literal('audit'),
+]);
 
 export const DiscordChannelBindingCodec = t.type({
   id: t.string,
@@ -15,12 +17,7 @@ export const DiscordChannelBindingCodec = t.type({
   updatedAt: t.string,
   guildId: t.string,
   channelId: t.string,
-  kind: t.union([
-    t.literal('spec'),
-    t.literal('implementation'),
-    t.literal('pull-request'),
-    t.literal('audit'),
-  ]),
+  kind: DiscordBindingKindCodec,
   threadBindingMode: t.literal('inherit-parent'),
 });
 
@@ -33,12 +30,13 @@ export const DiscordThreadBindingResultCodec = t.type({
   persistedKey: t.string,
 });
 
-export type _DiscordChannelBindingExact = Exact<
-  DiscordChannelBinding,
-  t.TypeOf<typeof DiscordChannelBindingCodec>
->;
+/** Discord channel role used by DevPlat routing. */
+export type DiscordBindingKind = t.TypeOf<typeof DiscordBindingKindCodec>;
 
-export type _DiscordThreadBindingResultExact = Exact<
-  DiscordThreadBindingResult,
-  t.TypeOf<typeof DiscordThreadBindingResultCodec>
+/** Persisted Discord channel binding for a DevPlat workspace. */
+export type DiscordChannelBinding = t.TypeOf<typeof DiscordChannelBindingCodec>;
+
+/** Result produced when a thread inherits a channel binding. */
+export type DiscordThreadBindingResult = t.TypeOf<
+  typeof DiscordThreadBindingResultCodec
 >;

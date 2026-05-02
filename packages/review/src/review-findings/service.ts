@@ -8,7 +8,7 @@ import {
   describeReviewFinding,
   isBlockingReviewFinding,
 } from './logic.js';
-import type { ReviewFinding } from './types.js';
+import type { ReviewFinding } from './codec.js';
 
 export class ReviewFindingsService {
   private readonly artifacts = new ArtifactEnvelopeService();

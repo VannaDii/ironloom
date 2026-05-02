@@ -6,10 +6,11 @@ import {
 } from './check-changed-coverage.mjs';
 
 describe('check-changed-coverage', () => {
-  const coverageCases = [
+  const cases = [
     {
       name: 'passes when changed executable files have full coverage',
       inputs: {
+        mode: 'coverage',
         changedFiles: ['packages/openclaw/src/index.ts'],
         coverageText: [
           'TN:',
@@ -22,20 +23,21 @@ describe('check-changed-coverage', () => {
         ].join('\n'),
       },
       mock: async () => undefined,
-      assert: (errors) => {
-        expect(errors).toEqual([]);
+      assert: (outcome) => {
+        expect(outcome).toEqual([]);
       },
     },
     {
       name: 'fails when changed executable files are missing coverage data',
       inputs: {
+        mode: 'coverage',
         changedFiles: ['packages/openclaw/src/index.ts'],
         coverageText: '',
       },
       mock: async () => undefined,
-      assert: (errors) => {
+      assert: (outcome) => {
         expect(
-          errors.some((error) =>
+          outcome.some((error) =>
             error.includes('packages/openclaw/src/index.ts'),
           ),
         ).toBe(true);
@@ -44,6 +46,7 @@ describe('check-changed-coverage', () => {
     {
       name: 'fails when changed executable files have partial line coverage',
       inputs: {
+        mode: 'coverage',
         changedFiles: ['packages/openclaw/src/index.ts'],
         coverageText: [
           'TN:',
@@ -56,15 +59,16 @@ describe('check-changed-coverage', () => {
         ].join('\n'),
       },
       mock: async () => undefined,
-      assert: (errors) => {
+      assert: (outcome) => {
         expect(
-          errors.some((error) => error.includes('100% line coverage')),
+          outcome.some((error) => error.includes('100% line coverage')),
         ).toBe(true);
       },
     },
     {
       name: 'ignores non-executable source files',
       inputs: {
+        mode: 'coverage',
         changedFiles: [
           'packages/openclaw/src/tool-surfaces/types.ts',
           'packages/openclaw/src/tool-surfaces/service.test.ts',
@@ -72,44 +76,49 @@ describe('check-changed-coverage', () => {
         coverageText: '',
       },
       mock: async () => undefined,
-      assert: (errors) => {
-        expect(errors).toEqual([]);
+      assert: (outcome) => {
+        expect(outcome).toEqual([]);
       },
     },
-  ];
-
-  it.each(coverageCases)('$name', async (testCase) => {
-    await testCase.mock(testCase.inputs);
-    const outcome = await collectChangedCoverageErrors({
-      rootDirectory: '/repo',
-      changedFiles: testCase.inputs.changedFiles,
-      coverageText: testCase.inputs.coverageText,
-    });
-    testCase.assert(outcome);
-  });
-
-  const executableCases = [
     {
       name: 'accepts executable source files',
-      inputs: { filePath: 'packages/openclaw/src/index.ts' },
+      inputs: {
+        mode: 'executable',
+        filePath: 'packages/openclaw/src/index.ts',
+      },
       mock: async () => undefined,
-      assert: (value) => {
-        expect(value).toBe(true);
+      assert: (outcome) => {
+        expect(outcome).toBe(true);
       },
     },
     {
       name: 'rejects type-only source files',
-      inputs: { filePath: 'packages/openclaw/src/tool-surfaces/types.ts' },
+      inputs: {
+        mode: 'executable',
+        filePath: 'packages/openclaw/src/tool-surfaces/types.ts',
+      },
       mock: async () => undefined,
-      assert: (value) => {
-        expect(value).toBe(false);
+      assert: (outcome) => {
+        expect(outcome).toBe(false);
       },
     },
   ];
 
-  it.each(executableCases)('$name', async (testCase) => {
-    await testCase.mock(testCase.inputs);
-    const outcome = isExecutableSourceFile(testCase.inputs.filePath);
-    testCase.assert(outcome);
-  });
+  for (const testCase of cases) {
+    it(testCase.name, async () => {
+      expect.hasAssertions();
+      await testCase.mock(testCase.inputs);
+
+      const outcome =
+        testCase.inputs.mode === 'coverage'
+          ? await collectChangedCoverageErrors({
+              rootDirectory: '/repo',
+              changedFiles: testCase.inputs.changedFiles,
+              coverageText: testCase.inputs.coverageText,
+            })
+          : isExecutableSourceFile(testCase.inputs.filePath);
+
+      testCase.assert(outcome);
+    });
+  }
 });

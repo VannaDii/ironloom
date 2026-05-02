@@ -42,6 +42,7 @@ describe('openclaw-deep-test helpers', () => {
           '--skip-build',
           '--report-dir',
           'artifacts/openclaw-deep',
+          '--retain-image',
           '--retain-container-on-failure',
         ],
       },
@@ -51,10 +52,74 @@ describe('openclaw-deep-test helpers', () => {
         expect(parsed).toMatchObject({
           mode: 'live',
           image: 'ghcr.io/vannadii/devplat-openclaw:test',
-          skipBuild: true,
+          retainImage: true,
           retainContainerOnFailure: true,
+          skipBuild: true,
         });
         expect(parsed.reportDir).toContain('artifacts/openclaw-deep');
+      },
+    },
+    {
+      name: 'normalizes report paths into valid docker tag segments',
+      inputs: {
+        argv: ['--mode', 'hermetic', '--report-dir', '.artifacts/deep-test'],
+      },
+      mock: async () => {
+        temporaryRoots.push(resolve('.artifacts/deep-test'));
+      },
+      assert: async (_context, inputs) => {
+        const parsed = parseDeepTestArgs(inputs.argv);
+        const report = await runDeepTest(
+          {
+            ...parsed,
+            scenario: [
+              {
+                expected: { status: 'ok' },
+                params: { scope: 'state' },
+                phase: 'config',
+                tool: 'list_stored_records',
+              },
+            ],
+            skipBuild: true,
+            image: 'devplat:test',
+          },
+          {
+            collectStoredKeys: async () => ({
+              artifacts: ['artifact-1'],
+              memory: ['memory-1'],
+              state: ['state-1'],
+              telemetry: ['telemetry-1'],
+            }),
+            commandRunner: async (_command, args) => {
+              if (args[0] === 'run') {
+                return { stdout: 'container-1\n', stderr: '' };
+              }
+              if (args[0] === 'exec') {
+                return {
+                  stdout: JSON.stringify({
+                    status: 200,
+                    body: {
+                      ok: true,
+                      result: {
+                        details: { status: 'ok' },
+                      },
+                    },
+                  }),
+                  stderr: '',
+                };
+              }
+              if (args[0] === 'logs' || args[0] === 'rm') {
+                return { stdout: '', stderr: '' };
+              }
+
+              throw new Error(`Unexpected docker args: ${args.join(' ')}`);
+            },
+            onProgress: () => undefined,
+          },
+        );
+
+        expect(report.containerName).not.toContain('..');
+        expect(report.imageTag).toBe('devplat:test');
       },
     },
     {
@@ -102,6 +167,8 @@ describe('openclaw-deep-test helpers', () => {
         expect(runArgs).toEqual(
           expect.arrayContaining([
             '-e',
+            'DEVPLAT_STORAGE_ROOT=/app/.devplat',
+            '-e',
             'HOME=/state/home',
             '-e',
             'OPENCLAW_HOME=/state/openclaw-home',
@@ -118,6 +185,33 @@ describe('openclaw-deep-test helpers', () => {
             'loopback',
           ]),
         );
+      },
+    },
+    {
+      name: 'enables the private Discord Gateway worker for live runs',
+      inputs: {},
+      mock: async () => undefined,
+      assert: async () => {
+        const runArgs = buildDockerRunArgs({
+          bundledExtensionsDirectory:
+            '/sandbox/openclaw-runtime/bundled-extensions',
+          containerName: 'devplat-live-container',
+          devplatStateDirectory: '/sandbox/devplat-state',
+          imageTag: 'devplat:live',
+          mode: 'live',
+          runtimeDirectory: '/sandbox/devplat-runtime',
+        });
+
+        expect(runArgs).toEqual(
+          expect.arrayContaining([
+            '-e',
+            'DEVPLAT_TEST_MODE=live',
+            '-e',
+            'DISCORD_GATEWAY_ENABLED=true',
+          ]),
+        );
+        expect(runArgs).not.toContain('--network');
+        expect(runArgs).not.toContain('none');
       },
     },
     {
@@ -140,6 +234,58 @@ describe('openclaw-deep-test helpers', () => {
             expect.objectContaining({
               tool: 'handle_discord_control',
               phase: 'control',
+              params: expect.objectContaining({
+                id: 'discord-interaction-allow-1',
+                token: 'discord-interaction-token-1',
+              }),
+              expected: expect.objectContaining({
+                failedClosed: false,
+                responseReceipt: expect.objectContaining({
+                  responseBody: expect.objectContaining({
+                    mode: 'loopback',
+                  }),
+                }),
+              }),
+            }),
+            expect.objectContaining({
+              tool: 'claim_task',
+              phase: 'planning',
+              params: expect.objectContaining({
+                record: expect.objectContaining({
+                  id: 'queue-openclaw-1',
+                  status: 'queued',
+                }),
+              }),
+              expected: expect.objectContaining({
+                id: 'queue-openclaw-1',
+                transitions: expect.arrayContaining([
+                  expect.objectContaining({
+                    action: 'claim',
+                    fromStatus: 'queued',
+                    toStatus: 'claimed',
+                  }),
+                ]),
+              }),
+            }),
+            expect.objectContaining({
+              tool: 'update_task',
+              phase: 'planning',
+              params: expect.objectContaining({
+                record: expect.objectContaining({
+                  id: 'queue-openclaw-1',
+                  status: 'claimed',
+                }),
+              }),
+              expected: expect.objectContaining({
+                id: 'queue-openclaw-1',
+                transitions: expect.arrayContaining([
+                  expect.objectContaining({
+                    action: 'complete',
+                    fromStatus: 'claimed',
+                    toStatus: 'complete',
+                  }),
+                ]),
+              }),
             }),
             expect.objectContaining({
               tool: 'validate_artifact',
@@ -235,8 +381,8 @@ describe('runDeepTest', () => {
         temporaryRoots.push(reportDirectory);
 
         const invocations = [];
-        const commandRunner = async (command, args) => {
-          invocations.push([command, ...args]);
+        const commandRunner = async (command, args, options = {}) => {
+          invocations.push({ args, command, options });
           if (args[0] === 'build') {
             return { stdout: '', stderr: '' };
           }
@@ -336,9 +482,27 @@ describe('runDeepTest', () => {
         expect(runtimeTempStats.isDirectory()).toBe(true);
         expect(context.invocations).toEqual(
           expect.arrayContaining([
-            expect.arrayContaining(['docker', 'build']),
-            expect.arrayContaining(['docker', 'run']),
-            expect.arrayContaining(['docker', 'rm']),
+            expect.objectContaining({
+              args: expect.arrayContaining(['build']),
+              command: 'docker',
+            }),
+            expect.objectContaining({
+              args: expect.arrayContaining(['run', '-e', 'DISCORD_BOT_TOKEN']),
+              command: 'docker',
+              options: expect.objectContaining({
+                env: expect.objectContaining({
+                  DISCORD_BOT_TOKEN: 'bot-secret',
+                }),
+              }),
+            }),
+            expect.objectContaining({
+              args: expect.arrayContaining(['rm']),
+              command: 'docker',
+            }),
+            expect.objectContaining({
+              args: expect.arrayContaining(['image', 'rm', '-f']),
+              command: 'docker',
+            }),
           ]),
         );
       },
@@ -395,7 +559,10 @@ describe('runDeepTest', () => {
         ).rejects.toThrow('Gateway readiness timed out');
 
         expect(context.invocations).toEqual(
-          expect.arrayContaining([expect.arrayContaining(['rm', '-f'])]),
+          expect.arrayContaining([
+            expect.arrayContaining(['rm', '-f']),
+            expect.arrayContaining(['image', 'rm', '-f']),
+          ]),
         );
       },
     },
@@ -484,6 +651,7 @@ describe('runDeepTest', () => {
               '--name',
               report.containerName,
             ]),
+            expect.arrayContaining(['image', 'rm', '-f']),
           ]),
         );
       },

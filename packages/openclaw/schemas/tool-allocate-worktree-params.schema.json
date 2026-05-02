@@ -12,10 +12,7 @@
           "type": "string"
         }
       },
-      "required": [
-        "taskId",
-        "branchName"
-      ],
+      "required": ["taskId", "branchName"],
       "additionalProperties": false
     }
   }

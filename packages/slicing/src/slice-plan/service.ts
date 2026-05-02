@@ -1,5 +1,5 @@
 import { createSlicePlan, describeSlicePlan, isSliceReady } from './logic.js';
-import type { SlicePlan } from './types.js';
+import type { SlicePlan } from './codec.js';
 
 export class SlicePlanService {
   public plan(input: SlicePlan): SlicePlan {

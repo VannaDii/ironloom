@@ -13,6 +13,7 @@ export default defineConfig({
     },
     nav: [
       { text: 'Guide', link: '/guides/introduction' },
+      { text: 'User Guide', link: '/guides/user-guide' },
       { text: 'Lifecycle', link: '/guides/platform-lifecycle' },
       { text: 'Architecture', link: '/guides/architecture' },
       { text: 'Quality', link: '/guides/quality-performance-policy' },
@@ -25,6 +26,7 @@ export default defineConfig({
         text: 'Guide',
         items: [
           { text: 'Introduction', link: '/guides/introduction' },
+          { text: 'User Guide', link: '/guides/user-guide' },
           { text: 'Platform Lifecycle', link: '/guides/platform-lifecycle' },
           { text: 'Architecture', link: '/guides/architecture' },
           {

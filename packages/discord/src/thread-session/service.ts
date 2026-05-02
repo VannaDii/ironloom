@@ -11,7 +11,7 @@ import type {
   DiscordThreadSession,
   DiscordThreadSessionInput,
   DiscordThreadSessionResult,
-} from './types.js';
+} from './codec.js';
 
 const THREAD_ARTIFACT_TYPE_BY_KIND: Record<
   DiscordThreadKind,

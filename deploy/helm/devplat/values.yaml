@@ -31,6 +31,11 @@ affinity: {}
 env: []
 envFrom: []
 
+discordGateway:
+  enabled: false
+  url: wss://gateway.discord.gg/?v=10&encoding=json
+  intents: 0
+
 config:
   enabled: false
   mountPath: /config/openclaw.json

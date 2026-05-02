@@ -1,13 +1,8 @@
 import * as t from 'io-ts';
 
-import { LifecycleStatusCodec, type Exact } from '@vannadii/devplat-core';
+import { LifecycleStatusCodec } from '@vannadii/devplat-core';
 
-import type {
-  DiscordThreadSession,
-  DiscordThreadSessionResult,
-} from './types.js';
-
-const PositivePullRequestNumberCodec = new t.Type<number, number>(
+export const PositivePullRequestNumberCodec = new t.Type<number, number>(
   'PositivePullRequestNumber',
   (input): input is number =>
     typeof input === 'number' && Number.isInteger(input) && input >= 1,
@@ -35,7 +30,23 @@ const DiscordThreadSessionBaseCodec = t.type({
   artifactId: t.string,
 });
 
-const DiscordThreadSpecSessionCodec = t.intersection([
+export const DiscordThreadKindCodec = t.union([
+  t.literal('spec'),
+  t.literal('implementation'),
+  t.literal('pull-request'),
+]);
+
+export const DiscordThreadSessionInputCodec = t.intersection([
+  DiscordThreadSessionBaseCodec,
+  t.type({
+    kind: DiscordThreadKindCodec,
+    specId: t.union([t.string, t.null]),
+    sliceId: t.union([t.string, t.null]),
+    pullRequestNumber: t.union([PositivePullRequestNumberCodec, t.null]),
+  }),
+]);
+
+export const DiscordSpecThreadSessionCodec = t.intersection([
   DiscordThreadSessionBaseCodec,
   t.type({
     kind: t.literal('spec'),
@@ -45,7 +56,7 @@ const DiscordThreadSpecSessionCodec = t.intersection([
   }),
 ]);
 
-const DiscordThreadImplementationSessionCodec = t.intersection([
+export const DiscordImplementationThreadSessionCodec = t.intersection([
   DiscordThreadSessionBaseCodec,
   t.type({
     kind: t.literal('implementation'),
@@ -55,7 +66,7 @@ const DiscordThreadImplementationSessionCodec = t.intersection([
   }),
 ]);
 
-const DiscordThreadPullRequestSessionCodec = t.intersection([
+export const DiscordPullRequestThreadSessionCodec = t.intersection([
   DiscordThreadSessionBaseCodec,
   t.type({
     kind: t.literal('pull-request'),
@@ -65,10 +76,10 @@ const DiscordThreadPullRequestSessionCodec = t.intersection([
   }),
 ]);
 
-export const DiscordThreadSessionCodec: t.Type<DiscordThreadSession> = t.union([
-  DiscordThreadSpecSessionCodec,
-  DiscordThreadImplementationSessionCodec,
-  DiscordThreadPullRequestSessionCodec,
+export const DiscordThreadSessionCodec = t.union([
+  DiscordSpecThreadSessionCodec,
+  DiscordImplementationThreadSessionCodec,
+  DiscordPullRequestThreadSessionCodec,
 ]);
 
 export const DiscordThreadSessionResultCodec = t.type({
@@ -77,12 +88,33 @@ export const DiscordThreadSessionResultCodec = t.type({
   persistedKey: t.string,
 });
 
-export type _DiscordThreadSessionExact = Exact<
-  DiscordThreadSession,
-  t.TypeOf<typeof DiscordThreadSessionCodec>
+/** Discord thread kind that can own a DevPlat lifecycle session. */
+export type DiscordThreadKind = t.TypeOf<typeof DiscordThreadKindCodec>;
+
+/** Input used to create or update a Discord thread session. */
+export type DiscordThreadSessionInput = t.TypeOf<
+  typeof DiscordThreadSessionInputCodec
 >;
 
-export type _DiscordThreadSessionResultExact = Exact<
-  DiscordThreadSessionResult,
-  t.TypeOf<typeof DiscordThreadSessionResultCodec>
+/** Session bound to a specification Discord thread. */
+export type DiscordSpecThreadSession = t.TypeOf<
+  typeof DiscordSpecThreadSessionCodec
+>;
+
+/** Session bound to an implementation Discord thread. */
+export type DiscordImplementationThreadSession = t.TypeOf<
+  typeof DiscordImplementationThreadSessionCodec
+>;
+
+/** Session bound to a pull request Discord thread. */
+export type DiscordPullRequestThreadSession = t.TypeOf<
+  typeof DiscordPullRequestThreadSessionCodec
+>;
+
+/** Bound Discord thread session for one DevPlat lifecycle item. */
+export type DiscordThreadSession = t.TypeOf<typeof DiscordThreadSessionCodec>;
+
+/** Persisted result for a Discord thread session. */
+export type DiscordThreadSessionResult = t.TypeOf<
+  typeof DiscordThreadSessionResultCodec
 >;

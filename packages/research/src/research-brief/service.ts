@@ -4,7 +4,7 @@ import {
 } from '@vannadii/devplat-artifacts';
 
 import { createResearchBrief, describeResearchBrief } from './logic.js';
-import type { ResearchBrief } from './types.js';
+import type { ResearchBrief } from './codec.js';
 
 export class ResearchBriefService {
   private readonly artifacts = new ArtifactEnvelopeService();

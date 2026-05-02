@@ -1,5 +1,5 @@
 import { createAuditLogArtifact, describeAuditLogArtifact } from './logic.js';
-import type { AuditLogArtifact } from './types.js';
+import type { AuditLogArtifact } from './codec.js';
 
 export class AuditLogArtifactService {
   public execute(input: AuditLogArtifact): AuditLogArtifact {

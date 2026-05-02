@@ -24,7 +24,53 @@
           "type": "boolean"
         },
         "updatedAt": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
+        },
+        "dependencyGraph": {
+          "type": "object",
+          "properties": {
+            "baseBranch": {
+              "type": "string"
+            },
+            "edges": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "fromBranch": {
+                    "type": "string"
+                  },
+                  "toBranch": {
+                    "type": "string"
+                  }
+                },
+                "required": ["fromBranch", "toBranch"],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": ["baseBranch", "edges"],
+          "additionalProperties": false
+        },
+        "conflictClassification": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "enum": ["none", "expected", "detected"]
+            },
+            "affectedBranches": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "nextAction": {
+              "type": "string"
+            }
+          },
+          "required": ["kind", "affectedBranches", "nextAction"],
+          "additionalProperties": false
         }
       },
       "required": [

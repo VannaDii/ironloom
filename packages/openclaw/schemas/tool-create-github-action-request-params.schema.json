@@ -3,16 +3,19 @@
   "$ref": "#/definitions/CreateGitHubActionRequestToolInput",
   "definitions": {
     "CreateGitHubActionRequestToolInput": {
-      "$ref": "#/definitions/GitHubActionRequest"
-    },
-    "GitHubActionRequest": {
       "type": "object",
       "properties": {
         "repoFullName": {
           "type": "string"
         },
         "action": {
-          "$ref": "#/definitions/GitHubAction"
+          "enum": [
+            "create-pr",
+            "update-pr",
+            "comment-pr",
+            "merge-pr",
+            "sync-branch"
+          ]
         },
         "summary": {
           "type": "string"
@@ -20,13 +23,29 @@
         "privileged": {
           "type": "boolean"
         },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
         "targetNumber": {
           "type": "number"
         },
         "branchName": {
           "type": "string"
         },
-        "updatedAt": {
+        "baseBranch": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "commentBody": {
+          "type": "string"
+        },
+        "expectedHeadSha": {
           "type": "string"
         }
       },
@@ -38,16 +57,6 @@
         "updatedAt"
       ],
       "additionalProperties": false
-    },
-    "GitHubAction": {
-      "type": "string",
-      "enum": [
-        "create-pr",
-        "update-pr",
-        "comment-pr",
-        "merge-pr",
-        "sync-branch"
-      ]
     }
   }
 }

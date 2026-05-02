@@ -3,27 +3,35 @@
   "$ref": "#/definitions/RebaseResultArtifact",
   "definitions": {
     "RebaseResultArtifact": {
-      "$ref": "#/definitions/ArtifactEnvelope%3CRebaseResultPayload%2C%22rebase-result%22%3E"
-    },
-    "ArtifactEnvelope<RebaseResultPayload,\"rebase-result\">": {
       "type": "object",
       "properties": {
         "id": {
           "type": "string"
         },
         "artifactType": {
-          "type": "string",
           "const": "rebase-result"
         },
         "version": {
-          "type": "number",
           "const": 1
         },
         "summary": {
           "type": "string"
         },
         "status": {
-          "$ref": "#/definitions/LifecycleStatus"
+          "enum": [
+            "draft",
+            "queued",
+            "claimed",
+            "running",
+            "review",
+            "blocked",
+            "approved",
+            "merge-ready",
+            "merged",
+            "failed",
+            "rebasing",
+            "complete"
+          ]
         },
         "trace": {
           "type": "array",
@@ -32,10 +40,44 @@
           }
         },
         "updatedAt": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "payload": {
-          "$ref": "#/definitions/RebaseResultPayload"
+          "type": "object",
+          "properties": {
+            "resultId": {
+              "type": "string"
+            },
+            "mergedPrNumber": {
+              "type": "number"
+            },
+            "baseBranch": {
+              "type": "string"
+            },
+            "branchName": {
+              "type": "string"
+            },
+            "rebased": {
+              "type": "boolean"
+            },
+            "conflictsDetected": {
+              "type": "boolean"
+            },
+            "details": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "resultId",
+            "mergedPrNumber",
+            "baseBranch",
+            "branchName",
+            "rebased",
+            "conflictsDetected",
+            "details"
+          ],
+          "additionalProperties": false
         }
       },
       "required": [
@@ -47,59 +89,6 @@
         "trace",
         "updatedAt",
         "payload"
-      ],
-      "additionalProperties": false
-    },
-    "LifecycleStatus": {
-      "type": "string",
-      "enum": [
-        "draft",
-        "queued",
-        "claimed",
-        "running",
-        "review",
-        "blocked",
-        "approved",
-        "merge-ready",
-        "merged",
-        "failed",
-        "rebasing",
-        "complete"
-      ]
-    },
-    "RebaseResultPayload": {
-      "type": "object",
-      "properties": {
-        "resultId": {
-          "type": "string"
-        },
-        "mergedPrNumber": {
-          "type": "number"
-        },
-        "baseBranch": {
-          "type": "string"
-        },
-        "branchName": {
-          "type": "string"
-        },
-        "rebased": {
-          "type": "boolean"
-        },
-        "conflictsDetected": {
-          "type": "boolean"
-        },
-        "details": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "resultId",
-        "mergedPrNumber",
-        "baseBranch",
-        "branchName",
-        "rebased",
-        "conflictsDetected",
-        "details"
       ],
       "additionalProperties": false
     }

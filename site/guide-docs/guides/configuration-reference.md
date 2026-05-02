@@ -19,9 +19,27 @@ Runtime configuration normalization reads:
 
 - `GITHUB_OWNER`
 - `GITHUB_REPO`
+- `GITHUB_DEFAULT_BRANCH`
+- `GITHUB_API_BASE_URL`
+- `GITHUB_WEB_BASE_URL`
+- `GITHUB_TOKEN_ENV`
+- `DEVPLAT_STORAGE_ROOT`
+- `DEVPLAT_ARTIFACT_DIRECTORY`
+- `DEVPLAT_INDEX_DIRECTORY`
+- `DEVPLAT_AUDIT_LOG_DIRECTORY`
+- `DEVPLAT_WORKTREE_ROOT`
+- `DEVPLAT_DEPLOYMENT_TARGET`
+- `DEVPLAT_DOCKER_IMAGE_REPOSITORY`
+- `DEVPLAT_DOCKER_IMAGE_TAG`
+- `DEVPLAT_HELM_RELEASE`
+- `DEVPLAT_HELM_NAMESPACE`
+- `DEVPLAT_HELM_CHART_PATH`
+- `DEVPLAT_STATE_MOUNT_PATH`
 - `OPENCLAW_PLUGIN_ID`
+- `OPENCLAW_GATEWAY_PORT`
 - `DISCORD_API_BASE_URL`
 - `DISCORD_APPLICATION_ID` (required)
+- `DISCORD_CATEGORY_NAME`
 - `DISCORD_PUBLIC_KEY` (required)
 - `DISCORD_BOT_TOKEN` (required)
 - `DISCORD_DEFAULT_GUILD_ID`
@@ -30,16 +48,49 @@ Runtime configuration normalization reads:
 - `DISCORD_PULL_REQUEST_CHANNEL_ID`
 - `DISCORD_AUDIT_CHANNEL_ID`
 - `DISCORD_PROJECT_MANAGEMENT_CHANNEL_ID`
+- `DISCORD_GATEWAY_URL`
+- `DISCORD_GATEWAY_INTENTS`
 - `SONAR_ORGANIZATION`
 - `SONAR_PROJECT_KEY`
+
+The normalized repository runtime config exposes `owner`, `repo`,
+`defaultBranch`, and `repositoryKey`. GitHub API submission defaults to
+`https://api.github.com`, GitHub web links default to `https://github.com`, and
+the token is read from `GITHUB_TOKEN` unless `GITHUB_TOKEN_ENV` is overridden.
+Storage defaults to `devplat-state` with `artifacts`, `indexes`, and `audit`
+subdirectories at layout version `1`. Worktrees default to
+`devplat-state/worktrees`, inherit the configured default branch, and use
+`rebase-or-fast-forward` sync. Deployment defaults target local Docker with
+`ghcr.io/vannadii/devplat-openclaw-runtime:latest`, Helm release `devplat`,
+namespace `devplat`, chart path `deploy/helm/devplat`, and state mount
+`/var/lib/devplat`. The OpenClaw gateway defaults to loopback token auth on port
+`18789`. Only `@vannadii/devplat-storage` may directly read or write the runtime
+state directory.
+
+The Helm chart exposes the Discord Gateway runtime through
+`discordGateway.enabled`, `discordGateway.url`, and `discordGateway.intents`.
+Those values render `DISCORD_GATEWAY_ENABLED`, `DISCORD_GATEWAY_URL`, and
+`DISCORD_GATEWAY_INTENTS` into the runtime container, so Kubernetes deployments
+can start the private outbound Discord worker without duplicating raw env blocks.
 
 The normalized Discord runtime config also fixes:
 
 - API version `v10`
+- interaction transport `gateway`, so the runtime opens an outbound Discord
+  Gateway session instead of requiring public inbound webhook hosting
+- Gateway URL: defaults to
+  `wss://gateway.discord.gg/?v=10&encoding=json`
+- Gateway intents: defaults to `0` and can be overridden with
+  `DISCORD_GATEWAY_INTENTS`
+- category name: defaults to `GITHUB_REPO` for multi-repository guild
+  separation; OpenClaw test and live-lab runs set this to `test`
 - OAuth install scopes `bot` and `applications.commands`
 - required guild/channel permissions for thread-aware control: `ViewChannel`, `SendMessages`, `CreatePublicThreads`, `CreatePrivateThreads`, `SendMessagesInThreads`, `ManageThreads`, and `ReadMessageHistory`
 
-Missing required Discord credentials fail fast during config load instead of falling back to placeholder values.
+Missing required Discord credentials, invalid URLs, invalid gateway ports, and
+invalid deployment targets fail fast during config load. Normalized config can
+also be checked for structured validation issues before it is handed to
+integration services.
 
 Recommended channel layout:
 

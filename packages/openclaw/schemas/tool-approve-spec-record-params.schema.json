@@ -3,9 +3,6 @@
   "$ref": "#/definitions/ApproveSpecRecordToolInput",
   "definitions": {
     "ApproveSpecRecordToolInput": {
-      "$ref": "#/definitions/SpecRecord"
-    },
-    "SpecRecord": {
       "type": "object",
       "properties": {
         "specId": {
@@ -27,13 +24,53 @@
           }
         },
         "approvalState": {
-          "$ref": "#/definitions/SpecApprovalState"
+          "enum": ["draft", "review", "approved"]
         },
         "version": {
           "type": "number"
         },
         "updatedAt": {
           "type": "string"
+        },
+        "revisionHistory": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "version": {
+                "type": "number"
+              },
+              "summary": {
+                "type": "string"
+              },
+              "updatedAt": {
+                "type": "string"
+              },
+              "revisionId": {
+                "type": "string"
+              },
+              "previousVersion": {
+                "type": "number"
+              },
+              "approvalStateBeforeUpdate": {
+                "type": "string"
+              },
+              "artifactId": {
+                "type": "string"
+              }
+            },
+            "required": ["version", "summary", "updatedAt"],
+            "additionalProperties": false
+          }
+        },
+        "renderedPullRequestBody": {
+          "type": "string"
+        },
+        "sourceArtifactIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "required": [
@@ -47,14 +84,6 @@
         "updatedAt"
       ],
       "additionalProperties": false
-    },
-    "SpecApprovalState": {
-      "type": "string",
-      "enum": [
-        "draft",
-        "review",
-        "approved"
-      ]
     }
   }
 }

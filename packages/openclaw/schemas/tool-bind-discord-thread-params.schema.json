@@ -12,7 +12,20 @@
           "type": "string"
         },
         "status": {
-          "$ref": "#/definitions/LifecycleStatus"
+          "enum": [
+            "draft",
+            "queued",
+            "claimed",
+            "running",
+            "review",
+            "blocked",
+            "approved",
+            "merge-ready",
+            "merged",
+            "failed",
+            "rebasing",
+            "complete"
+          ]
         },
         "trace": {
           "type": "array",
@@ -30,10 +43,9 @@
           "type": "string"
         },
         "kind": {
-          "$ref": "#/definitions/DiscordBindingKind"
+          "enum": ["spec", "implementation", "pull-request", "audit"]
         },
         "threadBindingMode": {
-          "type": "string",
           "const": "inherit-parent"
         },
         "threadId": {
@@ -47,46 +59,20 @@
         }
       },
       "required": [
-        "actorId",
-        "channelId",
-        "guildId",
         "id",
-        "kind",
-        "parentChannelId",
-        "status",
         "summary",
+        "status",
+        "trace",
+        "updatedAt",
+        "guildId",
+        "channelId",
+        "kind",
         "threadBindingMode",
         "threadId",
-        "trace",
-        "updatedAt"
+        "parentChannelId",
+        "actorId"
       ],
       "additionalProperties": false
-    },
-    "LifecycleStatus": {
-      "type": "string",
-      "enum": [
-        "draft",
-        "queued",
-        "claimed",
-        "running",
-        "review",
-        "blocked",
-        "approved",
-        "merge-ready",
-        "merged",
-        "failed",
-        "rebasing",
-        "complete"
-      ]
-    },
-    "DiscordBindingKind": {
-      "type": "string",
-      "enum": [
-        "spec",
-        "implementation",
-        "pull-request",
-        "audit"
-      ]
     }
   }
 }

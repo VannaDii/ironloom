@@ -3,15 +3,24 @@ import { resolve } from 'node:path';
 
 import { decodeWithCodec, type DevplatResult } from '@vannadii/devplat-core';
 
+import { JSON_FILE_EXTENSION_PATTERN } from './constants.js';
 import {
+  buildStorageIndexPath,
   buildStoragePath,
   createStoredRecord,
+  createStoredRecordIndexEntry,
   describeStoredRecord,
 } from './logic.js';
 import { StoredRecordCodec } from './codec.js';
-import type { StoredRecord, StoreScope } from './types.js';
+import type { StoredRecord, StoreScope } from './codec.js';
 
+/**
+ * File-backed implementation of the `.devplat` storage contract.
+ */
 export class FileStoreService {
+  /**
+   * Creates a file store rooted at the repository `.devplat` directory.
+   */
   public constructor(
     private readonly rootDirectory = resolve(
       import.meta.dirname,
@@ -23,6 +32,9 @@ export class FileStoreService {
     ),
   ) {}
 
+  /**
+   * Persists a normalized record and its configured index entries.
+   */
   public async store<TPayload extends object>(
     record: StoredRecord<TPayload>,
   ): Promise<StoredRecord<TPayload>> {
@@ -37,15 +49,35 @@ export class FileStoreService {
       `${JSON.stringify(normalized, null, 2)}\n`,
       'utf8',
     );
+    await Promise.all(
+      (normalized.indexes ?? []).map(async (indexName) => {
+        const indexPath = resolve(
+          this.rootDirectory,
+          buildStorageIndexPath(indexName, normalized.key),
+        );
+        await mkdir(resolve(indexPath, '..'), { recursive: true });
+        await writeFile(
+          indexPath,
+          `${JSON.stringify(createStoredRecordIndexEntry(normalized), null, 2)}\n`,
+          'utf8',
+        );
+      }),
+    );
     return normalized;
   }
 
+  /**
+   * Reads a record from disk and fails closed on invalid paths or payloads.
+   */
   public async read(
     scope: StoreScope,
     key: string,
   ): Promise<DevplatResult<StoredRecord>> {
-    const filePath = resolve(this.rootDirectory, buildStoragePath(scope, key));
     try {
+      const filePath = resolve(
+        this.rootDirectory,
+        buildStoragePath(scope, key),
+      );
       const raw = await readFile(filePath, 'utf8');
       const parsed: unknown = JSON.parse(raw);
       const decoded = decodeWithCodec(StoredRecordCodec, parsed);
@@ -67,6 +99,9 @@ export class FileStoreService {
     }
   }
 
+  /**
+   * Lists JSON record keys for a storage scope.
+   */
   public async list(scope: StoreScope): Promise<string[]> {
     const directory = resolve(this.rootDirectory, scope);
     const entries = await readdir(directory, { withFileTypes: true }).catch(
@@ -74,10 +109,13 @@ export class FileStoreService {
     );
     return entries
       .filter((entry) => entry.isFile() && entry.name.endsWith('.json'))
-      .map((entry) => entry.name.replace(/\.json$/u, ''))
+      .map((entry) => entry.name.replace(JSON_FILE_EXTENSION_PATTERN, ''))
       .sort((left, right) => left.localeCompare(right));
   }
 
+  /**
+   * Describes a stored record for operator-facing output.
+   */
   public explain<TPayload extends object>(
     input: StoredRecord<TPayload>,
   ): string {

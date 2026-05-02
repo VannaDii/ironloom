@@ -8,8 +8,14 @@ export const schemaRegistry = [
   [
     'artifacts',
     'artifact-envelope',
-    'ArtifactEnvelopeSchema',
+    'ArtifactEnvelope',
     'schemas/artifact-envelope.schema.json',
+  ],
+  [
+    'artifacts',
+    'artifact-registry',
+    'ArtifactRegistry',
+    'schemas/artifact-registry.schema.json',
   ],
   [
     'artifacts',
@@ -112,16 +118,58 @@ export const schemaRegistry = [
     'schemas/telemetry-event.schema.json',
   ],
   [
+    'observability',
+    'telemetry-event',
+    'TelemetryAuditRecord',
+    'schemas/telemetry-audit-record.schema.json',
+  ],
+  [
+    'observability',
+    'telemetry-event',
+    'TelemetryRunMetrics',
+    'schemas/telemetry-run-metrics.schema.json',
+  ],
+  [
+    'observability',
+    'telemetry-event',
+    'TelemetryRunSummary',
+    'schemas/telemetry-run-summary.schema.json',
+  ],
+  [
     'github',
     'github-workflow',
     'GitHubActionRequest',
     'schemas/github-action-request.schema.json',
   ],
   [
+    'github',
+    'github-workflow',
+    'GitHubRepositoryState',
+    'schemas/github-repository-state.schema.json',
+  ],
+  [
+    'github',
+    'github-workflow',
+    'GitHubPullRequestState',
+    'schemas/github-pull-request-state.schema.json',
+  ],
+  [
+    'github',
+    'github-workflow',
+    'GitHubIssueSpecLink',
+    'schemas/github-issue-spec-link.schema.json',
+  ],
+  [
     'policy',
     'decision-policy',
     'PolicyDecision',
     'schemas/policy-decision.schema.json',
+  ],
+  [
+    'policy',
+    'decision-policy',
+    'PolicyActionEvaluation',
+    'schemas/policy-action-evaluation.schema.json',
   ],
   [
     'storage',
@@ -137,9 +185,63 @@ export const schemaRegistry = [
   ],
   [
     'discord',
+    'command-contract',
+    'DiscordCommandContractRegistry',
+    'schemas/discord-command-contract-registry.schema.json',
+  ],
+  [
+    'discord',
     'discord-control-plane',
     'DiscordControlRequest',
     'schemas/discord-control-request.schema.json',
+  ],
+  [
+    'discord',
+    'discord-control-plane',
+    'DiscordWorkItemBinding',
+    'schemas/discord-work-item-binding.schema.json',
+  ],
+  [
+    'discord',
+    'discord-control-plane',
+    'DiscordOperatorInteraction',
+    'schemas/discord-operator-interaction.schema.json',
+  ],
+  [
+    'discord',
+    'discord-control-plane',
+    'DiscordInteractionCallback',
+    'schemas/discord-interaction-callback.schema.json',
+  ],
+  [
+    'discord',
+    'discord-control-plane',
+    'DiscordInteractionCallbackOptions',
+    'schemas/discord-interaction-callback-options.schema.json',
+  ],
+  [
+    'discord',
+    'interaction-gateway',
+    'DiscordGatewayDispatchEvent',
+    'schemas/discord-gateway-dispatch-event.schema.json',
+  ],
+  [
+    'discord',
+    'interaction-gateway',
+    'DiscordInteractionGatewayResult',
+    'schemas/discord-interaction-gateway-result.schema.json',
+  ],
+  [
+    'discord',
+    'interaction-webhook',
+    'DiscordInteractionWebhookRequest',
+    'schemas/discord-interaction-webhook-request.schema.json',
+  ],
+  [
+    'discord',
+    'interaction-webhook',
+    'DiscordInteractionWebhookResult',
+    'schemas/discord-interaction-webhook-result.schema.json',
   ],
   [
     'discord',

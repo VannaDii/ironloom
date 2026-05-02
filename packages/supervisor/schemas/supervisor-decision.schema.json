@@ -12,7 +12,20 @@
           "type": "string"
         },
         "status": {
-          "$ref": "#/definitions/LifecycleStatus"
+          "enum": [
+            "draft",
+            "queued",
+            "claimed",
+            "running",
+            "review",
+            "blocked",
+            "approved",
+            "merge-ready",
+            "merged",
+            "failed",
+            "rebasing",
+            "complete"
+          ]
         },
         "trace": {
           "type": "array",
@@ -27,7 +40,20 @@
           "type": "string"
         },
         "nextState": {
-          "$ref": "#/definitions/LifecycleStatus"
+          "enum": [
+            "draft",
+            "queued",
+            "claimed",
+            "running",
+            "review",
+            "blocked",
+            "approved",
+            "merge-ready",
+            "merged",
+            "failed",
+            "rebasing",
+            "complete"
+          ]
         },
         "approved": {
           "type": "boolean"
@@ -36,6 +62,135 @@
           "type": "array",
           "items": {
             "type": "string"
+          }
+        },
+        "phase": {
+          "enum": [
+            "research",
+            "spec",
+            "slicing",
+            "implementation",
+            "gates",
+            "review",
+            "remediation",
+            "merge",
+            "continuation"
+          ]
+        },
+        "routedTo": {
+          "type": "string"
+        },
+        "routePlan": {
+          "type": "object",
+          "properties": {
+            "currentPhase": {
+              "enum": [
+                "research",
+                "spec",
+                "slicing",
+                "implementation",
+                "gates",
+                "review",
+                "remediation",
+                "merge",
+                "continuation"
+              ]
+            },
+            "nextPhase": {
+              "enum": [
+                "research",
+                "spec",
+                "slicing",
+                "implementation",
+                "gates",
+                "review",
+                "remediation",
+                "merge",
+                "continuation"
+              ]
+            },
+            "routedTo": {
+              "type": "string"
+            },
+            "nextAction": {
+              "type": "string"
+            },
+            "status": {
+              "enum": ["ready", "waiting", "blocked"]
+            },
+            "blockers": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "artifactIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "auditReason": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "currentPhase",
+            "nextPhase",
+            "routedTo",
+            "nextAction",
+            "status",
+            "blockers",
+            "artifactIds",
+            "auditReason"
+          ],
+          "additionalProperties": false
+        },
+        "lifecycleSignals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "phase": {
+                "enum": [
+                  "research",
+                  "spec",
+                  "slicing",
+                  "implementation",
+                  "gates",
+                  "review",
+                  "remediation",
+                  "merge",
+                  "continuation"
+                ]
+              },
+              "ready": {
+                "type": "boolean"
+              },
+              "artifactIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "blockers": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "nextAction": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "phase",
+              "ready",
+              "artifactIds",
+              "blockers",
+              "nextAction"
+            ],
+            "additionalProperties": false
           }
         }
       },
@@ -51,23 +206,6 @@
         "notes"
       ],
       "additionalProperties": false
-    },
-    "LifecycleStatus": {
-      "type": "string",
-      "enum": [
-        "draft",
-        "queued",
-        "claimed",
-        "running",
-        "review",
-        "blocked",
-        "approved",
-        "merge-ready",
-        "merged",
-        "failed",
-        "rebasing",
-        "complete"
-      ]
     }
   }
 }

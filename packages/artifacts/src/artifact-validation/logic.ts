@@ -1,27 +1,50 @@
-import { decodeWithCodec, type DevplatResult } from '@vannadii/devplat-core';
+import {
+  ARTIFACT_TYPE_APPROVAL_RECORD,
+  ARTIFACT_TYPE_AUDIT_LOG,
+  ARTIFACT_TYPE_MERGE_DECISION,
+  ARTIFACT_TYPE_REBASE_RESULT,
+  decodeWithCodec,
+  type DevplatResult,
+} from '@vannadii/devplat-core';
 
 import {
   ArtifactEnvelopeCodec,
   ArtifactEnvelopeService,
+  type ArtifactEnvelope,
 } from '../artifact-envelope/index.js';
 import {
   ApprovalRecordArtifactCodec,
   ApprovalRecordArtifactService,
+  type ApprovalRecordArtifact,
 } from '../approval-record/index.js';
 import {
   AuditLogArtifactCodec,
   AuditLogArtifactService,
+  type AuditLogArtifact,
 } from '../audit-log/index.js';
 import {
   MergeDecisionArtifactCodec,
   MergeDecisionArtifactService,
+  type MergeDecisionArtifact,
 } from '../merge-decision/index.js';
 import {
   RebaseResultArtifactCodec,
   RebaseResultArtifactService,
+  type RebaseResultArtifact,
 } from '../rebase-result/index.js';
-import type { KnownArtifact } from './types.js';
 
+/** Artifact type accepted by the validation dispatcher. */
+export type KnownArtifact =
+  | ApprovalRecordArtifact
+  | AuditLogArtifact
+  | MergeDecisionArtifact
+  | RebaseResultArtifact
+  | ArtifactEnvelope;
+
+/**
+ * Validates a generic artifact and dispatches known artifact types to their
+ * specialized normalizers.
+ */
 export function validateArtifact(input: unknown): DevplatResult<KnownArtifact> {
   const envelope = decodeWithCodec(ArtifactEnvelopeCodec, input);
   if (!envelope.ok) {
@@ -29,7 +52,7 @@ export function validateArtifact(input: unknown): DevplatResult<KnownArtifact> {
   }
 
   switch (envelope.value.artifactType) {
-    case 'approval-record': {
+    case ARTIFACT_TYPE_APPROVAL_RECORD: {
       const artifact = decodeWithCodec(ApprovalRecordArtifactCodec, input);
       if (!artifact.ok) {
         return artifact;
@@ -40,7 +63,7 @@ export function validateArtifact(input: unknown): DevplatResult<KnownArtifact> {
         value: new ApprovalRecordArtifactService().execute(artifact.value),
       };
     }
-    case 'audit-log': {
+    case ARTIFACT_TYPE_AUDIT_LOG: {
       const artifact = decodeWithCodec(AuditLogArtifactCodec, input);
       if (!artifact.ok) {
         return artifact;
@@ -51,7 +74,7 @@ export function validateArtifact(input: unknown): DevplatResult<KnownArtifact> {
         value: new AuditLogArtifactService().execute(artifact.value),
       };
     }
-    case 'merge-decision': {
+    case ARTIFACT_TYPE_MERGE_DECISION: {
       const artifact = decodeWithCodec(MergeDecisionArtifactCodec, input);
       if (!artifact.ok) {
         return artifact;
@@ -62,7 +85,7 @@ export function validateArtifact(input: unknown): DevplatResult<KnownArtifact> {
         value: new MergeDecisionArtifactService().execute(artifact.value),
       };
     }
-    case 'rebase-result': {
+    case ARTIFACT_TYPE_REBASE_RESULT: {
       const artifact = decodeWithCodec(RebaseResultArtifactCodec, input);
       if (!artifact.ok) {
         return artifact;
@@ -81,6 +104,9 @@ export function validateArtifact(input: unknown): DevplatResult<KnownArtifact> {
   }
 }
 
+/**
+ * Describes a validated artifact with artifact type and version.
+ */
 export function describeValidatedArtifact(input: KnownArtifact): string {
   return `${input.artifactType}@v${String(input.version)}`;
 }

@@ -1,9 +1,11 @@
 import {
   createSonarQualityGateResult,
+  createReviewFindingsFromSonarQualityGate,
   describeSonarQualityGateResult,
   isQualityGatePassing,
 } from './logic.js';
-import type { SonarQualityGateResult } from './types.js';
+import type { ReviewFinding } from '@vannadii/devplat-review';
+import type { SonarQualityGateResult } from './codec.js';
 
 export class SonarQualityGateService {
   public evaluate(
@@ -28,6 +30,10 @@ export class SonarQualityGateService {
 
   public passes(input: SonarQualityGateResult): boolean {
     return isQualityGatePassing(createSonarQualityGateResult(input));
+  }
+
+  public toReviewFindings(input: SonarQualityGateResult): ReviewFinding[] {
+    return createReviewFindingsFromSonarQualityGate(input);
   }
 
   public explain(input: SonarQualityGateResult): string {

@@ -28,6 +28,40 @@
         },
         "updatedAt": {
           "type": "string"
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "action": {
+                "type": "string"
+              },
+              "success": {
+                "type": "boolean"
+              },
+              "detail": {
+                "type": "string"
+              },
+              "completedAt": {
+                "type": "string"
+              },
+              "artifactId": {
+                "type": "string"
+              }
+            },
+            "required": ["action", "success", "detail", "completedAt"],
+            "additionalProperties": false
+          }
+        },
+        "unresolvedFindingIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "nextAction": {
+          "type": "string"
         }
       },
       "required": [

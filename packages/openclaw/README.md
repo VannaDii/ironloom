@@ -2,14 +2,38 @@
 
 `@vannadii/devplat-openclaw` is the adapter-only OpenClaw package for DevPlat. It reads generated schemas, decodes tool input with platform codecs, and delegates lifecycle behavior to platform services. GitHub remains the source of truth for specs, pull requests, reviews, and merges; Discord remains the primary operator control plane through OpenClaw.
 
+## Real-World Flow
+
+```mermaid
+flowchart LR
+  Agent[OpenClaw agent] --> Tool[Generated tool schema]
+  Tool --> Decode[Platform codec decode]
+  Decode --> Service[Package service delegation]
+  Service --> Result[Operational result]
+  Result --> Audit[Artifact id stored key next action]
+```
+
 ## Package Assets
 
 - `openclaw.plugin.json`: generated plugin manifest
 - `schemas/plugin-config.schema.json`: generated plugin config schema
 - `dist/index.js`: built plugin entrypoint
 
+Runtime plugin config includes the Discord category name. Normal production
+configuration derives that category from the repository name so one guild can
+host multiple repositories without cross-thread ambiguity; OpenClaw test and
+live-lab runs set the category to `test`.
+
 ## Exposed Tools
 
+The plugin registers tools from `createDevplatOpenClawTools()`. Keep new
+tool factories in that inventory so the plugin entrypoint, exported package
+surface, and tests stay aligned.
+
+- `claim_task` and `update_task` accept an optional current task `record`; pass
+  it when OpenClaw already has the stored queue record so lifecycle transitions
+  preserve existing status, assignee, trace, and transition history. The
+  hermetic deep test exercises this record-preserving path.
 - `run_gates`: execute the configured DevPlat gate suite
 - `create_research_brief`: normalize a research brief artifact
 - `create_spec_record`: normalize a spec record artifact
@@ -31,13 +55,17 @@
 - `bind_discord_thread`: persist Discord thread bindings
 - `open_discord_thread`: normalize Discord thread session state
 - `handle_discord_approval`: process Discord approval input
-- `handle_discord_control`: process Discord control-plane input
+- `handle_discord_control`: process Discord control requests or operator
+  interaction callbacks through the Discord control plane; hermetic deep-test
+  runs use the Discord loopback response transport so callback-shaped input is
+  validated without network access
 - `verify_sonar_bootstrap`: validate Sonar bootstrap requirements
 - `evaluate_sonar_quality_gate`: interpret Sonar quality gate results
 - `create_review_finding`: create a review finding artifact
 - `create_remediation_plan`: create a remediation plan artifact
 - `remember_memory_entry`: normalize and persist memory entry state
-- `evaluate_policy_action`: evaluate privileged action policy
+- `evaluate_policy_action`: evaluate lifecycle action policy with risk,
+  escalation, audit reason, privilege, and next-action metadata
 - `record_telemetry_event`: create telemetry records
 - `create_task_record`: create a queue task record
 - `claim_task`: claim a queued task
@@ -63,6 +91,8 @@ The OpenClaw manifest is generated from committed package metadata and the gener
 npm run generate:openclaw-manifest
 npm run check:openclaw-manifest
 ```
+
+- Keep public TypeScript contracts derived from the exported codecs.
 
 ## Development
 

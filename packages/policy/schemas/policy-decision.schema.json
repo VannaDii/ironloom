@@ -12,7 +12,20 @@
           "type": "string"
         },
         "status": {
-          "$ref": "#/definitions/LifecycleStatus"
+          "enum": [
+            "draft",
+            "queued",
+            "claimed",
+            "running",
+            "review",
+            "blocked",
+            "approved",
+            "merge-ready",
+            "merged",
+            "failed",
+            "rebasing",
+            "complete"
+          ]
         },
         "trace": {
           "type": "array",
@@ -32,7 +45,45 @@
         "requiresApproval": {
           "type": "boolean"
         },
+        "auditRequired": {
+          "type": "boolean"
+        },
+        "privilegeLevel": {
+          "enum": [
+            "automatic",
+            "human-approval",
+            "destructive",
+            "external-publish"
+          ]
+        },
         "reason": {
+          "type": "string"
+        },
+        "actionCategory": {
+          "enum": [
+            "merge",
+            "command-execution",
+            "worktree-release",
+            "rebase",
+            "publish",
+            "autofix",
+            "destructive-cleanup",
+            "routine"
+          ]
+        },
+        "riskLevel": {
+          "enum": ["low", "medium", "high", "critical"]
+        },
+        "escalationRequired": {
+          "type": "boolean"
+        },
+        "escalationTarget": {
+          "enum": ["none", "operator", "maintainer", "release-manager"]
+        },
+        "nextAction": {
+          "type": "string"
+        },
+        "auditReason": {
           "type": "string"
         }
       },
@@ -45,26 +96,11 @@
         "action",
         "allowed",
         "requiresApproval",
+        "auditRequired",
+        "privilegeLevel",
         "reason"
       ],
       "additionalProperties": false
-    },
-    "LifecycleStatus": {
-      "type": "string",
-      "enum": [
-        "draft",
-        "queued",
-        "claimed",
-        "running",
-        "review",
-        "blocked",
-        "approved",
-        "merge-ready",
-        "merged",
-        "failed",
-        "rebasing",
-        "complete"
-      ]
     }
   }
 }

@@ -1,15 +1,13 @@
 import * as t from 'io-ts';
 
-import { LifecycleStatusCodec, type Exact } from '@vannadii/devplat-core';
+import { LifecycleStatusCodec } from '@vannadii/devplat-core';
 
-import type { OpenClawPluginConfig } from './types.js';
-
-const DiscordInstallScopeCodec = t.union([
+export const OpenClawPluginConfigDiscordInstallScopeCodec = t.union([
   t.literal('bot'),
   t.literal('applications.commands'),
 ]);
 
-const DiscordPermissionCodec = t.union([
+export const OpenClawPluginConfigDiscordPermissionCodec = t.union([
   t.literal('ViewChannel'),
   t.literal('SendMessages'),
   t.literal('CreatePublicThreads'),
@@ -28,10 +26,13 @@ export const OpenClawPluginConfigCodec = t.type({
   apiBaseUrl: t.string,
   apiVersion: t.literal('v10'),
   applicationId: t.string,
+  categoryName: t.string,
   publicKey: t.string,
   botToken: t.string,
-  installScopes: t.readonlyArray(DiscordInstallScopeCodec),
-  requiredPermissions: t.readonlyArray(DiscordPermissionCodec),
+  installScopes: t.readonlyArray(OpenClawPluginConfigDiscordInstallScopeCodec),
+  requiredPermissions: t.readonlyArray(
+    OpenClawPluginConfigDiscordPermissionCodec,
+  ),
   defaultGuildId: t.string,
   specChannelId: t.string,
   implementationChannelId: t.string,
@@ -47,7 +48,15 @@ export const OpenClawPluginConfigCodec = t.type({
   }),
 });
 
-export type _OpenClawPluginConfigExact = Exact<
-  OpenClawPluginConfig,
-  t.TypeOf<typeof OpenClawPluginConfigCodec>
+/** Discord OAuth install scope required by the OpenClaw plugin. */
+export type OpenClawPluginConfigDiscordInstallScope = t.TypeOf<
+  typeof OpenClawPluginConfigDiscordInstallScopeCodec
 >;
+
+/** Discord permission required by the OpenClaw plugin. */
+export type OpenClawPluginConfigDiscordPermission = t.TypeOf<
+  typeof OpenClawPluginConfigDiscordPermissionCodec
+>;
+
+/** Runtime plugin configuration loaded for OpenClaw. */
+export type OpenClawPluginConfig = t.TypeOf<typeof OpenClawPluginConfigCodec>;

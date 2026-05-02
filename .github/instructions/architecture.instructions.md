@@ -26,3 +26,4 @@
 - Keep Discord and OpenClaw contracts aligned with artifacts, codecs, and generated schemas owned by platform packages.
 - Prefer additive contract evolution over breaking changes to artifact and tool surfaces.
 - Keep relative ESM specifiers explicit with `.js` in TypeScript source because the repo compiles under `NodeNext`.
+- Document every authored constant, helper, codec, function, class, and public type with JSDoc unless it is only a trivial re-export.

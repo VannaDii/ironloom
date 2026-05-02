@@ -12,10 +12,7 @@
           "type": "boolean"
         }
       },
-      "required": [
-        "action",
-        "privileged"
-      ],
+      "required": ["action", "privileged"],
       "additionalProperties": false
     }
   }

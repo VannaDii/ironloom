@@ -3,16 +3,13 @@
   "$ref": "#/definitions/CreateReviewFindingToolInput",
   "definitions": {
     "CreateReviewFindingToolInput": {
-      "$ref": "#/definitions/ReviewFinding"
-    },
-    "ReviewFinding": {
       "type": "object",
       "properties": {
         "findingId": {
           "type": "string"
         },
         "severity": {
-          "$ref": "#/definitions/ReviewSeverity"
+          "enum": ["low", "medium", "high", "critical"]
         },
         "path": {
           "type": "string"
@@ -31,6 +28,31 @@
         },
         "updatedAt": {
           "type": "string"
+        },
+        "source": {
+          "enum": ["automated", "sonar", "human"]
+        },
+        "specConformance": {
+          "type": "object",
+          "properties": {
+            "specId": {
+              "type": "string"
+            },
+            "satisfiedCriteria": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "missingCriteria": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": ["specId", "satisfiedCriteria", "missingCriteria"],
+          "additionalProperties": false
         }
       },
       "required": [
@@ -44,15 +66,6 @@
         "updatedAt"
       ],
       "additionalProperties": false
-    },
-    "ReviewSeverity": {
-      "type": "string",
-      "enum": [
-        "low",
-        "medium",
-        "high",
-        "critical"
-      ]
     }
   }
 }

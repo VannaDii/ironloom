@@ -3,16 +3,199 @@ import { DecisionPolicyService } from '@vannadii/devplat-policy';
 import { FileStoreService } from '@vannadii/devplat-storage';
 
 import {
+  DISCORD_INTERACTION_CHANNEL_MESSAGE_RESPONSE_TYPE,
+  DISCORD_INTERACTION_DEFERRED_RESPONSE_TYPE,
+} from './constants.js';
+import {
   createDiscordControlRequest,
+  createDiscordControlRequestFromInteraction,
   describeDiscordControlRequest,
 } from './logic.js';
-import type { DiscordControlRequest, DiscordControlResult } from './types.js';
+import {
+  renderDiscordControlAcceptedMessage,
+  renderDiscordControlBlockedMessage,
+  renderDiscordRouteFailureMessage,
+} from './renderer.js';
+import type {
+  DiscordControlRequest,
+  DiscordControlResult,
+  DiscordMessagePayload,
+  DiscordOperatorInteraction,
+  DiscordResponseReceipt,
+} from './codec.js';
+
+export interface DiscordControlResponseTransport {
+  postInteractionResponse(
+    input: DiscordOperatorInteraction,
+    payload: DiscordMessagePayload,
+  ): Promise<DiscordResponseReceipt>;
+  postInteractionDeferred(
+    input: DiscordOperatorInteraction,
+  ): Promise<DiscordResponseReceipt>;
+  postThreadMessage(
+    threadId: string,
+    payload: DiscordMessagePayload,
+  ): Promise<DiscordResponseReceipt>;
+}
+
+/**
+ * Projects a structured DevPlat Discord payload into a REST message body.
+ */
+function createDiscordRestMessageBody(
+  payload: DiscordMessagePayload,
+): DiscordMessagePayload {
+  return {
+    content: payload.content,
+    ...(payload.allowed_mentions === undefined
+      ? {}
+      : {
+          /**
+           * Discord message payload wire key; renderer keeps the internal transport typed.
+           */
+          allowed_mentions: payload.allowed_mentions,
+        }),
+    ...(payload.components === undefined
+      ? {}
+      : { components: payload.components }),
+    ...(payload.flags === undefined ? {} : { flags: payload.flags }),
+  };
+}
+
+export class DiscordRestResponseTransport implements DiscordControlResponseTransport {
+  public constructor(
+    private readonly botToken = process.env['DISCORD_BOT_TOKEN'] ?? '',
+    private readonly baseUrl = process.env['DISCORD_API_BASE_URL'] ??
+      'https://discord.com/api/v10',
+    private readonly fetchImpl = fetch,
+  ) {}
+
+  public async postInteractionResponse(
+    input: DiscordOperatorInteraction,
+    payload: DiscordMessagePayload,
+  ): Promise<DiscordResponseReceipt> {
+    const endpoint = `/interactions/${encodeURIComponent(input.id)}/${encodeURIComponent(input.token)}/callback`;
+    const response = await this.fetchImpl(`${this.baseUrl}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        type: DISCORD_INTERACTION_CHANNEL_MESSAGE_RESPONSE_TYPE,
+        data: createDiscordRestMessageBody(payload),
+      }),
+    });
+    const responseBody: unknown = await response.json().catch(() => null);
+
+    return {
+      endpoint,
+      statusCode: response.status,
+      responseBody,
+    };
+  }
+
+  public async postInteractionDeferred(
+    input: DiscordOperatorInteraction,
+  ): Promise<DiscordResponseReceipt> {
+    const endpoint = `/interactions/${encodeURIComponent(input.id)}/${encodeURIComponent(input.token)}/callback`;
+    const response = await this.fetchImpl(`${this.baseUrl}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        type: DISCORD_INTERACTION_DEFERRED_RESPONSE_TYPE,
+      }),
+    });
+    const responseBody: unknown = await response.json().catch(() => null);
+
+    return {
+      endpoint,
+      statusCode: response.status,
+      responseBody,
+    };
+  }
+
+  public async postThreadMessage(
+    threadId: string,
+    payload: DiscordMessagePayload,
+  ): Promise<DiscordResponseReceipt> {
+    if (this.botToken.trim().length === 0) {
+      throw new Error('DISCORD_BOT_TOKEN is required for Discord responses.');
+    }
+
+    const endpoint = `/channels/${encodeURIComponent(threadId)}/messages`;
+    const response = await this.fetchImpl(`${this.baseUrl}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        authorization: `Bot ${this.botToken}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(createDiscordRestMessageBody(payload)),
+    });
+    const responseBody: unknown = await response.json().catch(() => null);
+
+    return {
+      endpoint,
+      statusCode: response.status,
+      responseBody,
+    };
+  }
+}
+
+export class DiscordLoopbackResponseTransport implements DiscordControlResponseTransport {
+  public postInteractionResponse(
+    input: DiscordOperatorInteraction,
+    payload: DiscordMessagePayload,
+  ): Promise<DiscordResponseReceipt> {
+    return Promise.resolve({
+      endpoint: `/interactions/${encodeURIComponent(input.id)}/${encodeURIComponent(input.token)}/callback`,
+      statusCode: 200,
+      responseBody: {
+        mode: 'loopback',
+        content: payload.content,
+        payload,
+        interactionId: input.id,
+      },
+    });
+  }
+
+  public postInteractionDeferred(
+    input: DiscordOperatorInteraction,
+  ): Promise<DiscordResponseReceipt> {
+    return Promise.resolve({
+      endpoint: `/interactions/${encodeURIComponent(input.id)}/${encodeURIComponent(input.token)}/callback`,
+      statusCode: 200,
+      responseBody: {
+        mode: 'loopback',
+        deferred: true,
+        interactionId: input.id,
+      },
+    });
+  }
+
+  public postThreadMessage(
+    threadId: string,
+    payload: DiscordMessagePayload,
+  ): Promise<DiscordResponseReceipt> {
+    return Promise.resolve({
+      endpoint: `/channels/${encodeURIComponent(threadId)}/messages`,
+      statusCode: 200,
+      responseBody: {
+        mode: 'loopback',
+        content: payload.content,
+        payload,
+        threadId,
+      },
+    });
+  }
+}
 
 export class DiscordControlPlaneService {
   public constructor(
     private readonly policy = new DecisionPolicyService(),
     private readonly telemetry = new TelemetryEventService(),
     private readonly store = new FileStoreService(),
+    private readonly responses: DiscordControlResponseTransport = new DiscordRestResponseTransport(),
   ) {}
 
   public execute(input: DiscordControlRequest): DiscordControlRequest {
@@ -32,6 +215,22 @@ export class DiscordControlPlaneService {
       request.privileged,
     );
 
+    const payload =
+      request.workItem === undefined
+        ? {
+            threadId: request.threadId,
+            channelId: request.channelId,
+            action: request.action,
+            policyDecisionId: decision.id,
+          }
+        : {
+            threadId: request.threadId,
+            channelId: request.channelId,
+            action: request.action,
+            policyDecisionId: decision.id,
+            workItem: request.workItem,
+          };
+
     await this.store.store({
       id: request.id,
       key: request.id,
@@ -40,13 +239,24 @@ export class DiscordControlPlaneService {
       status: decision.allowed ? 'approved' : 'review',
       trace: [...request.trace, ...decision.trace],
       updatedAt: request.updatedAt,
-      payload: {
-        threadId: request.threadId,
-        channelId: request.channelId,
-        action: request.action,
-        policyDecisionId: decision.id,
-      },
+      payload,
     });
+
+    const details =
+      request.workItem === undefined
+        ? {
+            threadId: request.threadId,
+            channelId: request.channelId,
+            policyDecisionId: decision.id,
+            allowed: decision.allowed,
+          }
+        : {
+            threadId: request.threadId,
+            channelId: request.channelId,
+            policyDecisionId: decision.id,
+            allowed: decision.allowed,
+            workItem: request.workItem,
+          };
 
     await this.telemetry.record({
       id: request.id,
@@ -57,19 +267,120 @@ export class DiscordControlPlaneService {
       actorId: request.actorId,
       action: request.action,
       scope: 'discord',
-      details: {
-        threadId: request.threadId,
-        channelId: request.channelId,
-        policyDecisionId: decision.id,
-        allowed: decision.allowed,
-      },
+      details,
     });
 
-    return {
+    await this.telemetry.recordAudit({
+      auditId: `${request.id}:audit`,
+      runId: request.id,
+      eventId: request.id,
+      actorId: request.actorId,
+      action: request.action,
+      scope: 'discord',
+      outcome: decision.allowed ? 'approved' : 'blocked',
+      reason: decision.allowed
+        ? `Discord action ${request.action} accepted.`
+        : `Discord action ${request.action} blocked by policy.`,
+      artifactIds:
+        request.workItem?.artifactId === undefined
+          ? []
+          : [request.workItem.artifactId],
+      recordedAt: request.updatedAt,
+      policyDecisionId: decision.id,
+      details,
+    });
+
+    const result = {
       request,
       policyDecisionId: decision.id,
       allowed: decision.allowed,
       persistedKey: request.id,
+      failedClosed: false,
+    };
+
+    return request.workItem === undefined
+      ? result
+      : {
+          ...result,
+          workItem: request.workItem,
+        };
+  }
+
+  public async handleInteraction(
+    input: DiscordOperatorInteraction,
+  ): Promise<DiscordControlResult> {
+    const route = createDiscordControlRequestFromInteraction(input);
+
+    if (!route.ok) {
+      const responsePayload = renderDiscordRouteFailureMessage(input);
+      const responseReceipt = await this.responses.postInteractionResponse(
+        input,
+        responsePayload,
+      );
+      const request = createDiscordControlRequest({
+        id: input.id,
+        summary: route.reason,
+        status: 'blocked',
+        trace: [],
+        updatedAt: input.updatedAt,
+        actorId: input.actorId,
+        threadId: 'unresolved',
+        channelId: input.channelId,
+        action: 'show-status',
+        privileged: false,
+      });
+      await this.telemetry.recordAudit({
+        auditId: `${input.id}:audit`,
+        runId: input.id,
+        eventId: input.id,
+        actorId: input.actorId,
+        action: 'show-status',
+        scope: 'discord',
+        outcome: 'blocked',
+        reason:
+          'Discord interaction refused because thread binding was ambiguous.',
+        artifactIds: [],
+        recordedAt: input.updatedAt,
+        policyDecisionId: 'discord-fail-closed',
+        details: {
+          threadId: 'unresolved',
+          channelId: input.channelId,
+          resultStatus: 'refused',
+          correlationId: input.id,
+        },
+      });
+
+      return {
+        request,
+        policyDecisionId: 'discord-fail-closed',
+        allowed: false,
+        persistedKey: input.id,
+        responseReceipt,
+        responsePayload,
+        failedClosed: true,
+      };
+    }
+
+    const result = await this.handleAction(route.request);
+    const responsePayload = result.allowed
+      ? renderDiscordControlAcceptedMessage(route.request)
+      : renderDiscordControlBlockedMessage(route.request);
+    const threadPayload = responsePayload;
+    const responseReceipt = await this.responses.postInteractionResponse(
+      input,
+      responsePayload,
+    );
+    const threadReceipt = await this.responses.postThreadMessage(
+      route.request.threadId,
+      threadPayload,
+    );
+
+    return {
+      ...result,
+      responseReceipt,
+      threadReceipt,
+      responsePayload,
+      threadPayload,
     };
   }
 }

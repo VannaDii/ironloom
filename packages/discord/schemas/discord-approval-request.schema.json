@@ -12,7 +12,20 @@
           "type": "string"
         },
         "status": {
-          "$ref": "#/definitions/LifecycleStatus"
+          "enum": [
+            "draft",
+            "queued",
+            "claimed",
+            "running",
+            "review",
+            "blocked",
+            "approved",
+            "merge-ready",
+            "merged",
+            "failed",
+            "rebasing",
+            "complete"
+          ]
         },
         "trace": {
           "type": "array",
@@ -33,7 +46,7 @@
           "type": "string"
         },
         "action": {
-          "$ref": "#/definitions/DiscordApprovalAction"
+          "enum": ["approve", "retry", "merge", "escalate"]
         },
         "artifactId": {
           "type": "string"
@@ -56,32 +69,6 @@
         "privileged"
       ],
       "additionalProperties": false
-    },
-    "LifecycleStatus": {
-      "type": "string",
-      "enum": [
-        "draft",
-        "queued",
-        "claimed",
-        "running",
-        "review",
-        "blocked",
-        "approved",
-        "merge-ready",
-        "merged",
-        "failed",
-        "rebasing",
-        "complete"
-      ]
-    },
-    "DiscordApprovalAction": {
-      "type": "string",
-      "enum": [
-        "approve",
-        "retry",
-        "merge",
-        "escalate"
-      ]
     }
   }
 }

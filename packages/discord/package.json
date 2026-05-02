@@ -31,6 +31,7 @@
   "dependencies": {
     "io-ts": "2.2.22",
     "@vannadii/devplat-artifacts": "0.0.0",
+    "@vannadii/devplat-config": "0.1.0",
     "@vannadii/devplat-core": "0.0.0",
     "@vannadii/devplat-observability": "0.0.0",
     "@vannadii/devplat-policy": "0.0.0",

@@ -1,8 +1,13 @@
 import * as t from 'io-ts';
 
-import { LifecycleStatusCodec, type Exact } from '@vannadii/devplat-core';
+import { LifecycleStatusCodec } from '@vannadii/devplat-core';
 
-import type { DiscordApprovalRequest, DiscordApprovalResult } from './types.js';
+export const DiscordApprovalActionCodec = t.union([
+  t.literal('approve'),
+  t.literal('retry'),
+  t.literal('merge'),
+  t.literal('escalate'),
+]);
 
 export const DiscordApprovalRequestCodec = t.type({
   id: t.string,
@@ -13,12 +18,7 @@ export const DiscordApprovalRequestCodec = t.type({
   actorId: t.string,
   channelId: t.string,
   threadId: t.string,
-  action: t.union([
-    t.literal('approve'),
-    t.literal('retry'),
-    t.literal('merge'),
-    t.literal('escalate'),
-  ]),
+  action: DiscordApprovalActionCodec,
   artifactId: t.string,
   privileged: t.boolean,
 });
@@ -31,12 +31,13 @@ export const DiscordApprovalResultCodec = t.type({
   persistedKey: t.string,
 });
 
-export type _DiscordApprovalRequestExact = Exact<
-  DiscordApprovalRequest,
-  t.TypeOf<typeof DiscordApprovalRequestCodec>
+/** Operator approval action requested from Discord. */
+export type DiscordApprovalAction = t.TypeOf<typeof DiscordApprovalActionCodec>;
+
+/** Thread-aware approval request received from Discord. */
+export type DiscordApprovalRequest = t.TypeOf<
+  typeof DiscordApprovalRequestCodec
 >;
 
-export type _DiscordApprovalResultExact = Exact<
-  DiscordApprovalResult,
-  t.TypeOf<typeof DiscordApprovalResultCodec>
->;
+/** Auditable result of a Discord approval request. */
+export type DiscordApprovalResult = t.TypeOf<typeof DiscordApprovalResultCodec>;

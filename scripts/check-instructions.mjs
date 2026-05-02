@@ -7,6 +7,47 @@ import { fileURLToPath } from 'node:url';
 const defaultRootDirectory = resolve(import.meta.dirname, '..');
 const require = createRequire(import.meta.url);
 const installedTypeScriptVersion = require('typescript/package.json').version;
+/**
+ * Matches the leading `v` in the repository Node.js version pin.
+ */
+const NODE_VERSION_PREFIX_PATTERN = /^v/u;
+/**
+ * Extracts the OpenClaw README tool list section.
+ */
+const OPENCLAW_README_TOOL_SECTION_PATTERN =
+  /## Exposed Tools\n\n([\s\S]*?)\n## /u;
+/**
+ * Extracts a documented OpenClaw tool name from a README bullet.
+ */
+const OPENCLAW_README_TOOL_LINE_PATTERN = /^- `([^`]+)`: /gmu;
+/**
+ * Detects inline OpenClaw tool registration calls.
+ */
+const OPENCLAW_DIRECT_REGISTRATION_PATTERN =
+  /api\.registerTool\((create[A-Za-z0-9]+Tool)\(\)\);/gu;
+/**
+ * Extracts exported OpenClaw tool factories and their tool names.
+ */
+const OPENCLAW_FACTORY_TOOL_NAME_PATTERN =
+  /export function (create[A-Za-z0-9]+Tool)[\s\S]*?name:\s*'([^']+)'/gu;
+/**
+ * Detects use of the centralized OpenClaw tool inventory factory.
+ */
+const OPENCLAW_TOOL_INVENTORY_CALL_PATTERN =
+  /\bcreateDevplatOpenClawTools\(\)/u;
+/**
+ * Extracts the body of the centralized OpenClaw tool inventory factory.
+ */
+const OPENCLAW_TOOL_INVENTORY_BODY_PATTERN =
+  /export function createDevplatOpenClawTools\(\): AnyAgentTool\[\] \{\s*return \[([\s\S]*?)\];\s*\}/u;
+/**
+ * Extracts factory calls from the centralized OpenClaw tool inventory body.
+ */
+const OPENCLAW_INVENTORY_FACTORY_PATTERN = /\b(create[A-Za-z0-9]+Tool)\(\)/gu;
+/**
+ * Escapes characters that are special inside regular expressions.
+ */
+const REGEXP_SPECIAL_CHARACTERS_PATTERN = /[.*+?^${}()|[\]\\]/gu;
 
 export const REQUIRED_INSTRUCTION_FILES = [
   'AGENTS.md',
@@ -258,7 +299,6 @@ export const REQUIRED_HEADINGS = new Map([
   [
     '.github/pull_request_template.md',
     [
-      '## Merge Contract',
       '### Behavioral Change',
       '### Performance Impact',
       '### Rollback Notes',
@@ -330,7 +370,10 @@ async function getInstructionVersionContext(rootDirectory) {
     expectedNodeVersion,
     expectedPackageManager: String(packageJson.packageManager ?? ''),
     expectedTypeScriptVersion: installedTypeScriptVersion,
-    normalizedNodeVersion: expectedNodeVersion.replace(/^v/u, ''),
+    normalizedNodeVersion: expectedNodeVersion.replace(
+      NODE_VERSION_PREFIX_PATTERN,
+      '',
+    ),
   };
 }
 
@@ -415,8 +458,15 @@ function validateRequiredText({
 }
 
 async function validateOpenClawToolDocumentation(rootDirectory, errors) {
-  const documentedTools = await getDocumentedOpenClawTools(rootDirectory);
-  const registeredTools = await getRegisteredOpenClawTools(rootDirectory);
+  let documentedTools;
+  let registeredTools;
+  try {
+    documentedTools = await getDocumentedOpenClawTools(rootDirectory);
+    registeredTools = await getRegisteredOpenClawTools(rootDirectory);
+  } catch (error) {
+    errors.push(normalizeInstructionError(error));
+    return;
+  }
 
   for (const toolName of registeredTools) {
     if (!documentedTools.has(toolName)) {
@@ -466,17 +516,17 @@ function buildRequiredTextRules({
         'Use `PLATFORM.md` as the authoritative foundation-scope document for required packages, surfaces, workflows, and acceptance criteria.',
         'Do not use TypeScript type assertions or casts anywhere in authored code; banned forms include `as`, `as unknown`, angle-bracket casts, non-null assertions, and double assertions.',
         'Branch names and pull request titles must not include any registered tool name.',
-        'Treat `codex` as a reserved tool name and never use it in branch names or pull request titles.',
         'Pull request titles must use conventional commit format.',
         'Pull request bodies must follow `.github/pull_request_template.md` and fill every section with repo-specific content.',
-        'Do not open or update a pull request until every changed executable source file is covered 100% by automated unit tests.',
         'Do not put business logic inside decorators, `@vannadii/devplat-openclaw`, or `@vannadii/devplat-discord`.',
         'Do not colocate domain logic beside OpenClaw or Discord just because those packages initiate the workflow.',
         'Discord interactions must stay thread-aware and bound to the correct spec, slice, or pull request context.',
         'Keep `logic.ts` pure and test it directly.',
         'Keep `service.ts` as the class shell for orchestration, delegation, and side-effect boundaries.',
         'Keep Discord and OpenClaw control-plane contracts aligned with auditable artifacts and generated schemas.',
-        'Use structured test tables with `const cases = [...]`. Each case must declare `inputs`, a `mock` setup function, and an `assert` function, then run through a single implementation per suite.',
+        "Use structured test tables with `const cases = [...]`. Each case must declare `inputs`, a `mock` setup function, and an `assert` function, then run through a single `it.each(cases)('$name', ...)` implementation per suite.",
+        'Keep constants in the owning package',
+        'Treat regular expressions as constants',
         'Fail closed when a Discord action lacks an unambiguous thread binding.',
       ],
     },
@@ -486,12 +536,12 @@ function buildRequiredTextRules({
         'Use `PLATFORM.md` as the authoritative foundation-scope document for required packages, workflows, delivery surfaces, and acceptance criteria.',
         'Do not use TypeScript type assertions or casts anywhere in authored code; banned forms include `as`, `as unknown`, angle-bracket casts, non-null assertions, and double assertions.',
         'Keep branch names and pull request titles free of registered tool names.',
-        'Treat `codex` as a reserved tool name and keep it out of branch names and pull request titles.',
         'Keep pull request titles in conventional commit form.',
         'Keep pull request bodies aligned with `.github/pull_request_template.md` and populate every section with the actual change details.',
-        'Do not open or update a pull request until every changed executable source file is covered 100% by automated unit tests.',
         'Never place business logic inside decorators, `@vannadii/devplat-openclaw`, or `@vannadii/devplat-discord`.',
-        'Use structured `const cases = [...]` test tables. Each case must declare `inputs`, a `mock` setup function, and an `assert` function, then run through a single implementation per suite.',
+        "Use structured `const cases = [...]` test tables. Each case must declare `inputs`, a `mock` setup function, and an `assert` function, then run through a single `it.each(cases)('$name', ...)` implementation per suite.",
+        'Keep constants in package-local `constants.ts` files.',
+        'Treat regular expressions as constants',
         'Do not colocate domain logic next to OpenClaw or Discord entrypoints just because the workflow starts there.',
         'Fail closed when a Discord interaction cannot be resolved to a single bound thread context.',
         'Keep Discord and OpenClaw control-plane contracts aligned with generated schemas, auditable artifacts, and the platform packages that own the behavior.',
@@ -547,10 +597,8 @@ function buildRequiredTextRules({
         'Use [`PLATFORM.md`](./PLATFORM.md) as the authoritative foundation-scope document for required packages, workflows, delivery surfaces, and acceptance criteria.',
         'Keep Discord interactions thread-aware and fail closed when the thread context is missing or ambiguous.',
         'Keep branch names and pull request titles descriptive of intent and never reuse any registered tool name.',
-        'Treat `codex` as a reserved tool name and never use it in branch names or pull request titles.',
         'Keep pull request titles in conventional commit format.',
         'Pull request bodies must use `.github/pull_request_template.md` and populate every section rather than replacing it with an ad hoc summary.',
-        'Do not open or update a pull request until every changed executable source file is covered 100% by automated unit tests.',
         'naming rules',
         'Pull request titles must also use conventional commit format.',
       ],
@@ -559,10 +607,8 @@ function buildRequiredTextRules({
       path: '.github/instructions/github.instructions.md',
       requiredText: [
         'Branch names and pull request titles must describe intent, not reuse any registered tool name.',
-        'Treat `codex` as a reserved tool name and keep it out of branch names and pull request titles.',
         'Pull request titles must use conventional commit format.',
         'Pull request bodies must use the repository template at `.github/pull_request_template.md` and fill every section with concrete change data.',
-        'Do not open or update a pull request until `npm run check:changed-coverage` confirms 100% automated unit-test coverage for every changed executable source file.',
       ],
     },
     {
@@ -612,19 +658,17 @@ function buildRequiredTextRules({
       requiredText: [
         '`npm run check:naming`',
         'keep branch names and pull request titles free of registered tool names',
-        'treat `codex` as a reserved tool name and keep it out of branch names and pull request titles',
         'keep pull request titles in conventional commit format',
         'keep pull request bodies aligned with `.github/pull_request_template.md` and fill every section with concrete change details',
-        'do not open or update a pull request until `npm run check:changed-coverage` confirms 100% automated unit-test coverage for every changed executable source file',
-        'keep tests in structured `const cases = [...]` tables where each case provides `inputs`, `mock`, and `assert`, then exercises a single implementation per suite',
+        "keep tests in structured `const cases = [...]` tables where each case provides `inputs`, `mock`, and `assert`, then exercises a single `it.each(cases)('$name', ...)` implementation per suite",
       ],
     },
     {
       path: '.github/instructions/testing.instructions.md',
       requiredText: [
-        'Prefer structured `const cases = [...]` tables. Each case should declare `inputs`, a `mock` setup function, and an `assert` function, then run through a single implementation per suite.',
-        'Treat 100% automated unit-test coverage for every changed executable source file as the minimum bar before opening or updating a pull request.',
-        'Run `npm run check:changed-coverage` before opening or updating a pull request.',
+        "Use structured `const cases = [...]` tables. Each case must declare `inputs`, a `mock` setup function, and an `assert` function, then run through a single `it.each(cases)('$name', ...)` implementation per suite.",
+        'Every named pattern needs matching and non-matching cases',
+        'Run `npm run check:changed-coverage` before completing executable source changes.',
       ],
     },
     {
@@ -685,9 +729,6 @@ function buildRequiredTextRules({
     {
       path: '.github/pull_request_template.md',
       requiredText: [
-        'Pull request titles must be conventional commit messages and must not use any registered tool name.',
-        'Treat `codex` as a reserved tool name too; do not use it in branch names or pull request titles.',
-        'Do not open or update a pull request until every changed executable source file is covered 100% by automated unit tests.',
         '### Performance Impact',
         '### Rollback Notes',
         '## Validation Performed',
@@ -756,7 +797,7 @@ async function getDocumentedOpenClawTools(rootDirectory) {
     resolve(rootDirectory, 'packages/openclaw/README.md'),
     'utf8',
   );
-  const toolSectionMatch = readme.match(/## Exposed Tools\n\n([\s\S]*?)\n## /u);
+  const toolSectionMatch = readme.match(OPENCLAW_README_TOOL_SECTION_PATTERN);
   if (toolSectionMatch === null) {
     throw new Error(
       'packages/openclaw/README.md is missing the Exposed Tools section.',
@@ -765,7 +806,9 @@ async function getDocumentedOpenClawTools(rootDirectory) {
 
   const tools = new Set();
 
-  for (const match of toolSectionMatch[1].matchAll(/^- `([^`]+)`: /gmu)) {
+  for (const match of toolSectionMatch[1].matchAll(
+    OPENCLAW_README_TOOL_LINE_PATTERN,
+  )) {
     tools.add(match[1]);
   }
 
@@ -782,18 +825,15 @@ export async function getRegisteredOpenClawTools(rootDirectory) {
     'utf8',
   );
 
-  const registeredFactories = [
-    ...indexText.matchAll(
-      /api\.registerTool\((create[A-Za-z0-9]+Tool)\(\)\);/gu,
-    ),
-  ].map((match) => match[1]);
+  const registeredFactories = getOpenClawRegisteredFactories({
+    indexText,
+    serviceText,
+  });
 
   const factoryToToolName = new Map(
-    [
-      ...serviceText.matchAll(
-        /export function (create[A-Za-z0-9]+Tool)[\s\S]*?name:\s*'([^']+)'/gu,
-      ),
-    ].map((match) => [match[1], match[2]]),
+    [...serviceText.matchAll(OPENCLAW_FACTORY_TOOL_NAME_PATTERN)].map(
+      (match) => [match[1], match[2]],
+    ),
   );
 
   const tools = new Set();
@@ -809,6 +849,50 @@ export async function getRegisteredOpenClawTools(rootDirectory) {
   }
 
   return tools;
+}
+
+/**
+ * Resolves OpenClaw tool factory names from the plugin entrypoint.
+ */
+function getOpenClawRegisteredFactories({ indexText, serviceText }) {
+  const factories = [
+    ...indexText.matchAll(OPENCLAW_DIRECT_REGISTRATION_PATTERN),
+  ].map((match) => match[1]);
+
+  if (OPENCLAW_TOOL_INVENTORY_CALL_PATTERN.test(indexText)) {
+    factories.push(...getOpenClawInventoryFactories(serviceText));
+  }
+
+  return [...new Set(factories)];
+}
+
+/**
+ * Resolves OpenClaw tool factory names from the centralized inventory.
+ */
+function getOpenClawInventoryFactories(serviceText) {
+  const inventoryMatch = serviceText.match(
+    OPENCLAW_TOOL_INVENTORY_BODY_PATTERN,
+  );
+  if (inventoryMatch === null) {
+    throw new Error(
+      'packages/openclaw/src/tool-surfaces/service.ts is missing createDevplatOpenClawTools inventory.',
+    );
+  }
+
+  return [
+    ...inventoryMatch[1].matchAll(OPENCLAW_INVENTORY_FACTORY_PATTERN),
+  ].map((match) => match[1]);
+}
+
+/**
+ * Converts unknown checker errors into reportable instruction drift text.
+ */
+function normalizeInstructionError(error) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return String(error);
 }
 
 async function pathExists(path) {
@@ -829,7 +913,7 @@ function countOccurrences(content, needle) {
 }
 
 function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
+  return value.replace(REGEXP_SPECIAL_CHARACTERS_PATTERN, '\\$&');
 }
 
 async function main() {

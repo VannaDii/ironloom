@@ -8,9 +8,17 @@ CI.
 
 - creates a fresh public sandbox repository named `devplat-test-<run_number>-<run_attempt>`
 - hardens that repository immediately after creation
-- reuses one shared set of five live-lab Discord channels
+- reuses one shared set of five live-lab Discord channels under the `test`
+  category
 - reports lifecycle status and progress into those shared channels for the
   duration of the run
+- requires the initial project-management bootstrap status message to post
+  successfully before any sandbox repository mutation
+- registers Discord command contracts, normalizes a Discord callback-shaped
+  slash command payload, and posts the interaction acknowledgement plus
+  bound-thread status through the same response transport used by the runtime;
+  the run fails if the interaction resolves to the wrong thread or does not
+  record both callback and thread message receipts with actionable component ids
 - waits for SonarQube Cloud to auto-import the repository
 - runs the OpenClaw live deep test against the real container with network
   access enabled
@@ -64,17 +72,34 @@ Run `.github/workflows/openclaw-live-lab.yml` with:
 The workflow writes a report bundle under `$RUNNER_TEMP/openclaw-live-lab` and
 uploads it as a workflow artifact.
 
+The workflow builds the workspace before running the live lab so the networked
+runner can load the same package services that production uses for Discord
+interaction routing.
+
+The live-lab runner passes the repository-scoped runtime environment into the
+OpenClaw container as named Docker environment variables. Secret values are not
+included in Docker arguments or report artifacts; `runtime-env.json` records only
+the redacted runtime snapshot for audit review.
+Live-mode containers also set `DISCORD_GATEWAY_ENABLED=true` and
+`DEVPLAT_STORAGE_ROOT=/app/.devplat`, so the private outbound Discord Gateway
+worker starts beside the OpenClaw gateway and resolves button or slash-command
+clicks against the same persisted thread-session state written by platform
+tools.
+
 The matching local invocation is:
 
 ```sh
+npm run build:workspace
 npm run test:openclaw:live-lab:local -- --ref main
 ```
 
-That command uses `.env` and the same GitHub App bootstrap path as the workflow.
+The local command uses `.env` and the same GitHub App bootstrap path as the
+workflow. Build first so the Discord interaction probe can load the package
+services from `dist`.
 
 ## Discord Reporting Layout
 
-The live lab reuses these shared channels:
+The live lab reuses these shared channels under the `test` Discord category:
 
 - `spec`
 - `implementation`
@@ -92,6 +117,55 @@ Use them this way:
 
 Every message is labeled with the run metadata, so operators can correlate
 activity without per-run channel trees.
+Status messages use the compact DevPlat state/scope/item format and suppress
+raw GitHub URL previews. They do not include interactive components because the
+live-lab runner is intentionally ephemeral and project-management updates are
+not bound lifecycle threads. The uploaded `live-lab-report.json` records each
+selected channel id and `parentId` so operators can confirm the run used the
+channels under the `test` category, not uncategorized duplicates with the same
+names.
+The first bootstrap message in `project-management` is not best effort: if it
+cannot be posted, the live lab fails before listing, creating, or deleting any
+sandbox repository. Later progress and failure notifications remain
+best-effort so the report can still be written when Discord has a transient
+error after the required operator-visible start signal. The report records the
+bootstrap channel id, message id, posted content, and empty component id list so
+operators can audit the exact Discord message that started the run without
+leaving buttons that outlive the runner.
+
+Production operator channels use the same standard channel names from runtime
+configuration under a category named for the repository. OpenClaw test and
+live-lab traffic always uses the `test` category so validation chatter stays
+separated from normal operations.
+
+The live lab also registers the exported Discord operator command contracts into
+the sandbox guild. After registration, it runs a Discord interaction probe. The
+probe simulates the operator `/retry-gates` path, routes it through the Discord
+control-plane service, renders the compact operator message payload with
+contextual buttons, posts the interaction acknowledgement into the audit channel
+and bound-thread status into the implementation channel with those contextual
+buttons intact, and records the command registration, response receipt endpoints,
+Discord message ids, posted content, and component custom ids in
+`live-lab-report.json`. The probe fails if either control-plane response loses
+the button rows, so the live-lab lane cannot silently regress to plain log-style
+messages. Only unbound bootstrap/progress status messages stay noninteractive to
+avoid stale clickable buttons after cleanup.
+
+Discord does not provide a supported bot API for clicking buttons as a human
+operator. The automated live lab therefore validates the production registration,
+normalization, routing, transport, and structured-message path with a
+callback-shaped payload. Human-triggered slash/button clicks in the sandbox guild
+remain a manual operator acceptance check.
+
+The Discord package also exposes a private outbound Gateway runtime for
+production mounts. That runtime identifies with Discord Gateway, heartbeats,
+receives `INTERACTION_CREATE` dispatches without public ingress, resolves
+stored thread-session bindings from the configured state directory, delegates
+the normalized operator interaction into the same control-plane service used by
+the live-lab probe, and posts structured operator payloads with safe mentions
+and contextual buttons. A signature-verified webhook helper remains available
+for explicit inbound deployments, but it is not the default private runtime
+path.
 
 ## Public Repo Safety Model
 

@@ -12,7 +12,20 @@
           "type": "string"
         },
         "status": {
-          "$ref": "#/definitions/LifecycleStatus"
+          "enum": [
+            "draft",
+            "queued",
+            "claimed",
+            "running",
+            "review",
+            "blocked",
+            "approved",
+            "merge-ready",
+            "merged",
+            "failed",
+            "rebasing",
+            "complete"
+          ]
         },
         "trace": {
           "type": "array",
@@ -33,10 +46,53 @@
           "type": "string"
         },
         "action": {
-          "$ref": "#/definitions/DiscordControlAction"
+          "enum": [
+            "run-this",
+            "claim-this",
+            "approve-this",
+            "block-this",
+            "complete-this",
+            "pause-this",
+            "resume-this",
+            "rebase-all-dependents",
+            "retry-gates",
+            "merge-now",
+            "show-status",
+            "show-last-artifact",
+            "explain-failure",
+            "sync-worktree",
+            "release-worktree",
+            "update-spec"
+          ]
         },
         "privileged": {
           "type": "boolean"
+        },
+        "workItem": {
+          "type": "object",
+          "properties": {
+            "threadKind": {
+              "enum": ["spec", "implementation", "pull-request"]
+            },
+            "threadId": {
+              "type": "string"
+            },
+            "artifactId": {
+              "type": "string"
+            },
+            "specId": {
+              "type": "string"
+            },
+            "sliceId": {
+              "type": "string"
+            },
+            "pullRequestNumber": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": ["threadKind", "threadId", "artifactId"],
+          "additionalProperties": false
         }
       },
       "required": [
@@ -52,44 +108,6 @@
         "privileged"
       ],
       "additionalProperties": false
-    },
-    "LifecycleStatus": {
-      "type": "string",
-      "enum": [
-        "draft",
-        "queued",
-        "claimed",
-        "running",
-        "review",
-        "blocked",
-        "approved",
-        "merge-ready",
-        "merged",
-        "failed",
-        "rebasing",
-        "complete"
-      ]
-    },
-    "DiscordControlAction": {
-      "type": "string",
-      "enum": [
-        "run-this",
-        "claim-this",
-        "approve-this",
-        "block-this",
-        "complete-this",
-        "pause-this",
-        "resume-this",
-        "rebase-all-dependents",
-        "retry-gates",
-        "merge-now",
-        "show-status",
-        "show-last-artifact",
-        "explain-failure",
-        "sync-worktree",
-        "release-worktree",
-        "update-spec"
-      ]
     }
   }
 }

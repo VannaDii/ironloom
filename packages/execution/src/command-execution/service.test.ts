@@ -52,4 +52,45 @@ describe('CommandExecutionService', () => {
     expect(snapshot.timedOut).toBe(true);
     expect(snapshot.exitCode).toBe(124);
   });
+
+  it('normalizes signal-only subprocess exits without timeout state', async () => {
+    const cases = [
+      {
+        inputs: {
+          args: ['-e', 'process.kill(process.pid, "SIGTERM")'],
+        },
+        mock: () => new CommandExecutionService(),
+        assert: async (service: CommandExecutionService) => {
+          const snapshot = await service.execute(
+            process.execPath,
+            cases[0].inputs.args,
+          );
+
+          expect(snapshot.timedOut).toBe(false);
+          expect(snapshot.exitCode).toBe(1);
+        },
+      },
+    ];
+
+    for (const testCase of cases) {
+      await testCase.assert(testCase.mock());
+    }
+  });
+
+  it('retries failed subprocesses and truncates captured output', async () => {
+    const service = new CommandExecutionService();
+    const snapshot = await service.execute(
+      process.execPath,
+      [
+        '-e',
+        'process.stdout.write("abcdef"); process.stderr.write("ghijkl"); process.exit(2)',
+      ],
+      { maxOutputBytes: 3, retry: { attempts: 2 } },
+    );
+
+    expect(snapshot.attempts).toBe(2);
+    expect(snapshot.stdout).toBe('abc');
+    expect(snapshot.stderr).toBe('ghi');
+    expect(snapshot.truncated).toBe(true);
+  });
 });

@@ -12,7 +12,20 @@
           "type": "string"
         },
         "status": {
-          "$ref": "#/definitions/LifecycleStatus"
+          "enum": [
+            "draft",
+            "queued",
+            "claimed",
+            "running",
+            "review",
+            "blocked",
+            "approved",
+            "merge-ready",
+            "merged",
+            "failed",
+            "rebasing",
+            "complete"
+          ]
         },
         "trace": {
           "type": "array",
@@ -27,10 +40,12 @@
           "type": "string"
         },
         "apiVersion": {
-          "type": "string",
           "const": "v10"
         },
         "applicationId": {
+          "type": "string"
+        },
+        "categoryName": {
           "type": "string"
         },
         "publicKey": {
@@ -42,17 +57,12 @@
         "installScopes": {
           "type": "array",
           "items": {
-            "type": "string",
-            "enum": [
-              "bot",
-              "applications.commands"
-            ]
+            "enum": ["bot", "applications.commands"]
           }
         },
         "requiredPermissions": {
           "type": "array",
           "items": {
-            "type": "string",
             "enum": [
               "ViewChannel",
               "SendMessages",
@@ -83,7 +93,6 @@
           "type": "string"
         },
         "threadBindingMode": {
-          "type": "string",
           "const": "inherit-parent"
         },
         "actionGates": {
@@ -120,6 +129,7 @@
         "apiBaseUrl",
         "apiVersion",
         "applicationId",
+        "categoryName",
         "publicKey",
         "botToken",
         "installScopes",
@@ -134,23 +144,6 @@
         "actionGates"
       ],
       "additionalProperties": false
-    },
-    "LifecycleStatus": {
-      "type": "string",
-      "enum": [
-        "draft",
-        "queued",
-        "claimed",
-        "running",
-        "review",
-        "blocked",
-        "approved",
-        "merge-ready",
-        "merged",
-        "failed",
-        "rebasing",
-        "complete"
-      ]
     }
   }
 }

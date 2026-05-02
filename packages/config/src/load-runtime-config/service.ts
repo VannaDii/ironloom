@@ -1,5 +1,5 @@
 import { createDefaultDevplatConfig, describeDevplatConfig } from './logic.js';
-import type { DevplatConfig } from './types.js';
+import type { DevplatConfig } from './codec.js';
 
 export class RuntimeConfigService {
   public fromEnvironment(

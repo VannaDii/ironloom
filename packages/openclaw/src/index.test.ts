@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import devplatOpenClawPlugin, {
   PluginConfigService,
+  createDevplatOpenClawTools,
   createRunGatesTool,
 } from './index.js';
 
@@ -24,6 +25,7 @@ describe('openclaw plugin entry', () => {
           apiBaseUrl: 'https://discord.com/api/v10',
           apiVersion: 'v10',
           applicationId: 'application-1',
+          categoryName: 'devplat',
           publicKey: 'public-key-1',
           botToken: 'bot-token-1',
           installScopes: ['bot', 'applications.commands'],
@@ -70,6 +72,7 @@ describe('openclaw plugin entry', () => {
             apiBaseUrl: 'https://discord.com/api/v10',
             apiVersion: 'v10',
             applicationId: 'application-1',
+            categoryName: 'devplat',
             publicKey: 'public-key-1',
             botToken: 'bot-token-1',
             installScopes: ['bot', 'applications.commands'],
@@ -99,6 +102,10 @@ describe('openclaw plugin entry', () => {
         };
       },
       assert: ({ toolNames, validation }) => {
+        const inventoryToolNames = createDevplatOpenClawTools().map(
+          (tool) => tool.name,
+        );
+
         expect(devplatOpenClawPlugin.id).toBe('@vannadii/devplat-openclaw');
         expect(devplatOpenClawPlugin.name).toBe('DevPlat OpenClaw Adapter');
         expect(devplatOpenClawPlugin.configSchema.jsonSchema).toMatchObject({
@@ -109,12 +116,8 @@ describe('openclaw plugin entry', () => {
           },
         });
         expect(validation.ok).toBe(true);
-        expect(toolNames).toContain('run_gates');
-        expect(toolNames).toContain('sync_worktree');
-        expect(toolNames).toContain('release_worktree');
-        expect(toolNames).toContain('update_spec_record');
-        expect(toolNames).toContain('submit_pull_request_merge');
-        expect(toolNames).toContain('execute_rebase_dependents');
+        expect(toolNames).toStrictEqual(inventoryToolNames);
+        expect(new Set(toolNames).size).toBe(toolNames.length);
         expect(createRunGatesTool().name).toBe('run_gates');
         expect(new PluginConfigService().constructor.name).toBe(
           'PluginConfigService',

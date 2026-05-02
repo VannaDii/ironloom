@@ -1,9 +1,16 @@
 import * as t from 'io-ts';
 
-import { LifecycleStatusCodec, type Exact } from '@vannadii/devplat-core';
+import {
+  ARTIFACT_TYPE_AUDIT_LOG,
+  IsoTimestampCodec,
+  LifecycleStatusCodec,
+} from '@vannadii/devplat-core';
 
-import type { AuditLogArtifact } from './types.js';
+import { AUDIT_LOG_ARTIFACT_VERSION } from './constants.js';
 
+/**
+ * Codec for audit details attached to a lifecycle-changing action.
+ */
 export const AuditLogPayloadCodec = t.type({
   auditId: t.string,
   actorId: t.string,
@@ -12,18 +19,26 @@ export const AuditLogPayloadCodec = t.type({
   details: t.UnknownRecord,
 });
 
+/**
+ * Codec for audit log artifacts.
+ */
 export const AuditLogArtifactCodec = t.type({
   id: t.string,
-  artifactType: t.literal('audit-log'),
-  version: t.literal(1),
+  artifactType: t.literal(ARTIFACT_TYPE_AUDIT_LOG),
+  version: t.literal(AUDIT_LOG_ARTIFACT_VERSION),
   summary: t.string,
   status: LifecycleStatusCodec,
   trace: t.array(t.string),
-  updatedAt: t.string,
+  updatedAt: IsoTimestampCodec,
   payload: AuditLogPayloadCodec,
 });
 
-export type _AuditLogArtifactExact = Exact<
-  AuditLogArtifact,
-  t.TypeOf<typeof AuditLogArtifactCodec>
->;
+/**
+ * Audit log payload derived from the source codec.
+ */
+export type AuditLogPayload = t.TypeOf<typeof AuditLogPayloadCodec>;
+
+/**
+ * Audit log artifact derived from the source codec.
+ */
+export type AuditLogArtifact = t.TypeOf<typeof AuditLogArtifactCodec>;

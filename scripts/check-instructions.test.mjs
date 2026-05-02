@@ -170,6 +170,46 @@ describe('check-instructions', () => {
         ).toBe(true);
       },
     },
+    {
+      name: 'fails when the centralized OpenClaw inventory references an unknown factory',
+      inputs: {
+        useFixtureRoot: true,
+      },
+      mock: async ({ rootDirectory }) => {
+        await replaceInFile(
+          rootDirectory,
+          'packages/openclaw/src/tool-surfaces/service.ts',
+          '    createRunSupervisorStepTool(),',
+          '    createMissingTool(),',
+        );
+      },
+      assert: (errors) => {
+        expect(
+          errors.some((error) => error.includes('createMissingTool')),
+        ).toBe(true);
+      },
+    },
+    {
+      name: 'fails when the centralized OpenClaw inventory is missing',
+      inputs: {
+        useFixtureRoot: true,
+      },
+      mock: async ({ rootDirectory }) => {
+        await replaceInFile(
+          rootDirectory,
+          'packages/openclaw/src/tool-surfaces/service.ts',
+          'export function createDevplatOpenClawTools(): AnyAgentTool[] {',
+          'export function createDevplatToolInventory(): AnyAgentTool[] {',
+        );
+      },
+      assert: (errors) => {
+        expect(
+          errors.some((error) =>
+            error.includes('missing createDevplatOpenClawTools inventory'),
+          ),
+        ).toBe(true);
+      },
+    },
   ];
 
   it.each(cases)('$name', async (testCase) => {

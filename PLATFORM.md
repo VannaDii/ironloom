@@ -35,21 +35,28 @@ The current repository already includes the concrete surfaces that this phase is
 
 - Discord control actions currently cover `run-this`, `claim-this`, `approve-this`, `block-this`, `complete-this`, `pause-this`, `resume-this`, `retry-gates`, `merge-now`, `rebase-all-dependents`, `show-status`, `show-last-artifact`, `explain-failure`, `sync-worktree`, `release-worktree`, and `update-spec`.
 - Discord thread/session contracts now distinguish `spec`, `implementation`, and `pull-request` thread kinds so PR workflows can stay thread-scoped instead of remaining only a documented target.
+- Discord operator messages are compact structured UI payloads with status/scope/item/result fields plus contextual buttons; route failures and policy denials fail closed and persist audit records.
+- Discord categories default to the configured repository name for multi-repository guild separation; OpenClaw test and live-lab traffic uses the `test` category.
 - The OpenClaw adapter already exposes explicit worktree sync/release tools, explicit spec-update handling, pull-request update and merge submission tools, and dependent rebase execution delegated into platform packages.
 - The guide site already includes a dedicated publishing and release guide at `site/guide-docs/guides/publishing-release.md`.
 - Pre-commit enforcement is centralized through `scripts/check-pre-commit.mjs`, which verifies Node, regenerates schemas and the OpenClaw manifest twice around `lint-staged`, re-stages generated files, then runs workspace typecheck and repository validation.
 - SonarCloud analysis is wired into CI as a required path and is no longer guarded by a standalone pre-check step; a missing or misconfigured secret must fail the actual scan path rather than silently skipping analysis.
 
-## Remaining Gap
+## Full Autonomy Buildout
 
-The main remaining work is:
+The single-repo autonomous production path is implemented incrementally through
+the package responsibilities below. Current completion work focuses on:
 
-- complete the OpenClaw adapter surface so the tools match the intended platform operations, not just record normalization
-- keep Discord thread-aware and continue expanding operator behavior until all common development operations resolve directly from bound work-item context
-- harden hook and CI enforcement so schema, manifest, and Sonar requirements fail loudly
-- close documentation gaps, especially publishing/release guidance and current-vs-target implementation notes
-- continue normalizing packages toward the fuller per-package specs below
-- finish per-package README coverage and other remaining normalization backlog items that the repo does not yet machine-enforce
+- repository-scoped runtime configuration for GitHub, Discord, OpenClaw, Sonar,
+  storage, and worktrees
+- codec-owned package contracts where exported `io-ts` codecs are the schema
+  and TypeScript type source of truth for lifecycle records and tool inputs
+- durable `.devplat` storage records with layout metadata and index materialization
+- versioned artifact envelopes with migration metadata for future schema changes
+- explicit policy decisions with approval, audit, and privilege-level outcomes
+- package-local README coverage enforced by repository validation
+- OpenClaw and Discord surfaces that delegate into platform packages while
+  preserving auditable state and fail-closed control behavior
 
 ## Goals
 
@@ -81,6 +88,9 @@ The main remaining work is:
 - Docs: VitePress
 - CI/CD: GitHub Actions
 - Quality gate: SonarCloud
+- Public JSON schemas are generated from exported `io-ts` codecs; codec-owned
+  TypeScript public record types derive from those codecs to avoid parallel
+  interface and codec definitions.
 
 ## Repository Structure
 
@@ -95,7 +105,7 @@ The main remaining work is:
 
 ### Core Layer
 
-- `@vannadii/devplat-core`: domain-wide lifecycle state, result/error primitives, shared metadata helpers, exactness helpers
+- `@vannadii/devplat-core`: domain-wide lifecycle state, result/error primitives, codec-derived public contracts, shared metadata helpers
 - `@vannadii/devplat-config`: environment parsing, typed configuration, defaults, normalization
 - `@vannadii/devplat-artifacts`: artifact envelopes, validators, schema contracts, versioned machine-readable handoffs
 
@@ -139,29 +149,29 @@ The main remaining work is:
 
 ## Package Analysis Snapshot
 
-- `@vannadii/devplat-core`: current code covers lifecycle status, trace snapshots, result primitives, codecs, and exactness helpers; remaining gap is typed IDs, richer error taxonomy, and typed timestamp/value-object helpers.
-- `@vannadii/devplat-config`: current code covers normalized runtime config for GitHub, Discord, OpenClaw, and Sonar; remaining gap is broader deployment/storage/worktree defaults and fuller config validation errors.
-- `@vannadii/devplat-artifacts`: current code covers artifact envelopes, approval, audit, merge, rebase, and validation; remaining gap is a fuller artifact registry, explicit migrations, and broader artifact coverage for research/spec/slice/task/review handoffs.
-- `@vannadii/devplat-memory`: current code covers a basic memory-entry contract and persistence path; remaining gap is explicit decision-log, known-trap, and reusable context-bundle modeling.
-- `@vannadii/devplat-research`: current code covers structured research briefs; remaining gap is deeper capability comparison, feasibility structure, and richer source attribution.
-- `@vannadii/devplat-specs`: current code covers spec records, approval, and explicit revision updates; remaining gap is richer revision history and PR-ready spec rendering contracts.
-- `@vannadii/devplat-slicing`: current code covers slice plans and readiness checks; remaining gap is an explicit dependency-graph artifact and richer PR-sized work packet modeling.
-- `@vannadii/devplat-queue`: current code covers task creation, claim, and lifecycle updates; remaining gap is fuller queue abstractions including release/resume history and explicit transition-event outputs.
-- `@vannadii/devplat-worktrees`: current code covers allocation plus explicit sync and release result contracts; remaining gap is deeper branch-safety validation and real cleanup/sync execution semantics.
-- `@vannadii/devplat-execution`: current code covers structured subprocess execution and timeouts; remaining gap is explicit retry policy, truncation policy, and retry outcome contracts.
-- `@vannadii/devplat-gates`: current code covers gate execution and reports; remaining gap is richer failure classification, next-action hints, and remediation hooks.
-- `@vannadii/devplat-sonarcloud`: current code covers bootstrap verification and quality gate interpretation; remaining gap is fuller issue normalization into review/remediation inputs.
-- `@vannadii/devplat-review`: current code covers structured review findings; remaining gap is broader review summary generation and spec-vs-implementation conformance contracts.
-- `@vannadii/devplat-remediation`: current code covers remediation planning; remaining gap is explicit remediation result artifacts and unresolved-issue summaries.
-- `@vannadii/devplat-prs`: current code covers PR normalization plus update and merge submission semantics; remaining gap is richer PR body/update projections and deeper review/remediation status projection.
-- `@vannadii/devplat-branching`: current code covers dependent rebase planning and explicit merge-triggered execution through worktree sync orchestration; remaining gap is a fuller branch dependency graph and deeper conflict classification.
-- `@vannadii/devplat-supervisor`: current code covers minimal next-step decision and telemetry; remaining gap is broader lifecycle routing across research, specs, slicing, implementation, review, remediation, merge, and continuation.
-- `@vannadii/devplat-observability`: current code covers telemetry events; remaining gap is richer audit-specific schemas, run metrics, and run summaries.
-- `@vannadii/devplat-github`: current code covers GitHub action requests and policy-aware submission semantics; remaining gap is richer normalized repo/PR state and issue/spec-PR contracts.
-- `@vannadii/devplat-openclaw`: current code covers deterministic plugin config, broad tool validation, and adapter delegation; remaining gap is keeping tool inventory and handler depth aligned with the intended end-to-end platform surface as package behavior becomes more concrete.
-- `@vannadii/devplat-discord`: current code covers thread-aware bindings, approvals, expanded operator actions, and explicit `pull-request` thread sessions; remaining gap is richer response formatting and deeper command-to-work-item resolution.
-- `@vannadii/devplat-policy`: current code covers privileged-action decisions and explicit approval requirements for risky Discord actions; remaining gap is richer merge/autofix/escalation policy modeling.
-- `@vannadii/devplat-storage`: current code covers filesystem-backed record storage under `.devplat`; remaining gap is richer storage interfaces and explicit layout contracts for every domain surface.
+- `@vannadii/devplat-core`: current code covers lifecycle status, trace snapshots, result primitives, codec-derived public types, shared decode helpers, codec-first typed IDs/repository keys/timestamps, and classified platform errors.
+- `@vannadii/devplat-config`: current code covers normalized runtime config for GitHub API/web/token settings, storage directories, worktree sync defaults, Docker/Helm deployment defaults, Discord Gateway interaction transport, OpenClaw, Sonar, and structured validation issues.
+- `@vannadii/devplat-artifacts`: current code covers artifact envelopes, the default lifecycle artifact registry, explicit migration records, approval, audit, merge, rebase, validation, and registered research/spec/slice/task/review handoff contracts.
+- `@vannadii/devplat-memory`: current code covers memory-entry persistence plus decision-log, known-trap, and reusable context-bundle modeling.
+- `@vannadii/devplat-research`: current code covers structured research briefs, capability comparisons, feasibility structure, and source attribution.
+- `@vannadii/devplat-specs`: current code covers spec records, approval, explicit revision metadata, source artifact references, and PR-ready spec rendering with metadata, criteria, sources, and revision history.
+- `@vannadii/devplat-slicing`: current code covers slice plans, readiness checks, explicit dependency-graph artifacts, and PR-sized work packets with task counts, PR title hints, and review focus.
+- `@vannadii/devplat-queue`: current code covers task creation, claim, lifecycle updates, release/resume transitions, and explicit transition-event history.
+- `@vannadii/devplat-worktrees`: current code covers pure allocation/sync/release records, branch safety checks with fail-closed Git execution, Git-backed worktree add, fetch/rebase or fast-forward sync, and archive/delete release methods.
+- `@vannadii/devplat-execution`: current code covers structured subprocess execution, timeouts, retry policy, truncation policy, and retry outcome contracts.
+- `@vannadii/devplat-gates`: current code covers gate execution, reports, failure classification, remediation handoff hooks, and next-action hints.
+- `@vannadii/devplat-sonarcloud`: current code covers bootstrap verification, quality gate interpretation, normalized issue records, and Sonar issue projection into review findings for remediation planning.
+- `@vannadii/devplat-review`: current code covers structured review findings, review summary generation, and spec-vs-implementation conformance contracts.
+- `@vannadii/devplat-remediation`: current code covers remediation planning from review findings and gate remediation hooks, remediation result records, and unresolved-issue summaries.
+- `@vannadii/devplat-prs`: current code covers PR normalization, review/remediation-aware body projections, update submission semantics, and merge submission semantics.
+- `@vannadii/devplat-branching`: current code covers dependent rebase planning, explicit merge-triggered execution through worktree sync orchestration, branch dependency graphs, and conflict classification.
+- `@vannadii/devplat-supervisor`: current code covers next-step decisions, telemetry, lifecycle signals, blocker-aware route plans, and phase routing across research, specs, slicing, implementation, gates, review, remediation, merge, and continuation.
+- `@vannadii/devplat-observability`: current code covers telemetry events, audit records, run metrics, run summaries, and persisted audit/telemetry evidence.
+- `@vannadii/devplat-github`: current code covers GitHub action requests, policy-aware submission semantics, concrete REST request submission for PR create/update/comment/merge and branch sync, normalized repository state, normalized pull request state, and issue/spec/PR link contracts.
+- `@vannadii/devplat-openclaw`: current code covers deterministic plugin config, broad tool validation, adapter delegation, a single tool inventory factory used by plugin registration, task lifecycle tools that can preserve durable queue transition history from the current stored record, lifecycle policy evaluation output with action category, risk, escalation target, audit reason, privilege, and next-action metadata, Discord control handling for both normalized control requests and operator interaction callbacks, and hermetic deep-test coverage of durable queue transitions plus callback-shaped Discord interactions through the loopback response transport; remaining gap is deepening delegated platform behavior as package behavior becomes more concrete.
+- `@vannadii/devplat-discord`: current code covers thread-aware bindings, approvals, expanded operator actions, explicit `pull-request` thread sessions, codec-backed slash command contracts, raw Discord callback normalization, outbound Discord Gateway `INTERACTION_CREATE` routing with identify and heartbeat support, storage-backed bound-thread resolution for private runtimes, Helm values that start the private Gateway worker without a public webhook host, signature-verified interaction webhook helpers with structured component-bearing interaction responses for explicit inbound deployments, Discord ping responses, live-lab guild command registration, slash/button interaction routing, fail-closed thread ambiguity handling, typed bound work-item projection from Discord thread sessions, REST response posting that names the resolved work item, live-lab status payloads with compact state/scope/item content and no stale interactive buttons, and a live-lab interaction probe that routes a callback-shaped operator command through the Discord response path while failing if callback/thread receipts are missing, the bound thread is wrong, actionable button components are dropped from the posted control-plane payloads, or component custom ids and message receipt ids are not recorded; remaining gap is human operator-triggered slash/button invocation in the sandbox guild because Discord does not provide a supported bot API for clicking buttons as a user.
+- `@vannadii/devplat-policy`: current code covers privileged-action decisions, explicit approval requirements, lifecycle action categories for merge, command execution, worktree release, rebase, publish, autofix, and destructive cleanup, risk levels, escalation targets, next-action hints, and audit reasons.
+- `@vannadii/devplat-storage`: current code covers filesystem-backed record storage under `.devplat`, explicit layout contracts, and active thread/task/PR/branch/artifact indexes.
 
 ## OpenClaw Adapter Requirements
 
@@ -195,7 +205,7 @@ The foundation-phase adapter must expose tools for:
 - pull request update and merge submission
 - dependent rebase planning and explicit execution semantics
 
-The current implementation already includes these capabilities in code and docs. The remaining gap is depth and completeness of delegated platform behavior, not basic tool registration.
+The current implementation already includes these capabilities in code and docs. Tool registration is centralized through the OpenClaw tool inventory factory; the remaining gap is depth and completeness of delegated platform behavior.
 
 ## Discord Workflow Model
 
@@ -214,6 +224,8 @@ All Discord interactions MUST be thread-aware.
 - no operator action may run against ambiguous global context
 - all lifecycle-changing actions must resolve context from thread metadata
 - if thread context is missing or ambiguous, the system must fail closed unless an explicit override path exists
+- message components must encode action and thread context, then revalidate the live Discord payload, persisted binding, policy decision, and current work item before running an action
+- test and live-lab OpenClaw Discord traffic must use the standard channels under a `test` category; production ops uses the standard configured channels under a category named for the repository
 
 ### Expected Operator Actions
 
@@ -236,6 +248,41 @@ Discord operator actions must cover common development operations such as:
 - `release worktree`
 - `update spec`
 
+### Message UX
+
+Discord messages must be operator UI rather than logs. Primary messages use the
+canonical structure:
+
+```text
+<indicator> DevPlat · <action label>
+
+Status: <status>
+Scope: <thread kind> · <thread id>
+Item: <spec | slice | PR | artifact | run>
+Actor: <Discord actor mention or id>
+→ <result or next action>
+```
+
+Actionable messages include contextual buttons for relevant next steps only.
+Button payloads may include action and thread context, but encoded payloads are
+never trusted by themselves. The control plane must fail closed when the
+interaction thread, persisted binding, work item, stale-state check, or policy
+decision does not match.
+
+Route failures use:
+
+```text
+🔴 DevPlat · Action refused
+
+Status: blocked
+Scope: unresolved
+Reason: interaction must resolve to exactly one bound thread
+→ Run this from the correct spec, implementation, or PR thread.
+```
+
+Policy denials use the standard blocked-action format and change no platform
+state beyond audit logging.
+
 Current Discord thread/session contracts must support:
 
 - `spec` thread context
@@ -246,6 +293,7 @@ Runtime Discord configuration must also declare:
 
 - Discord API `v10` access
 - application id, public key, and bot token inputs
+- category name, defaulting to the configured repository name except for test traffic
 - parent channels for `spec`, `implementation`, and `pull-request` threads
 - audit and project-management channels
 - an inheritance-based thread binding mode
@@ -391,7 +439,8 @@ Every package is expected to provide:
 - `README.md`
 - scripts for `build`, `clean`, `lint`, `typecheck`, and `test`
 
-The current repo already satisfies the structural/package metadata rules broadly, but package `README.md` coverage remains incomplete. Only `@vannadii/devplat-openclaw` currently has a package-local README, so the remaining packages stay on the normalization backlog until each publishable package has one.
+The current repo enforces these package completion rules, including package-local
+README coverage, through `npm run check:packages`.
 
 ## Cross-package Rules
 
@@ -442,6 +491,23 @@ This phase is complete when:
 - GitHub Pages docs deploys successfully through artifact-based publishing
 - `@vannadii/devplat-openclaw` exposes the intended foundation tool surface
 - Discord interactions are thread-aware and auditable
+- Discord operator messages use compact structured payloads with contextual
+  buttons, fail-closed route messages, policy-denied blocked messages, and audit
+  records for accepted, blocked, and refused interactions
+- the dispatchable live lab registers Discord command contracts and records
+  Discord interaction-response probing through operator-visible Discord messages
+  with actionable button components preserved in the structured control-plane
+  payload, component custom ids, posted content, and Discord message receipt ids
+  preserved
+- the dispatchable live lab fails before sandbox repository mutation when the
+  required project-management bootstrap status message cannot post
+- the dispatchable live lab records the required bootstrap status receipt with
+  channel id, message id, posted content, and an empty component id list
+- the Discord package exposes a private outbound Gateway runtime for real
+  slash/button callbacks without public ingress, plus a reusable
+  signature-verified interaction webhook helper for explicit inbound
+  deployments while preserving structured operator payloads and contextual
+  buttons
 - docs are sufficient for operators and contributors to install and use the platform without private guidance
 
 ## Recommended First Vertical Slice
@@ -456,6 +522,17 @@ Prioritize an end-to-end thread-aware operator path before broadening deeper pac
 6. the operator can retry or approve in-thread
 
 That slice proves the core architecture: thread-aware control, adapter correctness, artifact handling, and operator UX.
+
+Live-lab acceptance must also verify the Discord interactive UX path directly:
+
+1. register or simulate a Discord slash/button interaction
+2. route it through the outbound Gateway or callback-shaped Discord
+   control-plane service
+3. post an interaction acknowledgement and bound-thread status through the Discord response transport
+4. record callback and thread-message receipts, message ids, posted content, and structured component custom ids in the live-lab report
+5. record the required bootstrap status receipt with channel id, message id, posted content, and an empty component id list
+6. fail the live lab before sandbox repository mutation when the required bootstrap status message cannot post
+7. fail the live lab if the interaction fails closed, does not resolve to one bound thread, or drops actionable controls
 
 ## Implementation Phases
 

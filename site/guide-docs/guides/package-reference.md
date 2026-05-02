@@ -5,7 +5,7 @@
 - `@vannadii/devplat-core`: shared lifecycle primitives and decode helpers
 - `@vannadii/devplat-config`: runtime config normalization
 - `@vannadii/devplat-artifacts`: artifact envelope and approval/audit contracts
-- `@vannadii/devplat-policy`: privileged action policy decisions
+- `@vannadii/devplat-policy`: lifecycle action policy decisions with category, risk, escalation, approval, audit, and next-action guidance
 
 ## Workflow Packages
 
@@ -18,9 +18,9 @@
 ## Integration Packages
 
 - `@vannadii/devplat-storage`: the only package allowed to read or write `.devplat/` paths directly
-- `@vannadii/devplat-observability`: telemetry event recording
-- `@vannadii/devplat-github`: GitHub action request and workflow coordination contracts
-- `@vannadii/devplat-discord`: thread bindings, approvals, and Discord control handling
+- `@vannadii/devplat-observability`: telemetry event recording, audit records, run metrics, and run summaries
+- `@vannadii/devplat-github`: GitHub action request, repository state, pull request state, issue/spec link, and workflow coordination contracts
+- `@vannadii/devplat-discord`: thread bindings, approvals, bound work-item projection, and Discord control handling
 - `@vannadii/devplat-sonarcloud`: Sonar bootstrap and quality gate interpretation
 
 ## Adapter Package

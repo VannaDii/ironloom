@@ -9,14 +9,10 @@
           "type": "string"
         },
         "status": {
-          "type": "string",
-          "enum": [
-            "failed",
-            "passed"
-          ]
+          "enum": ["failed", "passed"]
         },
         "qualityGateStatus": {
-          "$ref": "#/definitions/SonarApiQualityGateStatus"
+          "enum": ["ERROR", "NONE", "OK"]
         },
         "overallCoverageThreshold": {
           "type": "number"
@@ -25,7 +21,28 @@
           "type": "number"
         },
         "checks": {
-          "$ref": "#/definitions/SonarBootstrapVerificationChecks"
+          "type": "object",
+          "properties": {
+            "qualityGateComputed": {
+              "type": "boolean"
+            },
+            "qualityGatePassing": {
+              "type": "boolean"
+            },
+            "overallCoverageCondition": {
+              "type": "boolean"
+            },
+            "newCodeCoverageCondition": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "qualityGateComputed",
+            "qualityGatePassing",
+            "overallCoverageCondition",
+            "newCodeCoverageCondition"
+          ],
+          "additionalProperties": false
         },
         "issues": {
           "type": "array",
@@ -46,38 +63,6 @@
         "checks",
         "issues",
         "evaluatedAt"
-      ],
-      "additionalProperties": false
-    },
-    "SonarApiQualityGateStatus": {
-      "type": "string",
-      "enum": [
-        "ERROR",
-        "NONE",
-        "OK"
-      ]
-    },
-    "SonarBootstrapVerificationChecks": {
-      "type": "object",
-      "properties": {
-        "qualityGateComputed": {
-          "type": "boolean"
-        },
-        "qualityGatePassing": {
-          "type": "boolean"
-        },
-        "overallCoverageCondition": {
-          "type": "boolean"
-        },
-        "newCodeCoverageCondition": {
-          "type": "boolean"
-        }
-      },
-      "required": [
-        "qualityGateComputed",
-        "qualityGatePassing",
-        "overallCoverageCondition",
-        "newCodeCoverageCondition"
       ],
       "additionalProperties": false
     }

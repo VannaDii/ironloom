@@ -1,7 +1,7 @@
 import type { DevplatConfig } from '@vannadii/devplat-config';
 import { appendTrace } from '@vannadii/devplat-core';
 
-import type { OpenClawPluginConfig } from './types.js';
+import type { OpenClawPluginConfig } from './codec.js';
 
 export function createOpenClawPluginConfig(
   input: OpenClawPluginConfig,
@@ -34,6 +34,7 @@ export function createOpenClawPluginConfigFromRuntimeConfig(
     apiBaseUrl: input.discord.apiBaseUrl,
     apiVersion: input.discord.apiVersion,
     applicationId: input.discord.applicationId,
+    categoryName: input.discord.categoryName,
     publicKey: input.discord.publicKey,
     botToken: input.discord.botToken,
     installScopes: input.discord.installScopes,

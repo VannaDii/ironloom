@@ -1,0 +1,6 @@
+--actor devplat-local-act
+-P ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-latest
+--artifact-server-path .artifacts/act
+--concurrent-jobs 1
+--env ACT=true
+--rm

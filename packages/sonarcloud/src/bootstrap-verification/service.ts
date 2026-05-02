@@ -6,7 +6,7 @@ import {
 import type {
   SonarBootstrapVerificationInput,
   SonarBootstrapVerificationResult,
-} from './types.js';
+} from './codec.js';
 
 export class SonarBootstrapVerificationService {
   public execute(

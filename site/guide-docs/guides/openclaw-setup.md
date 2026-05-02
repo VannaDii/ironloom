@@ -31,6 +31,10 @@ The runtime expects OpenClaw configuration through environment variables, mounte
 ## Tool Surface
 
 The adapter exposes research, specs, slicing, runtime config, artifacts, GitHub, Discord, SonarCloud, task queue, storage, worktrees, execution, policy, telemetry, and supervisor capabilities.
+The policy surface returns lifecycle evaluations with explicit action category,
+risk, escalation target, audit reason, privilege, and next-action metadata so
+OpenClaw callers do not need to infer merge, command, rebase, publish, autofix,
+or destructive cleanup handling.
 
 Required foundation-phase tool coverage includes:
 
@@ -46,6 +50,11 @@ Required foundation-phase tool coverage includes:
 - pull request update, merge, and dependent rebase execution semantics
 
 Keep required tool names documented in `packages/openclaw/README.md`, keep the manifest deterministic, and keep Discord-related tools thread-aware.
+`handle_discord_control` accepts both normalized Discord control requests and
+operator interaction callback payloads, then delegates to the Discord package so
+OpenClaw can drive the same fail-closed slash/button path used by the live lab.
+Hermetic deep tests exercise that callback-shaped input with loopback Discord
+receipts; live-lab runs exercise the real Discord response transport.
 
 ## Related Guides
 

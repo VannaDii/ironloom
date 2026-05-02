@@ -9,7 +9,7 @@ import {
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import {
   createGitHubAppJwt,
@@ -31,6 +31,14 @@ const defaultWorkflowTimeoutMs = 180_000;
 const defaultPollMs = 5_000;
 const githubRepositoryListPageSize = 100;
 const livePrefix = 'devplat-test-';
+/**
+ * Shared Discord category used by live-lab and OpenClaw test runs.
+ */
+const testDiscordCategoryName = 'test';
+/**
+ * Discord component wire field for the developer-defined interaction id.
+ */
+const discordComponentCustomIdField = 'custom_id';
 const liveLabGitHubAppPermissions = Object.freeze({
   actions: 'write',
   administration: 'write',
@@ -289,7 +297,7 @@ export function createRunIdentifiers({ runAttempt, runNumber }) {
 
   return {
     branchName: `live-test/${runLabel}`,
-    categoryName: repoName,
+    categoryName: testDiscordCategoryName,
     repoName,
     runAttempt: normalizedRunAttempt,
     runLabel,
@@ -297,13 +305,27 @@ export function createRunIdentifiers({ runAttempt, runNumber }) {
   };
 }
 
-export function createDiscordChannelPlan() {
+export function createDiscordChannelPlan(
+  categoryName = testDiscordCategoryName,
+) {
   return [
-    { key: 'spec', name: 'spec' },
-    { key: 'implementation', name: 'implementation' },
-    { key: 'pullRequest', name: 'pull-request' },
-    { key: 'audit', name: 'audit' },
-    { key: 'projectManagement', name: 'project-management' },
+    { categoryName, key: 'spec', name: 'spec' },
+    {
+      categoryName,
+      key: 'implementation',
+      name: 'implementation',
+    },
+    {
+      categoryName,
+      key: 'pullRequest',
+      name: 'pull-request',
+    },
+    { categoryName, key: 'audit', name: 'audit' },
+    {
+      categoryName,
+      key: 'projectManagement',
+      name: 'project-management',
+    },
   ];
 }
 
@@ -317,24 +339,32 @@ export function createStatusMessage({
   status,
   workflowUrl,
 }) {
+  const title =
+    status === 'passed'
+      ? `🟢 DevPlat · Live lab ${phase}`
+      : `🟡 DevPlat · Live lab ${phase}`;
   const lines = [
-    `status: ${status}`,
-    `phase: ${phase}`,
-    `run: ${runLabel}`,
-    `repo: ${repoFullName}`,
-    `ref: ${ref}`,
-    `sha: ${sha}`,
+    title,
+    '',
+    `Status: ${status}`,
+    `Scope: live-lab · ${runLabel}`,
+    `Item: ${repoFullName}`,
+    'Actor: workflow',
+    `Updated: ${sha}`,
+    `→ ${details ?? 'Progress update.'}`,
+    '',
+    `Ref: ${ref}`,
   ];
 
   if (workflowUrl !== null) {
-    lines.push(`workflow: ${workflowUrl}`);
+    lines.push(`Workflow: ${runLabel}`);
   }
 
-  if (details !== undefined && details.length > 0) {
-    lines.push(`details: ${details}`);
-  }
-
-  return lines.join('\n');
+  return {
+    allowed_mentions: { parse: [] },
+    content: lines.join('\n'),
+    flags: 4,
+  };
 }
 
 export function mapProgressToChannel(progress) {
@@ -406,6 +436,8 @@ export function createLiveRuntimeEnv({
     DISCORD_APPLICATION_ID: discordConfig.applicationId,
     DISCORD_AUDIT_CHANNEL_ID: discordChannels.audit.id,
     DISCORD_BOT_TOKEN: discordConfig.botToken,
+    DISCORD_CATEGORY_NAME:
+      discordConfig.categoryName ?? testDiscordCategoryName,
     DISCORD_DEFAULT_GUILD_ID: discordConfig.guildId,
     DISCORD_IMPLEMENTATION_CHANNEL_ID: discordChannels.implementation.id,
     DISCORD_PROJECT_MANAGEMENT_CHANNEL_ID: discordChannels.projectManagement.id,
@@ -470,6 +502,7 @@ export function createStepSummary(report) {
     `- Run: ${report.runLabel}`,
     `- Repository: ${report.github?.repoFullName ?? 'n/a'}`,
     `- Workflow: ${report.workflowUrl ?? 'n/a'}`,
+    `- Discord category: ${report.discord?.category?.name ?? 'n/a'}`,
     `- Discord channels: ${report.discord?.channelNames?.join(', ') ?? 'n/a'}`,
     `- Deep-test steps: ${String(report.deepTest?.steps ?? 0)}`,
     `- Repository cleanup: ${report.cleanup?.repository.status ?? 'n/a'}`,
@@ -1062,19 +1095,50 @@ async function getGuild(guildId, discordRequest) {
   return discordRequest(`/guilds/${encodeURIComponent(guildId)}`);
 }
 
-async function ensureDiscordChannels({ discordRequest, guildId }) {
+async function ensureDiscordCategory({
+  categoryName,
+  discordRequest,
+  existingChannels,
+  guildId,
+}) {
+  return (
+    existingChannels.find(
+      (candidate) => candidate.name === categoryName && candidate.type === 4,
+    ) ??
+    (await discordRequest(`/guilds/${encodeURIComponent(guildId)}/channels`, {
+      body: {
+        name: categoryName,
+        type: 4,
+      },
+      expectedStatuses: [200, 201],
+      method: 'POST',
+    }))
+  );
+}
+
+async function ensureDiscordChannels({
+  categoryName = testDiscordCategoryName,
+  discordRequest,
+  guildId,
+}) {
   const existingChannels = await listGuildChannels({
     discordRequest,
     guildId,
   });
+  const testCategory = await ensureDiscordCategory({
+    categoryName,
+    discordRequest,
+    existingChannels,
+    guildId,
+  });
   const channels = {};
 
-  for (const channel of createDiscordChannelPlan()) {
+  for (const channel of createDiscordChannelPlan(categoryName)) {
     const existingChannel = existingChannels.find(
       (candidate) =>
         candidate.name === channel.name &&
         candidate.type === 0 &&
-        (candidate.parent_id === undefined || candidate.parent_id === null),
+        candidate.parent_id === testCategory.id,
     );
 
     channels[channel.key] =
@@ -1082,6 +1146,10 @@ async function ensureDiscordChannels({ discordRequest, guildId }) {
       (await discordRequest(`/guilds/${encodeURIComponent(guildId)}/channels`, {
         body: {
           name: channel.name,
+          /**
+           * Discord channel creation wire key used to nest test channels under the test category.
+           */
+          parent_id: testCategory.id,
           type: 0,
         },
         expectedStatuses: [200, 201],
@@ -1090,16 +1158,125 @@ async function ensureDiscordChannels({ discordRequest, guildId }) {
   }
 
   return {
+    category: testCategory,
     channels,
   };
 }
 
-async function sendDiscordMessage(channelId, content, discordRequest) {
-  return discordRequest(`/channels/${encodeURIComponent(channelId)}/messages`, {
-    body: { content },
-    expectedStatuses: [200, 201],
-    method: 'POST',
+/**
+ * Normalizes a plain status string or structured Discord payload into a message body.
+ */
+function createDiscordMessageBody(payload) {
+  if (typeof payload === 'string') {
+    return { content: payload };
+  }
+
+  return payload;
+}
+
+/**
+ * Prefixes visible content while preserving structured Discord controls.
+ */
+function prefixDiscordMessageContent(prefix, payload) {
+  if (typeof payload === 'string') {
+    return `${prefix}${payload}`;
+  }
+
+  return {
+    ...payload,
+    content: `${prefix}${payload.content}`,
+  };
+}
+
+/**
+ * Posts a Discord message body without changing structured Discord controls.
+ */
+async function sendDiscordMessage(channelId, payload, discordRequest) {
+  const body = createDiscordMessageBody(payload);
+  const responseBody = await discordRequest(
+    `/channels/${encodeURIComponent(channelId)}/messages`,
+    {
+      body,
+      expectedStatuses: [200, 201],
+      method: 'POST',
+    },
+  );
+
+  return {
+    body,
+    responseBody,
+  };
+}
+
+/**
+ * Detects whether a structured Discord payload includes actionable controls.
+ */
+function hasDiscordActionComponents(payload) {
+  return (
+    Array.isArray(payload?.components) &&
+    payload.components.some(
+      (row) => Array.isArray(row?.components) && row.components.length > 0,
+    )
+  );
+}
+
+/**
+ * Collects actionable Discord component identifiers from a structured payload.
+ */
+function collectDiscordComponentCustomIds(payload) {
+  if (!Array.isArray(payload?.components)) {
+    return [];
+  }
+
+  return payload.components.flatMap((row) => {
+    if (!Array.isArray(row?.components)) {
+      return [];
+    }
+
+    return row.components.flatMap((component) => {
+      const customId = component?.[discordComponentCustomIdField];
+
+      return typeof customId === 'string' ? [customId] : [];
+    });
   });
+}
+
+/**
+ * Reads the Discord message id returned by the transport receipt.
+ */
+function readDiscordReceiptMessageId(receipt) {
+  const messageId = receipt?.responseBody?.id;
+
+  return typeof messageId === 'string' ? messageId : null;
+}
+
+/**
+ * Reads the visible Discord message content from a structured payload.
+ */
+function readDiscordPayloadContent(payload) {
+  const content = payload?.content;
+
+  return typeof content === 'string' ? content : null;
+}
+
+/**
+ * Reads the visible Discord message content from the posted receipt body.
+ */
+function readDiscordReceiptContent(receipt) {
+  return readDiscordPayloadContent(receipt?.body);
+}
+
+/**
+ * Builds the auditable report projection for a posted Discord message.
+ */
+function createDiscordMessageReceiptReport({ channelId, receipt }) {
+  return {
+    channelId,
+    componentCustomIds: collectDiscordComponentCustomIds(receipt.body),
+    content: readDiscordReceiptContent(receipt),
+    endpoint: `/channels/${encodeURIComponent(channelId)}/messages`,
+    messageId: readDiscordReceiptMessageId(receipt),
+  };
 }
 
 async function postStatus({
@@ -1117,6 +1294,7 @@ async function postStatus({
   return sendDiscordMessage(
     channelId,
     createStatusMessage({
+      controlThreadId: channelId,
       details,
       phase,
       ref,
@@ -1138,6 +1316,237 @@ async function postStatusSafe(options) {
   }
 
   return true;
+}
+
+class LiveLabDiscordInteractionTransport {
+  constructor({ auditChannelId, discordRequest }) {
+    this.auditChannelId = auditChannelId;
+    this.discordRequest = discordRequest;
+  }
+
+  async postInteractionResponse(input, content) {
+    const endpoint = `/interactions/${encodeURIComponent(input.id)}/${encodeURIComponent(input.token)}/callback`;
+    const receipt = await sendDiscordMessage(
+      this.auditChannelId,
+      prefixDiscordMessageContent('simulated interaction callback: ', content),
+      this.discordRequest,
+    );
+
+    return {
+      body: receipt.body,
+      endpoint,
+      responseBody: receipt.responseBody,
+      statusCode: 201,
+    };
+  }
+
+  async postInteractionDeferred(input) {
+    const endpoint = `/interactions/${encodeURIComponent(input.id)}/${encodeURIComponent(input.token)}/callback`;
+    const receipt = await sendDiscordMessage(
+      this.auditChannelId,
+      `simulated interaction deferred: ${input.id}`,
+      this.discordRequest,
+    );
+
+    return {
+      body: receipt.body,
+      endpoint,
+      responseBody: receipt.responseBody,
+      statusCode: 201,
+    };
+  }
+
+  async postThreadMessage(threadId, content) {
+    const endpoint = `/channels/${encodeURIComponent(threadId)}/messages`;
+    const receipt = await sendDiscordMessage(
+      threadId,
+      content,
+      this.discordRequest,
+    );
+
+    return {
+      body: receipt.body,
+      endpoint,
+      responseBody: receipt.responseBody,
+      statusCode: 201,
+    };
+  }
+}
+
+async function createDiscordControlPlaneService({
+  reportDirectory,
+  transport,
+}) {
+  const discordModule = await import(
+    pathToFileURL(resolve(repoRootDirectory, 'packages/discord/dist/index.js'))
+      .href
+  );
+  const storageModule = await import(
+    pathToFileURL(resolve(repoRootDirectory, 'packages/storage/dist/index.js'))
+      .href
+  );
+  const store = new storageModule.FileStoreService(
+    resolve(reportDirectory, 'discord-interactions'),
+  );
+
+  return new discordModule.DiscordControlPlaneService(
+    undefined,
+    undefined,
+    store,
+    transport,
+  );
+}
+
+async function createDiscordApplicationCommandPayloads() {
+  const discordModule = await import(
+    pathToFileURL(resolve(repoRootDirectory, 'packages/discord/dist/index.js'))
+      .href
+  );
+
+  return discordModule.createDiscordApplicationCommandPayloads();
+}
+
+async function createDiscordOperatorInteractionFromCallback(callback, options) {
+  const discordModule = await import(
+    pathToFileURL(resolve(repoRootDirectory, 'packages/discord/dist/index.js'))
+      .href
+  );
+
+  return discordModule.createDiscordOperatorInteractionFromCallback(
+    callback,
+    options,
+  );
+}
+
+export async function registerDiscordApplicationCommands(
+  { applicationId, discordRequest, guildId },
+  dependencies = {},
+) {
+  const payloadFactory =
+    dependencies.createDiscordApplicationCommandPayloads ??
+    createDiscordApplicationCommandPayloads;
+  const payloads = await payloadFactory();
+  const endpoint = `/applications/${encodeURIComponent(applicationId)}/guilds/${encodeURIComponent(guildId)}/commands`;
+  const responseBody = await discordRequest(endpoint, {
+    method: 'PUT',
+    body: payloads,
+  });
+
+  return {
+    endpoint,
+    count: payloads.length,
+    names: payloads.map((payload) => payload.name),
+    responseBody,
+  };
+}
+
+export async function runDiscordInteractionProbe(
+  {
+    discordChannels,
+    discordRequest,
+    reportDirectory,
+    runLabel,
+    updatedAt = new Date().toISOString(),
+  },
+  dependencies = {},
+) {
+  const serviceFactory =
+    dependencies.createDiscordControlPlaneService ??
+    createDiscordControlPlaneService;
+  const interactionFactory =
+    dependencies.createDiscordOperatorInteractionFromCallback ??
+    createDiscordOperatorInteractionFromCallback;
+  const threadId = discordChannels.implementation.id;
+  const boundSession = {
+    id: `live-lab-${runLabel}-session`,
+    summary: 'Live-lab implementation thread',
+    status: 'running',
+    trace: [],
+    updatedAt,
+    guildId: 'live-lab-guild',
+    channelId: threadId,
+    parentChannelId: discordChannels.implementation.id,
+    threadId,
+    kind: 'implementation',
+    specId: `live-lab-${runLabel}-spec`,
+    sliceId: `live-lab-${runLabel}-slice`,
+    pullRequestNumber: null,
+    artifactId: `live-lab-${runLabel}-artifact`,
+  };
+  const transport = new LiveLabDiscordInteractionTransport({
+    auditChannelId: discordChannels.audit.id,
+    discordRequest,
+  });
+  const callback = {
+    id: `live-lab-${runLabel}-retry-gates`,
+    token: `simulated-token-${runLabel}`,
+    channel_id: threadId,
+    data: {
+      name: 'retry-gates',
+    },
+    member: {
+      user: {
+        id: 'live-lab-operator',
+      },
+    },
+  };
+  const interaction = await interactionFactory(callback, {
+    threadId,
+    boundThreadId: threadId,
+    boundSession,
+    summary: 'Live-lab simulated retry gates interaction',
+    privileged: false,
+    updatedAt,
+  });
+  const service = await serviceFactory({
+    auditChannelId: discordChannels.audit.id,
+    discordRequest,
+    reportDirectory,
+    transport,
+  });
+  const result = await service.handleInteraction(interaction);
+
+  if (result.allowed !== true || result.failedClosed === true) {
+    throw new Error('Discord interaction probe failed closed.');
+  }
+
+  if (result.request.threadId !== threadId) {
+    throw new Error('Discord interaction probe resolved the wrong thread.');
+  }
+
+  if (
+    result.responseReceipt?.endpoint === undefined ||
+    result.threadReceipt?.endpoint === undefined
+  ) {
+    throw new Error('Discord interaction probe did not record receipts.');
+  }
+
+  if (
+    !hasDiscordActionComponents(result.responsePayload) ||
+    !hasDiscordActionComponents(result.threadPayload)
+  ) {
+    throw new Error(
+      'Discord interaction probe did not publish actionable controls.',
+    );
+  }
+
+  return {
+    action: result.request.action,
+    allowed: result.allowed,
+    componentCustomIds: collectDiscordComponentCustomIds(result.threadPayload),
+    componentRows: result.threadPayload.components.length,
+    commandName: interaction.commandName,
+    failedClosed: result.failedClosed,
+    interactionEndpoint: result.responseReceipt.endpoint,
+    interactionMessageId: readDiscordReceiptMessageId(result.responseReceipt),
+    policyDecisionId: result.policyDecisionId,
+    responseContent: readDiscordReceiptContent(result.responseReceipt),
+    threadContent: readDiscordReceiptContent(result.threadReceipt),
+    threadEndpoint: result.threadReceipt.endpoint,
+    threadId: result.request.threadId,
+    threadMessageId: readDiscordReceiptMessageId(result.threadReceipt),
+    workItem: result.workItem ?? null,
+  };
 }
 
 async function cleanupLiveLabResources({
@@ -1369,6 +1778,11 @@ export async function runLiveLab(options, dependencies = {}) {
   const makeDirectory = dependencies.makeDirectory ?? mkdir;
   const removeDirectory = dependencies.removeDirectory ?? rm;
   const runDeepTestFn = dependencies.runDeepTest ?? runDeepTest;
+  const runDiscordInteractionProbeFn =
+    dependencies.runDiscordInteractionProbe ?? runDiscordInteractionProbe;
+  const registerDiscordApplicationCommandsFn =
+    dependencies.registerDiscordApplicationCommands ??
+    registerDiscordApplicationCommands;
   const writeTextFile = dependencies.writeTextFile ?? writeFile;
 
   const identifiers = createRunIdentifiers({
@@ -1425,21 +1839,40 @@ export async function runLiveLab(options, dependencies = {}) {
     );
 
     const discordChannels = await ensureDiscordChannels({
+      categoryName:
+        options.environment.discord.categoryName ?? testDiscordCategoryName,
       discordRequest,
       guildId: options.environment.discord.guildId,
     });
     report.discord = {
-      channelNames: createDiscordChannelPlan().map((channel) => channel.name),
+      category: {
+        id: discordChannels.category.id,
+        name: discordChannels.category.name,
+      },
+      channelNames: createDiscordChannelPlan(discordChannels.category.name).map(
+        (channel) => channel.name,
+      ),
       channels: Object.fromEntries(
         Object.entries(discordChannels.channels).map(([key, channel]) => [
           key,
-          { id: channel.id, name: channel.name },
+          {
+            id: channel.id,
+            name: channel.name,
+            parentId: channel.parent_id ?? null,
+          },
         ]),
       ),
     };
+    report.discord.commandRegistration =
+      await registerDiscordApplicationCommandsFn({
+        applicationId: options.environment.discord.applicationId,
+        discordRequest,
+        guildId: options.environment.discord.guildId,
+      });
 
-    await postStatusSafe({
-      channelId: discordChannels.channels.projectManagement.id,
+    const bootstrapChannelId = discordChannels.channels.projectManagement.id;
+    const bootstrapStatusReceipt = await postStatus({
+      channelId: bootstrapChannelId,
       details:
         'Bootstrapped the shared live-lab channels and external service preflight.',
       discordRequest,
@@ -1450,6 +1883,10 @@ export async function runLiveLab(options, dependencies = {}) {
       sha: options.environment.githubWorkflow.sha,
       status: 'in-progress',
       workflowUrl,
+    });
+    report.discord.bootstrapStatus = createDiscordMessageReceiptReport({
+      channelId: bootstrapChannelId,
+      receipt: bootstrapStatusReceipt,
     });
 
     const repositories = await listRepositories({
@@ -1657,6 +2094,12 @@ export async function runLiveLab(options, dependencies = {}) {
       reportDirectory: deepTestReport.reportDirectory,
       steps: deepTestReport.steps.length,
     };
+    report.discord.interactionProbe = await runDiscordInteractionProbeFn({
+      discordChannels: discordChannels.channels,
+      discordRequest,
+      reportDirectory,
+      runLabel: identifiers.runLabel,
+    });
 
     report.status = 'passed';
   } catch (error) {

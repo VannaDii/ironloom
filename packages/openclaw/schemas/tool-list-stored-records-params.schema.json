@@ -6,22 +6,25 @@
       "type": "object",
       "properties": {
         "scope": {
-          "$ref": "#/definitions/StoreScope"
+          "enum": [
+            "artifacts",
+            "audit",
+            "gates",
+            "memory",
+            "pull-requests",
+            "remediation",
+            "reviews",
+            "slices",
+            "specs",
+            "state",
+            "tasks",
+            "telemetry",
+            "worktrees"
+          ]
         }
       },
-      "required": [
-        "scope"
-      ],
+      "required": ["scope"],
       "additionalProperties": false
-    },
-    "StoreScope": {
-      "type": "string",
-      "enum": [
-        "artifacts",
-        "memory",
-        "state",
-        "telemetry"
-      ]
     }
   }
 }

@@ -3,9 +3,6 @@
   "$ref": "#/definitions/CreateTaskRecordToolInput",
   "definitions": {
     "CreateTaskRecordToolInput": {
-      "$ref": "#/definitions/TaskRecord"
-    },
-    "TaskRecord": {
       "type": "object",
       "properties": {
         "id": {
@@ -15,7 +12,20 @@
           "type": "string"
         },
         "status": {
-          "$ref": "#/definitions/LifecycleStatus"
+          "enum": [
+            "draft",
+            "queued",
+            "claimed",
+            "running",
+            "review",
+            "blocked",
+            "approved",
+            "merge-ready",
+            "merged",
+            "failed",
+            "rebasing",
+            "complete"
+          ]
         },
         "trace": {
           "type": "array",
@@ -37,6 +47,68 @@
         },
         "assigneeId": {
           "type": "string"
+        },
+        "transitions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "toStatus": {
+                "enum": [
+                  "draft",
+                  "queued",
+                  "claimed",
+                  "running",
+                  "review",
+                  "blocked",
+                  "approved",
+                  "merge-ready",
+                  "merged",
+                  "failed",
+                  "rebasing",
+                  "complete"
+                ]
+              },
+              "action": {
+                "enum": [
+                  "create",
+                  "claim",
+                  "status-update",
+                  "complete",
+                  "block",
+                  "release",
+                  "resume"
+                ]
+              },
+              "reason": {
+                "type": "string"
+              },
+              "occurredAt": {
+                "type": "string"
+              },
+              "fromStatus": {
+                "enum": [
+                  "draft",
+                  "queued",
+                  "claimed",
+                  "running",
+                  "review",
+                  "blocked",
+                  "approved",
+                  "merge-ready",
+                  "merged",
+                  "failed",
+                  "rebasing",
+                  "complete"
+                ]
+              },
+              "actorId": {
+                "type": "string"
+              }
+            },
+            "required": ["toStatus", "action", "reason", "occurredAt"],
+            "additionalProperties": false
+          }
         }
       },
       "required": [
@@ -50,23 +122,6 @@
         "threadId"
       ],
       "additionalProperties": false
-    },
-    "LifecycleStatus": {
-      "type": "string",
-      "enum": [
-        "draft",
-        "queued",
-        "claimed",
-        "running",
-        "review",
-        "blocked",
-        "approved",
-        "merge-ready",
-        "merged",
-        "failed",
-        "rebasing",
-        "complete"
-      ]
     }
   }
 }

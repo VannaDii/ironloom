@@ -56,6 +56,7 @@ export function parseDeepTestArgs(argv) {
       typeof args.get('--report-dir') === 'string'
         ? resolve(repoRootDirectory, args.get('--report-dir'))
         : undefined,
+    retainImage: args.get('--retain-image') === true,
     retainContainerOnFailure:
       args.get('--retain-container-on-failure') === true,
     skipBuild,
@@ -87,7 +88,7 @@ function sanitizeNameSegment(value) {
     }
   }
 
-  while (normalized.startsWith('-')) {
+  while (normalized.startsWith('-') || normalized.startsWith('.')) {
     normalized = normalized.slice(1);
   }
 
@@ -153,8 +154,11 @@ export function createRuntimeEnv(overrides = {}) {
     GITHUB_REPO: 'devplat',
     DISCORD_API_BASE_URL: 'https://discord.com/api/v10',
     DISCORD_APPLICATION_ID: 'application-1',
+    DISCORD_CATEGORY_NAME: 'test',
     DISCORD_PUBLIC_KEY: 'public-key-1',
     DISCORD_BOT_TOKEN: 'bot-token-1',
+    DISCORD_GATEWAY_URL: 'wss://gateway.discord.gg/?v=10&encoding=json',
+    DISCORD_GATEWAY_INTENTS: '0',
     DISCORD_DEFAULT_GUILD_ID: 'guild-1',
     DISCORD_SPEC_CHANNEL_ID: 'spec-1',
     DISCORD_IMPLEMENTATION_CHANNEL_ID: 'impl-1',
@@ -178,6 +182,7 @@ export function createPluginConfig(runtimeEnv) {
     apiBaseUrl: runtimeEnv.DISCORD_API_BASE_URL,
     apiVersion: 'v10',
     applicationId: runtimeEnv.DISCORD_APPLICATION_ID,
+    categoryName: runtimeEnv.DISCORD_CATEGORY_NAME,
     publicKey: runtimeEnv.DISCORD_PUBLIC_KEY,
     botToken: runtimeEnv.DISCORD_BOT_TOKEN,
     installScopes: ['bot', 'applications.commands'],
@@ -259,8 +264,12 @@ export function buildDockerRunArgs({
   devplatStateDirectory,
   imageTag,
   mode,
+  runtimeEnv = {},
   runtimeDirectory,
 }) {
+  const runtimeEnvArgs = Object.keys(runtimeEnv)
+    .sort()
+    .flatMap((key) => ['-e', key]);
   const args = [
     'run',
     '-d',
@@ -271,6 +280,8 @@ export function buildDockerRunArgs({
     '-e',
     'OPENCLAW_CONFIG_PATH=/state/openclaw.json',
     '-e',
+    'DEVPLAT_STORAGE_ROOT=/app/.devplat',
+    '-e',
     'HOME=/state/home',
     '-e',
     'OPENCLAW_HOME=/state/openclaw-home',
@@ -280,6 +291,7 @@ export function buildDockerRunArgs({
     'TMPDIR=/state/tmp',
     '-e',
     `DEVPLAT_TEST_MODE=${mode}`,
+    ...runtimeEnvArgs,
     '-v',
     `${runtimeDirectory}:/state`,
     '-v',
@@ -290,6 +302,10 @@ export function buildDockerRunArgs({
 
   if (mode === 'hermetic') {
     args.push('--network', 'none');
+  }
+
+  if (mode === 'live') {
+    args.push('-e', 'DISCORD_GATEWAY_ENABLED=true');
   }
 
   args.push(
@@ -458,6 +474,58 @@ function createBaseWorktreeAllocation() {
   };
 }
 
+/**
+ * Creates the queued task record used to verify durable task transitions.
+ */
+function createQueuedTaskRecord() {
+  return {
+    id: 'queue-openclaw-1',
+    summary: 'Queue a Discord implementation slice',
+    status: 'queued',
+    trace: ['queue:task-1:queued'],
+    updatedAt: fixedTimestamp,
+    taskId: 'task-1',
+    sliceId: 'slice-1',
+    threadId: 'thread-1',
+    transitions: [
+      {
+        toStatus: 'queued',
+        action: 'create',
+        reason: 'Created task task-1',
+        occurredAt: fixedTimestamp,
+      },
+    ],
+  };
+}
+
+/**
+ * Creates the claimed task record used to verify status updates preserve history.
+ */
+function createClaimedTaskRecord() {
+  return {
+    ...createQueuedTaskRecord(),
+    status: 'claimed',
+    assigneeId: 'worker-1',
+    trace: ['queue:task-1:queued', 'queue:task-1:claimed'],
+    transitions: [
+      {
+        toStatus: 'queued',
+        action: 'create',
+        reason: 'Created task task-1',
+        occurredAt: fixedTimestamp,
+      },
+      {
+        fromStatus: 'queued',
+        toStatus: 'claimed',
+        action: 'claim',
+        actorId: 'worker-1',
+        reason: 'Claimed task task-1',
+        occurredAt: fixedTimestamp,
+      },
+    ],
+  };
+}
+
 function createApprovalArtifact() {
   return {
     id: 'artifact-approval-1',
@@ -488,10 +556,43 @@ export function createDeepScenario(runtimeEnv) {
     updatedAt: fixedTimestamp,
     githubOwner: runtimeEnv.GITHUB_OWNER,
     githubRepo: runtimeEnv.GITHUB_REPO,
+    repository: {
+      owner: runtimeEnv.GITHUB_OWNER,
+      repo: runtimeEnv.GITHUB_REPO,
+      defaultBranch: 'main',
+      repositoryKey: `${runtimeEnv.GITHUB_OWNER}/${runtimeEnv.GITHUB_REPO}`,
+    },
+    storage: {
+      rootDirectory: 'devplat-state',
+      layoutVersion: 1,
+      artifactDirectory: 'devplat-state/artifacts',
+      indexDirectory: 'devplat-state/indexes',
+      auditLogDirectory: 'devplat-state/audit',
+    },
+    worktrees: {
+      rootDirectory: 'devplat-state/worktrees',
+      baseBranch: 'main',
+      syncStrategy: 'rebase-or-fast-forward',
+    },
+    github: {
+      apiBaseUrl: 'https://api.github.com',
+      webBaseUrl: 'https://github.com',
+      tokenEnvironmentVariable: 'GITHUB_TOKEN',
+    },
+    deployment: {
+      target: 'local-docker',
+      dockerImageRepository: 'ghcr.io/vannadii/devplat-openclaw-runtime',
+      dockerImageTag: 'latest',
+      helmReleaseName: 'devplat',
+      helmNamespace: 'devplat',
+      helmChartPath: 'deploy/helm/devplat',
+      stateMountPath: '/var/lib/devplat',
+    },
     discord: {
       apiBaseUrl: runtimeEnv.DISCORD_API_BASE_URL,
       apiVersion: 'v10',
       applicationId: runtimeEnv.DISCORD_APPLICATION_ID,
+      categoryName: runtimeEnv.DISCORD_CATEGORY_NAME,
       publicKey: '[redacted]',
       botToken: '[redacted]',
       installScopes: ['bot', 'applications.commands'],
@@ -512,9 +613,17 @@ export function createDeepScenario(runtimeEnv) {
       projectManagementChannelId:
         runtimeEnv.DISCORD_PROJECT_MANAGEMENT_CHANNEL_ID,
       threadBindingMode: 'inherit-parent',
+      interactionTransport: 'gateway',
+      gatewayUrl: runtimeEnv.DISCORD_GATEWAY_URL,
+      gatewayIntents: Number.parseInt(runtimeEnv.DISCORD_GATEWAY_INTENTS, 10),
     },
     openclaw: {
       pluginId: '@vannadii/devplat-openclaw',
+      gateway: {
+        bind: 'loopback',
+        port: defaultGatewayPort,
+        authMode: 'token',
+      },
       actionGates: {
         approveThis: true,
         mergeNow: false,
@@ -559,13 +668,32 @@ export function createDeepScenario(runtimeEnv) {
     createStep(
       'evaluate_policy_action',
       { action: 'retry-gates', privileged: false },
-      { action: 'retry-gates', allowed: true, requiresApproval: false },
+      {
+        action: 'retry-gates',
+        actionCategory: 'command-execution',
+        allowed: true,
+        auditRequired: true,
+        nextAction: 'execute-with-audit',
+        privileged: false,
+        requiresApproval: false,
+      },
       'config',
     ),
     createStep(
       'evaluate_policy_action',
       { action: 'merge-now', privileged: false },
-      { action: 'merge-now', allowed: false, requiresApproval: true },
+      {
+        action: 'merge-now',
+        actionCategory: 'merge',
+        allowed: false,
+        auditRequired: true,
+        escalationRequired: true,
+        escalationTarget: 'operator',
+        nextAction: 'request-merge-approval',
+        privileged: false,
+        requiresApproval: true,
+        riskLevel: 'high',
+      },
       'config',
     ),
     createStep(
@@ -705,8 +833,29 @@ export function createDeepScenario(runtimeEnv) {
         sliceId: 'slice-1',
         threadId: 'thread-1',
         assigneeId: 'worker-1',
+        record: createQueuedTaskRecord(),
       },
-      { status: 'claimed', assigneeId: 'worker-1' },
+      {
+        id: 'queue-openclaw-1',
+        status: 'claimed',
+        assigneeId: 'worker-1',
+        transitions: [
+          {
+            toStatus: 'queued',
+            action: 'create',
+            reason: 'Created task task-1',
+            occurredAt: fixedTimestamp,
+          },
+          {
+            fromStatus: 'queued',
+            toStatus: 'claimed',
+            action: 'claim',
+            actorId: 'worker-1',
+            reason: 'Claimed task task-1',
+            occurredAt: fixedTimestamp,
+          },
+        ],
+      },
       'planning',
     ),
     createStep(
@@ -715,9 +864,37 @@ export function createDeepScenario(runtimeEnv) {
         taskId: 'task-1',
         sliceId: 'slice-1',
         threadId: 'thread-1',
-        status: 'merged',
+        status: 'complete',
+        record: createClaimedTaskRecord(),
       },
-      { status: 'merged' },
+      {
+        id: 'queue-openclaw-1',
+        status: 'complete',
+        assigneeId: 'worker-1',
+        transitions: [
+          {
+            toStatus: 'queued',
+            action: 'create',
+            reason: 'Created task task-1',
+            occurredAt: fixedTimestamp,
+          },
+          {
+            fromStatus: 'queued',
+            toStatus: 'claimed',
+            action: 'claim',
+            actorId: 'worker-1',
+            reason: 'Claimed task task-1',
+            occurredAt: fixedTimestamp,
+          },
+          {
+            fromStatus: 'claimed',
+            toStatus: 'complete',
+            action: 'complete',
+            reason: 'Moved task task-1 to complete',
+            occurredAt: fixedTimestamp,
+          },
+        ],
+      },
       'planning',
     ),
     createStep(
@@ -793,6 +970,60 @@ export function createDeepScenario(runtimeEnv) {
         privileged: false,
       },
       { allowed: false, policyDecisionId: 'policy-release-worktree' },
+      'control',
+    ),
+    createStep(
+      'handle_discord_control',
+      {
+        id: 'discord-interaction-allow-1',
+        token: 'discord-interaction-token-1',
+        actorId: 'operator-1',
+        channelId: 'channel-1',
+        boundThreadId: 'thread-1',
+        commandName: 'retry-gates',
+        summary: 'Retry gates from interaction callback',
+        privileged: false,
+        updatedAt: fixedTimestamp,
+        boundSession: {
+          id: 'session-openclaw-1',
+          summary: 'Implementation thread',
+          status: 'running',
+          trace: [],
+          updatedAt: fixedTimestamp,
+          guildId: 'guild-1',
+          channelId: 'channel-1',
+          parentChannelId: 'parent-1',
+          threadId: 'thread-1',
+          kind: 'implementation',
+          specId: 'spec-1',
+          sliceId: 'slice-1',
+          pullRequestNumber: null,
+          artifactId: 'artifact-1',
+        },
+      },
+      {
+        allowed: true,
+        failedClosed: false,
+        policyDecisionId: 'policy-retry-gates',
+        responseReceipt: {
+          endpoint:
+            '/interactions/discord-interaction-allow-1/discord-interaction-token-1/callback',
+          responseBody: {
+            mode: 'loopback',
+          },
+        },
+        threadReceipt: {
+          endpoint: '/channels/thread-1/messages',
+          responseBody: {
+            mode: 'loopback',
+          },
+        },
+        workItem: {
+          threadKind: 'implementation',
+          specId: 'spec-1',
+          sliceId: 'slice-1',
+        },
+      },
       'control',
     ),
     createStep(
@@ -1088,6 +1319,7 @@ export function createDeepScenario(runtimeEnv) {
           summary: 'Sync downstream branch',
           privileged: false,
           branchName: 'feature/downstream',
+          targetNumber: 42,
           updatedAt: fixedTimestamp,
         },
         actorId: 'operator-1',
@@ -1420,6 +1652,8 @@ export async function runDeepTest(options, dependencies = {}) {
   };
 
   let containerStarted = false;
+  const removeBuiltImage =
+    !options.skipBuild && options.image === undefined && !options.retainImage;
 
   try {
     if (!options.skipBuild) {
@@ -1444,10 +1678,12 @@ export async function runDeepTest(options, dependencies = {}) {
         devplatStateDirectory,
         imageTag,
         mode: options.mode,
+        runtimeEnv,
         runtimeDirectory,
       }),
       {
         cwd: repoRootDirectory,
+        env: runtimeEnv,
       },
     );
     containerStarted = true;
@@ -1504,6 +1740,11 @@ export async function runDeepTest(options, dependencies = {}) {
         () => undefined,
       );
     }
+    await cleanupBuiltImage({
+      commandRunner,
+      imageTag,
+      removeBuiltImage,
+    });
     await writeArtifactGatewayConfig({
       gatewayConfig,
       runtimeDirectory,
@@ -1524,6 +1765,11 @@ export async function runDeepTest(options, dependencies = {}) {
   if (containerStarted) {
     await commandRunner('docker', ['rm', '-f', containerName]);
   }
+  await cleanupBuiltImage({
+    commandRunner,
+    imageTag,
+    removeBuiltImage,
+  });
   await writeArtifactGatewayConfig({
     gatewayConfig,
     runtimeDirectory,
@@ -1540,6 +1786,20 @@ export async function runDeepTest(options, dependencies = {}) {
   }
 
   return report;
+}
+
+async function cleanupBuiltImage({
+  commandRunner,
+  imageTag,
+  removeBuiltImage,
+}) {
+  if (!removeBuiltImage) {
+    return;
+  }
+
+  await commandRunner('docker', ['image', 'rm', '-f', imageTag]).catch(
+    () => undefined,
+  );
 }
 
 async function main() {

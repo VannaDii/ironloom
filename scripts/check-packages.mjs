@@ -4,6 +4,7 @@ import { relative, resolve } from 'node:path';
 
 const rootDirectory = resolve(import.meta.dirname, '..');
 const packagesDirectory = resolve(rootDirectory, 'packages');
+const rootReadmePath = resolve(rootDirectory, 'README.md');
 const packageDirectories = (
   await readdir(packagesDirectory, {
     withFileTypes: true,
@@ -17,14 +18,29 @@ const requiredScripts = ['build', 'clean', 'lint', 'typecheck', 'test'];
 
 const failures = [];
 
+try {
+  const rootReadme = await readFile(rootReadmePath, 'utf8');
+  if (!rootReadme.includes('```mermaid')) {
+    failures.push('README.md must include a Mermaid system flow diagram');
+  }
+} catch (error) {
+  failures.push(`could not read README.md (${getErrorMessage(error)})`);
+}
+
 for (const packageDirectoryName of packageDirectories) {
   const packageDirectory = resolve(packagesDirectory, packageDirectoryName);
   const packageJsonPath = resolve(packageDirectory, 'package.json');
+  const readmePath = resolve(packageDirectory, 'README.md');
   const tsconfigPath = resolve(packageDirectory, 'tsconfig.json');
   const srcIndexPath = resolve(packageDirectory, 'src/index.ts');
   let packageJson;
 
-  for (const filePath of [packageJsonPath, tsconfigPath, srcIndexPath]) {
+  for (const filePath of [
+    packageJsonPath,
+    readmePath,
+    tsconfigPath,
+    srcIndexPath,
+  ]) {
     try {
       await access(filePath, constants.F_OK);
     } catch {
@@ -41,6 +57,24 @@ for (const packageDirectoryName of packageDirectories) {
       `${packageDirectoryName}: could not read package.json (${getErrorMessage(error)})`,
     );
     continue;
+  }
+
+  try {
+    const readme = await readFile(readmePath, 'utf8');
+    if (!readme.includes('## Real-World Flow')) {
+      failures.push(
+        `${packageDirectoryName}: README.md must include a Real-World Flow section`,
+      );
+    }
+    if (!readme.includes('```mermaid')) {
+      failures.push(
+        `${packageDirectoryName}: README.md must include a Mermaid diagram`,
+      );
+    }
+  } catch (error) {
+    failures.push(
+      `${packageDirectoryName}: could not read README.md (${getErrorMessage(error)})`,
+    );
   }
 
   if (typeof packageJson.name !== 'string' || packageJson.name.length === 0) {

@@ -8,7 +8,7 @@ import {
   describeDiscordApprovalRequest,
   mapApprovalActionToPolicyAction,
 } from './logic.js';
-import type { DiscordApprovalRequest, DiscordApprovalResult } from './types.js';
+import type { DiscordApprovalRequest, DiscordApprovalResult } from './codec.js';
 
 export class DiscordInteractiveApprovalService {
   public constructor(

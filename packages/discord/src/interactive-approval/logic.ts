@@ -1,6 +1,6 @@
 import { appendTrace } from '@vannadii/devplat-core';
 
-import type { DiscordApprovalAction, DiscordApprovalRequest } from './types.js';
+import type { DiscordApprovalAction, DiscordApprovalRequest } from './codec.js';
 
 function assertIdentifier(name: string, value: string): void {
   if (value.trim().length === 0) {

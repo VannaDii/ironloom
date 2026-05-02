@@ -3,9 +3,6 @@
   "$ref": "#/definitions/CreateArtifactEnvelopeToolInput",
   "definitions": {
     "CreateArtifactEnvelopeToolInput": {
-      "$ref": "#/definitions/ArtifactEnvelope"
-    },
-    "ArtifactEnvelope": {
       "type": "object",
       "properties": {
         "id": {
@@ -15,14 +12,26 @@
           "type": "string"
         },
         "version": {
-          "type": "number",
           "const": 1
         },
         "summary": {
           "type": "string"
         },
         "status": {
-          "$ref": "#/definitions/LifecycleStatus"
+          "enum": [
+            "draft",
+            "queued",
+            "claimed",
+            "running",
+            "review",
+            "blocked",
+            "approved",
+            "merge-ready",
+            "merged",
+            "failed",
+            "rebasing",
+            "complete"
+          ]
         },
         "trace": {
           "type": "array",
@@ -31,11 +40,29 @@
           }
         },
         "updatedAt": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "payload": {
           "type": "object",
-          "additionalProperties": {}
+          "additionalProperties": true
+        },
+        "migration": {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "const": 1
+            },
+            "previousArtifactId": {
+              "type": "string"
+            },
+            "migratedAt": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          "required": ["schemaVersion"],
+          "additionalProperties": false
         }
       },
       "required": [
@@ -49,23 +76,6 @@
         "payload"
       ],
       "additionalProperties": false
-    },
-    "LifecycleStatus": {
-      "type": "string",
-      "enum": [
-        "draft",
-        "queued",
-        "claimed",
-        "running",
-        "review",
-        "blocked",
-        "approved",
-        "merge-ready",
-        "merged",
-        "failed",
-        "rebasing",
-        "complete"
-      ]
     }
   }
 }

@@ -9,7 +9,7 @@
           "type": "string"
         },
         "status": {
-          "$ref": "#/definitions/QualityGateStatus"
+          "enum": ["passed", "failed"]
         },
         "overallCoverage": {
           "type": "number"
@@ -22,6 +22,44 @@
         },
         "evaluatedAt": {
           "type": "string"
+        },
+        "issues": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "issueKey": {
+                "type": "string"
+              },
+              "severity": {
+                "enum": ["info", "minor", "major", "critical", "blocker"]
+              },
+              "path": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "effortMinutes": {
+                "type": "number"
+              },
+              "blocking": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "issueKey",
+              "severity",
+              "path",
+              "message",
+              "effortMinutes",
+              "blocking"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "nextAction": {
+          "type": "string"
         }
       },
       "required": [
@@ -33,13 +71,6 @@
         "evaluatedAt"
       ],
       "additionalProperties": false
-    },
-    "QualityGateStatus": {
-      "type": "string",
-      "enum": [
-        "passed",
-        "failed"
-      ]
     }
   }
 }

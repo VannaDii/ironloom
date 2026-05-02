@@ -13,6 +13,7 @@ DevPlat is a Discord-first autonomous software-delivery platform built as a stri
 ## Start Here
 
 - [Introduction](./guides/introduction.md)
+- [User Guide](./guides/user-guide.md)
 - [Platform Lifecycle](./guides/platform-lifecycle.md)
 - [Architecture](./guides/architecture.md)
 - [Quality and Performance Policy](./guides/quality-performance-policy.md)

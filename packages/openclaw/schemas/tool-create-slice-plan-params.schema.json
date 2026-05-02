@@ -3,9 +3,6 @@
   "$ref": "#/definitions/CreateSlicePlanToolInput",
   "definitions": {
     "CreateSlicePlanToolInput": {
-      "$ref": "#/definitions/SlicePlan"
-    },
-    "SlicePlan": {
       "type": "object",
       "properties": {
         "sliceId": {
@@ -36,10 +33,100 @@
           }
         },
         "size": {
-          "$ref": "#/definitions/SliceSize"
+          "enum": ["small", "medium", "large"]
         },
         "updatedAt": {
           "type": "string"
+        },
+        "dependencyGraph": {
+          "type": "object",
+          "properties": {
+            "sliceId": {
+              "type": "string"
+            },
+            "graphId": {
+              "type": "string"
+            },
+            "generatedAt": {
+              "type": "string"
+            },
+            "edges": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "fromSliceId": {
+                    "type": "string"
+                  },
+                  "toSliceId": {
+                    "type": "string"
+                  }
+                },
+                "required": ["fromSliceId", "toSliceId"],
+                "additionalProperties": false
+              }
+            },
+            "blockedBy": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "dependencyCount": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "sliceId",
+            "graphId",
+            "generatedAt",
+            "edges",
+            "blockedBy",
+            "dependencyCount"
+          ],
+          "additionalProperties": false
+        },
+        "workPacket": {
+          "type": "object",
+          "properties": {
+            "packetId": {
+              "type": "string"
+            },
+            "branchName": {
+              "type": "string"
+            },
+            "taskIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "estimatedTaskCount": {
+              "type": "number"
+            },
+            "estimatedPullRequestCount": {
+              "type": "number"
+            },
+            "pullRequestTitle": {
+              "type": "string"
+            },
+            "reviewFocus": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "packetId",
+            "branchName",
+            "taskIds",
+            "estimatedTaskCount",
+            "estimatedPullRequestCount",
+            "pullRequestTitle",
+            "reviewFocus"
+          ],
+          "additionalProperties": false
         }
       },
       "required": [
@@ -53,14 +140,6 @@
         "updatedAt"
       ],
       "additionalProperties": false
-    },
-    "SliceSize": {
-      "type": "string",
-      "enum": [
-        "small",
-        "medium",
-        "large"
-      ]
     }
   }
 }

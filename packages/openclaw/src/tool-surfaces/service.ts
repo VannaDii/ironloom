@@ -2,7 +2,11 @@ import { readFileSync } from 'node:fs';
 import { isAbsolute, normalize, resolve, sep } from 'node:path';
 
 import type { AnyAgentTool } from 'openclaw/plugin-sdk/plugin-entry';
-import type { DiscordThreadSession } from '@vannadii/devplat-discord';
+import type {
+  DiscordControlResponseTransport,
+  DiscordOperatorInteraction,
+  DiscordThreadSession,
+} from '@vannadii/devplat-discord';
 
 import { RebaseDependentsService } from '@vannadii/devplat-branching';
 import {
@@ -20,6 +24,7 @@ import {
   DiscordChannelBindingService,
   DiscordControlPlaneService,
   DiscordInteractiveApprovalService,
+  DiscordLoopbackResponseTransport,
   DiscordThreadSessionService,
 } from '@vannadii/devplat-discord';
 import { RunGatesService } from '@vannadii/devplat-gates';
@@ -28,7 +33,7 @@ import { MemoryEntryService } from '@vannadii/devplat-memory';
 import { TelemetryEventService } from '@vannadii/devplat-observability';
 import { DecisionPolicyService } from '@vannadii/devplat-policy';
 import { PullRequestService } from '@vannadii/devplat-prs';
-import { TaskQueueService } from '@vannadii/devplat-queue';
+import { TaskQueueService, type TaskRecord } from '@vannadii/devplat-queue';
 import { ResearchBriefService } from '@vannadii/devplat-research';
 import { RemediationPlanService } from '@vannadii/devplat-remediation';
 import { ReviewFindingsService } from '@vannadii/devplat-review';
@@ -93,9 +98,18 @@ import {
   formatToolPayloadText,
   sanitizeToolPayloadForDisplay,
 } from './logic.js';
-import type { OpenDiscordThreadToolInput } from './types.js';
+import type { OpenDiscordThreadToolInput } from './codec.js';
 
 type ToolParameterSchema = AnyAgentTool['parameters'] & Record<string, unknown>;
+
+/**
+ * Minimal task identity accepted by legacy task lifecycle tool calls.
+ */
+type TaskRecordIdentity = {
+  taskId: string;
+  sliceId: string;
+  threadId: string;
+};
 
 function isToolParameterSchema(value: unknown): value is ToolParameterSchema {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -140,6 +154,44 @@ function toDiscordThreadSession(
   return input;
 }
 
+function isDiscordOperatorInteraction(
+  input:
+    | DiscordOperatorInteraction
+    | Parameters<DiscordControlPlaneService['handleAction']>[0],
+): input is DiscordOperatorInteraction {
+  return 'token' in input;
+}
+
+function createLoopbackDiscordResponseTransport(): DiscordControlResponseTransport {
+  return new DiscordLoopbackResponseTransport();
+}
+
+function createDefaultDiscordControlPlaneService(): DiscordControlPlaneService {
+  const storageRoot = process.env['DEVPLAT_STORAGE_ROOT'];
+  const testMode = process.env['DEVPLAT_TEST_MODE']?.trim();
+  const store =
+    storageRoot === undefined || storageRoot.trim().length === 0
+      ? undefined
+      : new FileStoreService(storageRoot);
+  const telemetry =
+    store === undefined ? undefined : new TelemetryEventService(store);
+  const transport =
+    testMode === undefined || testMode.length === 0
+      ? undefined
+      : createLoopbackDiscordResponseTransport();
+
+  if (store !== undefined || transport !== undefined) {
+    return new DiscordControlPlaneService(
+      undefined,
+      telemetry,
+      store,
+      transport,
+    );
+  }
+
+  return new DiscordControlPlaneService();
+}
+
 function normalizeExecutionCwd(cwd: string | undefined):
   | {
       ok: true;
@@ -177,6 +229,33 @@ function normalizeExecutionCwd(cwd: string | undefined):
     ok: true,
     value: normalized,
   };
+}
+
+/**
+ * Builds the synthetic queue record used by legacy ID-only task tool inputs.
+ */
+function createFallbackTaskRecord(input: TaskRecordIdentity): TaskRecord {
+  return {
+    id: `task-${input.taskId}`,
+    summary: `Task ${input.taskId}`,
+    status: 'queued',
+    trace: [],
+    updatedAt: new Date().toISOString(),
+    taskId: input.taskId,
+    sliceId: input.sliceId,
+    threadId: input.threadId,
+  };
+}
+
+/**
+ * Resolves the durable queue record that a task lifecycle tool should mutate.
+ */
+function resolveTaskRecord(
+  input: TaskRecordIdentity & {
+    record?: TaskRecord;
+  },
+): TaskRecord {
+  return input.record ?? createFallbackTaskRecord(input);
 }
 
 export function createRunGatesTool(
@@ -837,12 +916,22 @@ export function createHandleDiscordApprovalTool(): AnyAgentTool {
   return tool;
 }
 
-export function createHandleDiscordControlTool(): AnyAgentTool {
+export function createHandleDiscordControlTool(
+  dependencies: {
+    discordControlPlaneService?: Pick<
+      DiscordControlPlaneService,
+      'handleAction' | 'handleInteraction'
+    >;
+  } = {},
+): AnyAgentTool {
+  const discordControlPlaneService =
+    dependencies.discordControlPlaneService ??
+    createDefaultDiscordControlPlaneService();
   const tool: AnyAgentTool = {
     name: 'handle_discord_control',
     label: 'Handle Discord Control',
     description:
-      'Process a thread-scoped Discord control action with policy checks and telemetry.',
+      'Process a thread-scoped Discord control action or operator interaction with policy checks and telemetry.',
     parameters: readSchema('tool-handle-discord-control-params.schema.json'),
     async execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(
@@ -853,9 +942,9 @@ export function createHandleDiscordControlTool(): AnyAgentTool {
         return createTextResult({ status: 'failed', error: decoded.error });
       }
 
-      const result = await new DiscordControlPlaneService().handleAction(
-        decoded.value,
-      );
+      const result = isDiscordOperatorInteraction(decoded.value)
+        ? await discordControlPlaneService.handleInteraction(decoded.value)
+        : await discordControlPlaneService.handleAction(decoded.value);
       return createTextResult(result);
     },
   };
@@ -1021,7 +1110,7 @@ export function createEvaluatePolicyActionTool(): AnyAgentTool {
         );
       }
 
-      const decision = new DecisionPolicyService().evaluateControlAction(
+      const decision = new DecisionPolicyService().evaluateLifecycleAction(
         decoded.value.action,
         decoded.value.privileged,
       );
@@ -1354,7 +1443,12 @@ export function createExecuteRebaseDependentsTool(): AnyAgentTool {
   return tool;
 }
 
-export function createSubmitGitHubActionTool(): AnyAgentTool {
+export function createSubmitGitHubActionTool(
+  gitHubWorkflowService: Pick<
+    GitHubWorkflowService,
+    'submit'
+  > = new GitHubWorkflowService(),
+): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'submit_github_action',
     label: 'Submit GitHub Action',
@@ -1367,7 +1461,7 @@ export function createSubmitGitHubActionTool(): AnyAgentTool {
         return createTextResult({ status: 'failed', error: decoded.error });
       }
 
-      const result = await new GitHubWorkflowService().submit(
+      const result = await gitHubWorkflowService.submit(
         decoded.value.request,
         decoded.value.actorId,
       );
@@ -1422,16 +1516,7 @@ export function createClaimTaskTool(): AnyAgentTool {
       }
 
       const claimed = new TaskQueueService().claim(
-        {
-          id: `task-${decoded.value.taskId}`,
-          summary: `Task ${decoded.value.taskId}`,
-          status: 'queued',
-          trace: [],
-          updatedAt: new Date().toISOString(),
-          taskId: decoded.value.taskId,
-          sliceId: decoded.value.sliceId,
-          threadId: decoded.value.threadId,
-        },
+        resolveTaskRecord(decoded.value),
         decoded.value.assigneeId,
       );
       return Promise.resolve(createTextResult(claimed));
@@ -1457,16 +1542,7 @@ export function createUpdateTaskTool(): AnyAgentTool {
       }
 
       const task = new TaskQueueService().updateStatus(
-        {
-          id: `task-${decoded.value.taskId}`,
-          summary: `Task ${decoded.value.taskId}`,
-          status: 'queued',
-          trace: [],
-          updatedAt: new Date().toISOString(),
-          taskId: decoded.value.taskId,
-          sliceId: decoded.value.sliceId,
-          threadId: decoded.value.threadId,
-        },
+        resolveTaskRecord(decoded.value),
         decoded.value.status,
       );
       return Promise.resolve(createTextResult(task));
@@ -1536,4 +1612,56 @@ export function createRunSupervisorStepTool(): AnyAgentTool {
   };
 
   return tool;
+}
+
+/**
+ * Creates the full DevPlat OpenClaw tool inventory in registration order.
+ */
+export function createDevplatOpenClawTools(): AnyAgentTool[] {
+  return [
+    createResearchBriefTool(),
+    createSpecRecordTool(),
+    createApproveSpecRecordTool(),
+    createUpdateSpecRecordTool(),
+    createSlicePlanTool(),
+    createEvaluateSlicePlanReadinessTool(),
+    createResolveRuntimeConfigTool(),
+    createOpenClawPluginConfigTool(),
+    createArtifactEnvelopeTool(),
+    createApprovalRecordTool(),
+    createAuditLogTool(),
+    createMergeDecisionTool(),
+    createRebaseResultTool(),
+    createExecuteCommandTool(),
+    createRunGatesTool(),
+    createAllocateWorktreeTool(),
+    createSyncWorktreeTool(),
+    createReleaseWorktreeTool(),
+    createBindDiscordThreadTool(),
+    createOpenDiscordThreadTool(),
+    createHandleDiscordApprovalTool(),
+    createHandleDiscordControlTool(),
+    createVerifySonarBootstrapTool(),
+    createEvaluateSonarQualityGateTool(),
+    createReviewFindingTool(),
+    createRemediationPlanTool(),
+    createRememberMemoryEntryTool(),
+    createEvaluatePolicyActionTool(),
+    createRecordTelemetryEventTool(),
+    createTaskRecordTool(),
+    createClaimTaskTool(),
+    createUpdateTaskTool(),
+    createReadStoredRecordTool(),
+    createListStoredRecordsTool(),
+    createStoreRecordTool(),
+    createPullRequestRecordTool(),
+    createSubmitPullRequestUpdateTool(),
+    createSubmitPullRequestMergeTool(),
+    createPlanRebaseDependentsTool(),
+    createExecuteRebaseDependentsTool(),
+    createGitHubActionRequestTool(),
+    createSubmitGitHubActionTool(),
+    createValidateArtifactTool(),
+    createRunSupervisorStepTool(),
+  ];
 }

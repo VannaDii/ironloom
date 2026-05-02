@@ -1,0 +1,375 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/DiscordInteractionGatewayResult",
+  "definitions": {
+    "DiscordInteractionGatewayResult": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "ignored"
+            },
+            "eventName": {
+              "type": "string"
+            }
+          },
+          "required": ["status", "eventName"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "rejected"
+            },
+            "eventName": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "required": ["status", "eventName", "reason"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "handled"
+            },
+            "interactionId": {
+              "type": "string"
+            },
+            "threadId": {
+              "type": "string"
+            },
+            "controlResult": {
+              "type": "object",
+              "properties": {
+                "request": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "summary": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "enum": [
+                        "draft",
+                        "queued",
+                        "claimed",
+                        "running",
+                        "review",
+                        "blocked",
+                        "approved",
+                        "merge-ready",
+                        "merged",
+                        "failed",
+                        "rebasing",
+                        "complete"
+                      ]
+                    },
+                    "trace": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "updatedAt": {
+                      "type": "string"
+                    },
+                    "actorId": {
+                      "type": "string"
+                    },
+                    "threadId": {
+                      "type": "string"
+                    },
+                    "channelId": {
+                      "type": "string"
+                    },
+                    "action": {
+                      "enum": [
+                        "run-this",
+                        "claim-this",
+                        "approve-this",
+                        "block-this",
+                        "complete-this",
+                        "pause-this",
+                        "resume-this",
+                        "rebase-all-dependents",
+                        "retry-gates",
+                        "merge-now",
+                        "show-status",
+                        "show-last-artifact",
+                        "explain-failure",
+                        "sync-worktree",
+                        "release-worktree",
+                        "update-spec"
+                      ]
+                    },
+                    "privileged": {
+                      "type": "boolean"
+                    },
+                    "workItem": {
+                      "type": "object",
+                      "properties": {
+                        "threadKind": {
+                          "enum": ["spec", "implementation", "pull-request"]
+                        },
+                        "threadId": {
+                          "type": "string"
+                        },
+                        "artifactId": {
+                          "type": "string"
+                        },
+                        "specId": {
+                          "type": "string"
+                        },
+                        "sliceId": {
+                          "type": "string"
+                        },
+                        "pullRequestNumber": {
+                          "type": "integer",
+                          "minimum": 1
+                        }
+                      },
+                      "required": ["threadKind", "threadId", "artifactId"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "summary",
+                    "status",
+                    "trace",
+                    "updatedAt",
+                    "actorId",
+                    "threadId",
+                    "channelId",
+                    "action",
+                    "privileged"
+                  ],
+                  "additionalProperties": false
+                },
+                "policyDecisionId": {
+                  "type": "string"
+                },
+                "allowed": {
+                  "type": "boolean"
+                },
+                "persistedKey": {
+                  "type": "string"
+                },
+                "failedClosed": {
+                  "type": "boolean"
+                },
+                "workItem": {
+                  "type": "object",
+                  "properties": {
+                    "threadKind": {
+                      "enum": ["spec", "implementation", "pull-request"]
+                    },
+                    "threadId": {
+                      "type": "string"
+                    },
+                    "artifactId": {
+                      "type": "string"
+                    },
+                    "specId": {
+                      "type": "string"
+                    },
+                    "sliceId": {
+                      "type": "string"
+                    },
+                    "pullRequestNumber": {
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  },
+                  "required": ["threadKind", "threadId", "artifactId"],
+                  "additionalProperties": false
+                },
+                "responseReceipt": {
+                  "type": "object",
+                  "properties": {
+                    "endpoint": {
+                      "type": "string"
+                    },
+                    "statusCode": {
+                      "type": "number"
+                    },
+                    "responseBody": {}
+                  },
+                  "required": ["endpoint", "statusCode", "responseBody"],
+                  "additionalProperties": false
+                },
+                "threadReceipt": {
+                  "type": "object",
+                  "properties": {
+                    "endpoint": {
+                      "type": "string"
+                    },
+                    "statusCode": {
+                      "type": "number"
+                    },
+                    "responseBody": {}
+                  },
+                  "required": ["endpoint", "statusCode", "responseBody"],
+                  "additionalProperties": false
+                },
+                "responsePayload": {
+                  "type": "object",
+                  "properties": {
+                    "content": {
+                      "type": "string"
+                    },
+                    "allowed_mentions": {
+                      "type": "object",
+                      "properties": {
+                        "parse": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": ["parse"],
+                      "additionalProperties": false
+                    },
+                    "components": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "const": 1
+                          },
+                          "components": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "const": 2
+                                },
+                                "label": {
+                                  "type": "string"
+                                },
+                                "style": {
+                                  "enum": [1, 2, 3, 4, 5]
+                                },
+                                "custom_id": {
+                                  "type": "string"
+                                },
+                                "url": {
+                                  "type": "string"
+                                },
+                                "disabled": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": ["type", "label", "style"],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": ["type", "components"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "flags": {
+                      "type": "number"
+                    }
+                  },
+                  "required": ["content"],
+                  "additionalProperties": false
+                },
+                "threadPayload": {
+                  "type": "object",
+                  "properties": {
+                    "content": {
+                      "type": "string"
+                    },
+                    "allowed_mentions": {
+                      "type": "object",
+                      "properties": {
+                        "parse": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": ["parse"],
+                      "additionalProperties": false
+                    },
+                    "components": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "const": 1
+                          },
+                          "components": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "const": 2
+                                },
+                                "label": {
+                                  "type": "string"
+                                },
+                                "style": {
+                                  "enum": [1, 2, 3, 4, 5]
+                                },
+                                "custom_id": {
+                                  "type": "string"
+                                },
+                                "url": {
+                                  "type": "string"
+                                },
+                                "disabled": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": ["type", "label", "style"],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": ["type", "components"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "flags": {
+                      "type": "number"
+                    }
+                  },
+                  "required": ["content"],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "request",
+                "policyDecisionId",
+                "allowed",
+                "persistedKey",
+                "failedClosed"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": ["status", "interactionId", "threadId", "controlResult"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}
