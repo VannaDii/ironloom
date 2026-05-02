@@ -711,7 +711,7 @@ describe('openclaw-live-lab helpers', () => {
             'Scope: live-lab · 200-3',
             'Item: sandbox-org/devplat-test-200-3',
             'Actor: workflow',
-            'Updated: abc123',
+            'Sha: abc123',
             '→ Bootstrapped the lab.',
             '',
             'Ref: main',
@@ -774,6 +774,7 @@ describe('openclaw-live-lab helpers', () => {
 
         expect(message.content).toContain('🔴 DevPlat · Live lab failure');
         expect(message.content).toContain('Status: failed');
+        expect(message.content).toContain('Sha: def456');
         expect(message.content).toContain(`Workflow: <${inputs.workflowUrl}>`);
         expect(message.flags).toBe(4);
       },

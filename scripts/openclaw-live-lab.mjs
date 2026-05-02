@@ -381,7 +381,7 @@ export function createStatusMessage({
     `Scope: live-lab · ${runLabel}`,
     `Item: ${repoFullName}`,
     'Actor: workflow',
-    `Updated: ${sha}`,
+    `Sha: ${sha}`,
     `→ ${details ?? 'Progress update.'}`,
     '',
     `Ref: ${ref}`,
