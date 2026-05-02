@@ -736,6 +736,24 @@ describe('sonarqube-cli-analyze-changed', () => {
       },
     },
     {
+      name: 'classifies local SonarQube connectivity failures as skipped',
+      inputs: {
+        error: {
+          stderr:
+            'SonarQube Agentic Analysis failed.\nUnable to connect. Is the computer able to access the url?',
+          stdout: '',
+        },
+      },
+      mock: async () => undefined,
+      assert: async (_context, inputs) => {
+        expect(classifySonarAnalysisFailure(inputs.error)).toEqual({
+          reason:
+            'SonarQube service unavailable during local analysis; retry this gate after the upstream service recovers.',
+          status: 'skipped',
+        });
+      },
+    },
+    {
       name: 'formats plain text and JSON reports',
       inputs: {
         report: {

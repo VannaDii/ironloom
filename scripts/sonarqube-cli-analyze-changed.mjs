@@ -28,6 +28,7 @@ const retryableSonarServiceFailureSignals = [
   '503 Service Unavailable',
   '504 Gateway Timeout',
   'CloudFront',
+  'Unable to connect. Is the computer able to access the url?',
 ];
 const truthyEnvValues = ['1', 'true', 'yes', 'enabled'];
 const localSonarBinDirectory = resolve(
