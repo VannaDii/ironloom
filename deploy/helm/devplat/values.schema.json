@@ -108,6 +108,24 @@
         "$ref": "#/definitions/freeformObject"
       }
     },
+    "discordGateway": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "url": {
+          "type": "string",
+          "minLength": 1
+        },
+        "intents": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": ["enabled", "url", "intents"]
+    },
     "config": {
       "type": "object",
       "additionalProperties": false,
@@ -267,6 +285,7 @@
     "affinity",
     "env",
     "envFrom",
+    "discordGateway",
     "config",
     "secretRefs",
     "configMapRefs",

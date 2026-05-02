@@ -33,6 +33,7 @@ Add the first full-autonomy contract slices:
 - OpenClaw Discord control handling for normalized requests and operator interaction callbacks
 - hermetic OpenClaw deep-test validation of callback-shaped Discord interactions through loopback response receipts
 - live-lab Discord command registration and callback-shaped interaction probing with required callback/thread receipts
+- Helm chart values for enabling the private outbound Discord Gateway worker without public webhook ingress
 - GitHub REST submission, GitHub repository/PR/spec-link state contracts, Git-backed worktree operations, and fail-closed worktree branch safety metadata
 
 Repository validation now requires package-local README coverage with real-world Mermaid flow diagrams, and generated schemas/manifests are emitted in Prettier-stable JSON so generation, repo validation, and formatting checks agree.

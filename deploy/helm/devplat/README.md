@@ -6,7 +6,7 @@ This chart deploys the DevPlat OpenClaw gateway runtime on Kubernetes.
 
 - one `Deployment` running the `devplat-openclaw-runtime` container
 - optional outbound Discord Gateway interaction processing when
-  `DISCORD_GATEWAY_ENABLED=true`
+  `discordGateway.enabled=true`
 - a `Service` exposing the OpenClaw gateway port
 - an optional `ServiceAccount`
 - optional config, secret, persistence, and ingress wiring
@@ -24,6 +24,11 @@ helm install devplat oci://ghcr.io/vannadii/charts/devplat \
 - `image.tag`: runtime image tag
 - `service.port`: service port exposed by the chart
 - `config.enabled`: mount an OpenClaw configuration file
+- `discordGateway.enabled`: start the private outbound Discord Gateway worker
+  in the runtime container
+- `discordGateway.url`: Discord Gateway URL passed as `DISCORD_GATEWAY_URL`
+- `discordGateway.intents`: Gateway intents bitset passed as
+  `DISCORD_GATEWAY_INTENTS`
 - `env`: pass Discord Gateway, Discord REST, GitHub, Sonar, and storage runtime
   variables into the container
 - `persistence.enabled`: persist runtime state under `/var/lib/devplat`

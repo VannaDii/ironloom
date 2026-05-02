@@ -67,6 +67,12 @@ namespace `devplat`, chart path `deploy/helm/devplat`, and state mount
 `18789`. Only `@vannadii/devplat-storage` may directly read or write the runtime
 state directory.
 
+The Helm chart exposes the Discord Gateway runtime through
+`discordGateway.enabled`, `discordGateway.url`, and `discordGateway.intents`.
+Those values render `DISCORD_GATEWAY_ENABLED`, `DISCORD_GATEWAY_URL`, and
+`DISCORD_GATEWAY_INTENTS` into the runtime container, so Kubernetes deployments
+can start the private outbound Discord worker without duplicating raw env blocks.
+
 The normalized Discord runtime config also fixes:
 
 - API version `v10`

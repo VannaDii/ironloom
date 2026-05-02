@@ -119,6 +119,9 @@ structured validation issues for bad URLs, empty required paths, invalid
 deployment targets, and invalid gateway ports. The storage package remains the
 only package that directly reads or writes the committed runtime state
 directory.
+The Helm chart mirrors that runtime path with typed `discordGateway.enabled`,
+`discordGateway.url`, and `discordGateway.intents` values that render the
+Gateway env vars into the runtime container.
 
 The live lab posts compact operator payloads with safe `Show Status` and
 `Details` buttons backed by the standard `show-status` and `show-last-artifact`
