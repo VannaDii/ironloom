@@ -150,12 +150,10 @@ describe('RunGatesService', () => {
     },
   ] satisfies RunGatesServiceCase[];
 
-  for (const testCase of cases) {
-    it(testCase.name, async () => {
-      expect.hasAssertions();
-      const context = testCase.mock();
+  it.each(cases)('$name', async (testCase) => {
+    expect.hasAssertions();
+    const context = testCase.mock();
 
-      await testCase.assert(context, testCase.inputs);
-    });
-  }
+    await testCase.assert(context, testCase.inputs);
+  });
 });

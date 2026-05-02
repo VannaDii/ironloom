@@ -27,7 +27,11 @@ import { SpecRecordCodec } from '@vannadii/devplat-specs';
 import { SupervisorLifecycleSignalCodec } from '@vannadii/devplat-supervisor';
 import { PullRequestRecordCodec } from '@vannadii/devplat-prs';
 import { TaskRecordCodec } from '@vannadii/devplat-queue';
-import { StoredRecordCodec, StoreScopeCodec } from '@vannadii/devplat-storage';
+import {
+  StoredRecordCodec,
+  StoreIndexNameCodec,
+  StoreScopeCodec,
+} from '@vannadii/devplat-storage';
 import {
   WorktreeAllocationCodec,
   WorktreeReleaseModeCodec,
@@ -166,6 +170,23 @@ export const ReadStoredRecordToolInputCodec = t.type({
 
 export const ListStoredRecordsToolInputCodec = t.type({
   scope: StoreScopeCodec,
+});
+
+/** Input codec for reading a storage secondary index entry. */
+export const ReadStoredIndexToolInputCodec = t.type({
+  indexName: StoreIndexNameCodec,
+  key: t.string,
+});
+
+/** Input codec for reading a stored record through a secondary index. */
+export const ReadIndexedRecordToolInputCodec = t.type({
+  indexName: StoreIndexNameCodec,
+  key: t.string,
+});
+
+/** Input codec for listing storage secondary index keys. */
+export const ListStoredIndexToolInputCodec = t.type({
+  indexName: StoreIndexNameCodec,
 });
 
 export const StoreRecordToolRecordCodec = StoredRecordCodec;
@@ -407,6 +428,21 @@ export type ReadStoredRecordToolInput = t.TypeOf<
 /** Input for the list stored records OpenClaw tool. */
 export type ListStoredRecordsToolInput = t.TypeOf<
   typeof ListStoredRecordsToolInputCodec
+>;
+
+/** Input for the read stored index OpenClaw tool. */
+export type ReadStoredIndexToolInput = t.TypeOf<
+  typeof ReadStoredIndexToolInputCodec
+>;
+
+/** Input for the read indexed record OpenClaw tool. */
+export type ReadIndexedRecordToolInput = t.TypeOf<
+  typeof ReadIndexedRecordToolInputCodec
+>;
+
+/** Input for the list stored index OpenClaw tool. */
+export type ListStoredIndexToolInput = t.TypeOf<
+  typeof ListStoredIndexToolInputCodec
 >;
 
 /** Stored record passed through the store record OpenClaw tool. */

@@ -549,6 +549,7 @@ describe('openclaw-live-lab helpers', () => {
           retainFailedResources: true,
           skipBuild: true,
         });
+        expect(parseLiveLabArgs([]).operatorHoldMs).toBe(150000);
         expect(identifiers).toMatchObject({
           branchName: 'live-test/101-2',
           categoryName: 'test',
@@ -624,9 +625,90 @@ describe('openclaw-live-lab helpers', () => {
     },
     {
       name: 'computes eviction, runtime env, and progress routing',
-      inputs: {},
+      inputs: {
+        progressChannelCases: [
+          {
+            expected: 'spec',
+            progress: {
+              phase: 'planning',
+              step: 'create_spec_record',
+            },
+          },
+          {
+            expected: 'audit',
+            progress: {
+              phase: 'config',
+              step: 'resolve_runtime_config',
+            },
+          },
+          {
+            expected: 'audit',
+            progress: {
+              phase: 'contracts',
+              step: 'create_artifact_envelope',
+            },
+          },
+          {
+            expected: 'projectManagement',
+            progress: {
+              phase: 'build',
+              step: 'docker-build',
+            },
+          },
+          {
+            expected: 'projectManagement',
+            progress: {
+              phase: 'container',
+              step: 'publish-image',
+            },
+          },
+          {
+            expected: 'pullRequest',
+            progress: {
+              phase: 'delivery',
+              step: 'submit_pull_request_update',
+            },
+          },
+          {
+            expected: 'implementation',
+            progress: {
+              phase: 'delivery',
+              step: 'run_gates',
+            },
+          },
+          {
+            expected: 'implementation',
+            progress: {
+              phase: 'unknown',
+              step: 'run_gates',
+            },
+          },
+        ],
+        sonarProjectKeyCases: [
+          {
+            owner: 'sandbox-org',
+            repo: 'devplat-test-200-3',
+            expected: 'sandbox-org_devplat-test-200-3',
+          },
+          {
+            owner: 'sandbox org',
+            repo: 'devplat/test 200',
+            expected: 'sandbox_org_devplat_test_200',
+          },
+          {
+            owner: 'sandbox:org',
+            repo: 'devplat.test_200',
+            expected: 'sandbox:org_devplat.test_200',
+          },
+          {
+            owner: 'måltid',
+            repo: 'devplat🔥test',
+            expected: 'm_ltid_devplat_test',
+          },
+        ],
+      },
       mock: async () => undefined,
-      assert: async () => {
+      assert: async (_context, inputs) => {
         const eviction = createEvictionPlan(
           [
             {
@@ -692,6 +774,13 @@ describe('openclaw-live-lab helpers', () => {
         expect(createSonarProjectKey('sandbox-org', 'devplat-test-200-3')).toBe(
           'sandbox-org_devplat-test-200-3',
         );
+        expect(
+          inputs.sonarProjectKeyCases.map((testCase) =>
+            createSonarProjectKey(testCase.owner, testCase.repo),
+          ),
+        ).toEqual(
+          inputs.sonarProjectKeyCases.map((testCase) => testCase.expected),
+        );
         expect(runtimeEnv).toMatchObject({
           GITHUB_OWNER: 'sandbox-org',
           GITHUB_REPO: 'devplat-test-200-3',
@@ -710,26 +799,21 @@ describe('openclaw-live-lab helpers', () => {
             'Scope: live-lab · 200-3',
             'Item: sandbox-org/devplat-test-200-3',
             'Actor: workflow',
-            'Updated: abc123',
+            'Sha: abc123',
             '→ Bootstrapped the lab.',
             '',
             'Ref: main',
-            'Workflow: 200-3',
+            'Workflow: <https://github.com/VannaDii/devplat/actions/runs/9001>',
           ].join('\n'),
           flags: 4,
         });
         expect(
-          mapProgressToChannel({
-            phase: 'planning',
-            step: 'create_spec_record',
-          }),
-        ).toBe('spec');
-        expect(
-          mapProgressToChannel({
-            phase: 'delivery',
-            step: 'submit_pull_request_update',
-          }),
-        ).toBe('pullRequest');
+          inputs.progressChannelCases.map((testCase) =>
+            mapProgressToChannel(testCase.progress),
+          ),
+        ).toEqual(
+          inputs.progressChannelCases.map((testCase) => testCase.expected),
+        );
       },
     },
     {
@@ -750,6 +834,32 @@ describe('openclaw-live-lab helpers', () => {
         });
 
         expect(message).not.toHaveProperty('components');
+      },
+    },
+    {
+      name: 'renders failed live-lab status messages with the blocked status anchor',
+      inputs: {
+        workflowUrl: 'https://github.com/VannaDii/devplat/actions/runs/9002',
+      },
+      mock: async () => undefined,
+      assert: async (_context, inputs) => {
+        const message = createStatusMessage({
+          controlThreadId: 'project-management-1',
+          details: 'Deep test failed.',
+          phase: 'failure',
+          ref: 'main',
+          repoFullName: 'sandbox-org/devplat-test-status-failed',
+          runLabel: '200-5',
+          sha: 'def456',
+          status: 'failed',
+          workflowUrl: inputs.workflowUrl,
+        });
+
+        expect(message.content).toContain('🔴 DevPlat · Live lab failure');
+        expect(message.content).toContain('Status: failed');
+        expect(message.content).toContain('Sha: def456');
+        expect(message.content).toContain(`Workflow: <${inputs.workflowUrl}>`);
+        expect(message.flags).toBe(4);
       },
     },
     {
@@ -1563,9 +1673,11 @@ describe('runLiveLab', () => {
         const discordMessageLines = context.discordMessages.flatMap((message) =>
           message.content.split('\n'),
         );
-        expect(discordMessageLines).not.toContain(
-          `Workflow: ${inputs.workflowUrl}`,
-        );
+        expect(
+          discordMessageLines.some(
+            (line) => line.startsWith('Workflow: <') && line.endsWith('>'),
+          ),
+        ).toBe(true);
         expect(context.summaryEntries[0]).toContain('Status: passed');
         expect(context.summaryEntries[0]).toContain(`Ref: ${inputs.ref}`);
         expect(context.summaryEntries[0]).toContain('Discord category: test');
@@ -2004,7 +2116,6 @@ describe('runLiveLab', () => {
               },
             },
             maxParallelRepos: 6,
-            operatorHoldMs: 25,
             ref: inputs.ref,
             reportDir: context.reportDir,
             retainFailedResources: inputs.retainFailedResources,
@@ -2042,7 +2153,7 @@ describe('runLiveLab', () => {
         expect(context.runtimeEvents).toEqual([
           'deep-test',
           'interaction-probe',
-          'hold:25',
+          'hold:150000',
           'cleanup-ready',
         ]);
         expect(report.sonar).toEqual({

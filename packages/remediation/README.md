@@ -4,7 +4,9 @@ Remediation planning contracts.
 
 ## Responsibility
 
-This package owns remediation plans from review findings and gate remediation hooks, including autofix eligibility, unresolved issue summaries, and next-step recommendations.
+This package owns remediation plans from review findings and gate remediation
+hooks, including autofix eligibility, package-owned remediation next-action
+constants, unresolved issue summaries, and shared retry-gate recommendations.
 
 ## Real-World Flow
 

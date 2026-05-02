@@ -22,7 +22,17 @@ flowchart LR
 Runtime plugin config includes the Discord category name. Normal production
 configuration derives that category from the repository name so one guild can
 host multiple repositories without cross-thread ambiguity; OpenClaw test and
-live-lab runs set the category to `test`.
+live-lab runs set the category to `test`. Storage, memory, telemetry, Discord
+lifecycle, GitHub submission, pull-request submission, and supervisor-step
+tools use the trimmed `DEVPLAT_STORAGE_ROOT` value when it is configured so
+live runtime containers and local tool calls read and write the same mounted
+`.devplat` state. Pull-request submission also uses trimmed `GITHUB_OWNER` and
+`GITHUB_REPO` values so PR updates target the configured repository. Worktree
+allocation and dependent rebase tools use the trimmed `DEVPLAT_WORKTREE_ROOT`
+value so generated worktree paths stay inside the configured runtime layout.
+Command execution cwd validation is owned by `@vannadii/devplat-execution`; the
+OpenClaw tool only decodes input, asks policy, delegates cwd normalization and
+execution, then records telemetry.
 
 ## Exposed Tools
 
@@ -72,6 +82,9 @@ surface, and tests stay aligned.
 - `update_task`: update task lifecycle state
 - `read_stored_record`: fetch a record from the storage adapter
 - `list_stored_records`: enumerate storage records
+- `read_stored_index`: fetch a secondary storage index entry
+- `read_indexed_record`: resolve a secondary storage index to its record
+- `list_stored_index`: enumerate secondary storage index keys
 - `store_record`: persist a record through the storage adapter
 - `create_pull_request_record`: create a pull request record
 - `submit_pull_request_update`: update a pull request record

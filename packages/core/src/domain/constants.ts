@@ -159,6 +159,171 @@ export const ARTIFACT_TYPE_TELEMETRY_EVENT = 'telemetry-event';
 export const ARTIFACT_TYPE_WORKTREE_ALLOCATION = 'worktree-allocation';
 
 /**
+ * Shared lifecycle action that records explicit operator approval.
+ */
+export const DEVPLAT_ACTION_APPROVE_THIS = 'approve-this';
+
+/**
+ * Shared lifecycle action that runs the item bound to an operator thread.
+ */
+export const DEVPLAT_ACTION_RUN_THIS = 'run-this';
+
+/**
+ * Shared lifecycle action that claims the item bound to an operator thread.
+ */
+export const DEVPLAT_ACTION_CLAIM_THIS = 'claim-this';
+
+/**
+ * Shared lifecycle action that blocks the item bound to an operator thread.
+ */
+export const DEVPLAT_ACTION_BLOCK_THIS = 'block-this';
+
+/**
+ * Shared lifecycle action that completes the item bound to an operator thread.
+ */
+export const DEVPLAT_ACTION_COMPLETE_THIS = 'complete-this';
+
+/**
+ * Shared lifecycle action that pauses automation for an operator thread.
+ */
+export const DEVPLAT_ACTION_PAUSE_THIS = 'pause-this';
+
+/**
+ * Shared lifecycle action that resumes automation for an operator thread.
+ */
+export const DEVPLAT_ACTION_RESUME_THIS = 'resume-this';
+
+/**
+ * Shared lifecycle action that requests an immediate operator merge.
+ */
+export const DEVPLAT_ACTION_MERGE_NOW = 'merge-now';
+
+/**
+ * Shared lifecycle action that merges a pull request through GitHub.
+ */
+export const DEVPLAT_ACTION_MERGE_PR = 'merge-pr';
+
+/**
+ * Shared lifecycle action that creates a pull request through GitHub.
+ */
+export const DEVPLAT_ACTION_CREATE_PR = 'create-pr';
+
+/**
+ * Shared lifecycle action that updates a pull request through GitHub.
+ */
+export const DEVPLAT_ACTION_UPDATE_PR = 'update-pr';
+
+/**
+ * Shared lifecycle action that comments on a pull request through GitHub.
+ */
+export const DEVPLAT_ACTION_COMMENT_PR = 'comment-pr';
+
+/**
+ * Shared lifecycle action that asks GitHub to update a pull request branch.
+ */
+export const DEVPLAT_ACTION_SYNC_BRANCH = 'sync-branch';
+
+/**
+ * Shared lifecycle action that rebases all dependent branches.
+ */
+export const DEVPLAT_ACTION_REBASE_ALL_DEPENDENTS = 'rebase-all-dependents';
+
+/**
+ * Shared lifecycle action that rebases dependent branches.
+ */
+export const DEVPLAT_ACTION_REBASE_DEPENDENTS = 'rebase-dependents';
+
+/**
+ * Shared lifecycle action that synchronizes a worktree.
+ */
+export const DEVPLAT_ACTION_SYNC_WORKTREE = 'sync-worktree';
+
+/**
+ * Shared lifecycle action that releases a worktree.
+ */
+export const DEVPLAT_ACTION_RELEASE_WORKTREE = 'release-worktree';
+
+/**
+ * Shared lifecycle action that updates a bound spec.
+ */
+export const DEVPLAT_ACTION_UPDATE_SPEC = 'update-spec';
+
+/**
+ * Shared lifecycle action that publishes external artifacts.
+ */
+export const DEVPLAT_ACTION_PUBLISH = 'publish';
+
+/**
+ * Shared lifecycle action that publishes release artifacts.
+ */
+export const DEVPLAT_ACTION_PUBLISH_RELEASE = 'publish-release';
+
+/**
+ * Shared lifecycle action that executes a command.
+ */
+export const DEVPLAT_ACTION_EXECUTE_COMMAND = 'execute-command';
+
+/**
+ * Shared lifecycle action that runs a command.
+ */
+export const DEVPLAT_ACTION_RUN_COMMAND = 'run-command';
+
+/**
+ * Shared lifecycle action that runs quality gates.
+ */
+export const DEVPLAT_ACTION_RUN_GATES = 'run-gates';
+
+/**
+ * Shared lifecycle action that retries quality gates.
+ */
+export const DEVPLAT_ACTION_RETRY_GATES = 'retry-gates';
+
+/**
+ * Shared lifecycle action that shows status for an operator thread.
+ */
+export const DEVPLAT_ACTION_SHOW_STATUS = 'show-status';
+
+/**
+ * Shared lifecycle action that shows the last artifact for an operator thread.
+ */
+export const DEVPLAT_ACTION_SHOW_LAST_ARTIFACT = 'show-last-artifact';
+
+/**
+ * Shared lifecycle action that explains a failure for an operator thread.
+ */
+export const DEVPLAT_ACTION_EXPLAIN_FAILURE = 'explain-failure';
+
+/**
+ * Shared lifecycle action that applies review autofixes.
+ */
+export const DEVPLAT_ACTION_AUTOFIX_REVIEW = 'autofix-review';
+
+/**
+ * Shared lifecycle action that runs autofix automation.
+ */
+export const DEVPLAT_ACTION_AUTOFIX = 'autofix';
+
+/**
+ * Shared lifecycle action that applies generated autofixes.
+ */
+export const DEVPLAT_ACTION_APPLY_AUTOFIX = 'apply-autofix';
+
+/**
+ * Shared lifecycle action that performs destructive cleanup.
+ */
+export const DEVPLAT_ACTION_DESTRUCTIVE_CLEANUP = 'destructive-cleanup';
+
+/**
+ * Shared lifecycle action that deletes a worktree.
+ */
+export const DEVPLAT_ACTION_DELETE_WORKTREE = 'delete-worktree';
+
+/**
+ * Shared lifecycle action that cleans up artifacts.
+ */
+export const DEVPLAT_ACTION_CLEANUP_ARTIFACTS = 'cleanup-artifacts';
+
+/**
  * First ASCII code point disallowed in Git branch names by the control range.
  */
 export const GIT_BRANCH_CONTROL_RANGE_START_CODE = 0;

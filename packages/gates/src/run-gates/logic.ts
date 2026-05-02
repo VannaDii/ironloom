@@ -1,4 +1,7 @@
-import { appendTrace } from '@vannadii/devplat-core';
+import {
+  appendTrace,
+  DEVPLAT_ACTION_RETRY_GATES,
+} from '@vannadii/devplat-core';
 import {
   describeCommandResult,
   isSuccessfulCommandResult,
@@ -12,8 +15,16 @@ import type {
   GateRemediationHook,
   GateRunReport,
 } from './codec.js';
+import {
+  GATE_NEXT_ACTION_CONTINUE,
+  GATE_NEXT_ACTION_CREATE_REMEDIATION_PLAN,
+  GATE_NEXT_ACTION_REMEDIATE_FAILURE,
+} from './constants.js';
 
-type GateNextAction = 'retry-gates' | 'remediate-failure' | 'continue';
+type GateNextAction =
+  | typeof DEVPLAT_ACTION_RETRY_GATES
+  | typeof GATE_NEXT_ACTION_REMEDIATE_FAILURE
+  | typeof GATE_NEXT_ACTION_CONTINUE;
 
 export interface GateCommandSpec {
   command: string;
@@ -72,14 +83,14 @@ function resolveGateFailureKind(
 
 function resolveGateNextAction(failureKind: GateFailureKind): GateNextAction {
   if (failureKind === 'timeout') {
-    return 'retry-gates';
+    return DEVPLAT_ACTION_RETRY_GATES;
   }
 
   if (failureKind === 'command-failed') {
-    return 'remediate-failure';
+    return GATE_NEXT_ACTION_REMEDIATE_FAILURE;
   }
 
-  return 'continue';
+  return GATE_NEXT_ACTION_CONTINUE;
 }
 
 export function classifyGateRun(
@@ -93,7 +104,7 @@ export function classifyGateRun(
     return {
       kind: 'passed',
       failedGateNames,
-      nextAction: 'continue',
+      nextAction: GATE_NEXT_ACTION_CONTINUE,
     };
   }
 
@@ -104,7 +115,9 @@ export function classifyGateRun(
   return {
     kind: onlyTimeouts ? 'retryable' : 'requires-remediation',
     failedGateNames,
-    nextAction: onlyTimeouts ? 'retry-gates' : 'create-remediation-plan',
+    nextAction: onlyTimeouts
+      ? DEVPLAT_ACTION_RETRY_GATES
+      : GATE_NEXT_ACTION_CREATE_REMEDIATION_PLAN,
   };
 }
 
@@ -155,7 +168,7 @@ export function createGateRemediationHook(
         (result) => result.failureKind === 'command-failed',
       ),
     approvalRequired: true,
-    nextAction: 'create-remediation-plan',
+    nextAction: GATE_NEXT_ACTION_CREATE_REMEDIATION_PLAN,
     createdAt: new Date(input.updatedAt).toISOString(),
   };
 }

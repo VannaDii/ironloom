@@ -389,6 +389,48 @@ describe('openclaw-deep-test helpers', () => {
       },
     },
     {
+      name: 'threads the configured worktree root through runtime and scenario checks',
+      inputs: {
+        worktreeRoot: 'devplat-state/worktrees',
+        overrideRoot: '  custom-state/worktrees  ',
+        trimmedOverrideRoot: 'custom-state/worktrees',
+      },
+      mock: async () => undefined,
+      assert: async (_context, inputs) => {
+        const runtimeEnv = createRuntimeEnv();
+        const scenario = createDeepScenario(runtimeEnv);
+        const overrideScenario = createDeepScenario(
+          createRuntimeEnv({
+            DEVPLAT_WORKTREE_ROOT: inputs.overrideRoot,
+          }),
+        );
+        const allocateStep = scenario.find(
+          (step) => step.tool === 'allocate_worktree',
+        );
+        const overrideAllocateStep = overrideScenario.find(
+          (step) => step.tool === 'allocate_worktree',
+        );
+        const syncStep = scenario.find((step) => step.tool === 'sync_worktree');
+        const releaseStep = scenario.find(
+          (step) => step.tool === 'release_worktree',
+        );
+
+        expect(runtimeEnv.DEVPLAT_WORKTREE_ROOT).toBe(inputs.worktreeRoot);
+        expect(allocateStep?.expected).toMatchObject({
+          worktreePath: `${inputs.worktreeRoot}/feature/task-1`,
+        });
+        expect(syncStep?.params.allocation).toMatchObject({
+          worktreePath: `${inputs.worktreeRoot}/feature/task-1`,
+        });
+        expect(releaseStep?.params.allocation).toMatchObject({
+          worktreePath: `${inputs.worktreeRoot}/feature/task-1`,
+        });
+        expect(overrideAllocateStep?.expected).toMatchObject({
+          worktreePath: `${inputs.trimmedOverrideRoot}/feature/task-1`,
+        });
+      },
+    },
+    {
       name: 'matches array-valued result details structurally',
       inputs: {},
       mock: async () => undefined,
@@ -403,9 +445,19 @@ describe('openclaw-deep-test helpers', () => {
     },
     {
       name: 'renders an invocable script and redacts sensitive snapshot fields',
-      inputs: {},
+      inputs: {
+        sensitiveSnapshot: {
+          authToken: 'token-1',
+          'api-key': 'api-key-1',
+          db_secret: 'credential-fixture-1',
+          nested: {
+            publicKey: 'public-key-1',
+            notSensitive: 'kept',
+          },
+        },
+      },
       mock: async () => undefined,
-      assert: async () => {
+      assert: async (_context, inputs) => {
         const script = createInvokeScript({
           gatewayToken: 'gateway-token-1',
           request: {
@@ -413,21 +465,19 @@ describe('openclaw-deep-test helpers', () => {
             tool: 'list_stored_records',
           },
         });
-        const sanitized = sanitizeSnapshotForArtifacts({
-          authToken: 'token-1',
-          nested: {
-            publicKey: 'public-key-1',
-            value: 'kept',
-          },
-        });
+        const sanitized = sanitizeSnapshotForArtifacts(
+          inputs.sensitiveSnapshot,
+        );
 
         expect(script).toContain('(async () => {');
         expect(script).toContain('})().catch((error) => {');
         expect(sanitized).toEqual({
           authToken: '[redacted]',
+          'api-key': '[redacted]',
+          db_secret: '[redacted]',
           nested: {
             publicKey: '[redacted]',
-            value: 'kept',
+            notSensitive: 'kept',
           },
         });
       },

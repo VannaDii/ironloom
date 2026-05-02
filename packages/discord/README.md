@@ -7,17 +7,29 @@ Discord control plane workflows.
 This package owns Discord thread sessions, channel bindings, interactive
 approval requests, the private outbound Discord Gateway interaction runtime,
 signature-verified interaction webhook helpers, bound work-item projections, and
-operator control actions. Runtime behavior must resolve bound thread context and
+operator control actions backed by the shared lifecycle action constants.
+Runtime behavior must resolve bound thread context and
 fail closed when a lifecycle-changing action is ambiguous. Slash command and
 button interactions are received over Discord Gateway by default, routed into
 control actions, must resolve exactly one bound thread or bound thread session,
 project that session into a typed spec/implementation/pull-request work item,
 render compact operator UI payloads with contextual buttons, and post both
 interaction acknowledgements and thread status messages through the structured
-Discord REST transport. The webhook helper returns the same structured payload
+Discord REST transport. Interaction acknowledgements are sent before persistence
+and audit writes so live button clicks satisfy Discord's prompt response window;
+the bound-thread message and audit trail are then persisted through the same
+control result. If Discord rejects the initial acknowledgement, the
+acknowledgement transport throws, or a route-refusal acknowledgement is rejected,
+the action fails closed, skips lifecycle state writes, writes an audit event,
+and exposes `responsePostError`. If the bound-thread status post fails after
+acknowledgement, the result preserves the interaction acknowledgement receipt
+and durable action record while exposing `threadPostError` for diagnostics,
+including when Discord returns a non-2xx thread-message receipt. Interaction
+requests are normalized once, so persisted traces contain one Discord route
+marker for the action. The webhook helper returns the same structured payload
 shape for explicit deployments that choose inbound callbacks, but the production
-runtime path does not require public ingress. Route failures and policy denials
-use standard blocked/refused messages and still write audit records. The exported
+runtime path does not require public ingress. Route failures and policy denials use standard
+blocked/refused messages and still write audit records. The exported
 command contract registry is the source for guild slash-command registration.
 The live lab registers those commands and includes a Discord callback-shaped
 interaction probe so this response path is validated from raw slash-command
@@ -47,11 +59,11 @@ flowchart LR
   Binding --> WorkItem[Project bound work item]
   WorkItem -->|unambiguous| Policy[Policy evaluation]
   Binding -->|ambiguous| Deny[Fail closed response and audit]
-  Policy --> State[Persist state telemetry and audit]
-  State --> Render[Render compact operator UI]
+  Policy --> Render[Render compact operator UI]
   Render --> Components[Contextual buttons]
   Components --> Response[Interaction acknowledgement over REST]
-  Response --> Thread[Thread status message]
+  Response --> State[Persist state telemetry and audit]
+  State --> Thread[Thread status message]
 ```
 
 ## Boundaries

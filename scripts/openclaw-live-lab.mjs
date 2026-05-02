@@ -29,8 +29,20 @@ const defaultWorkflowFileName = 'live-dispatch-canary.yml';
 const defaultSonarProjectTimeoutMs = 180_000;
 const defaultWorkflowTimeoutMs = 180_000;
 const defaultPollMs = 5_000;
+/**
+ * Default window that keeps the private runtime online after operator controls are posted.
+ */
+const defaultOperatorHoldMs = 150_000;
 const githubRepositoryListPageSize = 100;
 const livePrefix = 'devplat-test-';
+/**
+ * Discord message flag that suppresses URL embeds on status posts.
+ */
+const discordSuppressEmbedsMessageFlag = 4;
+/**
+ * Characters outside Sonar's stable project-key vocabulary are normalized.
+ */
+const sonarProjectKeyUnsafeCharacterPattern = /[^a-zA-Z0-9_.:-]+/gu;
 /**
  * Shared Discord category used by live-lab and OpenClaw test runs.
  */
@@ -39,6 +51,18 @@ const testDiscordCategoryName = 'test';
  * Discord component wire field for the developer-defined interaction id.
  */
 const discordComponentCustomIdField = 'custom_id';
+/**
+ * Deep-test tools whose progress belongs in the live-lab pull-request channel.
+ */
+const pullRequestProgressToolNames = new Set([
+  'create_pull_request_record',
+  'submit_pull_request_update',
+  'submit_pull_request_merge',
+  'plan_rebase_dependents',
+  'execute_rebase_dependents',
+  'create_github_action_request',
+  'submit_github_action',
+]);
 const liveLabGitHubAppPermissions = Object.freeze({
   actions: 'write',
   administration: 'write',
@@ -271,7 +295,7 @@ export function parseLiveLabArgs(argv) {
   const operatorHoldMs =
     typeof operatorHoldMsValue === 'string'
       ? Number.parseInt(operatorHoldMsValue, 10)
-      : undefined;
+      : defaultOperatorHoldMs;
   if (
     operatorHoldMsValue !== undefined &&
     (!Number.isInteger(operatorHoldMs) || operatorHoldMs < 0)
@@ -341,6 +365,20 @@ export function createDiscordChannelPlan(
   ];
 }
 
+/**
+ * Resolves the canonical status indicator for live-lab operator messages.
+ */
+function resolveLiveLabStatusIndicator(status) {
+  switch (status) {
+    case 'failed':
+      return '🔴';
+    case 'passed':
+      return '🟢';
+    default:
+      return '🟡';
+  }
+}
+
 export function createStatusMessage({
   details,
   phase,
@@ -351,10 +389,7 @@ export function createStatusMessage({
   status,
   workflowUrl,
 }) {
-  const title =
-    status === 'passed'
-      ? `🟢 DevPlat · Live lab ${phase}`
-      : `🟡 DevPlat · Live lab ${phase}`;
+  const title = `${resolveLiveLabStatusIndicator(status)} DevPlat · Live lab ${phase}`;
   const lines = [
     title,
     '',
@@ -362,55 +397,41 @@ export function createStatusMessage({
     `Scope: live-lab · ${runLabel}`,
     `Item: ${repoFullName}`,
     'Actor: workflow',
-    `Updated: ${sha}`,
+    `Sha: ${sha}`,
     `→ ${details ?? 'Progress update.'}`,
     '',
     `Ref: ${ref}`,
   ];
 
   if (workflowUrl !== null) {
-    lines.push(`Workflow: ${runLabel}`);
+    lines.push(`Workflow: <${workflowUrl}>`);
   }
 
   return {
     allowed_mentions: { parse: [] },
     content: lines.join('\n'),
-    flags: 4,
+    flags: discordSuppressEmbedsMessageFlag,
   };
 }
 
 export function mapProgressToChannel(progress) {
-  const pullRequestTools = new Set([
-    'create_pull_request_record',
-    'submit_pull_request_update',
-    'submit_pull_request_merge',
-    'plan_rebase_dependents',
-    'execute_rebase_dependents',
-    'create_github_action_request',
-    'submit_github_action',
-  ]);
-
-  if (progress.phase === 'planning') {
-    return 'spec';
+  switch (progress.phase) {
+    case 'planning':
+      return 'spec';
+    case 'config':
+    case 'contracts':
+      return 'audit';
+    case 'build':
+    case 'container':
+      return 'projectManagement';
+    case 'delivery':
+      return typeof progress.step === 'string' &&
+        pullRequestProgressToolNames.has(progress.step)
+        ? 'pullRequest'
+        : 'implementation';
+    default:
+      return 'implementation';
   }
-
-  if (progress.phase === 'config' || progress.phase === 'contracts') {
-    return 'audit';
-  }
-
-  if (progress.phase === 'build' || progress.phase === 'container') {
-    return 'projectManagement';
-  }
-
-  if (
-    progress.phase === 'delivery' &&
-    typeof progress.step === 'string' &&
-    pullRequestTools.has(progress.step)
-  ) {
-    return 'pullRequest';
-  }
-
-  return 'implementation';
 }
 
 export function createEvictionPlan(repositories, maxParallelRepos) {
@@ -432,7 +453,7 @@ export function createEvictionPlan(repositories, maxParallelRepos) {
 
 export function createSonarProjectKey(githubOrganization, repoName) {
   return `${githubOrganization}_${repoName}`.replace(
-    /[^a-zA-Z0-9_.:-]+/gu,
+    sonarProjectKeyUnsafeCharacterPattern,
     '_',
   );
 }
@@ -2080,8 +2101,10 @@ export async function runLiveLab(options, dependencies = {}) {
             reportDirectory,
             runLabel: identifiers.runLabel,
           });
-          if ((options.operatorHoldMs ?? 0) > 0) {
-            await sleepFn(options.operatorHoldMs);
+          const operatorHoldMs =
+            options.operatorHoldMs ?? defaultOperatorHoldMs;
+          if (operatorHoldMs > 0) {
+            await sleepFn(operatorHoldMs);
           }
         },
         image: options.image,

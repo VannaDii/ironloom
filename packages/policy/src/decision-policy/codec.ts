@@ -1,6 +1,16 @@
 import * as t from 'io-ts';
 
 import { LifecycleStatusCodec } from '@vannadii/devplat-core';
+import {
+  POLICY_ACTION_CATEGORY_AUTOFIX,
+  POLICY_ACTION_CATEGORY_COMMAND_EXECUTION,
+  POLICY_ACTION_CATEGORY_DESTRUCTIVE_CLEANUP,
+  POLICY_ACTION_CATEGORY_MERGE,
+  POLICY_ACTION_CATEGORY_PUBLISH,
+  POLICY_ACTION_CATEGORY_REBASE,
+  POLICY_ACTION_CATEGORY_ROUTINE,
+  POLICY_ACTION_CATEGORY_WORKTREE_RELEASE,
+} from './constants.js';
 
 export const PolicyPrivilegeLevelCodec = t.union([
   t.literal('automatic'),
@@ -10,14 +20,14 @@ export const PolicyPrivilegeLevelCodec = t.union([
 ]);
 
 export const PolicyActionCategoryCodec = t.union([
-  t.literal('merge'),
-  t.literal('command-execution'),
-  t.literal('worktree-release'),
-  t.literal('rebase'),
-  t.literal('publish'),
-  t.literal('autofix'),
-  t.literal('destructive-cleanup'),
-  t.literal('routine'),
+  t.literal(POLICY_ACTION_CATEGORY_MERGE),
+  t.literal(POLICY_ACTION_CATEGORY_COMMAND_EXECUTION),
+  t.literal(POLICY_ACTION_CATEGORY_WORKTREE_RELEASE),
+  t.literal(POLICY_ACTION_CATEGORY_REBASE),
+  t.literal(POLICY_ACTION_CATEGORY_PUBLISH),
+  t.literal(POLICY_ACTION_CATEGORY_AUTOFIX),
+  t.literal(POLICY_ACTION_CATEGORY_DESTRUCTIVE_CLEANUP),
+  t.literal(POLICY_ACTION_CATEGORY_ROUTINE),
 ]);
 
 export const PolicyRiskLevelCodec = t.union([

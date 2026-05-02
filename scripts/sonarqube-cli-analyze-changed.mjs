@@ -21,6 +21,12 @@ const a3sInactiveMessage =
   'A3S analysis is not activated for this organization';
 const sqaaDisabledReason =
   'SQAA/A3S analysis is not enabled for this run. Set SONAR_A3S_ENABLED=true or pass --sqaa enabled to run it.';
+const sonarUnauthenticatedMessage =
+  'SonarQube CLI is not authenticated locally; run sonar auth login to enable changed-file verification.';
+const sonarUnauthenticatedSignals = [
+  'Not authenticated. Run: sonar auth login',
+  'Run: sonar auth login',
+];
 const retryableSonarServiceFailureReason =
   'SonarQube service unavailable during local analysis; retry this gate after the upstream service recovers.';
 const retryableSonarServiceFailureSignals = [
@@ -342,6 +348,13 @@ export function classifySonarAnalysisFailure(error) {
     };
   }
 
+  if (isUnauthenticatedSonarCliFailure(output)) {
+    return {
+      reason: sonarUnauthenticatedMessage,
+      status: 'skipped',
+    };
+  }
+
   if (isRetryableSonarServiceFailure(output)) {
     return {
       reason: retryableSonarServiceFailureReason,
@@ -353,6 +366,13 @@ export function classifySonarAnalysisFailure(error) {
     reason: output.length === 0 ? 'SonarQube CLI command failed.' : output,
     status: 'failed',
   };
+}
+
+/**
+ * Detects local SonarQube CLI auth failures that make local analysis unavailable.
+ */
+function isUnauthenticatedSonarCliFailure(output) {
+  return sonarUnauthenticatedSignals.some((signal) => output.includes(signal));
 }
 
 /**

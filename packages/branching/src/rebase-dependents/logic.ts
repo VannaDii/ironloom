@@ -1,14 +1,26 @@
+import { DEVPLAT_ACTION_REBASE_DEPENDENTS } from '@vannadii/devplat-core';
+
 import type {
   BranchConflictClassification,
   BranchDependencyGraph,
   RebaseExecutionResult,
   RebasePlan,
 } from './codec.js';
+import {
+  BRANCH_CONFLICT_NEXT_ACTION_RESOLVE_CONFLICTS,
+  BRANCH_CONFLICT_NEXT_ACTION_RUN_REBASE_PREVIEW,
+} from './constants.js';
 
+/**
+ * Returns unique non-empty branch names after trimming input values.
+ */
 function uniqueTrimmed(values: readonly string[]): string[] {
   return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
 }
 
+/**
+ * Creates an edge list from one base branch to dependent branches.
+ */
 export function createBranchDependencyGraph(
   baseBranch: string,
   dependentBranches: readonly string[],
@@ -24,6 +36,9 @@ export function createBranchDependencyGraph(
   };
 }
 
+/**
+ * Classifies branch conflicts and resolves the next branch action.
+ */
 export function classifyBranchConflicts(input: {
   conflictsExpected: boolean;
   affectedBranches: readonly string[];
@@ -33,7 +48,7 @@ export function classifyBranchConflicts(input: {
     return {
       kind: 'detected',
       affectedBranches,
-      nextAction: 'resolve-conflicts',
+      nextAction: BRANCH_CONFLICT_NEXT_ACTION_RESOLVE_CONFLICTS,
     };
   }
 
@@ -41,17 +56,20 @@ export function classifyBranchConflicts(input: {
     return {
       kind: 'expected',
       affectedBranches,
-      nextAction: 'run-rebase-preview',
+      nextAction: BRANCH_CONFLICT_NEXT_ACTION_RUN_REBASE_PREVIEW,
     };
   }
 
   return {
     kind: 'none',
     affectedBranches,
-    nextAction: 'rebase-dependents',
+    nextAction: DEVPLAT_ACTION_REBASE_DEPENDENTS,
   };
 }
 
+/**
+ * Normalizes a dependent-branch rebase plan.
+ */
 export function createRebasePlan(input: RebasePlan): RebasePlan {
   const dependentBranches = uniqueTrimmed(input.dependentBranches);
   const baseBranch = input.baseBranch.trim();
@@ -74,10 +92,16 @@ export function createRebasePlan(input: RebasePlan): RebasePlan {
   };
 }
 
+/**
+ * Describes a dependent-branch rebase plan for operator output.
+ */
 export function describeRebasePlan(input: RebasePlan): string {
   return `Rebase ${String(input.dependentBranches.length)} dependents from ${input.baseBranch}`;
 }
 
+/**
+ * Normalizes a dependent-branch rebase execution result.
+ */
 export function createRebaseExecutionResult(
   input: RebaseExecutionResult,
 ): RebaseExecutionResult {

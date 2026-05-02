@@ -76,7 +76,11 @@ npm run sonar:analyze:changed
 `npm run check:unit-tests`, included in `check:repo`, verifies that every
 non-trivial `logic.ts` and `service.ts` has a sibling test and that every
 `.test.ts`, `.test.mts`, and `.test.mjs` file uses the structured
-`const cases = [...]` table with `inputs`, `mock`, and `assert` fields.
+`const cases = [...]` table with `inputs`, `mock`, and `assert` fields plus a
+single `it.each(cases)('$name', ...)` runner instead of ad hoc loops.
+`npm run check:regex-governance`, also included in `check:repo`, verifies that
+package regular-expression patterns are named constants in `constants.ts`, use
+the `PATTERN` suffix, and are referenced by package tests.
 
 `npm run act:pr` runs the pull-request CI and TypeScript matrix workflows
 locally through Docker using `act`, `.actrc`, and
@@ -101,10 +105,12 @@ agent-readable reports. SQAA/A3S analysis is intentionally disabled unless
 is supplied; when enabled it also runs per-file `sonar analyze sqaa --file`
 commands. If SQAA returns
 `A3S analysis is not activated for this organization`, the helper reports that
-capability as skipped instead of allowing the whole analysis run to fail. The
-wrapper derives the current branch and defaults the project to `vannadii_devplat`;
-override with `--project`, `--branch`, `--base`, or `--head` only for exceptional
-local comparisons.
+capability as skipped instead of allowing the whole analysis run to fail. If the
+local CLI is not authenticated, the helper reports changed-file verification as
+skipped with an explicit `sonar auth login` hint while CI remains the
+authoritative Sonar gate. The wrapper derives the current branch and defaults
+the project to `vannadii_devplat`; override with `--project`, `--branch`,
+`--base`, or `--head` only for exceptional local comparisons.
 
 Runtime configuration is repository-scoped for the single-repo production path.
 Set `GITHUB_OWNER`, `GITHUB_REPO`, `GITHUB_DEFAULT_BRANCH`, GitHub API/token
@@ -135,17 +141,34 @@ component id list so operators can audit the visible start signal without
 leaving unbound status buttons that outlive the ephemeral runner.
 Human-triggered Discord client clicks remain a manual sandbox-guild acceptance
 check because Discord does not expose a supported bot API for clicking buttons
-as a user. The `operator_hold_ms` live-lab input keeps the private Gateway
-runtime open for a bounded manual-click window after the control message is
-posted. Live-lab status posts suppress raw GitHub URL previews, and reports
-include selected channel `parentId` values so category placement can be audited.
+as a user. The `operator_hold_ms` live-lab input defaults to `150000`, keeping
+the private Gateway runtime open for a bounded 2.5 minute manual-click window
+after the control message is posted. Live-lab status posts render compact
+workflow links with URL previews suppressed, and reports include selected
+channel `parentId` values so category placement can be audited.
 Live-lab runtime containers receive the same repo-scoped Discord/OpenClaw/Sonar
 environment through Docker env-name pass-through while report artifacts keep
 secret values redacted. The live container explicitly starts the private
 Discord Gateway worker and points `DEVPLAT_STORAGE_ROOT` at the mounted
 `.devplat` state directory so real sandbox-guild slash commands and button
 clicks are acknowledged through the same thread binding store used by OpenClaw
-tool execution.
+tool execution. OpenClaw storage, telemetry, memory, Discord lifecycle,
+GitHub submission, pull-request submission, and supervisor-step tools also
+honor the trimmed configured storage root, and pull-request submission uses the
+trimmed configured GitHub owner/repository identity. Worktree allocation and
+dependent rebase tools honor the trimmed configured worktree root, so
+tool-driven artifacts, telemetry, worktrees, and Discord interaction state stay
+in the same repository-scoped store. Valid operator
+interactions are acknowledged before state, telemetry, and audit persistence
+begins, then the bound thread receives the same structured status payload after
+the control result is durable. If Discord
+rejects the initial acknowledgement, the acknowledgement transport throws, or a
+route-refusal acknowledgement is rejected, DevPlat fails the action closed,
+writes an audit event, and reports `responsePostError` without lifecycle state
+changes. If the post-acknowledgement thread update fails, the control result
+keeps the interaction receipt and durable action record while reporting
+`threadPostError`. Interaction-originated requests are normalized once, so
+persisted traces contain one Discord route marker for the action.
 
 Public contract schemas are generated from exported `io-ts` codecs. For
 codec-owned lifecycle records, derive TypeScript types from those codecs rather

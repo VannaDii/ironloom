@@ -269,12 +269,10 @@ describe('PullRequestRecord logic', () => {
     },
   ] satisfies PullRequestLogicCase[];
 
-  for (const testCase of cases) {
-    it(testCase.name, () => {
-      expect.hasAssertions();
-      testCase.mock();
+  it.each(cases)('$name', (testCase) => {
+    expect.hasAssertions();
+    testCase.mock();
 
-      testCase.assert(createPullRequestRecord(testCase.inputs.record));
-    });
-  }
+    testCase.assert(createPullRequestRecord(testCase.inputs.record));
+  });
 });

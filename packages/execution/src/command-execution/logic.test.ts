@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  normalizeCommandExecutionCwd,
   createCommandExecutionPolicy,
   createCommandResult,
   describeCommandResult,
   isSuccessfulCommandResult,
   truncateCommandOutput,
 } from './logic.js';
+import {
+  COMMAND_EXECUTION_CWD_ABSOLUTE_ERROR,
+  COMMAND_EXECUTION_CWD_TRAVERSAL_ERROR,
+} from './constants.js';
 
 describe('CommandResult logic', () => {
   const cases = [
@@ -110,6 +115,66 @@ describe('CommandResult logic', () => {
             attempts: 1,
             retryableExitCodes: [1, 124],
           },
+        });
+      },
+    },
+    {
+      name: 'normalizes blank command cwd values to the repository root',
+      inputs: {
+        cwd: '   ',
+        expectedCwd: undefined,
+      },
+      mock: () => undefined,
+      assert: (inputs: { cwd: string; expectedCwd: string | undefined }) => {
+        expect(normalizeCommandExecutionCwd(inputs.cwd)).toEqual({
+          ok: true,
+          ...(inputs.expectedCwd === undefined
+            ? {}
+            : { value: inputs.expectedCwd }),
+        });
+      },
+    },
+    {
+      name: 'normalizes nested relative command cwd values',
+      inputs: {
+        cwd: ' packages/../packages/execution ',
+        expectedCwd: 'packages/execution',
+      },
+      mock: () => undefined,
+      assert: (inputs: { cwd: string; expectedCwd: string | undefined }) => {
+        expect(normalizeCommandExecutionCwd(inputs.cwd)).toEqual({
+          ok: true,
+          ...(inputs.expectedCwd === undefined
+            ? {}
+            : { value: inputs.expectedCwd }),
+        });
+      },
+    },
+    {
+      name: 'rejects absolute command cwd values',
+      inputs: {
+        cwd: process.cwd(),
+        expectedError: COMMAND_EXECUTION_CWD_ABSOLUTE_ERROR,
+      },
+      mock: () => undefined,
+      assert: (inputs: { cwd: string; expectedError: string }) => {
+        expect(normalizeCommandExecutionCwd(inputs.cwd)).toEqual({
+          ok: false,
+          error: inputs.expectedError,
+        });
+      },
+    },
+    {
+      name: 'rejects command cwd traversal outside the repository root',
+      inputs: {
+        cwd: '../outside',
+        expectedError: COMMAND_EXECUTION_CWD_TRAVERSAL_ERROR,
+      },
+      mock: () => undefined,
+      assert: (inputs: { cwd: string; expectedError: string }) => {
+        expect(normalizeCommandExecutionCwd(inputs.cwd)).toEqual({
+          ok: false,
+          error: inputs.expectedError,
         });
       },
     },

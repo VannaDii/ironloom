@@ -11,6 +11,7 @@ import {
   resolveGateCommand,
   runGates,
 } from './logic.js';
+import { GATE_NEXT_ACTION_CREATE_REMEDIATION_PLAN } from './constants.js';
 import type { GateRunReport } from './codec.js';
 
 type GateLogicInputs =
@@ -280,7 +281,7 @@ describe('GateRunReport logic', () => {
           remediationFindingIds: ['gate:lint'],
           autofixEligible: true,
           approvalRequired: true,
-          nextAction: 'create-remediation-plan',
+          nextAction: GATE_NEXT_ACTION_CREATE_REMEDIATION_PLAN,
         });
         expect(hook.actions).toEqual(['Fix lint gate failure: lint failed']);
         expect(report.remediationHook).toEqual(hook);
@@ -327,12 +328,10 @@ describe('GateRunReport logic', () => {
     },
   ] satisfies GateLogicCase[];
 
-  for (const testCase of cases) {
-    it(testCase.name, async () => {
-      expect.hasAssertions();
-      const context = testCase.mock(testCase.inputs);
+  it.each(cases)('$name', async (testCase) => {
+    expect.hasAssertions();
+    const context = testCase.mock(testCase.inputs);
 
-      await testCase.assert(context, testCase.inputs);
-    });
-  }
+    await testCase.assert(context, testCase.inputs);
+  });
 });

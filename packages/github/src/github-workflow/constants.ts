@@ -1,27 +1,10 @@
-/**
- * GitHub action used to create a pull request.
- */
-export const GITHUB_ACTION_CREATE_PR = 'create-pr';
-
-/**
- * GitHub action used to update a pull request.
- */
-export const GITHUB_ACTION_UPDATE_PR = 'update-pr';
-
-/**
- * GitHub action used to comment on a pull request.
- */
-export const GITHUB_ACTION_COMMENT_PR = 'comment-pr';
-
-/**
- * GitHub action used to merge a pull request.
- */
-export const GITHUB_ACTION_MERGE_PR = 'merge-pr';
-
-/**
- * GitHub action used to ask GitHub to update a pull request branch.
- */
-export const GITHUB_ACTION_SYNC_BRANCH = 'sync-branch';
+export {
+  DEVPLAT_ACTION_COMMENT_PR as GITHUB_ACTION_COMMENT_PR,
+  DEVPLAT_ACTION_CREATE_PR as GITHUB_ACTION_CREATE_PR,
+  DEVPLAT_ACTION_MERGE_PR as GITHUB_ACTION_MERGE_PR,
+  DEVPLAT_ACTION_SYNC_BRANCH as GITHUB_ACTION_SYNC_BRANCH,
+  DEVPLAT_ACTION_UPDATE_PR as GITHUB_ACTION_UPDATE_PR,
+} from '@vannadii/devplat-core';
 
 /**
  * HTTP method used for GitHub create and comment operations.

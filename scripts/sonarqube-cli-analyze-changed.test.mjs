@@ -754,6 +754,23 @@ describe('sonarqube-cli-analyze-changed', () => {
       },
     },
     {
+      name: 'classifies unauthenticated local SonarQube CLI runs as skipped',
+      inputs: {
+        error: {
+          stderr: 'Not authenticated. Run: sonar auth login',
+          stdout: '',
+        },
+      },
+      mock: async () => undefined,
+      assert: async (_context, inputs) => {
+        expect(classifySonarAnalysisFailure(inputs.error)).toEqual({
+          reason:
+            'SonarQube CLI is not authenticated locally; run sonar auth login to enable changed-file verification.',
+          status: 'skipped',
+        });
+      },
+    },
+    {
       name: 'formats plain text and JSON reports',
       inputs: {
         report: {

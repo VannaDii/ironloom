@@ -4,7 +4,7 @@ GitHub-native integration contracts.
 
 ## Responsibility
 
-This package owns GitHub action request normalization, repository state projection, pull request state projection, issue/spec/PR links, and submission decisions for repository operations such as branch sync, pull request update, merge, and workflow dispatch.
+This package owns GitHub action request normalization, repository state projection, pull request state projection, issue/spec/PR links, and submission decisions for repository operations such as branch sync, pull request update, merge, and workflow dispatch. GitHub action constants re-export the shared action vocabulary from `@vannadii/devplat-core` so policy and GitHub routes cannot drift.
 Allowed actions are projected into concrete GitHub REST requests for PR
 creation, PR updates, PR comments, PR merges, and branch synchronization.
 

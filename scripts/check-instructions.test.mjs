@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   collectInstructionErrors,
+  getRegisteredOpenClawTools,
   REQUIRED_INSTRUCTION_FILES,
   REQUIRED_WORKFLOW_FILES,
 } from './check-instructions.mjs';
@@ -190,6 +191,56 @@ describe('check-instructions', () => {
       },
     },
     {
+      name: 'resolves constant-backed OpenClaw tool names from constants file',
+      inputs: {
+        useFixtureRoot: true,
+      },
+      mock: async ({ rootDirectory }) => {
+        await replaceInFile(
+          rootDirectory,
+          'packages/openclaw/src/tool-surfaces/service.ts',
+          "    name: 'list_stored_records',",
+          '    name: LIST_STORED_RECORDS_TOOL_NAME,',
+        );
+        await appendToFile(
+          rootDirectory,
+          'packages/openclaw/src/tool-surfaces/constants.ts',
+          [
+            '',
+            '/**',
+            ' * Tool name for listing storage records through the adapter.',
+            ' */',
+            "export const LIST_STORED_RECORDS_TOOL_NAME = 'list_stored_records';",
+            '',
+          ].join('\n'),
+        );
+      },
+      assert: async (_errors, { rootDirectory }) => {
+        await expect(
+          getRegisteredOpenClawTools(rootDirectory),
+        ).resolves.toContain('list_stored_records');
+      },
+    },
+    {
+      name: 'fails when an OpenClaw tool name constant is missing',
+      inputs: {
+        useFixtureRoot: true,
+      },
+      mock: async ({ rootDirectory }) => {
+        await replaceInFile(
+          rootDirectory,
+          'packages/openclaw/src/tool-surfaces/service.ts',
+          '    name: LIST_STORED_INDEX_TOOL_NAME,',
+          '    name: MISSING_OPENCLAW_TOOL_NAME,',
+        );
+      },
+      assert: (errors) => {
+        expect(
+          errors.some((error) => error.includes('MISSING_OPENCLAW_TOOL_NAME')),
+        ).toBe(true);
+      },
+    },
+    {
       name: 'fails when the centralized OpenClaw inventory is missing',
       inputs: {
         useFixtureRoot: true,
@@ -219,7 +270,7 @@ describe('check-instructions', () => {
 
     await testCase.mock({ ...testCase.inputs, rootDirectory });
     const outcome = await collectInstructionErrors({ rootDirectory });
-    testCase.assert(outcome);
+    await testCase.assert(outcome, { rootDirectory });
   });
 });
 
@@ -257,4 +308,11 @@ async function replaceInFile(
   }
 
   await writeFile(filePath, updated, 'utf8');
+}
+
+async function appendToFile(rootDirectory, relativePath, text) {
+  const filePath = resolve(rootDirectory, relativePath);
+  const source = await readFile(filePath, 'utf8');
+
+  await writeFile(filePath, `${source}${text}`, 'utf8');
 }

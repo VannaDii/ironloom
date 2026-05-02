@@ -67,9 +67,9 @@ Run `.github/workflows/openclaw-live-lab.yml` with:
 
 - `ref`: optional git ref to validate
 - `max_parallel_repos`: default `6`
-- `operator_hold_ms`: default `0`; set to a positive millisecond value when a
-  human operator needs a short manual-click window while the private Gateway
-  worker is still alive
+- `operator_hold_ms`: default `150000`; set to another non-negative millisecond
+  value when a human operator needs a different manual-click window while the
+  private Gateway worker is still alive
 - `retain_failed_resources`: default `false`
 
 The workflow writes a report bundle under `$RUNNER_TEMP/openclaw-live-lab` and
@@ -120,12 +120,13 @@ Use them this way:
 
 Every message is labeled with the run metadata, so operators can correlate
 activity without per-run channel trees.
-Status messages use the compact DevPlat state/scope/item format and suppress
-raw GitHub URL previews. They do not include interactive components because the
-live-lab runner is intentionally ephemeral and project-management updates are
-not bound lifecycle threads. The uploaded `live-lab-report.json` records each
-selected channel id and `parentId` so operators can confirm the run used the
-channels under the `test` category, not uncategorized duplicates with the same
+Status messages use the compact DevPlat state/scope/item format, render
+workflow URLs as compact links, and suppress raw GitHub previews. They do not
+include interactive components because the live-lab runner is intentionally
+ephemeral and project-management updates are not bound lifecycle threads. The
+uploaded `live-lab-report.json` records each selected channel id and `parentId`
+so operators can confirm the run used the channels under the `test` category,
+not uncategorized duplicates with the same
 names.
 The first bootstrap message in `project-management` is not best effort: if it
 cannot be posted, the live lab fails before listing, creating, or deleting any
@@ -151,10 +152,10 @@ buttons intact, and records the command registration, response receipt endpoints
 Discord message ids, posted content, and component custom ids in
 `live-lab-report.json`. The probe runs before the deep-test runtime is cleaned up
 so the private Gateway worker is still alive when the control message is posted.
-The optional `operator_hold_ms` input keeps that runtime open after the control
-message is visible, giving an operator a bounded manual-click window. The probe
-fails if either control-plane response loses the button rows, so the live-lab
-lane cannot silently regress to plain log-style messages. Only unbound
+The `operator_hold_ms` input keeps that runtime open for 150000 ms by default
+after the control message is visible, giving an operator a bounded manual-click
+window. The probe fails if either control-plane response loses the button rows,
+so the live-lab lane cannot silently regress to plain log-style messages. Only unbound
 bootstrap/progress status messages stay noninteractive to avoid stale clickable
 buttons after cleanup.
 

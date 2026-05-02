@@ -33,12 +33,14 @@ analyses in parallel. SQAA/A3S analysis is intentionally disabled unless
 is supplied; when enabled it also runs `sonar analyze sqaa --file` for each
 changed file. If the organization is not configured for A3S, the helper reports
 the SQAA capability as skipped with the reason preserved instead of allowing the
-entire analysis run to fail. The local pre-push gate requires this changed-file
-SonarQube analysis, so install and authenticate the CLI before pushing. It
-derives the branch from the local checkout or GitHub environment and defaults
-the project to `vannadii_devplat`. Pass `--base`, `--head`, `--project`, and
-`--branch` after `--` only when a local branch needs explicit comparison or
-SonarCloud context.
+entire analysis run to fail. If the local CLI is not authenticated, the helper
+reports verification as skipped with an explicit `sonar auth login` hint while
+CI remains the authoritative Sonar gate. The local pre-push gate always runs
+this helper; authenticate the CLI to make local changed-file verification
+enforced before push. It derives the branch from the local checkout or GitHub
+environment and defaults the project to `vannadii_devplat`. Pass `--base`,
+`--head`, `--project`, and `--branch` after `--` only when a local branch needs
+explicit comparison or SonarCloud context.
 
 Use the root `PLATFORM.md` file as the authoritative foundation-scope document. This guide focuses on the implementation discipline that keeps work aligned with that objective.
 
@@ -52,6 +54,9 @@ Use the root `PLATFORM.md` file as the authoritative foundation-scope document. 
 - `npm run check:instructions`
 - `npm run check:naming`
 - `npm run check:policy-boundaries`
+- `npm run check:constants`
+- `npm run check:regex-governance`
+- `npm run check:type-assertions`
 - `npm run check:repo`
 
 ## Instruction Taxonomy
@@ -83,8 +88,9 @@ Use the root `PLATFORM.md` file as the authoritative foundation-scope document. 
 - keep branch names and pull request titles free of registered tool names
 - keep pull request titles in conventional commit format
 - keep pull request bodies aligned with `.github/pull_request_template.md` and fill every section with concrete change details
-- keep tests in structured `const cases = [...]` tables where each case provides `inputs`, `mock`, and `assert`, then exercises a single `it.each(cases)('$name', ...)` implementation per suite; `npm run check:unit-tests` enforces the baseline case-table fields for `.test.ts`, `.test.mts`, and `.test.mjs` files
-- keep constants in package-local `constants.ts` files, promote cross-package constants into `@vannadii/devplat-core`, and test every regular-expression constant with matching and non-matching edge cases
+- keep tests in structured `const cases = [...]` tables where each case provides `inputs`, `mock`, and `assert`, then exercises a single `it.each(cases)('$name', ...)` implementation per suite; `npm run check:unit-tests` enforces the case-table fields and rejects ad hoc loops over `cases` in `.test.ts`, `.test.mts`, and `.test.mjs` files
+- keep constants in package-local `constants.ts` files, promote cross-package constants into `@vannadii/devplat-core`, rely on `npm run check:constants` to reject duplicated shared lifecycle action literals in authored package source, and use `npm run check:regex-governance` to ensure package regular expressions live in `constants.ts`, use a `PATTERN` suffix, and have package test references
+- keep authored package TypeScript free of `as`, angle-bracket, and non-null assertions; `npm run check:type-assertions` enforces this with AST parsing before tests run
 - keep JSDoc on authored constants, helpers, codecs, functions, classes, and public types so internal maintainers and API users can read the same intent at the symbol boundary
 - document release, rollback, and performance impact when a change touches those surfaces
 

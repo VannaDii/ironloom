@@ -1,5 +1,11 @@
 import { appendTrace } from '@vannadii/devplat-core';
 
+import {
+  WORKTREE_BLOCKED_PATH_MARKER,
+  WORKTREE_BLOCKED_PATH_SEGMENT,
+  WORKTREE_DEFAULT_ROOT,
+  WORKTREE_UNSAFE_GIT_REF_CHARACTERS,
+} from './constants.js';
 import type {
   WorktreeAllocation,
   WorktreeBranchSafetyCheck,
@@ -12,8 +18,6 @@ import type {
 function trimWorktreeValue(value: string): string {
   return value.trim();
 }
-
-const unsafeGitRefCharacters = ['~', '^', ':', '?', '*', '[', ']', '\\'];
 
 function createSafetyCheck(input: {
   branchName: string;
@@ -36,7 +40,7 @@ function hasUnsafeGitRefCharacter(branchName: string): boolean {
     const codePoint = character.codePointAt(0);
     if (
       character.trim().length === 0 ||
-      unsafeGitRefCharacters.includes(character) ||
+      WORKTREE_UNSAFE_GIT_REF_CHARACTERS.includes(character) ||
       codePoint === undefined ||
       codePoint < 32 ||
       codePoint === 127
@@ -119,13 +123,14 @@ function createBlockedWorktreePath(
   worktreeRoot: string,
   taskId: string,
 ): string {
-  return `${worktreeRoot}/blocked/${taskId}`;
+  return `${worktreeRoot}/${WORKTREE_BLOCKED_PATH_SEGMENT}/${taskId}`;
 }
 
 function inferWorktreeRoot(worktreePath: string, branchName: string): string {
   const normalizedWorktreePath = trimWorktreeValue(worktreePath);
-  const blockedMarker = '/blocked/';
-  const blockedMarkerIndex = normalizedWorktreePath.indexOf(blockedMarker);
+  const blockedMarkerIndex = normalizedWorktreePath.indexOf(
+    WORKTREE_BLOCKED_PATH_MARKER,
+  );
   if (blockedMarkerIndex >= 0) {
     return normalizedWorktreePath.slice(0, blockedMarkerIndex);
   }
@@ -170,7 +175,7 @@ export function createWorktreeAllocation(
 export function allocateWorktree(
   taskId: string,
   branchName: string,
-  worktreeRoot = '.worktrees',
+  worktreeRoot = WORKTREE_DEFAULT_ROOT,
 ): WorktreeAllocation {
   const normalizedTaskId = trimWorktreeValue(taskId);
   const normalizedBranchName = trimWorktreeValue(branchName);

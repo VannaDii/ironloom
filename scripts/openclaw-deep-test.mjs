@@ -14,6 +14,14 @@ const defaultReadinessPollMs = 1_000;
 const defaultImageTagPrefix = 'devplat-openclaw-deep-test';
 const fixedTimestamp = '2026-04-04T00:00:00.000Z';
 const redactedValue = '[redacted]';
+/**
+ * Characters ignored while classifying snapshot keys for secret redaction.
+ */
+const snapshotKeyIgnoredCharacterPattern = /[^a-z0-9]/giu;
+/**
+ * Worktree root used by the hermetic scenario and mirrored into the runtime.
+ */
+const defaultWorktreeRoot = 'devplat-state/worktrees';
 
 function parseFlagArguments(argv) {
   const args = new Map();
@@ -119,7 +127,9 @@ function createStep(tool, params, expected, phase) {
 }
 
 function isSensitiveKey(key) {
-  const normalized = key.replace(/[^a-z0-9]/gi, '').toLowerCase();
+  const normalized = key
+    .replace(snapshotKeyIgnoredCharacterPattern, '')
+    .toLowerCase();
 
   return (
     normalized === 'publickey' ||
@@ -152,6 +162,7 @@ export function createRuntimeEnv(overrides = {}) {
   return {
     GITHUB_OWNER: 'VannaDii',
     GITHUB_REPO: 'devplat',
+    DEVPLAT_WORKTREE_ROOT: defaultWorktreeRoot,
     DISCORD_API_BASE_URL: 'https://discord.com/api/v10',
     DISCORD_APPLICATION_ID: 'application-1',
     DISCORD_CATEGORY_NAME: 'test',
@@ -461,7 +472,24 @@ function createBasePullRequestRecord() {
   };
 }
 
-function createBaseWorktreeAllocation() {
+/**
+ * Resolves the runtime worktree root used by OpenClaw tool expectations.
+ */
+function resolveRuntimeWorktreeRoot(runtimeEnv) {
+  const configuredWorktreeRoot = runtimeEnv.DEVPLAT_WORKTREE_ROOT?.trim();
+
+  return configuredWorktreeRoot === undefined ||
+    configuredWorktreeRoot.length === 0
+    ? defaultWorktreeRoot
+    : configuredWorktreeRoot;
+}
+
+/**
+ * Creates the worktree allocation fixture used by sync and release steps.
+ */
+function createBaseWorktreeAllocation(runtimeEnv = createRuntimeEnv()) {
+  const worktreeRoot = resolveRuntimeWorktreeRoot(runtimeEnv);
+
   return {
     id: 'worktree-task-1',
     summary: 'allocated worktree',
@@ -470,7 +498,7 @@ function createBaseWorktreeAllocation() {
     updatedAt: fixedTimestamp,
     taskId: 'task-1',
     branchName: 'feature/task-1',
-    worktreePath: '.worktrees/feature/task-1',
+    worktreePath: `${worktreeRoot}/feature/task-1`,
   };
 }
 
@@ -570,7 +598,7 @@ export function createDeepScenario(runtimeEnv) {
       auditLogDirectory: 'devplat-state/audit',
     },
     worktrees: {
-      rootDirectory: 'devplat-state/worktrees',
+      rootDirectory: resolveRuntimeWorktreeRoot(runtimeEnv),
       baseBranch: 'main',
       syncStrategy: 'rebase-or-fast-forward',
     },
@@ -1070,6 +1098,7 @@ export function createDeepScenario(runtimeEnv) {
           status: 'complete',
           trace: [],
           updatedAt: fixedTimestamp,
+          indexes: ['artifact'],
           payload: {
             artifactType: 'audit-log',
           },
@@ -1112,6 +1141,43 @@ export function createDeepScenario(runtimeEnv) {
       'control',
     ),
     createStep(
+      'read_stored_index',
+      {
+        indexName: 'artifact',
+        key: 'storage-openclaw-artifact-1',
+      },
+      {
+        status: 'ok',
+        indexName: 'artifact',
+        key: 'storage-openclaw-artifact-1',
+      },
+      'control',
+    ),
+    createStep(
+      'read_indexed_record',
+      {
+        indexName: 'artifact',
+        key: 'storage-openclaw-artifact-1',
+      },
+      {
+        status: 'ok',
+        indexName: 'artifact',
+        key: 'storage-openclaw-artifact-1',
+      },
+      'control',
+    ),
+    createStep(
+      'list_stored_index',
+      {
+        indexName: 'artifact',
+      },
+      {
+        status: 'ok',
+        indexName: 'artifact',
+      },
+      'control',
+    ),
+    createStep(
       'record_telemetry_event',
       {
         id: 'telemetry-openclaw-1',
@@ -1150,13 +1216,17 @@ export function createDeepScenario(runtimeEnv) {
         taskId: 'task-1',
         branchName: 'feature/task-1',
       },
-      { taskId: 'task-1', branchName: 'feature/task-1' },
+      {
+        taskId: 'task-1',
+        branchName: 'feature/task-1',
+        worktreePath: `${resolveRuntimeWorktreeRoot(runtimeEnv)}/feature/task-1`,
+      },
       'delivery',
     ),
     createStep(
       'sync_worktree',
       {
-        allocation: createBaseWorktreeAllocation(),
+        allocation: createBaseWorktreeAllocation(runtimeEnv),
         baseBranch: 'main',
         syncMode: 'fast-forward',
       },
@@ -1166,7 +1236,7 @@ export function createDeepScenario(runtimeEnv) {
     createStep(
       'release_worktree',
       {
-        allocation: createBaseWorktreeAllocation(),
+        allocation: createBaseWorktreeAllocation(runtimeEnv),
         releaseMode: 'delete',
       },
       { taskId: 'task-1', releaseMode: 'delete', released: true },

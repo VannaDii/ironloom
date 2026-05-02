@@ -5,6 +5,7 @@ import { decodeWithCodec } from '@vannadii/devplat-core';
 import {
   DiscordInteractionCallbackCodec,
   DiscordInteractionCallbackOptionsCodec,
+  DiscordControlResultCodec,
   DiscordControlRequestCodec,
   DiscordOperatorInteractionCodec,
 } from './codec.js';
@@ -63,6 +64,78 @@ describe('discord control request codec', () => {
       mock: async ({ values }) =>
         values.map((value) =>
           decodeWithCodec(DiscordControlRequestCodec, value),
+        ),
+      assert: (decodedValues) => {
+        expect(decodedValues.every((decoded) => decoded.ok)).toBe(true);
+      },
+    },
+    {
+      name: 'decode control results that preserve post-acknowledgement thread post failures',
+      inputs: {
+        values: [
+          {
+            request: {
+              id: 'control-result-1',
+              summary: 'Show status.',
+              status: 'running',
+              trace: [],
+              updatedAt: '2026-04-04T00:00:00.000Z',
+              actorId: 'operator-1',
+              threadId: 'thread-1',
+              channelId: 'channel-1',
+              action: 'show-status',
+              privileged: false,
+            },
+            policyDecisionId: 'policy-1',
+            allowed: true,
+            persistedKey: 'control-result-1',
+            failedClosed: false,
+            responseReceipt: {
+              endpoint: '/interactions/control-result-1/token/callback',
+              statusCode: 200,
+              responseBody: { ok: true },
+            },
+            responsePayload: {
+              content: 'acknowledged',
+            },
+            threadPayload: {
+              content: 'thread update',
+            },
+            threadPostError: 'thread message rejected',
+          },
+          {
+            request: {
+              id: 'control-result-2',
+              summary: 'Show status.',
+              status: 'blocked',
+              trace: [],
+              updatedAt: '2026-04-04T00:00:00.000Z',
+              actorId: 'operator-2',
+              threadId: 'thread-2',
+              channelId: 'channel-2',
+              action: 'show-status',
+              privileged: false,
+            },
+            policyDecisionId: 'discord-response-rejected',
+            allowed: false,
+            persistedKey: 'control-result-2',
+            failedClosed: true,
+            responseReceipt: {
+              endpoint: '/interactions/control-result-2/token/callback',
+              statusCode: 404,
+              responseBody: { message: 'Unknown interaction' },
+            },
+            responsePayload: {
+              content: 'blocked',
+            },
+            responsePostError:
+              'Discord interaction acknowledgement returned HTTP 404.',
+          },
+        ],
+      },
+      mock: async ({ values }) =>
+        values.map((value) =>
+          decodeWithCodec(DiscordControlResultCodec, value),
         ),
       assert: (decodedValues) => {
         expect(decodedValues.every((decoded) => decoded.ok)).toBe(true);

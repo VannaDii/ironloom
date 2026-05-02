@@ -5,7 +5,7 @@ import { createPrePushPlan } from './check-pre-push.mjs';
 describe('check-pre-push', () => {
   const cases = [
     {
-      name: 'requires changed-file SonarQube analysis before build and docs',
+      name: 'requires lint and changed-file SonarQube analysis before build and docs',
       inputs: {},
       mock: async () => undefined,
       assert: async () => {
@@ -18,15 +18,22 @@ describe('check-pre-push', () => {
           'serial',
           'serial',
           'serial',
+          'serial',
           'concurrent',
         ]);
         expect(plan[5]).toEqual({
+          mode: 'serial',
+          label: 'lint',
+          command: 'npm',
+          args: ['run', 'lint'],
+        });
+        expect(plan[6]).toEqual({
           mode: 'serial',
           label: 'sonar:analyze:changed',
           command: 'npm',
           args: ['run', 'sonar:analyze:changed'],
         });
-        expect(plan[6].commands.map((command) => command.label)).toEqual([
+        expect(plan[7].commands.map((command) => command.label)).toEqual([
           'build:workspace',
           'docs:build',
         ]);

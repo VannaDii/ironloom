@@ -90,7 +90,7 @@ describe('DiscordControlRequest logic', () => {
     expect(request.trace).toContain('discord:thread-4:claim-this');
   });
 
-  it('routes real operator interactions and fails closed on ambiguity', () => {
+  describe('real operator interaction routing', () => {
     const cases = [
       {
         inputs: {
@@ -470,15 +470,16 @@ describe('DiscordControlRequest logic', () => {
       },
     ];
 
-    for (const testCase of cases) {
+    it.each(cases)('$name', (testCase) => {
+      expect.hasAssertions();
       testCase.mock();
       testCase.assert(
         createDiscordControlRequestFromInteraction(testCase.inputs.interaction),
       );
-    }
+    });
   });
 
-  it('normalizes raw Discord interaction callbacks for slash commands and buttons', () => {
+  describe('raw Discord interaction callback normalization', () => {
     type CallbackCase = {
       name: string;
       inputs: {
@@ -676,14 +677,15 @@ describe('DiscordControlRequest logic', () => {
       },
     ] satisfies CallbackCase[];
 
-    for (const testCase of cases) {
+    it.each(cases)('$name', (testCase) => {
+      expect.hasAssertions();
       const context = testCase.mock();
 
       testCase.assert(context, testCase.inputs);
-    }
+    });
   });
 
-  it('projects and describes bound work items from thread sessions', () => {
+  describe('bound work item projection and description', () => {
     type WorkItemCase =
       | {
           name: string;
@@ -906,10 +908,11 @@ describe('DiscordControlRequest logic', () => {
       },
     ] satisfies WorkItemCase[];
 
-    for (const testCase of cases) {
+    it.each(cases)('$name', (testCase) => {
+      expect.hasAssertions();
       const context = testCase.mock();
 
       testCase.assert(context, testCase.inputs);
-    }
+    });
   });
 });

@@ -37,10 +37,8 @@ describe('SlicePlanService', () => {
     },
   ];
 
-  for (const testCase of cases) {
-    it(testCase.name, () => {
-      expect.hasAssertions();
-      testCase.assert(testCase.mock(), testCase.inputs);
-    });
-  }
+  it.each(cases)('$name', (testCase) => {
+    expect.hasAssertions();
+    testCase.assert(testCase.mock(), testCase.inputs);
+  });
 });

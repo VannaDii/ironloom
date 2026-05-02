@@ -53,18 +53,19 @@ describe('CommandExecutionService', () => {
     expect(snapshot.exitCode).toBe(124);
   });
 
-  it('normalizes signal-only subprocess exits without timeout state', async () => {
+  describe('signal-only subprocess exits', () => {
     const cases = [
       {
+        name: 'normalizes signal-only subprocess exits without timeout state',
         inputs: {
           args: ['-e', 'process.kill(process.pid, "SIGTERM")'],
         },
         mock: () => new CommandExecutionService(),
-        assert: async (service: CommandExecutionService) => {
-          const snapshot = await service.execute(
-            process.execPath,
-            cases[0].inputs.args,
-          );
+        assert: async (
+          service: CommandExecutionService,
+          inputs: { args: string[] },
+        ) => {
+          const snapshot = await service.execute(process.execPath, inputs.args);
 
           expect(snapshot.timedOut).toBe(false);
           expect(snapshot.exitCode).toBe(1);
@@ -72,9 +73,10 @@ describe('CommandExecutionService', () => {
       },
     ];
 
-    for (const testCase of cases) {
-      await testCase.assert(testCase.mock());
-    }
+    it.each(cases)('$name', async (testCase) => {
+      expect.hasAssertions();
+      await testCase.assert(testCase.mock(), testCase.inputs);
+    });
   });
 
   it('retries failed subprocesses and truncates captured output', async () => {

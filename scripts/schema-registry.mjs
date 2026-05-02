@@ -468,6 +468,24 @@ export const schemaRegistry = [
   [
     'openclaw',
     'tool-surfaces',
+    'ReadStoredIndexToolInput',
+    'schemas/tool-read-stored-index-params.schema.json',
+  ],
+  [
+    'openclaw',
+    'tool-surfaces',
+    'ReadIndexedRecordToolInput',
+    'schemas/tool-read-indexed-record-params.schema.json',
+  ],
+  [
+    'openclaw',
+    'tool-surfaces',
+    'ListStoredIndexToolInput',
+    'schemas/tool-list-stored-index-params.schema.json',
+  ],
+  [
+    'openclaw',
+    'tool-surfaces',
     'StoreRecordToolInput',
     'schemas/tool-store-record-params.schema.json',
   ],

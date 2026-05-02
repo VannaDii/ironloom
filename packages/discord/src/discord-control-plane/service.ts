@@ -1,8 +1,11 @@
+import { DEVPLAT_ACTION_SHOW_STATUS } from '@vannadii/devplat-core';
 import { TelemetryEventService } from '@vannadii/devplat-observability';
 import { DecisionPolicyService } from '@vannadii/devplat-policy';
 import { FileStoreService } from '@vannadii/devplat-storage';
 
 import {
+  DISCORD_REST_SUCCESS_MAX_EXCLUSIVE_STATUS,
+  DISCORD_REST_SUCCESS_MIN_STATUS,
   DISCORD_INTERACTION_CHANNEL_MESSAGE_RESPONSE_TYPE,
   DISCORD_INTERACTION_DEFERRED_RESPONSE_TYPE,
 } from './constants.js';
@@ -23,6 +26,41 @@ import type {
   DiscordOperatorInteraction,
   DiscordResponseReceipt,
 } from './codec.js';
+
+/**
+ * Policy decision returned for a Discord control action before persistence.
+ */
+type DiscordControlActionDecision = ReturnType<
+  DecisionPolicyService['evaluateControlAction']
+>;
+
+/**
+ * Result of posting the post-acknowledgement thread status message.
+ */
+type DiscordThreadPostResult =
+  | {
+      readonly ok: true;
+      readonly threadReceipt: DiscordResponseReceipt;
+    }
+  | {
+      readonly ok: false;
+      readonly threadPostError: string;
+      readonly threadReceipt?: DiscordResponseReceipt;
+    };
+
+/**
+ * Result of posting the initial Discord interaction acknowledgement.
+ */
+type DiscordInteractionAcknowledgementResult =
+  | {
+      readonly ok: true;
+      readonly responseReceipt: DiscordResponseReceipt;
+    }
+  | {
+      readonly ok: false;
+      readonly responsePostError: string;
+      readonly responseReceipt?: DiscordResponseReceipt;
+    };
 
 export interface DiscordControlResponseTransport {
   postInteractionResponse(
@@ -59,6 +97,56 @@ function createDiscordRestMessageBody(
       : { components: payload.components }),
     ...(payload.flags === undefined ? {} : { flags: payload.flags }),
   };
+}
+
+/**
+ * Converts unknown transport failures into stable result text.
+ */
+function describeDiscordTransportError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * Returns true when Discord accepted the REST request.
+ */
+function isDiscordRestSuccessStatus(statusCode: number): boolean {
+  return (
+    statusCode >= DISCORD_REST_SUCCESS_MIN_STATUS &&
+    statusCode < DISCORD_REST_SUCCESS_MAX_EXCLUSIVE_STATUS
+  );
+}
+
+/**
+ * Builds a stable diagnostic for rejected Discord interaction acknowledgements.
+ */
+function describeDiscordInteractionResponseRejection(
+  receipt: DiscordResponseReceipt,
+): string {
+  return `Discord interaction acknowledgement returned HTTP ${String(receipt.statusCode)}.`;
+}
+
+/**
+ * Builds a stable diagnostic for rejected Discord thread status messages.
+ */
+function describeDiscordThreadMessageRejection(
+  receipt: DiscordResponseReceipt,
+): string {
+  return `Discord thread status message returned HTTP ${String(receipt.statusCode)}.`;
+}
+
+/**
+ * Adds a work-item projection to result payloads when one is available.
+ */
+function createDiscordControlResultWithOptionalWorkItem(
+  result: Omit<DiscordControlResult, 'workItem'>,
+  request: DiscordControlRequest,
+): DiscordControlResult {
+  return request.workItem === undefined
+    ? result
+    : {
+        ...result,
+        workItem: request.workItem,
+      };
 }
 
 export class DiscordRestResponseTransport implements DiscordControlResponseTransport {
@@ -215,6 +303,16 @@ export class DiscordControlPlaneService {
       request.privileged,
     );
 
+    return this.persistAction(request, decision);
+  }
+
+  /**
+   * Persists a policy-evaluated control action and its audit trail.
+   */
+  private async persistAction(
+    request: DiscordControlRequest,
+    decision: DiscordControlActionDecision,
+  ): Promise<DiscordControlResult> {
     const payload =
       request.workItem === undefined
         ? {
@@ -306,81 +404,259 @@ export class DiscordControlPlaneService {
         };
   }
 
-  public async handleInteraction(
-    input: DiscordOperatorInteraction,
-  ): Promise<DiscordControlResult> {
-    const route = createDiscordControlRequestFromInteraction(input);
-
-    if (!route.ok) {
-      const responsePayload = renderDiscordRouteFailureMessage(input);
-      const responseReceipt = await this.responses.postInteractionResponse(
-        input,
-        responsePayload,
+  /**
+   * Posts the bound-thread copy without losing the already-sent acknowledgement.
+   */
+  private async postThreadMessageAfterAcknowledgement(
+    threadId: string,
+    payload: DiscordMessagePayload,
+  ): Promise<DiscordThreadPostResult> {
+    try {
+      const threadReceipt = await this.responses.postThreadMessage(
+        threadId,
+        payload,
       );
-      const request = createDiscordControlRequest({
-        id: input.id,
-        summary: route.reason,
-        status: 'blocked',
-        trace: [],
-        updatedAt: input.updatedAt,
-        actorId: input.actorId,
-        threadId: 'unresolved',
-        channelId: input.channelId,
-        action: 'show-status',
-        privileged: false,
-      });
-      await this.telemetry.recordAudit({
-        auditId: `${input.id}:audit`,
-        runId: input.id,
-        eventId: input.id,
-        actorId: input.actorId,
-        action: 'show-status',
-        scope: 'discord',
-        outcome: 'blocked',
-        reason:
-          'Discord interaction refused because thread binding was ambiguous.',
-        artifactIds: [],
-        recordedAt: input.updatedAt,
-        policyDecisionId: 'discord-fail-closed',
-        details: {
-          threadId: 'unresolved',
-          channelId: input.channelId,
-          resultStatus: 'refused',
-          correlationId: input.id,
-        },
-      });
+
+      if (isDiscordRestSuccessStatus(threadReceipt.statusCode)) {
+        return {
+          ok: true,
+          threadReceipt,
+        };
+      }
 
       return {
-        request,
-        policyDecisionId: 'discord-fail-closed',
-        allowed: false,
-        persistedKey: input.id,
-        responseReceipt,
-        responsePayload,
-        failedClosed: true,
+        ok: false,
+        threadReceipt,
+        threadPostError: describeDiscordThreadMessageRejection(threadReceipt),
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        threadPostError: describeDiscordTransportError(error),
       };
     }
+  }
 
-    const result = await this.handleAction(route.request);
-    const responsePayload = result.allowed
-      ? renderDiscordControlAcceptedMessage(route.request)
-      : renderDiscordControlBlockedMessage(route.request);
-    const threadPayload = responsePayload;
-    const responseReceipt = await this.responses.postInteractionResponse(
+  /**
+   * Posts the initial acknowledgement and converts transport failures into data.
+   */
+  private async postInteractionAcknowledgement(
+    input: DiscordOperatorInteraction,
+    payload: DiscordMessagePayload,
+  ): Promise<DiscordInteractionAcknowledgementResult> {
+    try {
+      const responseReceipt = await this.responses.postInteractionResponse(
+        input,
+        payload,
+      );
+
+      return isDiscordRestSuccessStatus(responseReceipt.statusCode)
+        ? {
+            ok: true,
+            responseReceipt,
+          }
+        : {
+            ok: false,
+            responseReceipt,
+            responsePostError:
+              describeDiscordInteractionResponseRejection(responseReceipt),
+          };
+    } catch (error) {
+      return {
+        ok: false,
+        responsePostError: describeDiscordTransportError(error),
+      };
+    }
+  }
+
+  /**
+   * Records an audit event when Discord rejects the initial acknowledgement.
+   */
+  private async recordInteractionResponseFailure(
+    request: DiscordControlRequest,
+    policyDecisionId: string,
+    responsePostError: string,
+    responseReceipt?: DiscordResponseReceipt,
+  ): Promise<void> {
+    await this.telemetry.recordAudit({
+      auditId: `${request.id}:audit`,
+      runId: request.id,
+      eventId: request.id,
+      actorId: request.actorId,
+      action: request.action,
+      scope: 'discord',
+      outcome: 'blocked',
+      reason: responsePostError,
+      artifactIds:
+        request.workItem?.artifactId === undefined
+          ? []
+          : [request.workItem.artifactId],
+      recordedAt: request.updatedAt,
+      policyDecisionId,
+      details:
+        request.workItem === undefined
+          ? {
+              threadId: request.threadId,
+              channelId: request.channelId,
+              resultStatus: 'response-rejected',
+              correlationId: request.id,
+              ...(responseReceipt === undefined
+                ? {}
+                : { responseStatusCode: responseReceipt.statusCode }),
+            }
+          : {
+              threadId: request.threadId,
+              channelId: request.channelId,
+              resultStatus: 'response-rejected',
+              correlationId: request.id,
+              ...(responseReceipt === undefined
+                ? {}
+                : { responseStatusCode: responseReceipt.statusCode }),
+              workItem: request.workItem,
+            },
+    });
+  }
+
+  /**
+   * Handles an interaction that failed route validation before policy checks.
+   */
+  private async handleInteractionRouteFailure(
+    input: DiscordOperatorInteraction,
+    reason: string,
+  ): Promise<DiscordControlResult> {
+    const responsePayload = renderDiscordRouteFailureMessage(input);
+    const request = createDiscordControlRequest({
+      id: input.id,
+      summary: reason,
+      status: 'blocked',
+      trace: [],
+      updatedAt: input.updatedAt,
+      actorId: input.actorId,
+      threadId: 'unresolved',
+      channelId: input.channelId,
+      action: DEVPLAT_ACTION_SHOW_STATUS,
+      privileged: false,
+    });
+    const acknowledgement = await this.postInteractionAcknowledgement(
       input,
       responsePayload,
     );
-    const threadReceipt = await this.responses.postThreadMessage(
-      route.request.threadId,
+    const auditReason = acknowledgement.ok
+      ? 'Discord interaction refused because thread binding was ambiguous.'
+      : acknowledgement.responsePostError;
+    await this.telemetry.recordAudit({
+      auditId: `${input.id}:audit`,
+      runId: input.id,
+      eventId: input.id,
+      actorId: input.actorId,
+      action: DEVPLAT_ACTION_SHOW_STATUS,
+      scope: 'discord',
+      outcome: 'blocked',
+      reason: auditReason,
+      artifactIds: [],
+      recordedAt: input.updatedAt,
+      policyDecisionId: 'discord-fail-closed',
+      details: {
+        threadId: 'unresolved',
+        channelId: input.channelId,
+        resultStatus: acknowledgement.ok ? 'refused' : 'response-rejected',
+        correlationId: input.id,
+        ...(acknowledgement.ok || acknowledgement.responseReceipt === undefined
+          ? {}
+          : {
+              responseStatusCode: acknowledgement.responseReceipt.statusCode,
+            }),
+      },
+    });
+
+    return {
+      request,
+      policyDecisionId: 'discord-fail-closed',
+      allowed: false,
+      persistedKey: input.id,
+      responsePayload,
+      failedClosed: true,
+      ...(acknowledgement.ok
+        ? { responseReceipt: acknowledgement.responseReceipt }
+        : {
+            responsePostError: acknowledgement.responsePostError,
+            ...(acknowledgement.responseReceipt === undefined
+              ? {}
+              : { responseReceipt: acknowledgement.responseReceipt }),
+          }),
+    };
+  }
+
+  /**
+   * Handles a routed interaction after thread context has resolved.
+   */
+  private async handleRoutedInteraction(
+    input: DiscordOperatorInteraction,
+    request: DiscordControlRequest,
+  ): Promise<DiscordControlResult> {
+    const decision = this.policy.evaluateControlAction(
+      request.action,
+      request.privileged,
+    );
+    const responsePayload = decision.allowed
+      ? renderDiscordControlAcceptedMessage(request)
+      : renderDiscordControlBlockedMessage(request);
+    const threadPayload = responsePayload;
+    const acknowledgement = await this.postInteractionAcknowledgement(
+      input,
+      responsePayload,
+    );
+    if (!acknowledgement.ok) {
+      await this.recordInteractionResponseFailure(
+        request,
+        decision.id,
+        acknowledgement.responsePostError,
+        acknowledgement.responseReceipt,
+      );
+      const result = {
+        request,
+        policyDecisionId: decision.id,
+        allowed: false,
+        persistedKey: request.id,
+        failedClosed: true,
+        responsePayload,
+        responsePostError: acknowledgement.responsePostError,
+        ...(acknowledgement.responseReceipt === undefined
+          ? {}
+          : { responseReceipt: acknowledgement.responseReceipt }),
+      };
+
+      return createDiscordControlResultWithOptionalWorkItem(result, request);
+    }
+    const result = await this.persistAction(request, decision);
+    const threadPostResult = await this.postThreadMessageAfterAcknowledgement(
+      request.threadId,
       threadPayload,
     );
 
     return {
       ...result,
-      responseReceipt,
-      threadReceipt,
+      responseReceipt: acknowledgement.responseReceipt,
       responsePayload,
       threadPayload,
+      ...(threadPostResult.ok
+        ? { threadReceipt: threadPostResult.threadReceipt }
+        : {
+            threadPostError: threadPostResult.threadPostError,
+            ...(threadPostResult.threadReceipt === undefined
+              ? {}
+              : { threadReceipt: threadPostResult.threadReceipt }),
+          }),
     };
+  }
+
+  public async handleInteraction(
+    input: DiscordOperatorInteraction,
+  ): Promise<DiscordControlResult> {
+    const route = createDiscordControlRequestFromInteraction(input);
+
+    return route.ok
+      ? this.handleRoutedInteraction(input, route.request)
+      : this.handleInteractionRouteFailure(input, route.reason);
   }
 }

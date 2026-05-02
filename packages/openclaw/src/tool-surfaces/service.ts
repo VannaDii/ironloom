@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { isAbsolute, normalize, resolve, sep } from 'node:path';
+import { resolve } from 'node:path';
 
 import type { AnyAgentTool } from 'openclaw/plugin-sdk/plugin-entry';
 import type {
@@ -17,8 +17,14 @@ import {
   MergeDecisionArtifactService,
   RebaseResultArtifactService,
 } from '@vannadii/devplat-artifacts';
-import { decodeWithCodec } from '@vannadii/devplat-core';
-import { CommandExecutionService } from '@vannadii/devplat-execution';
+import {
+  decodeWithCodec,
+  DEVPLAT_ACTION_EXECUTE_COMMAND,
+} from '@vannadii/devplat-core';
+import {
+  CommandExecutionService,
+  normalizeCommandExecutionCwd,
+} from '@vannadii/devplat-execution';
 import { RuntimeConfigService } from '@vannadii/devplat-config';
 import {
   DiscordChannelBindingService,
@@ -74,9 +80,12 @@ import {
   EvaluateSonarQualityGateToolInputCodec,
   HandleDiscordApprovalToolInputCodec,
   HandleDiscordControlToolInputCodec,
+  ListStoredIndexToolInputCodec,
   ListStoredRecordsToolInputCodec,
   OpenDiscordThreadToolInputCodec,
   PlanRebaseDependentsToolInputCodec,
+  ReadIndexedRecordToolInputCodec,
+  ReadStoredIndexToolInputCodec,
   ReadStoredRecordToolInputCodec,
   RecordTelemetryEventToolInputCodec,
   ReleaseWorktreeToolInputCodec,
@@ -98,6 +107,19 @@ import {
   formatToolPayloadText,
   sanitizeToolPayloadForDisplay,
 } from './logic.js';
+import {
+  LIST_STORED_INDEX_SCHEMA_FILE,
+  LIST_STORED_INDEX_TOOL_NAME,
+  OPENCLAW_GITHUB_OWNER_ENVIRONMENT_VARIABLE,
+  OPENCLAW_GITHUB_REPO_ENVIRONMENT_VARIABLE,
+  OPENCLAW_STORAGE_ROOT_ENVIRONMENT_VARIABLE,
+  OPENCLAW_TEST_MODE_ENVIRONMENT_VARIABLE,
+  OPENCLAW_WORKTREE_ROOT_ENVIRONMENT_VARIABLE,
+  READ_INDEXED_RECORD_SCHEMA_FILE,
+  READ_INDEXED_RECORD_TOOL_NAME,
+  READ_STORED_INDEX_SCHEMA_FILE,
+  READ_STORED_INDEX_TOOL_NAME,
+} from './constants.js';
 import type { OpenDiscordThreadToolInput } from './codec.js';
 
 type ToolParameterSchema = AnyAgentTool['parameters'] & Record<string, unknown>;
@@ -166,13 +188,152 @@ function createLoopbackDiscordResponseTransport(): DiscordControlResponseTranspo
   return new DiscordLoopbackResponseTransport();
 }
 
+/**
+ * Resolves the optional storage root from the runtime environment.
+ */
+function resolveConfiguredStorageRoot(): string | undefined {
+  const storageRoot =
+    process.env[OPENCLAW_STORAGE_ROOT_ENVIRONMENT_VARIABLE]?.trim();
+  return storageRoot === undefined || storageRoot.length === 0
+    ? undefined
+    : storageRoot;
+}
+
+/**
+ * Resolves the optional worktree root from the runtime environment.
+ */
+function resolveConfiguredWorktreeRoot(): string | undefined {
+  const worktreeRoot =
+    process.env[OPENCLAW_WORKTREE_ROOT_ENVIRONMENT_VARIABLE]?.trim();
+
+  return worktreeRoot === undefined || worktreeRoot.length === 0
+    ? undefined
+    : worktreeRoot;
+}
+
+/**
+ * Resolves the optional repository identity from the runtime environment.
+ */
+function resolveConfiguredRepositoryFullName(): string | undefined {
+  const owner = process.env[OPENCLAW_GITHUB_OWNER_ENVIRONMENT_VARIABLE]?.trim();
+  const repo = process.env[OPENCLAW_GITHUB_REPO_ENVIRONMENT_VARIABLE]?.trim();
+
+  return owner === undefined ||
+    owner.length === 0 ||
+    repo === undefined ||
+    repo.length === 0
+    ? undefined
+    : `${owner}/${repo}`;
+}
+
+/**
+ * Creates the file store for OpenClaw-invoked persistence tools.
+ */
+function createDefaultFileStoreService(): FileStoreService {
+  const storageRoot = resolveConfiguredStorageRoot();
+  return storageRoot === undefined
+    ? new FileStoreService()
+    : new FileStoreService(storageRoot);
+}
+
+/**
+ * Creates telemetry recording backed by the configured OpenClaw storage root.
+ */
+function createDefaultTelemetryEventService(): TelemetryEventService {
+  return new TelemetryEventService(createDefaultFileStoreService());
+}
+
+/**
+ * Creates worktree allocation with the configured runtime worktree root.
+ */
+function createDefaultWorktreeAllocationService(): WorktreeAllocationService {
+  const worktreeRoot = resolveConfiguredWorktreeRoot();
+
+  return worktreeRoot === undefined
+    ? new WorktreeAllocationService()
+    : new WorktreeAllocationService(undefined, undefined, worktreeRoot);
+}
+
+/**
+ * Creates dependent rebase orchestration with the configured worktree root.
+ */
+function createDefaultRebaseDependentsService(): RebaseDependentsService {
+  return new RebaseDependentsService(createDefaultWorktreeAllocationService());
+}
+
+/**
+ * Creates the Discord binding service with normalized runtime persistence.
+ */
+function createDefaultDiscordChannelBindingService(): DiscordChannelBindingService {
+  return new DiscordChannelBindingService(
+    createDefaultTelemetryEventService(),
+    createDefaultFileStoreService(),
+  );
+}
+
+/**
+ * Creates the Discord thread-session service with normalized runtime persistence.
+ */
+function createDefaultDiscordThreadSessionService(): DiscordThreadSessionService {
+  return new DiscordThreadSessionService(
+    new ArtifactEnvelopeService(),
+    createDefaultTelemetryEventService(),
+    createDefaultFileStoreService(),
+  );
+}
+
+/**
+ * Creates the Discord approval service with normalized runtime persistence.
+ */
+function createDefaultDiscordInteractiveApprovalService(): DiscordInteractiveApprovalService {
+  return new DiscordInteractiveApprovalService(
+    new DecisionPolicyService(),
+    new ArtifactEnvelopeService(),
+    createDefaultTelemetryEventService(),
+    createDefaultFileStoreService(),
+  );
+}
+
+/**
+ * Creates the GitHub workflow service with normalized telemetry persistence.
+ */
+function createDefaultGitHubWorkflowService(): GitHubWorkflowService {
+  return new GitHubWorkflowService(
+    new DecisionPolicyService(),
+    createDefaultTelemetryEventService(),
+  );
+}
+
+/**
+ * Creates the pull-request service with normalized GitHub telemetry persistence.
+ */
+function createDefaultPullRequestService(): PullRequestService {
+  const repoFullName = resolveConfiguredRepositoryFullName();
+  const githubWorkflowService = createDefaultGitHubWorkflowService();
+
+  return repoFullName === undefined
+    ? new PullRequestService(githubWorkflowService)
+    : new PullRequestService(githubWorkflowService, repoFullName);
+}
+
+/**
+ * Creates the supervisor service with normalized telemetry persistence.
+ */
+function createDefaultSupervisorCycleService(): SupervisorCycleService {
+  return new SupervisorCycleService(
+    new DecisionPolicyService(),
+    createDefaultTelemetryEventService(),
+  );
+}
+
+/**
+ * Creates the Discord control-plane service with normalized runtime persistence.
+ */
 function createDefaultDiscordControlPlaneService(): DiscordControlPlaneService {
-  const storageRoot = process.env['DEVPLAT_STORAGE_ROOT'];
-  const testMode = process.env['DEVPLAT_TEST_MODE']?.trim();
+  const storageRoot = resolveConfiguredStorageRoot();
+  const testMode = process.env[OPENCLAW_TEST_MODE_ENVIRONMENT_VARIABLE]?.trim();
   const store =
-    storageRoot === undefined || storageRoot.trim().length === 0
-      ? undefined
-      : new FileStoreService(storageRoot);
+    storageRoot === undefined ? undefined : new FileStoreService(storageRoot);
   const telemetry =
     store === undefined ? undefined : new TelemetryEventService(store);
   const transport =
@@ -180,7 +341,7 @@ function createDefaultDiscordControlPlaneService(): DiscordControlPlaneService {
       ? undefined
       : createLoopbackDiscordResponseTransport();
 
-  if (store !== undefined || transport !== undefined) {
+  if (telemetry !== undefined || transport !== undefined) {
     return new DiscordControlPlaneService(
       undefined,
       telemetry,
@@ -190,45 +351,6 @@ function createDefaultDiscordControlPlaneService(): DiscordControlPlaneService {
   }
 
   return new DiscordControlPlaneService();
-}
-
-function normalizeExecutionCwd(cwd: string | undefined):
-  | {
-      ok: true;
-      value?: string;
-    }
-  | {
-      ok: false;
-      error: string;
-    } {
-  if (cwd === undefined) {
-    return { ok: true };
-  }
-
-  const trimmed = cwd.trim();
-  if (trimmed.length === 0) {
-    return { ok: true };
-  }
-
-  if (isAbsolute(trimmed)) {
-    return {
-      ok: false,
-      error: 'cwd must be a relative repository path.',
-    };
-  }
-
-  const normalized = normalize(trimmed);
-  if (normalized === '..' || normalized.startsWith(`..${sep}`)) {
-    return {
-      ok: false,
-      error: 'cwd must stay within the repository root.',
-    };
-  }
-
-  return {
-    ok: true,
-    value: normalized,
-  };
 }
 
 /**
@@ -643,7 +765,8 @@ export function createExecuteCommandTool(
   const decisionPolicyService =
     dependencies.decisionPolicyService ?? new DecisionPolicyService();
   const telemetryEventService =
-    dependencies.telemetryEventService ?? new TelemetryEventService();
+    dependencies.telemetryEventService ??
+    new TelemetryEventService(createDefaultFileStoreService());
 
   const tool: AnyAgentTool = {
     name: 'execute_command',
@@ -659,7 +782,7 @@ export function createExecuteCommandTool(
 
       const request = decoded.value;
       const policy = decisionPolicyService.evaluateControlAction(
-        'execute-command',
+        DEVPLAT_ACTION_EXECUTE_COMMAND,
         request.privileged,
       );
 
@@ -671,7 +794,7 @@ export function createExecuteCommandTool(
           trace: ['openclaw:execute-command'],
           updatedAt: new Date().toISOString(),
           actorId: request.actorId,
-          action: 'execute-command',
+          action: DEVPLAT_ACTION_EXECUTE_COMMAND,
           scope: 'supervisor',
           details: {
             command: request.command,
@@ -691,7 +814,7 @@ export function createExecuteCommandTool(
         });
       }
 
-      const normalizedCwd = normalizeExecutionCwd(request.cwd);
+      const normalizedCwd = normalizeCommandExecutionCwd(request.cwd);
       if (!normalizedCwd.ok) {
         return createTextResult({
           status: 'failed',
@@ -719,7 +842,7 @@ export function createExecuteCommandTool(
         trace: ['openclaw:execute-command'],
         updatedAt: new Date().toISOString(),
         actorId: request.actorId,
-        action: 'execute-command',
+        action: DEVPLAT_ACTION_EXECUTE_COMMAND,
         scope: 'supervisor',
         details: {
           command: request.command,
@@ -765,7 +888,7 @@ export function createAllocateWorktreeTool(): AnyAgentTool {
         );
       }
 
-      const allocation = new WorktreeAllocationService().allocate(
+      const allocation = createDefaultWorktreeAllocationService().allocate(
         decoded.value.taskId,
         decoded.value.branchName,
       );
@@ -791,7 +914,7 @@ export function createSyncWorktreeTool(): AnyAgentTool {
         );
       }
 
-      const result = new WorktreeAllocationService().sync(
+      const result = createDefaultWorktreeAllocationService().sync(
         decoded.value.allocation,
         decoded.value.baseBranch,
         decoded.value.syncMode,
@@ -818,7 +941,7 @@ export function createReleaseWorktreeTool(): AnyAgentTool {
         );
       }
 
-      const result = new WorktreeAllocationService().release(
+      const result = createDefaultWorktreeAllocationService().release(
         decoded.value.allocation,
         decoded.value.releaseMode,
       );
@@ -842,22 +965,23 @@ export function createBindDiscordThreadTool(): AnyAgentTool {
         return createTextResult({ status: 'failed', error: decoded.error });
       }
 
-      const result = await new DiscordChannelBindingService().bindThread(
-        {
-          id: decoded.value.id,
-          summary: decoded.value.summary,
-          status: decoded.value.status,
-          trace: decoded.value.trace,
-          updatedAt: decoded.value.updatedAt,
-          guildId: decoded.value.guildId,
-          channelId: decoded.value.channelId,
-          kind: decoded.value.kind,
-          threadBindingMode: decoded.value.threadBindingMode,
-        },
-        decoded.value.threadId,
-        decoded.value.parentChannelId,
-        decoded.value.actorId,
-      );
+      const result =
+        await createDefaultDiscordChannelBindingService().bindThread(
+          {
+            id: decoded.value.id,
+            summary: decoded.value.summary,
+            status: decoded.value.status,
+            trace: decoded.value.trace,
+            updatedAt: decoded.value.updatedAt,
+            guildId: decoded.value.guildId,
+            channelId: decoded.value.channelId,
+            kind: decoded.value.kind,
+            threadBindingMode: decoded.value.threadBindingMode,
+          },
+          decoded.value.threadId,
+          decoded.value.parentChannelId,
+          decoded.value.actorId,
+        );
       return createTextResult(result);
     },
   };
@@ -878,10 +1002,11 @@ export function createOpenDiscordThreadTool(): AnyAgentTool {
         return createTextResult({ status: 'failed', error: decoded.error });
       }
 
-      const result = await new DiscordThreadSessionService().openThread(
-        toDiscordThreadSession(decoded.value),
-        decoded.value.actorId,
-      );
+      const result =
+        await createDefaultDiscordThreadSessionService().openThread(
+          toDiscordThreadSession(decoded.value),
+          decoded.value.actorId,
+        );
       return createTextResult(result);
     },
   };
@@ -906,7 +1031,7 @@ export function createHandleDiscordApprovalTool(): AnyAgentTool {
       }
 
       const result =
-        await new DiscordInteractiveApprovalService().handleApproval(
+        await createDefaultDiscordInteractiveApprovalService().handleApproval(
           decoded.value,
         );
       return createTextResult(result);
@@ -1084,7 +1209,9 @@ export function createRememberMemoryEntryTool(): AnyAgentTool {
         return createTextResult({ status: 'failed', error: decoded.error });
       }
 
-      const entry = await new MemoryEntryService().execute(decoded.value);
+      const entry = await new MemoryEntryService(
+        createDefaultFileStoreService(),
+      ).execute(decoded.value);
       return createTextResult(entry);
     },
   };
@@ -1137,7 +1264,9 @@ export function createRecordTelemetryEventTool(): AnyAgentTool {
         return createTextResult({ status: 'failed', error: decoded.error });
       }
 
-      const event = await new TelemetryEventService().execute(decoded.value);
+      const event = await new TelemetryEventService(
+        createDefaultFileStoreService(),
+      ).execute(decoded.value);
       return createTextResult(event);
     },
   };
@@ -1181,7 +1310,7 @@ export function createReadStoredRecordTool(): AnyAgentTool {
         return createTextResult({ status: 'failed', error: decoded.error });
       }
 
-      const result = await new FileStoreService().read(
+      const result = await createDefaultFileStoreService().read(
         decoded.value.scope,
         decoded.value.key,
       );
@@ -1219,10 +1348,118 @@ export function createListStoredRecordsTool(): AnyAgentTool {
         return createTextResult({ status: 'failed', error: decoded.error });
       }
 
-      const keys = await new FileStoreService().list(decoded.value.scope);
+      const keys = await createDefaultFileStoreService().list(
+        decoded.value.scope,
+      );
       return createTextResult({
         status: 'ok',
         scope: decoded.value.scope,
+        keys,
+      });
+    },
+  };
+
+  return tool;
+}
+
+/** Creates the OpenClaw tool that reads a storage secondary index entry. */
+export function createReadStoredIndexTool(): AnyAgentTool {
+  const tool: AnyAgentTool = {
+    name: READ_STORED_INDEX_TOOL_NAME,
+    label: 'Read Stored Index',
+    description:
+      'Read a stored DevPlat secondary index entry from the file-backed storage layer.',
+    parameters: readSchema(READ_STORED_INDEX_SCHEMA_FILE),
+    async execute(_toolCallId: string, params: unknown) {
+      const decoded = decodeWithCodec(ReadStoredIndexToolInputCodec, params);
+      if (!decoded.ok) {
+        return createTextResult({ status: 'failed', error: decoded.error });
+      }
+
+      const result = await createDefaultFileStoreService().readIndex(
+        decoded.value.indexName,
+        decoded.value.key,
+      );
+      if (!result.ok) {
+        return createTextResult({
+          status: 'failed',
+          indexName: decoded.value.indexName,
+          key: decoded.value.key,
+          error: result.error,
+        });
+      }
+
+      return createTextResult({
+        status: 'ok',
+        indexName: decoded.value.indexName,
+        key: decoded.value.key,
+        entry: result.value,
+      });
+    },
+  };
+
+  return tool;
+}
+
+/** Creates the OpenClaw tool that reads a storage record through an index. */
+export function createReadIndexedRecordTool(): AnyAgentTool {
+  const tool: AnyAgentTool = {
+    name: READ_INDEXED_RECORD_TOOL_NAME,
+    label: 'Read Indexed Record',
+    description:
+      'Read a stored DevPlat record by resolving a secondary index entry through the file-backed storage layer.',
+    parameters: readSchema(READ_INDEXED_RECORD_SCHEMA_FILE),
+    async execute(_toolCallId: string, params: unknown) {
+      const decoded = decodeWithCodec(ReadIndexedRecordToolInputCodec, params);
+      if (!decoded.ok) {
+        return createTextResult({ status: 'failed', error: decoded.error });
+      }
+
+      const result = await createDefaultFileStoreService().readIndexedRecord(
+        decoded.value.indexName,
+        decoded.value.key,
+      );
+      if (!result.ok) {
+        return createTextResult({
+          status: 'failed',
+          indexName: decoded.value.indexName,
+          key: decoded.value.key,
+          error: result.error,
+        });
+      }
+
+      return createTextResult({
+        status: 'ok',
+        indexName: decoded.value.indexName,
+        key: decoded.value.key,
+        record: result.value,
+      });
+    },
+  };
+
+  return tool;
+}
+
+/** Creates the OpenClaw tool that lists storage secondary index keys. */
+export function createListStoredIndexTool(): AnyAgentTool {
+  const tool: AnyAgentTool = {
+    name: LIST_STORED_INDEX_TOOL_NAME,
+    label: 'List Stored Index',
+    description:
+      'List stored DevPlat secondary index keys from the file-backed storage layer.',
+    parameters: readSchema(LIST_STORED_INDEX_SCHEMA_FILE),
+    async execute(_toolCallId: string, params: unknown) {
+      const decoded = decodeWithCodec(ListStoredIndexToolInputCodec, params);
+      if (!decoded.ok) {
+        return createTextResult({ status: 'failed', error: decoded.error });
+      }
+
+      const keys = await createDefaultFileStoreService().listIndex(
+        decoded.value.indexName,
+      );
+      return createTextResult({
+        status: 'ok',
+        indexName: decoded.value.indexName,
         keys,
       });
     },
@@ -1251,21 +1488,23 @@ export function createStoreRecordTool(): AnyAgentTool {
       );
 
       if (!policy.allowed) {
-        await new TelemetryEventService().record({
-          id: `telemetry:store-record:${String(Date.now())}`,
-          summary: `Blocked record storage for ${request.record.scope}/${request.record.key}`,
-          status: 'blocked',
-          trace: ['openclaw:store-record'],
-          updatedAt: new Date().toISOString(),
-          actorId: request.actorId,
-          action: 'store-record',
-          scope: 'storage',
-          details: {
-            scope: request.record.scope,
-            key: request.record.key,
-            blocked: true,
+        await new TelemetryEventService(createDefaultFileStoreService()).record(
+          {
+            id: `telemetry:store-record:${String(Date.now())}`,
+            summary: `Blocked record storage for ${request.record.scope}/${request.record.key}`,
+            status: 'blocked',
+            trace: ['openclaw:store-record'],
+            updatedAt: new Date().toISOString(),
+            actorId: request.actorId,
+            action: 'store-record',
+            scope: 'storage',
+            details: {
+              scope: request.record.scope,
+              key: request.record.key,
+              blocked: true,
+            },
           },
-        });
+        );
         return createTextResult({
           allowed: false,
           policyDecisionId: policy.id,
@@ -1274,8 +1513,9 @@ export function createStoreRecordTool(): AnyAgentTool {
         });
       }
 
-      const record = await new FileStoreService().store(request.record);
-      await new TelemetryEventService().record({
+      const store = createDefaultFileStoreService();
+      const record = await store.store(request.record);
+      await new TelemetryEventService(store).record({
         id: `telemetry:store-record:${String(Date.now())}`,
         summary: `Stored record ${record.scope}/${record.key}`,
         status: 'approved',
@@ -1348,7 +1588,7 @@ export function createSubmitPullRequestUpdateTool(): AnyAgentTool {
         return createTextResult({ status: 'failed', error: decoded.error });
       }
 
-      const result = await new PullRequestService().submitUpdate(
+      const result = await createDefaultPullRequestService().submitUpdate(
         decoded.value.record,
         decoded.value.actorId,
       );
@@ -1375,7 +1615,7 @@ export function createSubmitPullRequestMergeTool(): AnyAgentTool {
         return createTextResult({ status: 'failed', error: decoded.error });
       }
 
-      const result = await new PullRequestService().submitMerge(
+      const result = await createDefaultPullRequestService().submitMerge(
         decoded.value.record,
         decoded.value.actorId,
       );
@@ -1433,7 +1673,7 @@ export function createExecuteRebaseDependentsTool(): AnyAgentTool {
         );
       }
 
-      const result = new RebaseDependentsService().executeForMerge(
+      const result = createDefaultRebaseDependentsService().executeForMerge(
         decoded.value,
       );
       return Promise.resolve(createTextResult(result));
@@ -1447,7 +1687,7 @@ export function createSubmitGitHubActionTool(
   gitHubWorkflowService: Pick<
     GitHubWorkflowService,
     'submit'
-  > = new GitHubWorkflowService(),
+  > = createDefaultGitHubWorkflowService(),
 ): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'submit_github_action',
@@ -1604,7 +1844,7 @@ export function createRunSupervisorStepTool(): AnyAgentTool {
         return createTextResult({ status: 'failed', error: decoded.error });
       }
 
-      const decision = await new SupervisorCycleService().runStep(
+      const decision = await createDefaultSupervisorCycleService().runStep(
         decoded.value,
       );
       return createTextResult(decision);
@@ -1653,6 +1893,9 @@ export function createDevplatOpenClawTools(): AnyAgentTool[] {
     createUpdateTaskTool(),
     createReadStoredRecordTool(),
     createListStoredRecordsTool(),
+    createReadStoredIndexTool(),
+    createReadIndexedRecordTool(),
+    createListStoredIndexTool(),
     createStoreRecordTool(),
     createPullRequestRecordTool(),
     createSubmitPullRequestUpdateTool(),

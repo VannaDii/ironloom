@@ -10,6 +10,7 @@ import {
   releaseWorktree,
   syncWorktree,
 } from './logic.js';
+import { WORKTREE_DEFAULT_ROOT } from './constants.js';
 import type {
   WorktreeAllocation,
   WorktreeReleaseMode,
@@ -62,7 +63,7 @@ export class WorktreeAllocationService {
   public constructor(
     private readonly runner: WorktreeGitRunner = new NodeWorktreeGitRunner(),
     private readonly repositoryRoot = process.cwd(),
-    private readonly worktreeRoot = '.worktrees',
+    private readonly worktreeRoot = WORKTREE_DEFAULT_ROOT,
   ) {}
 
   public execute(input: WorktreeAllocation): WorktreeAllocation {

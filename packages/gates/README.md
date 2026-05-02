@@ -4,7 +4,9 @@ Quality gate orchestration.
 
 ## Responsibility
 
-This package owns gate command resolution, gate-run reports, pass/fail classification, remediation handoff hooks, and next-action hints for the autonomous development cycle.
+This package owns gate command resolution, gate-run reports, pass/fail
+classification, package-owned gate next-action constants, remediation handoff
+hooks, and shared retry-gate action hints for the autonomous development cycle.
 
 ## Real-World Flow
 
