@@ -92,16 +92,26 @@ describe('openclaw-live-lab helpers', () => {
         runLabel: '200-1',
       },
       mock: async () => {
+        const discordCalls = [];
         const discordMessages = [];
         const persistedGatewaySessions = [];
         const serviceCalls = [];
         const discordRequest = async (path, options = {}) => {
+          discordCalls.push([path, options.method ?? 'GET', options.body]);
+          if (path === '/channels/implementation-1/threads') {
+            return {
+              id: 'implementation-thread-1',
+              name: options.body.name,
+            };
+          }
+
           discordMessages.push([path, options.body]);
           return { id: `message-${discordMessages.length}` };
         };
         const createDiscordControlPlaneService = async ({ transport }) => ({
           async handleInteraction(input) {
             serviceCalls.push(input);
+            const customId = `devplat:v1:show-status:${input.boundThreadId}`;
             const acceptedPayload = {
               content: 'DevPlat accepted retry-gates.',
               /**
@@ -119,7 +129,7 @@ describe('openclaw-live-lab helpers', () => {
                       /**
                        * Discord component wire key returned by button interactions.
                        */
-                      custom_id: 'devplat:v1:show-status:implementation-1',
+                      custom_id: customId,
                     },
                   ],
                 },
@@ -177,6 +187,7 @@ describe('openclaw-live-lab helpers', () => {
             privileged: options.privileged,
             updatedAt: options.updatedAt,
           }),
+          discordCalls,
           discordMessages,
           discordRequest,
           persistDiscordGatewayBoundSession: async (input) => {
@@ -215,7 +226,9 @@ describe('openclaw-live-lab helpers', () => {
         expect(result).toMatchObject({
           action: 'retry-gates',
           allowed: true,
-          componentCustomIds: ['devplat:v1:show-status:implementation-1'],
+          componentCustomIds: [
+            'devplat:v1:show-status:implementation-thread-1',
+          ],
           componentRows: 1,
           commandName: 'retry-gates',
           failedClosed: false,
@@ -225,14 +238,17 @@ describe('openclaw-live-lab helpers', () => {
           responseContent:
             'simulated interaction callback: DevPlat accepted retry-gates.',
           threadContent: 'DevPlat accepted retry-gates.',
-          threadEndpoint: '/channels/implementation-1/messages',
+          threadEndpoint: '/channels/implementation-thread-1/messages',
           threadMessageId: 'message-2',
+          threadId: 'implementation-thread-1',
         });
         expect(context.serviceCalls[0]).toMatchObject({
           actorId: 'live-lab-operator',
-          boundThreadId: 'implementation-1',
+          boundThreadId: 'implementation-thread-1',
+          channelId: 'implementation-thread-1',
           boundSession: {
-            threadId: 'implementation-1',
+            parentChannelId: 'implementation-1',
+            threadId: 'implementation-thread-1',
             kind: 'implementation',
           },
           commandName: 'retry-gates',
@@ -241,10 +257,23 @@ describe('openclaw-live-lab helpers', () => {
           {
             boundSession: expect.objectContaining({
               id: 'live-lab-200-1-session',
-              threadId: 'implementation-1',
+              parentChannelId: 'implementation-1',
+              threadId: 'implementation-thread-1',
               kind: 'implementation',
             }),
             reportDirectory: resolve(tmpdir(), 'devplat-live-lab-probe'),
+          },
+        ]);
+        expect(context.discordCalls[0]).toEqual([
+          '/channels/implementation-1/threads',
+          'POST',
+          {
+            /**
+             * Discord thread creation wire key that bounds sandbox thread lifetime.
+             */
+            auto_archive_duration: 60,
+            name: 'devplat-200-1-implementation',
+            type: 11,
           },
         ]);
         expect(context.discordMessages).toEqual([
@@ -266,7 +295,8 @@ describe('openclaw-live-lab helpers', () => {
                       /**
                        * Discord component wire key returned by button interactions.
                        */
-                      custom_id: 'devplat:v1:show-status:implementation-1',
+                      custom_id:
+                        'devplat:v1:show-status:implementation-thread-1',
                     },
                   ],
                 },
@@ -276,7 +306,7 @@ describe('openclaw-live-lab helpers', () => {
             },
           ],
           [
-            '/channels/implementation-1/messages',
+            '/channels/implementation-thread-1/messages',
             {
               /**
                * Discord message payload wire key used to suppress operator pings.
@@ -293,7 +323,8 @@ describe('openclaw-live-lab helpers', () => {
                       /**
                        * Discord component wire key returned by button interactions.
                        */
-                      custom_id: 'devplat:v1:show-status:implementation-1',
+                      custom_id:
+                        'devplat:v1:show-status:implementation-thread-1',
                     },
                   ],
                 },

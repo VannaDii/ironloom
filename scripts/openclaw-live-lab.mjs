@@ -61,6 +61,14 @@ const testDiscordCategoryName = 'test';
  */
 const discordComponentCustomIdField = 'custom_id';
 /**
+ * Discord channel type for public threads created under text channels.
+ */
+const discordPublicThreadChannelType = 11;
+/**
+ * Short Discord thread auto-archive window for sandbox live-lab controls.
+ */
+const discordLiveLabThreadAutoArchiveMinutes = 60;
+/**
  * Deep-test tools whose progress belongs in the live-lab pull-request channel.
  */
 const pullRequestProgressToolNames = new Set([
@@ -1453,6 +1461,42 @@ async function createDiscordControlPlaneService({
   );
 }
 
+/**
+ * Creates the live-lab implementation thread that owns manual operator clicks.
+ */
+async function createLiveLabImplementationThread({
+  discordChannels,
+  discordRequest,
+  runLabel,
+}) {
+  const threadName = `devplat-${sanitizeSegment(runLabel)}-implementation`;
+  const responseBody = await discordRequest(
+    `/channels/${encodeURIComponent(discordChannels.implementation.id)}/threads`,
+    {
+      body: {
+        /**
+         * Discord thread creation wire key that bounds sandbox thread lifetime.
+         */
+        auto_archive_duration: discordLiveLabThreadAutoArchiveMinutes,
+        name: threadName,
+        type: discordPublicThreadChannelType,
+      },
+      expectedStatuses: [200, 201],
+      method: 'POST',
+    },
+  );
+
+  if (typeof responseBody?.id !== 'string' || responseBody.id.length === 0) {
+    throw new Error('Discord live-lab implementation thread was not created.');
+  }
+
+  return {
+    id: responseBody.id,
+    name: threadName,
+    parentChannelId: discordChannels.implementation.id,
+  };
+}
+
 async function createLiveLabFileStore(rootDirectory) {
   const storageEntrypoint = await resolveWorkspacePackageEntrypoint('storage');
   const storageModule = await import(pathToFileURL(storageEntrypoint).href);
@@ -1544,7 +1588,12 @@ export async function runDiscordInteractionProbe(
   const persistGatewayBoundSession =
     dependencies.persistDiscordGatewayBoundSession ??
     persistDiscordGatewayBoundSession;
-  const threadId = discordChannels.implementation.id;
+  const thread = await createLiveLabImplementationThread({
+    discordChannels,
+    discordRequest,
+    runLabel,
+  });
+  const threadId = thread.id;
   const boundSession = {
     id: `live-lab-${runLabel}-session`,
     summary: 'Live-lab implementation thread',
@@ -1553,7 +1602,7 @@ export async function runDiscordInteractionProbe(
     updatedAt,
     guildId: 'live-lab-guild',
     channelId: threadId,
-    parentChannelId: discordChannels.implementation.id,
+    parentChannelId: thread.parentChannelId,
     threadId,
     kind: 'implementation',
     specId: `live-lab-${runLabel}-spec`,

@@ -11,4 +11,6 @@ A new `operator_hold_ms` workflow/script option keeps that runtime open for a bo
 
 The live-lab probe now also persists its bound implementation thread session into the deep-test runtime state directory before posting the actionable Discord controls. Manual sandbox-guild button clicks during the hold window can therefore revalidate against the same storage-backed thread binding used by the private Gateway worker instead of failing closed as unresolved context.
 
-Validation coverage now asserts that the deep-test before-cleanup hook runs before container removal, that the live-lab probe persists the Gateway-bound thread session before exposing controls, that the optional hold executes before runtime cleanup, and that the live-lab documentation describes the manual operator acceptance path.
+The live-lab probe now creates a short-lived implementation thread under the shared `test` category implementation channel before exposing controls. The posted controls, callback channel id, persisted Gateway session, and component custom ids all use that returned thread id so manual clicks exercise a real thread-aware path instead of binding to the parent progress channel.
+
+Validation coverage now asserts that the deep-test before-cleanup hook runs before container removal, that the live-lab probe persists the Gateway-bound thread session before exposing controls, that the probe creates and binds a real implementation thread, that the optional hold executes before runtime cleanup, and that the live-lab documentation describes the manual operator acceptance path.
