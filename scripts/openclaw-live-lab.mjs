@@ -1460,17 +1460,18 @@ class LiveLabDiscordInteractionTransport {
 
   async postInteractionDeferred(input) {
     const endpoint = `/interactions/${encodeURIComponent(input.id)}/${encodeURIComponent(input.token)}/callback`;
-    const receipt = await sendDiscordMessage(
-      this.auditChannelId,
-      `simulated interaction deferred: ${input.id}`,
-      this.discordRequest,
-    );
 
     return {
-      body: receipt.body,
+      body: {
+        content: `simulated interaction deferred: ${input.id}`,
+      },
       endpoint,
-      responseBody: receipt.responseBody,
-      statusCode: 201,
+      responseBody: {
+        deferred: true,
+        interactionId: input.id,
+        mode: 'simulated',
+      },
+      statusCode: 202,
     };
   }
 

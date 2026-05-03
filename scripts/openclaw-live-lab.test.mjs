@@ -215,10 +215,8 @@ describe('openclaw-live-lab helpers', () => {
                 },
               ],
             };
-            const responseReceipt = await transport.postInteractionResponse(
-              input,
-              acceptedPayload,
-            );
+            const responseReceipt =
+              await transport.postInteractionDeferred(input);
             const threadReceipt = await transport.postThreadMessage(
               input.boundThreadId,
               acceptedPayload,
@@ -313,24 +311,24 @@ describe('openclaw-live-lab helpers', () => {
           componentRows: 1,
           commandName: 'retry-gates',
           failedClosed: false,
-          interactionMessageId: 'message-1',
+          interactionMessageId: null,
           interactionEndpoint:
             '/interactions/live-lab-200-1-retry-gates/simulated-token-200-1/callback',
           responseContent:
-            'simulated interaction callback: DevPlat accepted retry-gates.',
+            'simulated interaction deferred: live-lab-200-1-retry-gates',
           buttonAction: 'show-status',
           buttonCustomId: 'devplat:v1:show-status:implementation-thread-1',
           buttonInteractionEndpoint:
             '/interactions/live-lab-200-1-button/simulated-button-token-200-1/callback',
-          buttonInteractionMessageId: 'message-3',
+          buttonInteractionMessageId: null,
           buttonResponseContent:
-            'simulated interaction callback: DevPlat accepted show-status.',
+            'simulated interaction deferred: live-lab-200-1-button',
           buttonThreadContent: 'DevPlat accepted show-status.',
           buttonThreadEndpoint: '/channels/implementation-thread-1/messages',
-          buttonThreadMessageId: 'message-4',
+          buttonThreadMessageId: 'message-2',
           threadContent: 'DevPlat accepted retry-gates.',
           threadEndpoint: '/channels/implementation-thread-1/messages',
-          threadMessageId: 'message-2',
+          threadMessageId: 'message-1',
           threadId: 'implementation-thread-1',
         });
         expect(context.serviceCalls[0]).toMatchObject({
@@ -380,34 +378,6 @@ describe('openclaw-live-lab helpers', () => {
         ]);
         expect(context.discordMessages).toEqual([
           [
-            '/channels/audit-1/messages',
-            {
-              /**
-               * Discord message payload wire key used to suppress operator pings.
-               */
-              allowed_mentions: { parse: [] },
-              components: [
-                {
-                  type: 1,
-                  components: [
-                    {
-                      type: 2,
-                      label: 'Show Status',
-                      style: 2,
-                      /**
-                       * Discord component wire key returned by button interactions.
-                       */
-                      custom_id:
-                        'devplat:v1:show-status:implementation-thread-1',
-                    },
-                  ],
-                },
-              ],
-              content:
-                'simulated interaction callback: DevPlat accepted retry-gates.',
-            },
-          ],
-          [
             '/channels/implementation-thread-1/messages',
             {
               /**
@@ -432,34 +402,6 @@ describe('openclaw-live-lab helpers', () => {
                 },
               ],
               content: 'DevPlat accepted retry-gates.',
-            },
-          ],
-          [
-            '/channels/audit-1/messages',
-            {
-              /**
-               * Discord message payload wire key used to suppress operator pings.
-               */
-              allowed_mentions: { parse: [] },
-              components: [
-                {
-                  type: 1,
-                  components: [
-                    {
-                      type: 2,
-                      label: 'Show Status',
-                      style: 2,
-                      /**
-                       * Discord component wire key returned by button interactions.
-                       */
-                      custom_id:
-                        'devplat:v1:show-status:implementation-thread-1',
-                    },
-                  ],
-                },
-              ],
-              content:
-                'simulated interaction callback: DevPlat accepted show-status.',
             },
           ],
           [

@@ -15,8 +15,8 @@ CI.
 - requires the initial project-management bootstrap status message to post
   successfully before any sandbox repository mutation
 - registers Discord command contracts, normalizes a Discord callback-shaped
-  slash command payload, defers the interaction acknowledgement, and posts the
-  bound-thread status through the same response transport used by the runtime;
+  slash command payload, records a local simulated deferred acknowledgement,
+  and posts the bound-thread status through the same response transport used by the runtime;
   the run fails if the interaction resolves to the wrong thread or does not
   record both callback and thread message receipts plus thread-posted actionable component ids
 - waits for SonarQube Cloud to auto-import the repository
@@ -154,7 +154,7 @@ The live lab also registers the exported Discord operator command contracts into
 the sandbox guild. After registration, it runs a Discord interaction probe. The
 probe simulates the operator `/retry-gates` path, routes it through the Discord
 control-plane service, renders the compact operator message payload with
-contextual buttons, defers the interaction acknowledgement, posts the
+contextual buttons, records a local simulated deferred acknowledgement, posts the
 bound-thread status into a short-lived implementation thread created under the
 standard `implementation` channel with those contextual buttons intact, then
 routes one returned button `custom_id` as a second callback-shaped interaction.
@@ -178,9 +178,11 @@ stale clickable buttons after cleanup.
 
 Discord does not provide a supported bot API for clicking buttons as a human
 operator. The automated live lab therefore validates the production registration,
-normalization, routing, transport, and structured-message path with a
-callback-shaped payload. Human-triggered slash/button clicks in the sandbox guild
-remain a manual operator acceptance check.
+normalization, routing, thread posting, and structured-message path with a
+callback-shaped payload. Simulated acknowledgements remain local receipts because
+there is no real Discord interaction token to acknowledge; human-triggered
+slash/button clicks in the sandbox guild use the private Gateway worker and real
+Discord deferred-response path during the hold window.
 
 The Discord package also exposes a private outbound Gateway runtime for
 production mounts. That runtime identifies with Discord Gateway, heartbeats,

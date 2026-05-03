@@ -131,9 +131,12 @@ Gateway env vars into the runtime container.
 
 The live lab posts compact status payloads without stale interactive components,
 registers Discord operator commands in the sandbox guild, and records
-callback-shaped slash-command and button interaction evidence in its report,
-including response endpoints, Discord message ids, posted content, and component
-custom ids from the posted control-plane payloads. The initial
+callback-shaped slash-command and button interaction evidence in its report.
+The automated probe keeps its simulated deferred acknowledgements as local
+receipts because those payloads do not have real Discord interaction tokens;
+the bound control-plane payloads still post through the real Discord channel
+transport and record response endpoints, Discord message ids, posted content,
+and component custom ids from the posted messages. The initial
 project-management bootstrap message is a required acceptance signal; if
 Discord cannot post it, the live lab fails before mutating sandbox repository
 state. The report preserves that bootstrap receipt with channel id, message id,
