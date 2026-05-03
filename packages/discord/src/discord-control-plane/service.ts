@@ -126,6 +126,15 @@ function describeDiscordInteractionResponseRejection(
 }
 
 /**
+ * Builds a stable diagnostic for rejected Discord deferred acknowledgements.
+ */
+function describeDiscordInteractionDeferredRejection(
+  receipt: DiscordResponseReceipt,
+): string {
+  return `Discord interaction deferred acknowledgement returned HTTP ${String(receipt.statusCode)}.`;
+}
+
+/**
  * Builds a stable diagnostic for rejected Discord thread status messages.
  */
 function describeDiscordThreadMessageRejection(
@@ -470,6 +479,35 @@ export class DiscordControlPlaneService {
   }
 
   /**
+   * Defers the initial acknowledgement for routed actions before thread updates.
+   */
+  private async postInteractionDeferredAcknowledgement(
+    input: DiscordOperatorInteraction,
+  ): Promise<DiscordInteractionAcknowledgementResult> {
+    try {
+      const responseReceipt =
+        await this.responses.postInteractionDeferred(input);
+
+      return isDiscordRestSuccessStatus(responseReceipt.statusCode)
+        ? {
+            ok: true,
+            responseReceipt,
+          }
+        : {
+            ok: false,
+            responseReceipt,
+            responsePostError:
+              describeDiscordInteractionDeferredRejection(responseReceipt),
+          };
+    } catch (error) {
+      return {
+        ok: false,
+        responsePostError: describeDiscordTransportError(error),
+      };
+    }
+  }
+
+  /**
    * Records an audit event when Discord rejects the initial acknowledgement.
    */
   private async recordInteractionResponseFailure(
@@ -602,10 +640,8 @@ export class DiscordControlPlaneService {
       ? renderDiscordControlAcceptedMessage(request)
       : renderDiscordControlBlockedMessage(request);
     const threadPayload = responsePayload;
-    const acknowledgement = await this.postInteractionAcknowledgement(
-      input,
-      responsePayload,
-    );
+    const acknowledgement =
+      await this.postInteractionDeferredAcknowledgement(input);
     if (!acknowledgement.ok) {
       await this.recordInteractionResponseFailure(
         request,

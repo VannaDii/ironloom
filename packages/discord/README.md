@@ -13,16 +13,17 @@ fail closed when a lifecycle-changing action is ambiguous. Slash command and
 button interactions are received over Discord Gateway by default, routed into
 control actions, must resolve exactly one bound thread or bound thread session,
 project that session into a typed spec/implementation/pull-request work item,
-render compact operator UI payloads with contextual buttons, and post both
-interaction acknowledgements and thread status messages through the structured
-Discord REST transport. Thread sessions and interactive approval handling
+render compact operator UI payloads with contextual buttons, defer the
+interaction acknowledgement, and post the final thread status message through
+the structured Discord REST transport. Thread sessions and interactive approval handling
 persist supported artifact envelope types instead of Discord-local artifact
 types, so Discord operator decisions remain compatible with the shared artifact
 envelope schema.
-Interaction acknowledgements are sent before persistence
-and audit writes so live button clicks satisfy Discord's prompt response window;
-the bound-thread message and audit trail are then persisted through the same
-control result. If Discord rejects the initial acknowledgement, the
+Interaction acknowledgements are deferred before persistence
+and audit writes so live button clicks satisfy Discord's prompt response window
+without duplicating the final operator message in the same thread; the
+bound-thread message and audit trail are then persisted through the same control
+result. If Discord rejects the initial deferred acknowledgement, the
 acknowledgement transport throws, or a route-refusal acknowledgement is rejected,
 the action fails closed, skips lifecycle state writes, writes an audit event,
 and exposes `responsePostError`. If the bound-thread status post fails after
@@ -68,7 +69,7 @@ flowchart LR
   Binding -->|ambiguous| Deny[Fail closed response and audit]
   Policy --> Render[Render compact operator UI]
   Render --> Components[Contextual buttons]
-  Components --> Response[Interaction acknowledgement over REST]
+  Components --> Response[Deferred acknowledgement over REST]
   Response --> State[Persist state telemetry and audit]
   State --> Thread[Thread status message]
 ```

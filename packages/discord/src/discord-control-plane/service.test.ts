@@ -149,7 +149,11 @@ function createAcknowledgementRejectingResponseTransport(): DiscordControlRespon
       };
     },
     async postInteractionDeferred(input) {
-      return createReceipt(`/interactions/${input.id}/${input.token}/callback`);
+      return {
+        endpoint: `/interactions/${input.id}/${input.token}/callback`,
+        statusCode: 404,
+        responseBody: { message: 'Unknown interaction' },
+      };
     },
     async postThreadMessage(threadId) {
       return createReceipt(`/channels/${threadId}/messages`);
@@ -167,8 +171,8 @@ function createAcknowledgementThrowingResponseTransport(
     async postInteractionResponse() {
       throw error;
     },
-    async postInteractionDeferred(input) {
-      return createReceipt(`/interactions/${input.id}/${input.token}/callback`);
+    async postInteractionDeferred() {
+      throw error;
     },
     async postThreadMessage(threadId) {
       return createReceipt(`/channels/${threadId}/messages`);
@@ -349,6 +353,84 @@ describe('DiscordControlPlaneService', () => {
         },
       },
       {
+        name: 'defers accepted thread interactions before posting the structured thread result',
+        inputs: {
+          interaction: {
+            id: 'interaction-deferred-001',
+            token: 'token-deferred-1',
+            actorId: 'user-deferred-1',
+            channelId: 'channel-deferred-1',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'retry gates',
+            threadId: 'thread-deferred-1',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: async () => {
+          const rootDirectory = await mkdtemp(
+            join(tmpdir(), 'devplat-discord-'),
+          );
+          const store = new FileStoreService(rootDirectory);
+          const events: string[] = [];
+          return {
+            events,
+            store,
+            service: new DiscordControlPlaneService(
+              new DecisionPolicyService(),
+              new TelemetryEventService(store),
+              store,
+              {
+                async postInteractionResponse(input) {
+                  events.push(`interaction-response:${input.id}`);
+                  return createReceipt(
+                    `/interactions/${input.id}/${input.token}/callback`,
+                  );
+                },
+                async postInteractionDeferred(input) {
+                  events.push(`interaction-deferred:${input.id}`);
+                  return createReceipt(
+                    `/interactions/${input.id}/${input.token}/callback`,
+                  );
+                },
+                async postThreadMessage(threadId, payload) {
+                  events.push(`thread-message:${threadId}:${payload.content}`);
+                  return createReceipt(`/channels/${threadId}/messages`);
+                },
+              },
+            ),
+          };
+        },
+        assert: async (
+          context: {
+            events: string[];
+            store: FileStoreService;
+            service: DiscordControlPlaneService;
+          },
+          inputs: { interaction: DiscordOperatorInteraction },
+        ) => {
+          const result = await context.service.handleInteraction(
+            inputs.interaction,
+          );
+
+          expect(result.allowed).toBe(true);
+          expect(result.failedClosed).toBe(false);
+          expect(result.responsePayload?.content).toContain(
+            'DevPlat · Gates retry queued',
+          );
+          expect(context.events[0]).toBe(
+            'interaction-deferred:interaction-deferred-001',
+          );
+          expect(context.events).not.toContain(
+            'interaction-response:interaction-deferred-001',
+          );
+          expect(context.events.join('\n')).toContain(
+            'thread-message:thread-deferred-1:🟡 DevPlat · Gates retry queued',
+          );
+          expect(await context.store.list('state')).toContain(
+            'interaction-deferred-001',
+          );
+        },
+      },
+      {
         name: 'projects pull request thread sessions into responses',
         inputs: {
           interaction: {
@@ -490,7 +572,7 @@ describe('DiscordControlPlaneService', () => {
 
         expect(result.allowed).toBe(inputs.expectedAllowed);
         expect(context.events[0]).toBe(
-          'interaction-response:interaction-ack-001',
+          'interaction-deferred:interaction-ack-001',
         );
         expect(context.events).toContain('store:state:interaction-ack-001');
         expect(context.events).toContain('thread-message:thread-ack-1');
@@ -540,7 +622,7 @@ describe('DiscordControlPlaneService', () => {
 
         expect(result.allowed).toBe(inputs.expectedAllowed);
         expect(context.events[0]).toBe(
-          'interaction-response:interaction-ack-002',
+          'interaction-deferred:interaction-ack-002',
         );
         expect(context.events).toContain('store:state:interaction-ack-002');
         expect(context.events).toContain('thread-message:thread-ack-2');
@@ -830,7 +912,7 @@ describe('DiscordControlPlaneService', () => {
         expect(result.failedClosed).toBe(true);
         expect(result.responseReceipt?.statusCode).toBe(404);
         expect(result.responsePostError).toBe(
-          'Discord interaction acknowledgement returned HTTP 404.',
+          'Discord interaction deferred acknowledgement returned HTTP 404.',
         );
         expect(result.threadReceipt).toBeUndefined();
         expect(await context.store.list('state')).not.toContain(
@@ -902,7 +984,7 @@ describe('DiscordControlPlaneService', () => {
         });
         expect(result.responseReceipt?.statusCode).toBe(404);
         expect(result.responsePostError).toBe(
-          'Discord interaction acknowledgement returned HTTP 404.',
+          'Discord interaction deferred acknowledgement returned HTTP 404.',
         );
         expect(await context.store.list('state')).not.toContain(
           'interaction-ack-failure-002',

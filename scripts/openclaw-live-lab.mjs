@@ -1613,10 +1613,7 @@ export async function runDiscordInteractionProbe(
     throw new Error('Discord interaction probe did not record receipts.');
   }
 
-  if (
-    !hasDiscordActionComponents(result.responsePayload) ||
-    !hasDiscordActionComponents(result.threadPayload)
-  ) {
+  if (!hasDiscordActionComponents(result.threadPayload)) {
     throw new Error(
       'Discord interaction probe did not publish actionable controls.',
     );

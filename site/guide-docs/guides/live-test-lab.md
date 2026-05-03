@@ -15,10 +15,10 @@ CI.
 - requires the initial project-management bootstrap status message to post
   successfully before any sandbox repository mutation
 - registers Discord command contracts, normalizes a Discord callback-shaped
-  slash command payload, and posts the interaction acknowledgement plus
+  slash command payload, defers the interaction acknowledgement, and posts the
   bound-thread status through the same response transport used by the runtime;
   the run fails if the interaction resolves to the wrong thread or does not
-  record both callback and thread message receipts with actionable component ids
+  record both callback and thread message receipts plus thread-posted actionable component ids
 - waits for SonarQube Cloud to auto-import the repository
 - runs the OpenClaw live deep test against the real container with network
   access enabled
@@ -146,8 +146,8 @@ The live lab also registers the exported Discord operator command contracts into
 the sandbox guild. After registration, it runs a Discord interaction probe. The
 probe simulates the operator `/retry-gates` path, routes it through the Discord
 control-plane service, renders the compact operator message payload with
-contextual buttons, posts the interaction acknowledgement into the audit channel
-and bound-thread status into the implementation channel with those contextual
+contextual buttons, defers the interaction acknowledgement, posts the
+bound-thread status into the implementation channel with those contextual
 buttons intact, and records the command registration, response receipt endpoints,
 Discord message ids, posted content, and component custom ids in
 `live-lab-report.json`. The probe runs before the deep-test runtime is cleaned up
@@ -158,10 +158,10 @@ manual clicks during the hold window to revalidate against the same persisted
 binding used by the private Gateway worker.
 The `operator_hold_ms` input keeps that runtime open for 150000 ms by default
 after the control message is visible, giving an operator a bounded manual-click
-window. The probe fails if either control-plane response loses the button rows,
-so the live-lab lane cannot silently regress to plain log-style messages. Only unbound
-bootstrap/progress status messages stay noninteractive to avoid stale clickable
-buttons after cleanup.
+window. The probe fails if the thread control-plane response loses the button
+rows, so the live-lab lane cannot silently regress to plain log-style messages.
+Only unbound bootstrap/progress status messages stay noninteractive to avoid
+stale clickable buttons after cleanup.
 
 Discord does not provide a supported bot API for clicking buttons as a human
 operator. The automated live lab therefore validates the production registration,

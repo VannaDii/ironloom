@@ -159,10 +159,11 @@ trimmed configured GitHub owner/repository identity. Worktree allocation and
 dependent rebase tools honor the trimmed configured worktree root, so
 tool-driven artifacts, telemetry, worktrees, and Discord interaction state stay
 in the same repository-scoped store. Valid operator
-interactions are acknowledged before state, telemetry, and audit persistence
-begins, then the bound thread receives the same structured status payload after
-the control result is durable. If Discord
-rejects the initial acknowledgement, the acknowledgement transport throws, or a
+interactions are deferred before state, telemetry, and audit persistence
+begins, then the bound thread receives the structured status payload after the
+control result is durable. This avoids posting the same operator payload twice
+in the thread while still satisfying Discord's prompt response window. If Discord
+rejects the initial deferred acknowledgement, the acknowledgement transport throws, or a
 route-refusal acknowledgement is rejected, DevPlat fails the action closed,
 writes an audit event, and reports `responsePostError` without lifecycle state
 changes. If the post-acknowledgement thread update fails, the control result
