@@ -152,6 +152,10 @@ buttons intact, and records the command registration, response receipt endpoints
 Discord message ids, posted content, and component custom ids in
 `live-lab-report.json`. The probe runs before the deep-test runtime is cleaned up
 so the private Gateway worker is still alive when the control message is posted.
+It also writes the same bound implementation thread session into the deep-test
+runtime state directory before posting the button-bearing message, allowing
+manual clicks during the hold window to revalidate against the same persisted
+binding used by the private Gateway worker.
 The `operator_hold_ms` input keeps that runtime open for 150000 ms by default
 after the control message is visible, giving an operator a bounded manual-click
 window. The probe fails if either control-plane response loses the button rows,

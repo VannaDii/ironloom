@@ -93,6 +93,7 @@ describe('openclaw-live-lab helpers', () => {
       },
       mock: async () => {
         const discordMessages = [];
+        const persistedGatewaySessions = [];
         const serviceCalls = [];
         const discordRequest = async (path, options = {}) => {
           discordMessages.push([path, options.body]);
@@ -178,6 +179,14 @@ describe('openclaw-live-lab helpers', () => {
           }),
           discordMessages,
           discordRequest,
+          persistDiscordGatewayBoundSession: async (input) => {
+            persistedGatewaySessions.push(input);
+            return {
+              key: input.boundSession.id,
+              scope: 'state',
+            };
+          },
+          persistedGatewaySessions,
           serviceCalls,
         };
       },
@@ -198,6 +207,8 @@ describe('openclaw-live-lab helpers', () => {
               context.createDiscordControlPlaneService,
             createDiscordOperatorInteractionFromCallback:
               context.createDiscordOperatorInteractionFromCallback,
+            persistDiscordGatewayBoundSession:
+              context.persistDiscordGatewayBoundSession,
           },
         );
 
@@ -226,6 +237,16 @@ describe('openclaw-live-lab helpers', () => {
           },
           commandName: 'retry-gates',
         });
+        expect(context.persistedGatewaySessions).toEqual([
+          {
+            boundSession: expect.objectContaining({
+              id: 'live-lab-200-1-session',
+              threadId: 'implementation-1',
+              kind: 'implementation',
+            }),
+            reportDirectory: resolve(tmpdir(), 'devplat-live-lab-probe'),
+          },
+        ]);
         expect(context.discordMessages).toEqual([
           [
             '/channels/audit-1/messages',

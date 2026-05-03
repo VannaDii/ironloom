@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { ArtifactEnvelopeService } from '@vannadii/devplat-artifacts';
+import { ApprovalRecordArtifactService } from '@vannadii/devplat-artifacts';
 import { TelemetryEventService } from '@vannadii/devplat-observability';
 import { DecisionPolicyService } from '@vannadii/devplat-policy';
 import { FileStoreService } from '@vannadii/devplat-storage';
@@ -33,6 +33,28 @@ type DiscordInteractiveApprovalServiceCase = {
   ) => Promise<void>;
 };
 
+/**
+ * Policy service fixture that omits optional audit metadata to cover fallback
+ * approval rationale rendering.
+ */
+class PolicyWithoutAuditReasonService extends DecisionPolicyService {
+  public override evaluateControlAction(action: string) {
+    return {
+      id: `policy-${action}`,
+      summary: `Policy evaluation for ${action}`,
+      status: 'approved',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      action,
+      allowed: true,
+      requiresApproval: false,
+      auditRequired: false,
+      privilegeLevel: 'automatic',
+      reason: 'Fallback policy reason.',
+    };
+  }
+}
+
 async function createService(): Promise<DiscordInteractiveApprovalServiceContext> {
   const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
   const store = new FileStoreService(rootDirectory);
@@ -40,7 +62,22 @@ async function createService(): Promise<DiscordInteractiveApprovalServiceContext
   return {
     service: new DiscordInteractiveApprovalService(
       new DecisionPolicyService(),
-      new ArtifactEnvelopeService(),
+      new ApprovalRecordArtifactService(),
+      new TelemetryEventService(store),
+      store,
+    ),
+    store,
+  };
+}
+
+async function createServiceWithoutAuditReason(): Promise<DiscordInteractiveApprovalServiceContext> {
+  const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+  const store = new FileStoreService(rootDirectory);
+
+  return {
+    service: new DiscordInteractiveApprovalService(
+      new PolicyWithoutAuditReasonService(),
+      new ApprovalRecordArtifactService(),
       new TelemetryEventService(store),
       store,
     ),
@@ -77,6 +114,22 @@ describe('DiscordInteractiveApprovalService', () => {
         expect(await context.store.list('artifacts')).toContain(
           'approval-001:artifact',
         );
+        const artifact = await context.store.read(
+          'artifacts',
+          'approval-001:artifact',
+        );
+
+        expect(artifact.ok).toBe(true);
+        if (artifact.ok) {
+          expect(artifact.value.payload).toMatchObject({
+            artifactType: 'approval-record',
+            payload: {
+              approvalId: 'approval-001',
+              subjectId: 'artifact-1',
+              subjectType: 'pull-request',
+            },
+          });
+        }
       },
     },
     {
@@ -105,6 +158,45 @@ describe('DiscordInteractiveApprovalService', () => {
         expect(context.service.explain(request)).toContain('thread-2:retry');
         expect(result.allowed).toBe(true);
         expect(await context.store.list('state')).toContain('approval-002');
+      },
+    },
+    {
+      name: 'uses policy reason as approval rationale when audit reason is unavailable',
+      inputs: {
+        mode: 'handle',
+        request: {
+          id: 'approval-003',
+          summary: 'Approve implementation',
+          status: 'review',
+          trace: [],
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          actorId: 'operator-3',
+          channelId: 'channel-3',
+          threadId: 'thread-3',
+          action: 'approve',
+          artifactId: 'artifact-3',
+          privileged: false,
+        },
+      },
+      mock: createServiceWithoutAuditReason,
+      assert: async (context, inputs) => {
+        const result = await context.service.handleApproval(inputs.request);
+        const artifact = await context.store.read(
+          'artifacts',
+          'approval-003:artifact',
+        );
+
+        expect(result.allowed).toBe(true);
+        expect(artifact.ok).toBe(true);
+        if (artifact.ok) {
+          expect(artifact.value.payload).toMatchObject({
+            payload: {
+              decision: 'approved',
+              rationale: 'Fallback policy reason.',
+              subjectType: 'slice',
+            },
+          });
+        }
       },
     },
   ] satisfies DiscordInteractiveApprovalServiceCase[];

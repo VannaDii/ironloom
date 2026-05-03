@@ -15,7 +15,11 @@ control actions, must resolve exactly one bound thread or bound thread session,
 project that session into a typed spec/implementation/pull-request work item,
 render compact operator UI payloads with contextual buttons, and post both
 interaction acknowledgements and thread status messages through the structured
-Discord REST transport. Interaction acknowledgements are sent before persistence
+Discord REST transport. Thread sessions and interactive approval handling
+persist supported artifact envelope types instead of Discord-local artifact
+types, so Discord operator decisions remain compatible with the shared artifact
+envelope schema.
+Interaction acknowledgements are sent before persistence
 and audit writes so live button clicks satisfy Discord's prompt response window;
 the bound-thread message and audit trail are then persisted through the same
 control result. If Discord rejects the initial acknowledgement, the
@@ -39,7 +43,10 @@ loses the structured button rows, posts those component-bearing payloads, and
 records the message ids, content, and component custom ids in the live-lab report
 for audit review while the private Gateway runtime is still alive. The live-lab
 `operator_hold_ms` input can keep that runtime open briefly for manual click
-acceptance. Bootstrap/progress status posts remain noninteractive so they do not
+acceptance. The probe persists its bound thread session into the same runtime
+state directory used by the private Gateway before posting controls, so manual
+clicks can revalidate the stored binding during the hold window.
+Bootstrap/progress status posts remain noninteractive so they do not
 leave stale buttons after the ephemeral runner exits. Discord does not provide a
 supported bot API for clicking buttons as a human user, so live human clicks in
 the sandbox guild remain a manual acceptance check.

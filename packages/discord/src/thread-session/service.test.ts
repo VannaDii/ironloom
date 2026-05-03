@@ -197,7 +197,7 @@ describe('DiscordThreadSessionService', () => {
           artifactId: 'artifact-thread-4',
         },
         expectedArtifactId: 'artifact-thread-4',
-        expectedPayloadType: 'discord-pull-request-thread',
+        expectedPayloadType: 'pull-request-record',
       },
       mock: createService,
       assert: async (context, inputs) => {

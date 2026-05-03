@@ -1430,6 +1430,41 @@ async function createDiscordControlPlaneService({
   );
 }
 
+async function createLiveLabFileStore(rootDirectory) {
+  const storageModule = await import(
+    pathToFileURL(resolve(repoRootDirectory, 'packages/storage/dist/index.js'))
+      .href
+  );
+
+  return new storageModule.FileStoreService(rootDirectory);
+}
+
+export async function persistDiscordGatewayBoundSession(
+  { boundSession, reportDirectory },
+  dependencies = {},
+) {
+  const storeFactory =
+    dependencies.createFileStoreService ?? createLiveLabFileStore;
+  const store = await storeFactory(
+    resolve(reportDirectory, 'deep-test', 'devplat-state'),
+  );
+  const record = await store.store({
+    id: boundSession.id,
+    key: boundSession.id,
+    scope: 'state',
+    summary: boundSession.summary,
+    status: boundSession.status,
+    trace: boundSession.trace,
+    updatedAt: boundSession.updatedAt,
+    payload: boundSession,
+  });
+
+  return {
+    key: record.key,
+    scope: record.scope,
+  };
+}
+
 async function createDiscordApplicationCommandPayloads() {
   const discordModule = await import(
     pathToFileURL(resolve(repoRootDirectory, 'packages/discord/dist/index.js'))
@@ -1489,6 +1524,9 @@ export async function runDiscordInteractionProbe(
   const interactionFactory =
     dependencies.createDiscordOperatorInteractionFromCallback ??
     createDiscordOperatorInteractionFromCallback;
+  const persistGatewayBoundSession =
+    dependencies.persistDiscordGatewayBoundSession ??
+    persistDiscordGatewayBoundSession;
   const threadId = discordChannels.implementation.id;
   const boundSession = {
     id: `live-lab-${runLabel}-session`,
@@ -1523,6 +1561,10 @@ export async function runDiscordInteractionProbe(
       },
     },
   };
+  await persistGatewayBoundSession({
+    boundSession,
+    reportDirectory,
+  });
   const interaction = await interactionFactory(callback, {
     threadId,
     boundThreadId: threadId,

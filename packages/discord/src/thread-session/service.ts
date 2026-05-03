@@ -1,3 +1,9 @@
+import {
+  ARTIFACT_TYPE_PULL_REQUEST_RECORD,
+  ARTIFACT_TYPE_SLICE_PLAN,
+  ARTIFACT_TYPE_SPEC_RECORD,
+  type SupportedArtifactType,
+} from '@vannadii/devplat-core';
 import { ArtifactEnvelopeService } from '@vannadii/devplat-artifacts';
 import { TelemetryEventService } from '@vannadii/devplat-observability';
 import { FileStoreService } from '@vannadii/devplat-storage';
@@ -15,13 +21,11 @@ import type {
 
 const THREAD_ARTIFACT_TYPE_BY_KIND: Record<
   DiscordThreadKind,
-  | 'discord-spec-thread'
-  | 'discord-implementation-thread'
-  | 'discord-pull-request-thread'
+  SupportedArtifactType
 > = {
-  spec: 'discord-spec-thread',
-  implementation: 'discord-implementation-thread',
-  'pull-request': 'discord-pull-request-thread',
+  spec: ARTIFACT_TYPE_SPEC_RECORD,
+  implementation: ARTIFACT_TYPE_SLICE_PLAN,
+  'pull-request': ARTIFACT_TYPE_PULL_REQUEST_RECORD,
 };
 
 export class DiscordThreadSessionService {
@@ -46,19 +50,7 @@ export class DiscordThreadSessionService {
     const session = this.execute(input);
     const artifactType = THREAD_ARTIFACT_TYPE_BY_KIND[session.kind];
 
-    const artifact = this.artifacts.execute<
-      Pick<
-        DiscordThreadSession,
-        | 'guildId'
-        | 'channelId'
-        | 'parentChannelId'
-        | 'threadId'
-        | 'kind'
-        | 'specId'
-        | 'sliceId'
-        | 'pullRequestNumber'
-      >
-    >({
+    const artifact = this.artifacts.execute({
       id: session.artifactId,
       artifactType,
       version: 1,

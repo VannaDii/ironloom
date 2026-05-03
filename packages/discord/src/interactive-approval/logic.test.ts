@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 import {
   createDiscordApprovalRequest,
   describeDiscordApprovalRequest,
+  mapApprovalActionToSubjectType,
   mapApprovalActionToPolicyAction,
+  mapAllowedPolicyToApprovalDecision,
 } from './logic.js';
 import type { DiscordApprovalRequest } from './codec.js';
 
@@ -49,6 +51,12 @@ describe('Discord interactive approval logic', () => {
         expect(mapApprovalActionToPolicyAction('escalate')).toBe(
           'rebase-all-dependents',
         );
+        expect(mapApprovalActionToSubjectType('approve')).toBe('slice');
+        expect(mapApprovalActionToSubjectType('retry')).toBe('slice');
+        expect(mapApprovalActionToSubjectType('merge')).toBe('pull-request');
+        expect(mapApprovalActionToSubjectType('escalate')).toBe('merge');
+        expect(mapAllowedPolicyToApprovalDecision(true)).toBe('approved');
+        expect(mapAllowedPolicyToApprovalDecision(false)).toBe('rejected');
         expect(describeDiscordApprovalRequest(request)).toContain(
           'thread-1:approve',
         );

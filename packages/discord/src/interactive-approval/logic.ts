@@ -5,6 +5,10 @@ import {
   DEVPLAT_ACTION_REBASE_ALL_DEPENDENTS,
   DEVPLAT_ACTION_RETRY_GATES,
 } from '@vannadii/devplat-core';
+import type {
+  ApprovalDecision,
+  ApprovalSubjectType,
+} from '@vannadii/devplat-artifacts';
 
 import type { DiscordApprovalAction, DiscordApprovalRequest } from './codec.js';
 
@@ -53,6 +57,34 @@ export function mapApprovalActionToPolicyAction(
     case 'escalate':
       return DEVPLAT_ACTION_REBASE_ALL_DEPENDENTS;
   }
+}
+
+/**
+ * Maps a Discord approval action to the lifecycle subject represented by its
+ * bound artifact.
+ */
+export function mapApprovalActionToSubjectType(
+  action: DiscordApprovalAction,
+): ApprovalSubjectType {
+  switch (action) {
+    case 'approve':
+      return 'slice';
+    case 'retry':
+      return 'slice';
+    case 'merge':
+      return 'pull-request';
+    case 'escalate':
+      return 'merge';
+  }
+}
+
+/**
+ * Converts a policy allow/deny result into an approval artifact decision.
+ */
+export function mapAllowedPolicyToApprovalDecision(
+  allowed: boolean,
+): ApprovalDecision {
+  return allowed ? 'approved' : 'rejected';
 }
 
 /**
