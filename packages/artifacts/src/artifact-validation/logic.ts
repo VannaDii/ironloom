@@ -3,6 +3,8 @@ import {
   ARTIFACT_TYPE_AUDIT_LOG,
   ARTIFACT_TYPE_MERGE_DECISION,
   ARTIFACT_TYPE_REBASE_RESULT,
+  createDevplatError,
+  createDevplatFailure,
   decodeWithCodec,
   type DevplatResult,
 } from '@vannadii/devplat-core';
@@ -32,6 +34,15 @@ import {
   RebaseResultArtifactService,
   type RebaseResultArtifact,
 } from '../rebase-result/index.js';
+import type {
+  ArtifactRegistry,
+  ArtifactRegistryEntry,
+} from '../artifact-registry/index.js';
+import { findArtifactMigrationPath } from '../artifact-registry/index.js';
+import {
+  ARTIFACT_VALIDATION_MIGRATION_PATH_SEPARATOR,
+  ARTIFACT_VALIDATION_MIGRATION_REQUIRED_ERROR_CODE,
+} from './constants.js';
 
 /** Artifact type accepted by the validation dispatcher. */
 export type KnownArtifact =
@@ -41,14 +52,147 @@ export type KnownArtifact =
   | RebaseResultArtifact
   | ArtifactEnvelope;
 
+/** Registry constraints that can harden artifact validation. */
+export type ArtifactValidationOptions = {
+  registry?: ArtifactRegistry;
+};
+
+/**
+ * Finds the migration path that updates an artifact to the registry version.
+ */
+function findApplicableMigrations(
+  registry: ArtifactRegistry,
+  envelope: ArtifactEnvelope,
+  entry: ArtifactRegistryEntry,
+): ReturnType<typeof findArtifactMigrationPath> {
+  return findArtifactMigrationPath(
+    registry,
+    envelope.artifactType,
+    envelope.version,
+    entry.currentVersion,
+  );
+}
+
+/**
+ * Builds migration diagnostic details with optional migration path metadata.
+ */
+function createMigrationDiagnosticDetails(
+  registry: ArtifactRegistry,
+  envelope: ArtifactEnvelope,
+  entry: ArtifactRegistryEntry,
+  migrationIds: readonly string[],
+): Record<string, unknown> {
+  const details = {
+    artifactType: envelope.artifactType,
+    artifactVersion: envelope.version,
+    currentVersion: entry.currentVersion,
+    registryId: registry.registryId,
+  };
+
+  if (migrationIds.length === 0) {
+    return details;
+  }
+
+  return {
+    ...details,
+    migrationId: migrationIds[0],
+    migrationIds,
+  };
+}
+
+/**
+ * Formats the required-migration validation failure with registry context.
+ */
+function createMigrationRequiredFailure(
+  registry: ArtifactRegistry,
+  envelope: ArtifactEnvelope,
+  entry: ArtifactRegistryEntry,
+): DevplatResult<ArtifactEnvelope> {
+  const migrations = findApplicableMigrations(registry, envelope, entry);
+  const migrationIds = migrations.map((migration) => migration.migrationId);
+  const migrationHint =
+    migrationIds.length === 0
+      ? ''
+      : ` ${migrationIds.join(ARTIFACT_VALIDATION_MIGRATION_PATH_SEPARATOR)}`;
+  const error = `Artifact ${envelope.artifactType}@v${String(envelope.version)} requires migration${migrationHint} to v${String(entry.currentVersion)} before validation.`;
+
+  return createDevplatFailure({
+    error,
+    diagnostic: createDevplatError({
+      kind: 'validation',
+      message: error,
+      code: ARTIFACT_VALIDATION_MIGRATION_REQUIRED_ERROR_CODE,
+      details: createMigrationDiagnosticDetails(
+        registry,
+        envelope,
+        entry,
+        migrationIds,
+      ),
+    }),
+  });
+}
+
+/**
+ * Validates the decoded envelope against the active repository registry.
+ */
+function validateEnvelopeRegistry(
+  envelope: ArtifactEnvelope,
+  registry: ArtifactRegistry | undefined,
+): DevplatResult<ArtifactEnvelope> {
+  if (registry === undefined) {
+    return {
+      ok: true,
+      value: envelope,
+    };
+  }
+
+  const entry = registry.entries.find(
+    (registryEntry) => registryEntry.artifactType === envelope.artifactType,
+  );
+  if (entry === undefined) {
+    return createDevplatFailure({
+      error: `Artifact type ${envelope.artifactType} is not registered for this repository.`,
+    });
+  }
+
+  if (
+    envelope.version < entry.currentVersion &&
+    entry.migrationPolicy === 'required'
+  ) {
+    return createMigrationRequiredFailure(registry, envelope, entry);
+  }
+
+  if (envelope.version > entry.currentVersion) {
+    return createDevplatFailure({
+      error: `Artifact ${envelope.artifactType}@v${String(envelope.version)} is newer than registered v${String(entry.currentVersion)}.`,
+    });
+  }
+
+  return {
+    ok: true,
+    value: envelope,
+  };
+}
+
 /**
  * Validates a generic artifact and dispatches known artifact types to their
  * specialized normalizers.
  */
-export function validateArtifact(input: unknown): DevplatResult<KnownArtifact> {
+export function validateArtifact(
+  input: unknown,
+  options: ArtifactValidationOptions = {},
+): DevplatResult<KnownArtifact> {
   const envelope = decodeWithCodec(ArtifactEnvelopeCodec, input);
   if (!envelope.ok) {
     return envelope;
+  }
+
+  const registryResult = validateEnvelopeRegistry(
+    envelope.value,
+    options.registry,
+  );
+  if (!registryResult.ok) {
+    return registryResult;
   }
 
   switch (envelope.value.artifactType) {

@@ -1,6 +1,8 @@
+import { execFile } from 'node:child_process';
 import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
+import { promisify } from 'node:util';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -19,6 +21,7 @@ import {
   validateDeepTestReport,
 } from './openclaw-deep-test.mjs';
 
+const execFileAsync = promisify(execFile);
 const temporaryRoots = [];
 
 afterEach(async () => {
@@ -57,6 +60,25 @@ describe('openclaw-deep-test helpers', () => {
           skipBuild: true,
         });
         expect(parsed.reportDir).toContain('artifacts/openclaw-deep');
+      },
+    },
+    {
+      name: 'imports without POSIX uid helpers on non-POSIX Node runtimes',
+      inputs: {
+        script:
+          "process.getuid = undefined; process.getgid = undefined; await import('./scripts/openclaw-deep-test.mjs');",
+      },
+      mock: async () => undefined,
+      assert: async (_context, inputs) => {
+        await expect(
+          execFileAsync(process.execPath, [
+            '--input-type=module',
+            '-e',
+            inputs.script,
+          ]),
+        ).resolves.toMatchObject({
+          stderr: '',
+        });
       },
     },
     {
@@ -196,10 +218,201 @@ describe('openclaw-deep-test helpers', () => {
           ['run'],
           ['exec'],
           ['exec'],
+          ['exec'],
           ['before-cleanup', report.containerName, inputs.reportDir],
           ['logs'],
           ['rm'],
         ]);
+      },
+    },
+    {
+      name: 'makes mounted state owned by the host runner before cleanup hooks run',
+      inputs: {
+        reportDir: resolve(tmpdir(), 'devplat-openclaw-before-cleanup-chmod'),
+      },
+      mock: async () => undefined,
+      assert: async (_context, inputs) => {
+        if (
+          typeof process.getuid !== 'function' ||
+          typeof process.getgid !== 'function'
+        ) {
+          expect(
+            typeof process.getuid === 'function' &&
+              typeof process.getgid === 'function',
+          ).toBe(false);
+          return;
+        }
+
+        const hostGid = String(process.getgid());
+        const hostUid = String(process.getuid());
+        const events = [];
+        temporaryRoots.push(inputs.reportDir);
+        const report = await runDeepTest(
+          {
+            image: 'devplat:test',
+            mode: 'live',
+            reportDir: inputs.reportDir,
+            scenario: [
+              {
+                expected: { status: 'ok' },
+                params: { scope: 'state' },
+                phase: 'config',
+                tool: 'list_stored_records',
+              },
+            ],
+            skipBuild: true,
+            beforeCleanup: async () => {
+              events.push('before-cleanup');
+            },
+          },
+          {
+            collectStoredKeys: async () => ({
+              artifacts: ['artifact-1'],
+              memory: ['memory-1'],
+              state: ['state-1'],
+              telemetry: ['telemetry-1'],
+            }),
+            commandRunner: async (_command, args) => {
+              if (args[0] === 'run') {
+                return { stdout: 'container-1\n', stderr: '' };
+              }
+              if (args[0] === 'exec') {
+                events.push(args);
+                if (
+                  args.includes('chown -R "$2:$3" "$1" && chmod -R "$4" "$1"')
+                ) {
+                  return { stdout: '', stderr: '' };
+                }
+
+                return {
+                  stdout: JSON.stringify({
+                    status: 200,
+                    body: {
+                      ok: true,
+                      result: {
+                        details: { status: 'ok' },
+                      },
+                    },
+                  }),
+                  stderr: '',
+                };
+              }
+              if (args[0] === 'logs' || args[0] === 'rm') {
+                return { stdout: '', stderr: '' };
+              }
+
+              throw new Error(`Unexpected docker args: ${args.join(' ')}`);
+            },
+            onProgress: () => undefined,
+          },
+        );
+        const chmodIndex = events.findIndex(
+          (event) =>
+            Array.isArray(event) &&
+            event.includes('chown -R "$2:$3" "$1" && chmod -R "$4" "$1"'),
+        );
+        const cleanupIndex = events.indexOf('before-cleanup');
+
+        expect(report.mode).toBe('live');
+        expect(events[chmodIndex]).toEqual([
+          'exec',
+          '--user',
+          'root',
+          report.containerName,
+          'sh',
+          '-c',
+          'chown -R "$2:$3" "$1" && chmod -R "$4" "$1"',
+          'sh',
+          '/app/.devplat',
+          hostUid,
+          hostGid,
+          'u+rwX,go-rwx',
+        ]);
+        expect(chmodIndex).toBeGreaterThan(-1);
+        expect(cleanupIndex).toBeGreaterThan(chmodIndex);
+      },
+    },
+    {
+      name: 'records mounted state permission warnings without skipping cleanup',
+      inputs: {
+        reportDir: resolve(
+          tmpdir(),
+          'devplat-openclaw-before-cleanup-chmod-warning',
+        ),
+      },
+      mock: async () => undefined,
+      assert: async (_context, inputs) => {
+        const events = [];
+        temporaryRoots.push(inputs.reportDir);
+        const report = await runDeepTest(
+          {
+            image: 'devplat:test',
+            mode: 'live',
+            reportDir: inputs.reportDir,
+            scenario: [
+              {
+                expected: { status: 'ok' },
+                params: { scope: 'state' },
+                phase: 'config',
+                tool: 'list_stored_records',
+              },
+            ],
+            skipBuild: true,
+            beforeCleanup: async () => {
+              events.push('before-cleanup');
+            },
+          },
+          {
+            collectStoredKeys: async () => ({
+              artifacts: ['artifact-1'],
+              memory: ['memory-1'],
+              state: ['state-1'],
+              telemetry: ['telemetry-1'],
+            }),
+            commandRunner: async (_command, args) => {
+              if (args[0] === 'run') {
+                return { stdout: 'container-1\n', stderr: '' };
+              }
+              if (args[0] === 'exec') {
+                if (
+                  args.includes('chown -R "$2:$3" "$1" && chmod -R "$4" "$1"')
+                ) {
+                  throw new Error('chmod unavailable');
+                }
+
+                return {
+                  stdout: JSON.stringify({
+                    status: 200,
+                    body: {
+                      ok: true,
+                      result: {
+                        details: { status: 'ok' },
+                      },
+                    },
+                  }),
+                  stderr: '',
+                };
+              }
+              if (args[0] === 'logs' || args[0] === 'rm') {
+                return { stdout: '', stderr: '' };
+              }
+
+              throw new Error(`Unexpected docker args: ${args.join(' ')}`);
+            },
+            onProgress: () => undefined,
+          },
+        );
+
+        expect(events).toContain('before-cleanup');
+        expect(report.error).toBeUndefined();
+        expect(report.warnings).toContainEqual({
+          code: 'mounted-state-permission-normalization-failed',
+          message:
+            'Container-created .devplat entries may remain owned by the runtime user.',
+          cause: expect.objectContaining({
+            message: 'chmod unavailable',
+          }),
+        });
       },
     },
     {

@@ -33,7 +33,7 @@ Missing Discord credentials should fail during config load. Do not rely on place
 - use the live lab only against the sandbox GitHub org, SonarQube Cloud org, and Discord guild
 - expect live-lab and OpenClaw test updates to land in the shared spec, implementation, pull-request, audit, and project-management channels under the `test` Discord category with run labels in every message
 - expect the live lab to refresh sandbox guild slash commands before exercising the Discord interaction response path
-- expect the live lab to post a simulated Discord interaction acknowledgement in the audit channel and a bound-thread update in the implementation channel
+- expect the live lab to record simulated deferred acknowledgement and completion receipts while posting the operator-visible bound-thread update in the implementation channel
 
 ## Discord Operator Messages
 

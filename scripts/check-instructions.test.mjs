@@ -126,6 +126,102 @@ describe('check-instructions', () => {
       },
     },
     {
+      name: 'fails when shared CI artifact names depend on run attempts',
+      inputs: {
+        useFixtureRoot: true,
+      },
+      mock: async ({ rootDirectory }) => {
+        await replaceInFile(
+          rootDirectory,
+          '.github/workflows/ci.yml',
+          'name: schemas-${{ github.run_id }}',
+          'name: schemas-${{ github.run_id }}-${{ github.run_attempt }}',
+        );
+      },
+      assert: (errors) => {
+        expect(
+          errors.some(
+            (error) =>
+              error.includes('.github/workflows/ci.yml') &&
+              error.includes('shared CI artifact names') &&
+              error.includes('github.run_attempt'),
+          ),
+        ).toBe(true);
+      },
+    },
+    {
+      name: 'fails when shared CI artifact names include run attempts before the run id',
+      inputs: {
+        useFixtureRoot: true,
+      },
+      mock: async ({ rootDirectory }) => {
+        await replaceInFile(
+          rootDirectory,
+          '.github/workflows/ci.yml',
+          'name: schemas-${{ github.run_id }}',
+          'name: schemas-${{ github.run_attempt }}-${{ github.run_id }}',
+        );
+      },
+      assert: (errors) => {
+        expect(
+          errors.some(
+            (error) =>
+              error.includes('.github/workflows/ci.yml') &&
+              error.includes('shared CI artifact names') &&
+              error.includes('github.run_attempt'),
+          ),
+        ).toBe(true);
+      },
+    },
+    {
+      name: 'fails when shared CI artifact uploads cannot overwrite rerun artifacts',
+      inputs: {
+        useFixtureRoot: true,
+      },
+      mock: async ({ rootDirectory }) => {
+        await replaceInFile(
+          rootDirectory,
+          '.github/workflows/ci.yml',
+          '          overwrite: true\n          path: |\n            packages/*/schemas/*.schema.json',
+          '          path: |\n            packages/*/schemas/*.schema.json',
+        );
+      },
+      assert: (errors) => {
+        expect(
+          errors.some(
+            (error) =>
+              error.includes('.github/workflows/ci.yml') &&
+              error.includes("shared CI artifact 'schemas'") &&
+              error.includes('overwrite: true'),
+          ),
+        ).toBe(true);
+      },
+    },
+    {
+      name: 'allows shared CI artifact upload metadata to be reordered',
+      inputs: {
+        useFixtureRoot: true,
+      },
+      mock: async ({ rootDirectory }) => {
+        await replaceInFile(
+          rootDirectory,
+          '.github/workflows/ci.yml',
+          '          retention-days: 14\n          overwrite: true\n          path: |\n            packages/*/schemas/*.schema.json',
+          '          overwrite: true\n          retention-days: 7\n          path: |\n            packages/*/schemas/*.schema.json',
+        );
+      },
+      assert: (errors) => {
+        expect(
+          errors.some(
+            (error) =>
+              error.includes('.github/workflows/ci.yml') &&
+              error.includes("shared CI artifact 'schemas'") &&
+              error.includes('overwrite: true'),
+          ),
+        ).toBe(false);
+      },
+    },
+    {
       name: 'fails when the platform scope drifts away from thread-aware Discord control',
       inputs: {
         useFixtureRoot: true,

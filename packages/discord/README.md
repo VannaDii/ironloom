@@ -13,18 +13,27 @@ fail closed when a lifecycle-changing action is ambiguous. Slash command and
 button interactions are received over Discord Gateway by default, routed into
 control actions, must resolve exactly one bound thread or bound thread session,
 project that session into a typed spec/implementation/pull-request work item,
-render compact operator UI payloads with contextual buttons, and post both
-interaction acknowledgements and thread status messages through the structured
-Discord REST transport. Interaction acknowledgements are sent before persistence
-and audit writes so live button clicks satisfy Discord's prompt response window;
-the bound-thread message and audit trail are then persisted through the same
-control result. If Discord rejects the initial acknowledgement, the
+render compact operator UI payloads with contextual buttons, defer the
+interaction acknowledgement, and post the final thread status message through
+the structured Discord REST transport before sending a minimal ephemeral
+completion follow-up for the deferred interaction. Thread sessions persist the dedicated
+shared `discord-thread-session` artifact type, and interactive approvals persist
+approval artifacts, so Discord operator decisions remain compatible with the
+shared artifact envelope schema without masquerading as spec, slice, or pull
+request payloads.
+Interaction acknowledgements are deferred before persistence
+and audit writes so live button clicks satisfy Discord's prompt response window
+without duplicating the final operator message in the same thread; the
+bound-thread message, deferred-completion receipt, and audit trail are then
+persisted through the same control result. If Discord rejects the initial deferred acknowledgement, the
 acknowledgement transport throws, or a route-refusal acknowledgement is rejected,
 the action fails closed, skips lifecycle state writes, writes an audit event,
 and exposes `responsePostError`. If the bound-thread status post fails after
 acknowledgement, the result preserves the interaction acknowledgement receipt
-and durable action record while exposing `threadPostError` for diagnostics,
-including when Discord returns a non-2xx thread-message receipt. Interaction
+and durable action record, exposes `threadPostError`, and still sends a minimal
+ephemeral completion follow-up so Discord closes the deferred interaction
+deterministically. Interaction completion failures expose `completionPostError`
+without reposting the full button-bearing operator payload.
 requests are normalized once, so persisted traces contain one Discord route
 marker for the action. The webhook helper returns the same structured payload
 shape for explicit deployments that choose inbound callbacks, but the production
@@ -39,7 +48,10 @@ loses the structured button rows, posts those component-bearing payloads, and
 records the message ids, content, and component custom ids in the live-lab report
 for audit review while the private Gateway runtime is still alive. The live-lab
 `operator_hold_ms` input can keep that runtime open briefly for manual click
-acceptance. Bootstrap/progress status posts remain noninteractive so they do not
+acceptance. The probe persists its bound thread session into the same runtime
+state directory used by the private Gateway before posting controls, so manual
+clicks can revalidate the stored binding during the hold window.
+Bootstrap/progress status posts remain noninteractive so they do not
 leave stale buttons after the ephemeral runner exits. Discord does not provide a
 supported bot API for clicking buttons as a human user, so live human clicks in
 the sandbox guild remain a manual acceptance check.
@@ -61,9 +73,11 @@ flowchart LR
   Binding -->|ambiguous| Deny[Fail closed response and audit]
   Policy --> Render[Render compact operator UI]
   Render --> Components[Contextual buttons]
-  Components --> Response[Interaction acknowledgement over REST]
+  Components --> Response[Deferred acknowledgement over REST]
   Response --> State[Persist state telemetry and audit]
   State --> Thread[Thread status message]
+  Thread -->|posted| Complete[Ephemeral interaction completion]
+  Thread -->|failed| FailureComplete[Ephemeral failure completion]
 ```
 
 ## Boundaries

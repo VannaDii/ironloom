@@ -1811,12 +1811,25 @@ export function createValidateArtifactTool(): AnyAgentTool {
         );
       }
 
+      const validationOptions =
+        decoded.value.registry === undefined
+          ? {}
+          : {
+              registry: decoded.value.registry,
+            };
       const artifact = new ArtifactValidationService().execute(
         decoded.value.artifact,
+        validationOptions,
       );
       if (!artifact.ok) {
         return Promise.resolve(
-          createTextResult({ status: 'failed', error: artifact.error }),
+          createTextResult({
+            status: 'failed',
+            error: artifact.error,
+            ...(artifact.diagnostic === undefined
+              ? {}
+              : { diagnostic: artifact.diagnostic }),
+          }),
         );
       }
 

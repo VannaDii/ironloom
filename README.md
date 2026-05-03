@@ -92,7 +92,9 @@ PR event so publish and Sonar upload paths stay skipped locally. The CI workflow
 also skips remote artifact upload/download actions under `ACT=true` and skips
 the nested-Docker deep-test job for the `devplat-local-act` actor while still
 executing repo, coverage, build, docs, generated artifact, and compatibility
-jobs.
+jobs. Remote CI names shared generated, coverage, build, and docs artifacts by
+workflow run id rather than run attempt, with overwrite enabled, so rerunning a
+failed job can still download the artifacts produced earlier in the same run.
 
 `npm run sonar:install-cli` installs the SonarQube CLI through the repo helper,
 which selects the documented SonarSource installer for macOS, Linux, or Windows.
@@ -131,21 +133,29 @@ Gateway env vars into the runtime container.
 
 The live lab posts compact status payloads without stale interactive components,
 registers Discord operator commands in the sandbox guild, and records
-callback-shaped interaction evidence in its report, including response
-endpoints, Discord message ids, posted content, and component custom ids from
-the posted control-plane payloads. The initial project-management bootstrap
-message is a required acceptance signal; if Discord cannot post it, the live lab
-fails before mutating sandbox repository state. The report preserves that
-bootstrap receipt with channel id, message id, posted content, and an empty
-component id list so operators can audit the visible start signal without
-leaving unbound status buttons that outlive the ephemeral runner.
+callback-shaped slash-command and button interaction evidence in its report.
+The automated probe keeps its simulated deferred acknowledgements as local
+receipts because those payloads do not have real Discord interaction tokens;
+the bound control-plane payloads still post through the real Discord channel
+transport and record response endpoints, Discord message ids, posted content,
+and component custom ids from the posted messages. The initial
+project-management bootstrap message is a required acceptance signal; if
+Discord cannot post it, the live lab fails before mutating sandbox repository
+state. The report preserves that bootstrap receipt with channel id, message id,
+posted content, and an empty component id list so operators can audit the
+visible start signal without leaving unbound status buttons that outlive the
+ephemeral runner.
 Human-triggered Discord client clicks remain a manual sandbox-guild acceptance
 check because Discord does not expose a supported bot API for clicking buttons
 as a user. The `operator_hold_ms` live-lab input defaults to `150000`, keeping
 the private Gateway runtime open for a bounded 2.5 minute manual-click window
-after the control message is posted. Live-lab status posts render compact
-workflow links with URL previews suppressed, and reports include selected
-channel `parentId` values so category placement can be audited.
+after the control message is posted. The live-lab control message is posted in
+a short-lived implementation thread created under the `test` category's
+standard implementation channel, so real button clicks resolve to the same
+thread id encoded in the component payload and persisted Gateway session.
+Live-lab status posts render compact workflow links with URL previews
+suppressed, and reports include selected channel `parentId` values so category
+placement can be audited.
 Live-lab runtime containers receive the same repo-scoped Discord/OpenClaw/Sonar
 environment through Docker env-name pass-through while report artifacts keep
 secret values redacted. The live container explicitly starts the private
@@ -159,16 +169,26 @@ trimmed configured GitHub owner/repository identity. Worktree allocation and
 dependent rebase tools honor the trimmed configured worktree root, so
 tool-driven artifacts, telemetry, worktrees, and Discord interaction state stay
 in the same repository-scoped store. Valid operator
-interactions are acknowledged before state, telemetry, and audit persistence
-begins, then the bound thread receives the same structured status payload after
-the control result is durable. If Discord
-rejects the initial acknowledgement, the acknowledgement transport throws, or a
+interactions are deferred before state, telemetry, and audit persistence
+begins, then the bound thread receives the structured status payload after the
+control result is durable. This avoids posting the same operator payload twice
+in the thread while still satisfying Discord's prompt response window. If Discord
+rejects the initial deferred acknowledgement, the acknowledgement transport throws, or a
 route-refusal acknowledgement is rejected, DevPlat fails the action closed,
 writes an audit event, and reports `responsePostError` without lifecycle state
 changes. If the post-acknowledgement thread update fails, the control result
 keeps the interaction receipt and durable action record while reporting
 `threadPostError`. Interaction-originated requests are normalized once, so
 persisted traces contain one Discord route marker for the action.
+The live-lab runner loads built workspace package entrypoints during normal
+execution and fails fast with a `npm run build:workspace` instruction if those
+compiled entrypoints are missing under plain Node. Source package entrypoints
+are only allowed for preflight tests or explicit TypeScript-loader execution.
+Before host-side live-lab cleanup hooks persist extra Discord session records,
+the deep-test runner normalizes container-owned `.devplat` bind-mount content
+to the host runner owner with owner-only write permissions. If that auxiliary
+normalization fails, the report records a warning and cleanup still runs, so
+platform contract failures remain separate from local Docker permission repair.
 
 Public contract schemas are generated from exported `io-ts` codecs. For
 codec-owned lifecycle records, derive TypeScript types from those codecs rather

@@ -93,7 +93,7 @@ surface, and tests stay aligned.
 - `execute_rebase_dependents`: execute dependent branch refreshes through worktree sync flows
 - `create_github_action_request`: create a GitHub action request
 - `submit_github_action`: submit a GitHub action request result
-- `validate_artifact`: validate artifact payloads against platform contracts
+- `validate_artifact`: validate artifact payloads against platform contracts and optional active repository registry constraints; required-migration failures preserve structured diagnostics, including ordered migration ids when the registry can bridge the stale artifact version to the current version
 - `run_supervisor_step`: run a supervisor orchestration step
 
 ## Deterministic Generation

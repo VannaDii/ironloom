@@ -9,6 +9,12 @@ export const DISCORD_INTERACTION_CHANNEL_MESSAGE_RESPONSE_TYPE = 4;
 export const DISCORD_INTERACTION_DEFERRED_RESPONSE_TYPE = 5;
 
 /**
+ * Environment variable that provides the Discord application id for follow-up webhooks.
+ */
+export const DISCORD_APPLICATION_ID_ENVIRONMENT_VARIABLE =
+  'DISCORD_APPLICATION_ID';
+
+/**
  * Discord message flag for ephemeral interaction responses.
  */
 export const DISCORD_EPHEMERAL_MESSAGE_FLAG = 64;

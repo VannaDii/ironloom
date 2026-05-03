@@ -9,6 +9,9 @@ The service exposes pure record helpers and Git-backed async methods for
 `git worktree add`, fetch/rebase or fast-forward sync, and archive/delete
 release behavior. Branch names are evaluated before any Git command runs, and
 unsafe names produce blocked records with next-action hints.
+Git command failures preserve the child-process exit code and captured
+stdout/stderr so gate output and operator diagnostics can point at the real
+failure.
 
 ## Real-World Flow
 
@@ -18,9 +21,11 @@ flowchart LR
   Allocate --> Safety[Branch safety check]
   Safety -->|safe| Git[Git worktree command]
   Safety -->|blocked| Operator[Choose safe branch name]
+  Git -->|nonzero| Failure[Preserve exit code and streams]
   Git --> Sync[Fetch and rebase or fast-forward]
   Sync --> Implement[Run implementation]
   Implement --> Release[Archive or delete worktree]
+  Failure --> Audit
   Release --> Audit[Worktree artifact]
 ```
 

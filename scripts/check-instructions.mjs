@@ -333,6 +333,35 @@ export const REQUIRED_HEADINGS = new Map([
 
 export const LINUX_COMPATIBILITY_SENTENCE =
   'Compatibility validation runs on Linux only against the latest stable TypeScript `5.x` and `6.x` releases.';
+/**
+ * Workflow file that carries shared artifacts between CI jobs.
+ */
+const CI_WORKFLOW_PATH = '.github/workflows/ci.yml';
+/**
+ * GitHub Actions expression that changes when a workflow run is retried.
+ */
+const GITHUB_RUN_ATTEMPT_EXPRESSION = '${{ github.run_attempt }}';
+/**
+ * Shared CI artifacts that downstream jobs or operators expect to survive failed-job reruns.
+ */
+const RERUN_STABLE_CI_ARTIFACT_PREFIXES = [
+  'schemas',
+  'coverage',
+  'build',
+  'docs',
+];
+/**
+ * Upload-artifact option required when artifact names stay stable across reruns.
+ */
+const ARTIFACT_OVERWRITE_DECLARATION = 'overwrite: true';
+/**
+ * Workflow step marker used to isolate one GitHub Actions step block.
+ */
+const GITHUB_WORKFLOW_STEP_PREFIX = '- name:';
+/**
+ * GitHub Action used for shared CI artifact uploads.
+ */
+const GITHUB_UPLOAD_ARTIFACT_ACTION = 'uses: actions/upload-artifact@';
 
 export async function collectInstructionErrors({
   rootDirectory = defaultRootDirectory,
@@ -365,6 +394,7 @@ export async function collectInstructionErrors({
   }
 
   validatePlatformScope(fileContents, errors);
+  await validateCiArtifactRerunSafety(rootDirectory, errors);
   await validateOpenClawToolDocumentation(rootDirectory, errors);
 
   return errors;
@@ -463,6 +493,106 @@ function validateRequiredText({
     for (const requiredText of rule.requiredText) {
       if (!content.includes(requiredText)) {
         errors.push(`${rule.path} is missing required text '${requiredText}'.`);
+      }
+    }
+  }
+}
+
+/**
+ * Splits a workflow into step-sized blocks without depending on key ordering.
+ */
+function collectWorkflowStepBlocks(workflowContent) {
+  const blocks = [];
+  let currentBlock = [];
+
+  for (const line of workflowContent.split('\n')) {
+    if (
+      line.trimStart().startsWith(GITHUB_WORKFLOW_STEP_PREFIX) &&
+      currentBlock.length > 0
+    ) {
+      blocks.push(currentBlock);
+      currentBlock = [];
+    }
+
+    currentBlock.push(line);
+  }
+
+  if (currentBlock.length > 0) {
+    blocks.push(currentBlock);
+  }
+
+  return blocks;
+}
+
+/**
+ * Checks whether a workflow step uses the GitHub upload-artifact action.
+ */
+function isUploadArtifactStep(block) {
+  return block.some((line) =>
+    line.trimStart().startsWith(GITHUB_UPLOAD_ARTIFACT_ACTION),
+  );
+}
+
+/**
+ * Checks whether a workflow step declares a specific artifact name.
+ */
+function hasArtifactName(block, artifactNameLine) {
+  return block.some((line) => line.trim() === artifactNameLine);
+}
+
+/**
+ * Finds the artifact name line for a shared CI artifact prefix.
+ */
+function findSharedArtifactNameLine(block, artifactPrefix) {
+  return block
+    .map((line) => line.trim())
+    .find((line) => line.startsWith(`name: ${artifactPrefix}-`));
+}
+
+/**
+ * Checks whether a workflow step can overwrite a stable artifact on rerun.
+ */
+function hasArtifactOverwrite(block) {
+  return block.some((line) => line.trim() === ARTIFACT_OVERWRITE_DECLARATION);
+}
+
+/**
+ * Prevents rerun-only CI failures from losing shared artifacts across attempts.
+ */
+async function validateCiArtifactRerunSafety(rootDirectory, errors) {
+  const ciWorkflowPath = resolve(rootDirectory, CI_WORKFLOW_PATH);
+  if (!(await pathExists(ciWorkflowPath))) {
+    return;
+  }
+  const ciWorkflow = await readFile(ciWorkflowPath, 'utf8');
+  const workflowStepBlocks = collectWorkflowStepBlocks(ciWorkflow);
+
+  for (const artifactPrefix of RERUN_STABLE_CI_ARTIFACT_PREFIXES) {
+    const artifactNameLine = `name: ${artifactPrefix}-\${{ github.run_id }}`;
+
+    for (const workflowStepBlock of workflowStepBlocks) {
+      const sharedArtifactNameLine = findSharedArtifactNameLine(
+        workflowStepBlock,
+        artifactPrefix,
+      );
+      if (
+        isUploadArtifactStep(workflowStepBlock) &&
+        sharedArtifactNameLine !== undefined &&
+        sharedArtifactNameLine.includes(GITHUB_RUN_ATTEMPT_EXPRESSION)
+      ) {
+        errors.push(
+          `${CI_WORKFLOW_PATH} shared CI artifact names must not include ${GITHUB_RUN_ATTEMPT_EXPRESSION}; failed-job reruns need stable ${artifactPrefix} artifact handoffs.`,
+        );
+      }
+
+      if (
+        isUploadArtifactStep(workflowStepBlock) &&
+        hasArtifactName(workflowStepBlock, artifactNameLine) &&
+        !hasArtifactOverwrite(workflowStepBlock)
+      ) {
+        errors.push(
+          `${CI_WORKFLOW_PATH} shared CI artifact '${artifactPrefix}' must declare ${ARTIFACT_OVERWRITE_DECLARATION} so full workflow reruns can replace stale artifacts.`,
+        );
       }
     }
   }

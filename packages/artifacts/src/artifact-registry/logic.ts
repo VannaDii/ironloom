@@ -1,6 +1,7 @@
 import {
   ARTIFACT_TYPE_APPROVAL_RECORD,
   ARTIFACT_TYPE_AUDIT_LOG,
+  ARTIFACT_TYPE_DISCORD_THREAD_SESSION,
   ARTIFACT_TYPE_GATE_RUN_REPORT,
   ARTIFACT_TYPE_MERGE_DECISION,
   ARTIFACT_TYPE_PULL_REQUEST_RECORD,
@@ -62,6 +63,17 @@ function createDefaultLifecycleArtifactEntries(): ArtifactRegistryEntry[] {
       migrationPolicy: 'none',
       updatedAt: DEFAULT_ARTIFACT_REGISTRY_UPDATED_AT,
       description: 'Lifecycle-changing action trace with actor and reason.',
+    },
+    {
+      artifactType: ARTIFACT_TYPE_DISCORD_THREAD_SESSION,
+      currentVersion: 1,
+      schemaName: 'discord-thread-session.schema.json',
+      ownerPackage: '@vannadii/devplat-discord',
+      storageScope: STORE_SCOPE_ARTIFACTS,
+      migrationPolicy: 'optional',
+      updatedAt: DEFAULT_ARTIFACT_REGISTRY_UPDATED_AT,
+      description:
+        'Discord thread binding state used to revalidate operator controls.',
     },
     {
       artifactType: ARTIFACT_TYPE_GATE_RUN_REPORT,
@@ -280,6 +292,65 @@ function compareArtifactMigrationRecords(
 }
 
 /**
+ * Sorts migration candidates by target version and identifier for stable paths.
+ */
+function compareArtifactMigrationCandidates(
+  left: ArtifactMigrationRecord,
+  right: ArtifactMigrationRecord,
+): number {
+  const versionComparison = left.toVersion - right.toVersion;
+  if (versionComparison !== 0) {
+    return versionComparison;
+  }
+
+  return left.migrationId.localeCompare(right.migrationId);
+}
+
+/**
+ * Recursively searches for a complete forward migration path.
+ */
+function searchArtifactMigrationPath(
+  migrations: readonly ArtifactMigrationRecord[],
+  artifactType: ArtifactRegistryEntry['artifactType'],
+  currentVersion: number,
+  targetVersion: number,
+  visitedVersions: ReadonlySet<number>,
+): ArtifactMigrationRecord[] {
+  if (currentVersion === targetVersion) {
+    return [];
+  }
+
+  const candidates = migrations
+    .filter(
+      (migration) =>
+        migration.artifactType === artifactType &&
+        migration.fromVersion === currentVersion &&
+        migration.toVersion > currentVersion &&
+        migration.toVersion <= targetVersion &&
+        !visitedVersions.has(migration.toVersion),
+    )
+    .sort(compareArtifactMigrationCandidates);
+
+  for (const candidate of candidates) {
+    const nextVisitedVersions = new Set(visitedVersions);
+    nextVisitedVersions.add(candidate.toVersion);
+    const remainder = searchArtifactMigrationPath(
+      migrations,
+      artifactType,
+      candidate.toVersion,
+      targetVersion,
+      nextVisitedVersions,
+    );
+
+    if (candidate.toVersion === targetVersion || remainder.length > 0) {
+      return [candidate, ...remainder];
+    }
+  }
+
+  return [];
+}
+
+/**
  * Deduplicates entries, keeping the latest version for each artifact type.
  */
 function normalizeEntries(
@@ -360,6 +431,30 @@ export function recordArtifactMigration(
     migrations: [...registry.migrations, migration],
     updatedAt: normalizeText(migration.migratedAt),
   });
+}
+
+/**
+ * Finds an ordered migration path between artifact versions.
+ */
+export function findArtifactMigrationPath(
+  registry: ArtifactRegistry,
+  artifactType: ArtifactRegistryEntry['artifactType'],
+  fromVersion: number,
+  toVersion: number,
+): ArtifactMigrationRecord[] {
+  const sourceVersion = normalizePositiveInteger(fromVersion);
+  const targetVersion = normalizePositiveInteger(toVersion);
+  if (sourceVersion >= targetVersion) {
+    return [];
+  }
+
+  return searchArtifactMigrationPath(
+    normalizeMigrations(registry.migrations),
+    artifactType,
+    sourceVersion,
+    targetVersion,
+    new Set([sourceVersion]),
+  );
 }
 
 /**

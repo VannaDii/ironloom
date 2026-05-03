@@ -3,6 +3,10 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import {
+  createArtifactRegistry,
+  createDefaultArtifactRegistry,
+} from '@vannadii/devplat-artifacts';
 import { FileStoreService } from '@vannadii/devplat-storage';
 
 import {
@@ -3305,92 +3309,294 @@ describe('tool surface service', () => {
     expect(result.details).toMatchObject({ status: 'failed' });
   });
 
-  it('rejects missing artifact payloads', async () => {
-    const result = await createValidateArtifactTool().execute(
-      'tool-call-9',
-      {},
-    );
+  describe('validate_artifact tool', () => {
+    type ValidateArtifactToolCase = {
+      name: string;
+      inputs: {
+        params: unknown;
+        toolCallId: string;
+      };
+      mock: () => {
+        tool: ReturnType<typeof createValidateArtifactTool>;
+      };
+      assert: (
+        context: { tool: ReturnType<typeof createValidateArtifactTool> },
+        inputs: { params: unknown; toolCallId: string },
+      ) => Promise<void>;
+    };
 
-    expect(result.details).toMatchObject({ status: 'failed' });
-  });
-
-  it('rejects invalid artifact envelopes', async () => {
-    const result = await createValidateArtifactTool().execute('tool-call-10', {
-      artifact: {},
+    const defaultRegistry = createDefaultArtifactRegistry('repo-main');
+    const registryWithoutReviewFinding = createArtifactRegistry({
+      ...defaultRegistry,
+      entries: defaultRegistry.entries.filter(
+        (entry) => entry.artifactType !== 'review-finding',
+      ),
     });
 
-    expect(result.details).toMatchObject({ status: 'failed' });
-  });
+    const cases = [
+      {
+        name: 'rejects missing artifact payloads',
+        inputs: {
+          toolCallId: 'tool-call-9',
+          params: {},
+        },
+        mock: () => ({
+          tool: createValidateArtifactTool(),
+        }),
+        assert: async (context, inputs) => {
+          const result = await context.tool.execute(
+            inputs.toolCallId,
+            inputs.params,
+          );
 
-  it('validates well-formed artifact envelopes', async () => {
-    const result = await createValidateArtifactTool().execute('tool-call-11', {
-      artifact: {
-        id: 'artifact-1',
-        artifactType: 'review-finding',
-        version: 1,
-        summary: 'artifact',
-        status: 'approved',
-        trace: [],
-        updatedAt: '2026-04-04T00:00:00.000Z',
-        payload: {
-          findingId: 'finding-1',
+          expect(result.details).toMatchObject({ status: 'failed' });
         },
       },
-    });
+      {
+        name: 'rejects invalid artifact envelopes',
+        inputs: {
+          toolCallId: 'tool-call-10',
+          params: {
+            artifact: {},
+          },
+        },
+        mock: () => ({
+          tool: createValidateArtifactTool(),
+        }),
+        assert: async (context, inputs) => {
+          const result = await context.tool.execute(
+            inputs.toolCallId,
+            inputs.params,
+          );
 
-    expect(result.details).toMatchObject({ artifactType: 'review-finding' });
-  });
-
-  it('validates and normalizes known artifact contracts', async () => {
-    const result = await createValidateArtifactTool().execute('tool-call-11b', {
-      artifact: {
-        id: 'artifact-approval-1',
-        artifactType: 'approval-record',
-        version: 1,
-        summary: ' Approve slice ',
-        status: 'approved',
-        trace: [],
-        updatedAt: '2026-04-04T00:00:00.000Z',
-        payload: {
-          approvalId: ' approval-1 ',
-          subjectType: 'slice',
-          subjectId: ' slice-1 ',
-          actorId: ' operator-1 ',
-          decision: 'approved',
-          rationale: ' Ready to proceed ',
+          expect(result.details).toMatchObject({ status: 'failed' });
         },
       },
-    });
+      {
+        name: 'validates well-formed artifact envelopes',
+        inputs: {
+          toolCallId: 'tool-call-11',
+          params: {
+            artifact: {
+              id: 'artifact-1',
+              artifactType: 'review-finding',
+              version: 1,
+              summary: 'artifact',
+              status: 'approved',
+              trace: [],
+              updatedAt: '2026-04-04T00:00:00.000Z',
+              payload: {
+                findingId: 'finding-1',
+              },
+            },
+          },
+        },
+        mock: () => ({
+          tool: createValidateArtifactTool(),
+        }),
+        assert: async (context, inputs) => {
+          const result = await context.tool.execute(
+            inputs.toolCallId,
+            inputs.params,
+          );
 
-    expect(result.details).toMatchObject({
-      artifactType: 'approval-record',
-      summary: 'Approve slice',
-      payload: {
-        approvalId: 'approval-1',
-        subjectId: 'slice-1',
-        actorId: 'operator-1',
-        rationale: 'Ready to proceed',
-      },
-    });
-  });
-
-  it('rejects malformed known artifact contracts', async () => {
-    const result = await createValidateArtifactTool().execute('tool-call-11c', {
-      artifact: {
-        id: 'artifact-approval-2',
-        artifactType: 'approval-record',
-        version: 1,
-        summary: 'Approve slice',
-        status: 'approved',
-        trace: [],
-        updatedAt: '2026-04-04T00:00:00.000Z',
-        payload: {
-          approvalId: 'approval-2',
+          expect(result.details).toMatchObject({
+            artifactType: 'review-finding',
+          });
         },
       },
-    });
+      {
+        name: 'validates and normalizes known artifact contracts',
+        inputs: {
+          toolCallId: 'tool-call-11b',
+          params: {
+            artifact: {
+              id: 'artifact-approval-1',
+              artifactType: 'approval-record',
+              version: 1,
+              summary: ' Approve slice ',
+              status: 'approved',
+              trace: [],
+              updatedAt: '2026-04-04T00:00:00.000Z',
+              payload: {
+                approvalId: ' approval-1 ',
+                subjectType: 'slice',
+                subjectId: ' slice-1 ',
+                actorId: ' operator-1 ',
+                decision: 'approved',
+                rationale: ' Ready to proceed ',
+              },
+            },
+          },
+        },
+        mock: () => ({
+          tool: createValidateArtifactTool(),
+        }),
+        assert: async (context, inputs) => {
+          const result = await context.tool.execute(
+            inputs.toolCallId,
+            inputs.params,
+          );
 
-    expect(result.details).toMatchObject({ status: 'failed' });
+          expect(result.details).toMatchObject({
+            artifactType: 'approval-record',
+            summary: 'Approve slice',
+            payload: {
+              approvalId: 'approval-1',
+              subjectId: 'slice-1',
+              actorId: 'operator-1',
+              rationale: 'Ready to proceed',
+            },
+          });
+        },
+      },
+      {
+        name: 'rejects malformed known artifact contracts',
+        inputs: {
+          toolCallId: 'tool-call-11c',
+          params: {
+            artifact: {
+              id: 'artifact-approval-2',
+              artifactType: 'approval-record',
+              version: 1,
+              summary: 'Approve slice',
+              status: 'approved',
+              trace: [],
+              updatedAt: '2026-04-04T00:00:00.000Z',
+              payload: {
+                approvalId: 'approval-2',
+              },
+            },
+          },
+        },
+        mock: () => ({
+          tool: createValidateArtifactTool(),
+        }),
+        assert: async (context, inputs) => {
+          const result = await context.tool.execute(
+            inputs.toolCallId,
+            inputs.params,
+          );
+
+          expect(result.details).toMatchObject({ status: 'failed' });
+        },
+      },
+      {
+        name: 'applies active artifact registry constraints',
+        inputs: {
+          toolCallId: 'tool-call-11d',
+          params: {
+            artifact: {
+              id: 'artifact-review-1',
+              artifactType: 'review-finding',
+              version: 1,
+              summary: 'artifact',
+              status: 'approved',
+              trace: [],
+              updatedAt: '2026-04-04T00:00:00.000Z',
+              payload: {
+                findingId: 'finding-1',
+              },
+            },
+            registry: registryWithoutReviewFinding,
+          },
+        },
+        mock: () => ({
+          tool: createValidateArtifactTool(),
+        }),
+        assert: async (context, inputs) => {
+          const result = await context.tool.execute(
+            inputs.toolCallId,
+            inputs.params,
+          );
+
+          expect(result.details).toMatchObject({
+            status: 'failed',
+            error:
+              'Artifact type review-finding is not registered for this repository.',
+          });
+        },
+      },
+      {
+        name: 'returns migration path diagnostics for required artifact upgrades',
+        inputs: {
+          toolCallId: 'tool-call-11e',
+          params: {
+            artifact: {
+              id: 'artifact-review-2',
+              artifactType: 'review-finding',
+              version: 1,
+              summary: 'artifact',
+              status: 'approved',
+              trace: [],
+              updatedAt: '2026-04-04T00:00:00.000Z',
+              payload: {
+                findingId: 'finding-2',
+              },
+            },
+            registry: createArtifactRegistry({
+              ...defaultRegistry,
+              entries: defaultRegistry.entries.map((entry) =>
+                entry.artifactType === 'review-finding'
+                  ? {
+                      ...entry,
+                      currentVersion: 3,
+                      migrationPolicy: 'required',
+                    }
+                  : entry,
+              ),
+              migrations: [
+                {
+                  migrationId: 'review-finding-1-to-2',
+                  artifactType: 'review-finding',
+                  fromVersion: 1,
+                  toVersion: 2,
+                  summary: 'Migrate review findings to v2 evidence.',
+                  migratedAt: '2026-04-30T00:00:00.000Z',
+                },
+                {
+                  migrationId: 'review-finding-2-to-3',
+                  artifactType: 'review-finding',
+                  fromVersion: 2,
+                  toVersion: 3,
+                  summary: 'Migrate review findings to v3 verdicts.',
+                  migratedAt: '2026-04-30T00:01:00.000Z',
+                },
+              ],
+            }),
+          },
+        },
+        mock: () => ({
+          tool: createValidateArtifactTool(),
+        }),
+        assert: async (context, inputs) => {
+          const result = await context.tool.execute(
+            inputs.toolCallId,
+            inputs.params,
+          );
+
+          expect(result.details).toMatchObject({
+            status: 'failed',
+            error:
+              'Artifact review-finding@v1 requires migration review-finding-1-to-2 -> review-finding-2-to-3 to v3 before validation.',
+            diagnostic: {
+              details: {
+                migrationIds: [
+                  'review-finding-1-to-2',
+                  'review-finding-2-to-3',
+                ],
+              },
+            },
+          });
+        },
+      },
+    ] satisfies ValidateArtifactToolCase[];
+
+    it.each(cases)('$name', async (testCase) => {
+      const context = testCase.mock();
+
+      await testCase.assert(context, testCase.inputs);
+    });
   });
 
   it('runs supervisor steps from valid tool input', async () => {

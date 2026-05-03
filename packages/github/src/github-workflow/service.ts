@@ -3,6 +3,9 @@ import { DecisionPolicyService } from '@vannadii/devplat-policy';
 
 import {
   GITHUB_DEFAULT_API_BASE_URL,
+  GITHUB_DRY_RUN_STATUS_CODE,
+  GITHUB_HTTP_SUCCESS_MAX_EXCLUSIVE_STATUS_CODE,
+  GITHUB_HTTP_SUCCESS_MIN_STATUS_CODE,
   GITHUB_REST_API_VERSION,
   GITHUB_SUBMISSION_MODE_DRY_RUN,
   GITHUB_SUBMISSION_MODE_LIVE,
@@ -27,6 +30,17 @@ import type {
   GitHubSubmissionMode,
   GitHubSubmissionReceipt,
 } from './codec.js';
+
+/**
+ * Returns whether a receipt represents a submitted or intentionally simulated request.
+ */
+function isSubmittedGitHubReceipt(receipt: GitHubSubmissionReceipt): boolean {
+  return (
+    receipt.statusCode === GITHUB_DRY_RUN_STATUS_CODE ||
+    (receipt.statusCode >= GITHUB_HTTP_SUCCESS_MIN_STATUS_CODE &&
+      receipt.statusCode < GITHUB_HTTP_SUCCESS_MAX_EXCLUSIVE_STATUS_CODE)
+  );
+}
 
 /**
  * Transport boundary for GitHub REST submissions.
@@ -188,7 +202,7 @@ export class GitHubWorkflowService {
       request,
       allowed: decision.allowed,
       policyDecisionId: decision.id,
-      submitted: true,
+      submitted: isSubmittedGitHubReceipt(receipt),
       receipt,
     };
   }

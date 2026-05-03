@@ -32,13 +32,17 @@
   as thread messages
 - acknowledge valid slash commands and button interactions before persistence and
   audit writes, then persist the control result and post the bound-thread status
-  message so live controls stay inside Discord's prompt response window
+  message before completing the deferred interaction with a minimal ephemeral
+  follow-up, so live controls stay inside Discord's prompt response window
+  without duplicating the full button-bearing payload
 - fail closed with `responsePostError` and audit logging when Discord rejects
   the initial acknowledgement response, the acknowledgement transport throws, or
   a route-refusal acknowledgement is rejected, without writing lifecycle state
 - preserve the acknowledgement receipt and durable control result with a
   `threadPostError` diagnostic when the post-acknowledgement thread status
   message cannot be delivered or returns a non-2xx Discord receipt
+- preserve deferred-completion failures as `completionPostError` diagnostics
+  when Discord rejects the minimal follow-up that clears the interaction state
 - persist one Discord route trace marker for interaction-originated actions by
   normalizing each routed interaction request once
 

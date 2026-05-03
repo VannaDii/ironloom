@@ -15,10 +15,12 @@ CI.
 - requires the initial project-management bootstrap status message to post
   successfully before any sandbox repository mutation
 - registers Discord command contracts, normalizes a Discord callback-shaped
-  slash command payload, and posts the interaction acknowledgement plus
-  bound-thread status through the same response transport used by the runtime;
-  the run fails if the interaction resolves to the wrong thread or does not
-  record both callback and thread message receipts with actionable component ids
+  slash command payload, records a local simulated deferred acknowledgement,
+  posts the bound-thread status through the same response transport used by the
+  runtime, completes the deferred interaction, and routes one simulated button
+  callback through the same bound thread; the run fails if the interaction
+  resolves to the wrong thread or does not record callback, thread message,
+  deferred-completion, and actionable component id receipts
 - waits for SonarQube Cloud to auto-import the repository
 - runs the OpenClaw live deep test against the real container with network
   access enabled
@@ -77,7 +79,10 @@ uploads it as a workflow artifact.
 
 The workflow builds the workspace before running the live lab so the networked
 runner can load the same package services that production uses for Discord
-interaction routing.
+interaction routing. Plain Node live-lab runs require those compiled
+`dist/index.js` package entrypoints; if they are missing, the runner fails fast
+with a `npm run build:workspace` instruction instead of attempting to import
+TypeScript source files without a loader.
 
 The live-lab runner passes the repository-scoped runtime environment into the
 OpenClaw container as named Docker environment variables. Secret values are not
@@ -88,6 +93,13 @@ Live-mode containers also set `DISCORD_GATEWAY_ENABLED=true` and
 worker starts beside the OpenClaw gateway and resolves button or slash-command
 clicks against the same persisted thread-session state written by platform
 tools.
+Before host-side cleanup hooks write additional live-lab session records into
+that mounted store, the deep-test runner asks the still-running container to
+make `/app/.devplat` content owned and writable by the host runner only. That
+avoids container UID ownership causing permission failures during the
+manual-operator hold window without making local state world-writable. If this
+auxiliary normalization fails, the report records a warning and cleanup still
+runs.
 
 The matching local invocation is:
 
@@ -98,7 +110,8 @@ npm run test:openclaw:live-lab:local -- --ref main
 
 The local command uses `.env` and the same GitHub App bootstrap path as the
 workflow. Build first so the Discord interaction probe can load the package
-services from `dist`.
+services from `dist`. Source package entrypoints are only used by preflight
+tests or explicit TypeScript-loader execution.
 
 ## Discord Reporting Layout
 
@@ -146,24 +159,38 @@ The live lab also registers the exported Discord operator command contracts into
 the sandbox guild. After registration, it runs a Discord interaction probe. The
 probe simulates the operator `/retry-gates` path, routes it through the Discord
 control-plane service, renders the compact operator message payload with
-contextual buttons, posts the interaction acknowledgement into the audit channel
-and bound-thread status into the implementation channel with those contextual
-buttons intact, and records the command registration, response receipt endpoints,
-Discord message ids, posted content, and component custom ids in
+contextual buttons, records a local simulated deferred acknowledgement, posts the
+bound-thread status into a short-lived implementation thread created under the
+standard `implementation` channel with those contextual buttons intact, records a
+minimal simulated deferred-completion receipt, then routes one returned button
+`custom_id` as a second callback-shaped interaction. It records the command
+registration, response receipt endpoints, Discord message ids, posted content,
+component custom ids, completion receipts, and button callback receipts in
 `live-lab-report.json`. The probe runs before the deep-test runtime is cleaned up
 so the private Gateway worker is still alive when the control message is posted.
+It also writes the same bound implementation thread session into the deep-test
+runtime state directory before posting the button-bearing message, allowing
+manual clicks during the hold window to revalidate against the same persisted
+binding and thread id used by the private Gateway worker. The runner normalizes
+the mounted state directory immediately before that host-side write, so
+container-created state remains auditable and writable by the
+workflow process while retaining owner-only permissions. If the normalization
+step fails, `live-lab-report.json` includes a warning and the cleanup hook still
+runs.
 The `operator_hold_ms` input keeps that runtime open for 150000 ms by default
 after the control message is visible, giving an operator a bounded manual-click
-window. The probe fails if either control-plane response loses the button rows,
-so the live-lab lane cannot silently regress to plain log-style messages. Only unbound
-bootstrap/progress status messages stay noninteractive to avoid stale clickable
-buttons after cleanup.
+window. The probe fails if the thread control-plane response loses the button
+rows, so the live-lab lane cannot silently regress to plain log-style messages.
+Only unbound bootstrap/progress status messages stay noninteractive to avoid
+stale clickable buttons after cleanup.
 
 Discord does not provide a supported bot API for clicking buttons as a human
 operator. The automated live lab therefore validates the production registration,
-normalization, routing, transport, and structured-message path with a
-callback-shaped payload. Human-triggered slash/button clicks in the sandbox guild
-remain a manual operator acceptance check.
+normalization, routing, thread posting, and structured-message path with a
+callback-shaped payload. Simulated acknowledgements remain local receipts because
+there is no real Discord interaction token to acknowledge; human-triggered
+slash/button clicks in the sandbox guild use the private Gateway worker and real
+Discord deferred-response and completion-follow-up path during the hold window.
 
 The Discord package also exposes a private outbound Gateway runtime for
 production mounts. That runtime identifies with Discord Gateway, heartbeats,

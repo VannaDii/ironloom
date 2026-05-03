@@ -42,6 +42,21 @@ export const GITHUB_DEFAULT_API_BASE_URL = 'https://api.github.com';
 export const GITHUB_REST_API_VERSION = '2022-11-28';
 
 /**
+ * Dry-run receipts use status zero because no HTTP exchange occurred.
+ */
+export const GITHUB_DRY_RUN_STATUS_CODE = 0;
+
+/**
+ * Inclusive lower bound for successful GitHub REST status codes.
+ */
+export const GITHUB_HTTP_SUCCESS_MIN_STATUS_CODE = 200;
+
+/**
+ * Exclusive upper bound for successful GitHub REST status codes.
+ */
+export const GITHUB_HTTP_SUCCESS_MAX_EXCLUSIVE_STATUS_CODE = 300;
+
+/**
  * Default actor used when the GitHub workflow service records telemetry.
  */
 export const GITHUB_WORKFLOW_DEFAULT_ACTOR_ID = 'github-service';

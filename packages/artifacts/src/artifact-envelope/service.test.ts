@@ -9,7 +9,7 @@ describe('ArtifactEnvelopeService', () => {
       inputs: {
         envelope: {
           id: 'artifact-001',
-          artifactType: 'review-findings',
+          artifactType: 'review-finding',
           version: 1,
           summary: 'review complete',
           status: 'complete',
@@ -27,8 +27,8 @@ describe('ArtifactEnvelopeService', () => {
       ) => {
         const envelope = service.execute(inputs.envelope);
 
-        expect(envelope.trace).toContain('artifact:review-findings');
-        expect(service.explain(envelope)).toContain('review-findings');
+        expect(envelope.trace).toContain('artifact:review-finding');
+        expect(service.explain(envelope)).toContain('review-finding');
       },
     },
   ];

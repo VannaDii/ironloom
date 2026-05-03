@@ -3,6 +3,8 @@ import * as t from 'io-ts';
 import {
   IsoTimestampCodec,
   LifecycleStatusCodec,
+  SupportedArtifactTypeCodec,
+  type SupportedArtifactType,
 } from '@vannadii/devplat-core';
 
 import {
@@ -16,7 +18,7 @@ import {
 export const ArtifactEnvelopeCodec = t.intersection([
   t.type({
     id: t.string,
-    artifactType: t.string,
+    artifactType: SupportedArtifactTypeCodec,
     version: t.literal(ARTIFACT_ENVELOPE_VERSION),
     summary: t.string,
     status: LifecycleStatusCodec,
@@ -47,7 +49,7 @@ type ArtifactEnvelopeBase = t.TypeOf<typeof ArtifactEnvelopeCodec>;
  */
 export type ArtifactEnvelope<
   TPayload extends object = Record<string, unknown>,
-  TArtifactType extends string = string,
+  TArtifactType extends SupportedArtifactType = SupportedArtifactType,
 > = Omit<ArtifactEnvelopeBase, 'artifactType' | 'payload'> & {
   artifactType: TArtifactType;
   payload: TPayload;

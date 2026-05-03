@@ -101,6 +101,11 @@ describe('discord control request codec', () => {
             threadPayload: {
               content: 'thread update',
             },
+            completionReceipt: {
+              endpoint: '/webhooks/application/token',
+              statusCode: 200,
+              responseBody: { ok: true },
+            },
             threadPostError: 'thread message rejected',
           },
           {

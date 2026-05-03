@@ -99,6 +99,11 @@ export const ARTIFACT_TYPE_APPROVAL_RECORD = 'approval-record';
 export const ARTIFACT_TYPE_AUDIT_LOG = 'audit-log';
 
 /**
+ * Lifecycle artifact type for Discord thread-session bindings.
+ */
+export const ARTIFACT_TYPE_DISCORD_THREAD_SESSION = 'discord-thread-session';
+
+/**
  * Lifecycle artifact type for gate run reports.
  */
 export const ARTIFACT_TYPE_GATE_RUN_REPORT = 'gate-run-report';

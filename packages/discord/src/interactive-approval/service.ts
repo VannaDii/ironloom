@@ -1,4 +1,5 @@
-import { ArtifactEnvelopeService } from '@vannadii/devplat-artifacts';
+import { ApprovalRecordArtifactService } from '@vannadii/devplat-artifacts';
+import { ARTIFACT_TYPE_APPROVAL_RECORD } from '@vannadii/devplat-core';
 import { TelemetryEventService } from '@vannadii/devplat-observability';
 import { DecisionPolicyService } from '@vannadii/devplat-policy';
 import { FileStoreService } from '@vannadii/devplat-storage';
@@ -6,6 +7,8 @@ import { FileStoreService } from '@vannadii/devplat-storage';
 import {
   createDiscordApprovalRequest,
   describeDiscordApprovalRequest,
+  mapAllowedPolicyToApprovalDecision,
+  mapApprovalActionToSubjectType,
   mapApprovalActionToPolicyAction,
 } from './logic.js';
 import type { DiscordApprovalRequest, DiscordApprovalResult } from './codec.js';
@@ -13,7 +16,7 @@ import type { DiscordApprovalRequest, DiscordApprovalResult } from './codec.js';
 export class DiscordInteractiveApprovalService {
   public constructor(
     private readonly policy = new DecisionPolicyService(),
-    private readonly artifacts = new ArtifactEnvelopeService(),
+    private readonly artifacts = new ApprovalRecordArtifactService(),
     private readonly telemetry = new TelemetryEventService(),
     private readonly store = new FileStoreService(),
   ) {}
@@ -37,20 +40,19 @@ export class DiscordInteractiveApprovalService {
     );
     const artifact = this.artifacts.execute({
       id: `${request.id}:artifact`,
-      artifactType: 'discord-approval',
+      artifactType: ARTIFACT_TYPE_APPROVAL_RECORD,
       version: 1,
       summary: request.summary,
       status: decision.allowed ? 'approved' : 'review',
       trace: [...request.trace, ...decision.trace],
       updatedAt: request.updatedAt,
       payload: {
-        threadId: request.threadId,
-        channelId: request.channelId,
-        action: request.action,
         actorId: request.actorId,
-        requestedArtifactId: request.artifactId,
-        policyDecisionId: decision.id,
-        allowed: decision.allowed,
+        approvalId: request.id,
+        decision: mapAllowedPolicyToApprovalDecision(decision.allowed),
+        rationale: decision.auditReason ?? decision.reason,
+        subjectId: request.artifactId,
+        subjectType: mapApprovalActionToSubjectType(request.action),
       },
     });
 

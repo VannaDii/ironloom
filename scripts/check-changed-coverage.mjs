@@ -7,6 +7,62 @@ import { fileURLToPath } from 'node:url';
 const execFileAsync = promisify(execFile);
 const defaultRootDirectory = resolve(import.meta.dirname, '..');
 
+/**
+ * Maximum attempts to read the LCOV report after Vitest exits.
+ */
+const coverageReportReadAttempts = 20;
+
+/**
+ * Delay between LCOV report read attempts in milliseconds.
+ */
+const coverageReportReadDelayMs = 25;
+
+/**
+ * Waits before retrying generated coverage report reads.
+ */
+function waitForCoverageReport() {
+  return new Promise((resolvePromise) => {
+    setTimeout(resolvePromise, coverageReportReadDelayMs);
+  });
+}
+
+/**
+ * Returns true when a filesystem error means the coverage report is not ready.
+ */
+function isCoverageReportMissing(error) {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === 'ENOENT'
+  );
+}
+
+/**
+ * Reads the generated LCOV report from a repository root.
+ */
+export async function readCoverageText(rootDirectory) {
+  const coveragePath = resolve(rootDirectory, 'coverage/lcov.info');
+  let lastMissingError;
+
+  for (let attempt = 1; attempt <= coverageReportReadAttempts; attempt += 1) {
+    try {
+      return await readFile(coveragePath, 'utf8');
+    } catch (error) {
+      if (!isCoverageReportMissing(error)) {
+        throw error;
+      }
+
+      lastMissingError = error;
+      if (attempt < coverageReportReadAttempts) {
+        await waitForCoverageReport();
+      }
+    }
+  }
+
+  throw lastMissingError;
+}
+
 export async function collectChangedCoverageErrors({
   rootDirectory = defaultRootDirectory,
   changedFiles,
@@ -23,8 +79,7 @@ export async function collectChangedCoverageErrors({
   }
 
   const resolvedCoverageText =
-    coverageText ??
-    (await readFile(resolve(rootDirectory, 'coverage/lcov.info'), 'utf8'));
+    coverageText ?? (await readCoverageText(rootDirectory));
   const coverageRecords = normalizeCoverageRecords({
     rootDirectory,
     records: parseLcovCoverage(resolvedCoverageText),

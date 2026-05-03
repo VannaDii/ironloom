@@ -22,6 +22,54 @@ const snapshotKeyIgnoredCharacterPattern = /[^a-z0-9]/giu;
  * Worktree root used by the hermetic scenario and mirrored into the runtime.
  */
 const defaultWorktreeRoot = 'devplat-state/worktrees';
+/**
+ * Runtime path where the host-backed DevPlat state store is mounted.
+ */
+const containerDevplatStateDirectory = '/app/.devplat';
+/**
+ * Permission mode that lets the host runner write files after container-owned state writes.
+ */
+const hostWritablePermissionMode = 'u+rwX,go-rwx';
+/**
+ * Warning message used when POSIX host identity helpers are not available.
+ */
+const hostRunnerIdentityUnavailableMessage =
+  'Host uid/gid helpers are unavailable on this Node runtime.';
+/**
+ * Container user used only for bind-mount ownership normalization.
+ */
+const containerPermissionRepairUser = 'root';
+/**
+ * Shell snippet that updates container-owned bind-mount content for host writes.
+ */
+const hostWritableMountCommand = 'chown -R "$2:$3" "$1" && chmod -R "$4" "$1"';
+/**
+ * Warning code recorded when mounted state permission normalization fails.
+ */
+const mountedStatePermissionWarningCode =
+  'mounted-state-permission-normalization-failed';
+/**
+ * Operator-facing warning when mounted state may remain container-owned.
+ */
+const mountedStatePermissionWarningMessage =
+  'Container-created .devplat entries may remain owned by the runtime user.';
+
+/**
+ * Resolves the host runner uid/gid when the Node runtime exposes POSIX helpers.
+ */
+function resolveHostRunnerIdentity(processLike = process) {
+  if (
+    typeof processLike.getuid !== 'function' ||
+    typeof processLike.getgid !== 'function'
+  ) {
+    return undefined;
+  }
+
+  return {
+    gid: String(processLike.getgid()),
+    uid: String(processLike.getuid()),
+  };
+}
 
 function parseFlagArguments(argv) {
   const args = new Map();
@@ -291,7 +339,7 @@ export function buildDockerRunArgs({
     '-e',
     'OPENCLAW_CONFIG_PATH=/state/openclaw.json',
     '-e',
-    'DEVPLAT_STORAGE_ROOT=/app/.devplat',
+    `DEVPLAT_STORAGE_ROOT=${containerDevplatStateDirectory}`,
     '-e',
     'HOME=/state/home',
     '-e',
@@ -306,7 +354,7 @@ export function buildDockerRunArgs({
     '-v',
     `${runtimeDirectory}:/state`,
     '-v',
-    `${devplatStateDirectory}:/app/.devplat`,
+    `${devplatStateDirectory}:${containerDevplatStateDirectory}`,
     '-v',
     `${bundledExtensionsDirectory}:/app/node_modules/openclaw/dist/extensions:ro`,
   ];
@@ -441,6 +489,44 @@ async function ensureWritableDirectory(directory) {
   await chmod(directory, 0o777);
 }
 
+/**
+ * Makes container-created `.devplat` bind-mount content writable from the host.
+ */
+async function ensureMountedStateWritable({ commandRunner, containerName }) {
+  const hostRunnerIdentity = resolveHostRunnerIdentity();
+  if (hostRunnerIdentity === undefined) {
+    return {
+      cause: { message: hostRunnerIdentityUnavailableMessage },
+      code: mountedStatePermissionWarningCode,
+      message: mountedStatePermissionWarningMessage,
+    };
+  }
+
+  try {
+    await commandRunner('docker', [
+      'exec',
+      '--user',
+      containerPermissionRepairUser,
+      containerName,
+      'sh',
+      '-c',
+      hostWritableMountCommand,
+      'sh',
+      containerDevplatStateDirectory,
+      hostRunnerIdentity.uid,
+      hostRunnerIdentity.gid,
+      hostWritablePermissionMode,
+    ]);
+    return undefined;
+  } catch (error) {
+    return {
+      cause: serializeError(error),
+      code: mountedStatePermissionWarningCode,
+      message: mountedStatePermissionWarningMessage,
+    };
+  }
+}
+
 async function collectStoredKeys(rootDirectory) {
   const scopes = ['artifacts', 'memory', 'state', 'telemetry'];
   const result = {};
@@ -457,6 +543,15 @@ async function collectStoredKeys(rootDirectory) {
   }
 
   return result;
+}
+
+/**
+ * Records an optional warning on a deep-test report.
+ */
+function appendDeepTestWarning(report, warning) {
+  if (warning !== undefined) {
+    report.warnings.push(warning);
+  }
 }
 
 function createBasePullRequestRecord() {
@@ -1720,6 +1815,7 @@ export async function runDeepTest(options, dependencies = {}) {
     reportDirectory,
     startedAt: new Date().toISOString(),
     steps: [],
+    warnings: [],
   };
 
   let containerStarted = false;
@@ -1800,6 +1896,11 @@ export async function runDeepTest(options, dependencies = {}) {
     report.persisted = await collectStoredKeysFn(devplatStateDirectory);
     report.completedAt = new Date().toISOString();
     validateReport(report);
+    const mountedStateWarning = await ensureMountedStateWritable({
+      commandRunner,
+      containerName,
+    });
+    appendDeepTestWarning(report, mountedStateWarning);
     await beforeCleanup({
       containerName,
       devplatStateDirectory,

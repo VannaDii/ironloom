@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import {
+  access,
   appendFile,
   mkdir,
   readdir,
@@ -30,6 +31,26 @@ const defaultSonarProjectTimeoutMs = 180_000;
 const defaultWorkflowTimeoutMs = 180_000;
 const defaultPollMs = 5_000;
 /**
+ * Compiled workspace package entrypoint used by normal live-lab execution.
+ */
+const workspacePackageDistEntrypoint = 'dist/index.js';
+/**
+ * Source workspace package entrypoint used by preflight tests before builds exist.
+ */
+const workspacePackageSourceEntrypoint = 'src/index.ts';
+/**
+ * Environment flag Vitest sets while executing source-compatible preflight tests.
+ */
+const vitestEnvironmentKey = 'VITEST';
+/**
+ * Node options environment key that can carry `--import tsx`.
+ */
+const nodeOptionsEnvironmentKey = 'NODE_OPTIONS';
+/**
+ * Loader marker that means Node can import TypeScript entrypoints directly.
+ */
+const typescriptLoaderMarker = 'tsx';
+/**
  * Default window that keeps the private runtime online after operator controls are posted.
  */
 const defaultOperatorHoldMs = 150_000;
@@ -52,6 +73,14 @@ const testDiscordCategoryName = 'test';
  */
 const discordComponentCustomIdField = 'custom_id';
 /**
+ * Discord channel type for public threads created under text channels.
+ */
+const discordPublicThreadChannelType = 11;
+/**
+ * Short Discord thread auto-archive window for sandbox live-lab controls.
+ */
+const discordLiveLabThreadAutoArchiveMinutes = 60;
+/**
  * Deep-test tools whose progress belongs in the live-lab pull-request channel.
  */
 const pullRequestProgressToolNames = new Set([
@@ -73,6 +102,74 @@ const liveLabGitHubAppPermissions = Object.freeze({
   pull_requests: 'write',
   workflows: 'write',
 });
+
+/**
+ * Returns true when the current process can import TypeScript source files.
+ */
+function canImportTypeScriptEntrypoints({ env, execArgv }) {
+  const nodeOptions = env[nodeOptionsEnvironmentKey];
+
+  return (
+    env[vitestEnvironmentKey] !== undefined ||
+    execArgv.some((value) => value.includes(typescriptLoaderMarker)) ||
+    (typeof nodeOptions === 'string' &&
+      nodeOptions.includes(typescriptLoaderMarker))
+  );
+}
+
+/**
+ * Creates the actionable build-required error for live-lab package loading.
+ */
+function createWorkspacePackageBuildRequiredError(packageName) {
+  return new Error(
+    `Workspace package ${packageName} must be built before running the live lab. Run npm run build:workspace.`,
+  );
+}
+
+/**
+ * Determines whether a filesystem access failure means the package output is missing.
+ */
+function isMissingEntrypointError(error) {
+  return error instanceof Error && error.code === 'ENOENT';
+}
+
+/**
+ * Resolves the package entrypoint available in the current execution phase.
+ */
+export async function resolveWorkspacePackageEntrypoint(
+  packageName,
+  options = {},
+) {
+  const rootDirectory = options.rootDirectory ?? repoRootDirectory;
+  const env = options.env ?? process.env;
+  const execArgv = options.execArgv ?? process.execArgv;
+  const accessFile = options.accessFile ?? access;
+  const packageDirectory = resolve(rootDirectory, 'packages', packageName);
+  const distEntrypoint = resolve(
+    packageDirectory,
+    workspacePackageDistEntrypoint,
+  );
+
+  try {
+    await accessFile(distEntrypoint);
+    return distEntrypoint;
+  } catch (error) {
+    if (!isMissingEntrypointError(error)) {
+      throw error;
+    }
+
+    if (!canImportTypeScriptEntrypoints({ env, execArgv })) {
+      throw createWorkspacePackageBuildRequiredError(packageName);
+    }
+
+    const sourceEntrypoint = resolve(
+      packageDirectory,
+      workspacePackageSourceEntrypoint,
+    );
+    await accessFile(sourceEntrypoint);
+    return sourceEntrypoint;
+  }
+}
 
 function parseFlagArguments(argv) {
   const args = new Map();
@@ -1375,17 +1472,35 @@ class LiveLabDiscordInteractionTransport {
 
   async postInteractionDeferred(input) {
     const endpoint = `/interactions/${encodeURIComponent(input.id)}/${encodeURIComponent(input.token)}/callback`;
-    const receipt = await sendDiscordMessage(
-      this.auditChannelId,
-      `simulated interaction deferred: ${input.id}`,
-      this.discordRequest,
-    );
 
     return {
-      body: receipt.body,
+      body: {
+        content: `simulated interaction deferred: ${input.id}`,
+      },
       endpoint,
-      responseBody: receipt.responseBody,
-      statusCode: 201,
+      responseBody: {
+        deferred: true,
+        interactionId: input.id,
+        mode: 'simulated',
+      },
+      statusCode: 202,
+    };
+  }
+
+  async postInteractionCompletion(input, content) {
+    const endpoint = `/webhooks/simulated-live-lab/${encodeURIComponent(input.token)}`;
+
+    return {
+      body: {
+        content: content.content,
+      },
+      endpoint,
+      responseBody: {
+        content: content.content,
+        interactionId: input.id,
+        mode: 'simulated',
+      },
+      statusCode: 202,
     };
   }
 
@@ -1410,14 +1525,10 @@ async function createDiscordControlPlaneService({
   reportDirectory,
   transport,
 }) {
-  const discordModule = await import(
-    pathToFileURL(resolve(repoRootDirectory, 'packages/discord/dist/index.js'))
-      .href
-  );
-  const storageModule = await import(
-    pathToFileURL(resolve(repoRootDirectory, 'packages/storage/dist/index.js'))
-      .href
-  );
+  const discordEntrypoint = await resolveWorkspacePackageEntrypoint('discord');
+  const storageEntrypoint = await resolveWorkspacePackageEntrypoint('storage');
+  const discordModule = await import(pathToFileURL(discordEntrypoint).href);
+  const storageModule = await import(pathToFileURL(storageEntrypoint).href);
   const store = new storageModule.FileStoreService(
     resolve(reportDirectory, 'discord-interactions'),
   );
@@ -1430,20 +1541,85 @@ async function createDiscordControlPlaneService({
   );
 }
 
-async function createDiscordApplicationCommandPayloads() {
-  const discordModule = await import(
-    pathToFileURL(resolve(repoRootDirectory, 'packages/discord/dist/index.js'))
-      .href
+/**
+ * Creates the live-lab implementation thread that owns manual operator clicks.
+ */
+async function createLiveLabImplementationThread({
+  discordChannels,
+  discordRequest,
+  runLabel,
+}) {
+  const threadName = `devplat-${sanitizeSegment(runLabel)}-implementation`;
+  const responseBody = await discordRequest(
+    `/channels/${encodeURIComponent(discordChannels.implementation.id)}/threads`,
+    {
+      body: {
+        /**
+         * Discord thread creation wire key that bounds sandbox thread lifetime.
+         */
+        auto_archive_duration: discordLiveLabThreadAutoArchiveMinutes,
+        name: threadName,
+        type: discordPublicThreadChannelType,
+      },
+      expectedStatuses: [200, 201],
+      method: 'POST',
+    },
   );
+
+  if (typeof responseBody?.id !== 'string' || responseBody.id.length === 0) {
+    throw new Error('Discord live-lab implementation thread was not created.');
+  }
+
+  return {
+    id: responseBody.id,
+    name: threadName,
+    parentChannelId: discordChannels.implementation.id,
+  };
+}
+
+async function createLiveLabFileStore(rootDirectory) {
+  const storageEntrypoint = await resolveWorkspacePackageEntrypoint('storage');
+  const storageModule = await import(pathToFileURL(storageEntrypoint).href);
+
+  return new storageModule.FileStoreService(rootDirectory);
+}
+
+export async function persistDiscordGatewayBoundSession(
+  { boundSession, reportDirectory },
+  dependencies = {},
+) {
+  const storeFactory =
+    dependencies.createFileStoreService ?? createLiveLabFileStore;
+  const store = await storeFactory(
+    resolve(reportDirectory, 'deep-test', 'devplat-state'),
+  );
+  const record = await store.store({
+    id: boundSession.id,
+    key: boundSession.id,
+    scope: 'state',
+    summary: boundSession.summary,
+    status: boundSession.status,
+    trace: boundSession.trace,
+    updatedAt: boundSession.updatedAt,
+    payload: boundSession,
+  });
+
+  return {
+    key: record.key,
+    scope: record.scope,
+  };
+}
+
+async function createDiscordApplicationCommandPayloads() {
+  const discordEntrypoint = await resolveWorkspacePackageEntrypoint('discord');
+  const discordModule = await import(pathToFileURL(discordEntrypoint).href);
 
   return discordModule.createDiscordApplicationCommandPayloads();
 }
 
 async function createDiscordOperatorInteractionFromCallback(callback, options) {
-  const discordModule = await import(
-    pathToFileURL(resolve(repoRootDirectory, 'packages/discord/dist/index.js'))
-      .href
-  );
+  const discordEntrypoint = await resolveWorkspacePackageEntrypoint('discord');
+  const discordModule = await import(pathToFileURL(discordEntrypoint).href);
 
   return discordModule.createDiscordOperatorInteractionFromCallback(
     callback,
@@ -1489,7 +1665,15 @@ export async function runDiscordInteractionProbe(
   const interactionFactory =
     dependencies.createDiscordOperatorInteractionFromCallback ??
     createDiscordOperatorInteractionFromCallback;
-  const threadId = discordChannels.implementation.id;
+  const persistGatewayBoundSession =
+    dependencies.persistDiscordGatewayBoundSession ??
+    persistDiscordGatewayBoundSession;
+  const thread = await createLiveLabImplementationThread({
+    discordChannels,
+    discordRequest,
+    runLabel,
+  });
+  const threadId = thread.id;
   const boundSession = {
     id: `live-lab-${runLabel}-session`,
     summary: 'Live-lab implementation thread',
@@ -1498,7 +1682,7 @@ export async function runDiscordInteractionProbe(
     updatedAt,
     guildId: 'live-lab-guild',
     channelId: threadId,
-    parentChannelId: discordChannels.implementation.id,
+    parentChannelId: thread.parentChannelId,
     threadId,
     kind: 'implementation',
     specId: `live-lab-${runLabel}-spec`,
@@ -1523,6 +1707,10 @@ export async function runDiscordInteractionProbe(
       },
     },
   };
+  await persistGatewayBoundSession({
+    boundSession,
+    reportDirectory,
+  });
   const interaction = await interactionFactory(callback, {
     threadId,
     boundThreadId: threadId,
@@ -1549,26 +1737,104 @@ export async function runDiscordInteractionProbe(
 
   if (
     result.responseReceipt?.endpoint === undefined ||
-    result.threadReceipt?.endpoint === undefined
+    result.threadReceipt?.endpoint === undefined ||
+    result.completionReceipt?.endpoint === undefined
   ) {
     throw new Error('Discord interaction probe did not record receipts.');
   }
 
-  if (
-    !hasDiscordActionComponents(result.responsePayload) ||
-    !hasDiscordActionComponents(result.threadPayload)
-  ) {
+  if (!hasDiscordActionComponents(result.threadPayload)) {
     throw new Error(
       'Discord interaction probe did not publish actionable controls.',
+    );
+  }
+
+  const componentCustomIds = collectDiscordComponentCustomIds(
+    result.threadPayload,
+  );
+  const [buttonCustomId] = componentCustomIds;
+  if (buttonCustomId === undefined) {
+    throw new Error(
+      'Discord interaction probe did not record actionable custom ids.',
+    );
+  }
+
+  const buttonCallback = {
+    id: `live-lab-${runLabel}-button`,
+    token: `simulated-button-token-${runLabel}`,
+    channel_id: threadId,
+    data: {
+      /**
+       * Discord interaction callback wire key returned by button interactions.
+       */
+      custom_id: buttonCustomId,
+    },
+    member: {
+      user: {
+        id: 'live-lab-operator',
+      },
+    },
+  };
+  const buttonInteraction = await interactionFactory(buttonCallback, {
+    threadId,
+    boundThreadId: threadId,
+    boundSession,
+    summary: 'Live-lab simulated button interaction',
+    privileged: false,
+    updatedAt,
+  });
+  const buttonResult = await service.handleInteraction(buttonInteraction);
+
+  if (buttonResult.allowed !== true || buttonResult.failedClosed === true) {
+    throw new Error('Discord button interaction probe failed closed.');
+  }
+
+  if (buttonResult.request.threadId !== threadId) {
+    throw new Error(
+      'Discord button interaction probe resolved the wrong thread.',
+    );
+  }
+
+  if (
+    buttonResult.responseReceipt?.endpoint === undefined ||
+    buttonResult.threadReceipt?.endpoint === undefined ||
+    buttonResult.completionReceipt?.endpoint === undefined
+  ) {
+    throw new Error(
+      'Discord button interaction probe did not record receipts.',
     );
   }
 
   return {
     action: result.request.action,
     allowed: result.allowed,
-    componentCustomIds: collectDiscordComponentCustomIds(result.threadPayload),
+    buttonAction: buttonResult.request.action,
+    buttonCustomId,
+    buttonCompletionEndpoint: buttonResult.completionReceipt.endpoint,
+    buttonCompletionMessageId: readDiscordReceiptMessageId(
+      buttonResult.completionReceipt,
+    ),
+    buttonCompletionContent: readDiscordReceiptContent(
+      buttonResult.completionReceipt,
+    ),
+    buttonInteractionEndpoint: buttonResult.responseReceipt.endpoint,
+    buttonInteractionMessageId: readDiscordReceiptMessageId(
+      buttonResult.responseReceipt,
+    ),
+    buttonResponseContent: readDiscordReceiptContent(
+      buttonResult.responseReceipt,
+    ),
+    buttonThreadContent: readDiscordReceiptContent(buttonResult.threadReceipt),
+    buttonThreadEndpoint: buttonResult.threadReceipt.endpoint,
+    buttonThreadMessageId: readDiscordReceiptMessageId(
+      buttonResult.threadReceipt,
+    ),
+    componentCustomIds,
     componentRows: result.threadPayload.components.length,
     commandName: interaction.commandName,
+    completionEndpoint: result.completionReceipt.endpoint,
+    completionMessageId: readDiscordReceiptMessageId(result.completionReceipt),
+    completionContent: readDiscordReceiptContent(result.completionReceipt),
     failedClosed: result.failedClosed,
     interactionEndpoint: result.responseReceipt.endpoint,
     interactionMessageId: readDiscordReceiptMessageId(result.responseReceipt),
