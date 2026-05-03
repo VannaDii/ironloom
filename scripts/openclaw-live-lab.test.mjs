@@ -23,6 +23,7 @@ import {
   mapProgressToChannel,
   parseLiveLabArgs,
   registerDiscordApplicationCommands,
+  resolveWorkspacePackageEntrypoint,
   resolveGitHubOwnerKind,
   runDiscordInteractionProbe,
   runLiveLab,
@@ -86,6 +87,83 @@ function createRegisterDiscordApplicationCommandsMock() {
 
 describe('openclaw-live-lab helpers', () => {
   const cases = [
+    {
+      name: 'fails fast for missing built package entrypoints under plain node',
+      inputs: {
+        env: {},
+        execArgv: [],
+        expectedMessage:
+          'Workspace package fixture must be built before running the live lab. Run npm run build:workspace.',
+        packageName: 'fixture',
+      },
+      mock: async () => {
+        const rootDirectory = await mkdtemp(
+          resolve(tmpdir(), 'devplat-live-lab-entrypoint-'),
+        );
+        temporaryRoots.push(rootDirectory);
+        await mkdir(resolve(rootDirectory, 'packages', 'fixture', 'src'), {
+          recursive: true,
+        });
+        await writeFile(
+          resolve(rootDirectory, 'packages', 'fixture', 'src', 'index.ts'),
+          'export const fixture = true;\n',
+        );
+
+        return { rootDirectory };
+      },
+      assert: async (context, inputs) => {
+        await expect(
+          resolveWorkspacePackageEntrypoint(inputs.packageName, {
+            env: inputs.env,
+            execArgv: inputs.execArgv,
+            rootDirectory: context.rootDirectory,
+          }),
+        ).rejects.toThrow(inputs.expectedMessage);
+      },
+    },
+    {
+      name: 'allows source package entrypoints when a TypeScript loader is active',
+      inputs: {
+        env: {},
+        execArgv: ['--import', 'tsx'],
+        packageName: 'fixture',
+      },
+      mock: async () => {
+        const rootDirectory = await mkdtemp(
+          resolve(tmpdir(), 'devplat-live-lab-entrypoint-'),
+        );
+        temporaryRoots.push(rootDirectory);
+        await mkdir(resolve(rootDirectory, 'packages', 'fixture', 'src'), {
+          recursive: true,
+        });
+        await writeFile(
+          resolve(rootDirectory, 'packages', 'fixture', 'src', 'index.ts'),
+          'export const fixture = true;\n',
+        );
+
+        return { rootDirectory };
+      },
+      assert: async (context, inputs) => {
+        const entrypoint = await resolveWorkspacePackageEntrypoint(
+          inputs.packageName,
+          {
+            env: inputs.env,
+            execArgv: inputs.execArgv,
+            rootDirectory: context.rootDirectory,
+          },
+        );
+
+        expect(entrypoint).toBe(
+          resolve(
+            context.rootDirectory,
+            'packages',
+            inputs.packageName,
+            'src',
+            'index.ts',
+          ),
+        );
+      },
+    },
     {
       name: 'exercises simulated Discord interaction callbacks through the response transport',
       inputs: {

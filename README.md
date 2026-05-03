@@ -175,6 +175,10 @@ changes. If the post-acknowledgement thread update fails, the control result
 keeps the interaction receipt and durable action record while reporting
 `threadPostError`. Interaction-originated requests are normalized once, so
 persisted traces contain one Discord route marker for the action.
+The live-lab runner loads built workspace package entrypoints during normal
+execution and fails fast with a `npm run build:workspace` instruction if those
+compiled entrypoints are missing under plain Node. Source package entrypoints
+are only allowed for preflight tests or explicit TypeScript-loader execution.
 
 Public contract schemas are generated from exported `io-ts` codecs. For
 codec-owned lifecycle records, derive TypeScript types from those codecs rather

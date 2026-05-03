@@ -39,6 +39,18 @@ const workspacePackageDistEntrypoint = 'dist/index.js';
  */
 const workspacePackageSourceEntrypoint = 'src/index.ts';
 /**
+ * Environment flag Vitest sets while executing source-compatible preflight tests.
+ */
+const vitestEnvironmentKey = 'VITEST';
+/**
+ * Node options environment key that can carry `--import tsx`.
+ */
+const nodeOptionsEnvironmentKey = 'NODE_OPTIONS';
+/**
+ * Loader marker that means Node can import TypeScript entrypoints directly.
+ */
+const typescriptLoaderMarker = 'tsx';
+/**
  * Default window that keeps the private runtime online after operator controls are posted.
  */
 const defaultOperatorHoldMs = 150_000;
@@ -92,10 +104,39 @@ const liveLabGitHubAppPermissions = Object.freeze({
 });
 
 /**
+ * Returns true when the current process can import TypeScript source files.
+ */
+function canImportTypeScriptEntrypoints({ env, execArgv }) {
+  const nodeOptions = env[nodeOptionsEnvironmentKey];
+
+  return (
+    env[vitestEnvironmentKey] !== undefined ||
+    execArgv.some((value) => value.includes(typescriptLoaderMarker)) ||
+    (typeof nodeOptions === 'string' &&
+      nodeOptions.includes(typescriptLoaderMarker))
+  );
+}
+
+/**
+ * Creates the actionable build-required error for live-lab package loading.
+ */
+function createWorkspacePackageBuildRequiredError(packageName) {
+  return new Error(
+    `Workspace package ${packageName} must be built before running the live lab. Run npm run build:workspace.`,
+  );
+}
+
+/**
  * Resolves the package entrypoint available in the current execution phase.
  */
-async function resolveWorkspacePackageEntrypoint(packageName) {
-  const packageDirectory = resolve(repoRootDirectory, 'packages', packageName);
+export async function resolveWorkspacePackageEntrypoint(
+  packageName,
+  options = {},
+) {
+  const rootDirectory = options.rootDirectory ?? repoRootDirectory;
+  const env = options.env ?? process.env;
+  const execArgv = options.execArgv ?? process.execArgv;
+  const packageDirectory = resolve(rootDirectory, 'packages', packageName);
   const distEntrypoint = resolve(
     packageDirectory,
     workspacePackageDistEntrypoint,
@@ -105,7 +146,16 @@ async function resolveWorkspacePackageEntrypoint(packageName) {
     await access(distEntrypoint);
     return distEntrypoint;
   } catch {
-    return resolve(packageDirectory, workspacePackageSourceEntrypoint);
+    if (!canImportTypeScriptEntrypoints({ env, execArgv })) {
+      throw createWorkspacePackageBuildRequiredError(packageName);
+    }
+
+    const sourceEntrypoint = resolve(
+      packageDirectory,
+      workspacePackageSourceEntrypoint,
+    );
+    await access(sourceEntrypoint);
+    return sourceEntrypoint;
   }
 }
 

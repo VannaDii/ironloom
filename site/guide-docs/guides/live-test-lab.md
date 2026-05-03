@@ -77,7 +77,10 @@ uploads it as a workflow artifact.
 
 The workflow builds the workspace before running the live lab so the networked
 runner can load the same package services that production uses for Discord
-interaction routing.
+interaction routing. Plain Node live-lab runs require those compiled
+`dist/index.js` package entrypoints; if they are missing, the runner fails fast
+with a `npm run build:workspace` instruction instead of attempting to import
+TypeScript source files without a loader.
 
 The live-lab runner passes the repository-scoped runtime environment into the
 OpenClaw container as named Docker environment variables. Secret values are not
@@ -98,7 +101,8 @@ npm run test:openclaw:live-lab:local -- --ref main
 
 The local command uses `.env` and the same GitHub App bootstrap path as the
 workflow. Build first so the Discord interaction probe can load the package
-services from `dist`.
+services from `dist`. Source package entrypoints are only used by preflight
+tests or explicit TypeScript-loader execution.
 
 ## Discord Reporting Layout
 
