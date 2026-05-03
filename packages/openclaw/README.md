@@ -37,6 +37,10 @@ disk.
 Command execution cwd validation is owned by `@vannadii/devplat-execution`; the
 OpenClaw tool only decodes input, asks policy, delegates cwd normalization and
 execution, then records telemetry.
+Gate execution uses `@vannadii/devplat-gates` for command execution and
+classification, then records a telemetry event through the configured
+`.devplat` storage root. Pass `actorId` when the gate run is operator-initiated;
+otherwise the tool records the OpenClaw runtime as the actor.
 
 ## Exposed Tools
 
@@ -48,7 +52,7 @@ surface, and tests stay aligned.
   it when OpenClaw already has the stored queue record so lifecycle transitions
   preserve existing status, assignee, trace, and transition history. The
   hermetic deep test exercises this record-preserving path.
-- `run_gates`: execute the configured DevPlat gate suite
+- `run_gates`: execute the configured DevPlat gate suite and record telemetry
 - `create_research_brief`: normalize a research brief artifact
 - `create_spec_record`: normalize a spec record artifact
 - `approve_spec_record`: approve a spec record artifact

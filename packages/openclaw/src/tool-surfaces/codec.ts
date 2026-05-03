@@ -39,10 +39,15 @@ import {
   WorktreeSyncModeCodec,
 } from '@vannadii/devplat-worktrees';
 
-export const RunGatesToolInputCodec = t.type({
-  gateNames: t.array(t.string),
-  summary: t.string,
-});
+export const RunGatesToolInputCodec = t.intersection([
+  t.type({
+    gateNames: t.array(t.string),
+    summary: t.string,
+  }),
+  t.partial({
+    actorId: t.string,
+  }),
+]);
 
 export const CreateResearchBriefToolInputCodec = ResearchBriefCodec;
 

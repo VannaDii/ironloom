@@ -15,6 +15,14 @@ const defaultImageTagPrefix = 'devplat-openclaw-deep-test';
 const fixedTimestamp = '2026-04-04T00:00:00.000Z';
 const redactedValue = '[redacted]';
 /**
+ * OpenClaw tool name used by the deep scenario for direct gate execution.
+ */
+const runGatesToolName = 'run_gates';
+/**
+ * Telemetry key prefix emitted by the OpenClaw gate execution tool.
+ */
+const runGatesTelemetryPrefix = 'telemetry:run-gates';
+/**
  * Characters ignored while classifying snapshot keys for secret redaction.
  */
 const snapshotKeyIgnoredCharacterPattern = /[^a-z0-9]/giu;
@@ -1291,6 +1299,24 @@ export function createDeepScenario(runtimeEnv) {
       'control',
     ),
     createStep(
+      runGatesToolName,
+      {
+        gateNames: ['verify:node'],
+        summary: ' Verify runtime node alignment ',
+        actorId: 'operator-1',
+      },
+      {
+        passed: false,
+        classification: {
+          kind: 'requires-remediation',
+          failedGateNames: ['verify:node'],
+          nextAction: 'create-remediation-plan',
+        },
+        nextAction: 'create-remediation-plan',
+      },
+      'delivery',
+    ),
+    createStep(
       'execute_command',
       {
         command: process.execPath,
@@ -1609,6 +1635,20 @@ export function createDeepScenario(runtimeEnv) {
   ];
 }
 
+/**
+ * Returns whether the deep-test report contains an executed tool step.
+ */
+function reportHasToolStep(report, toolName) {
+  return report.steps.some((step) => step.tool === toolName);
+}
+
+/**
+ * Returns whether persisted telemetry includes a key with the expected prefix.
+ */
+function reportHasTelemetryPrefix(report, prefix) {
+  return report.persisted.telemetry.some((key) => key.startsWith(prefix));
+}
+
 export function validateDeepTestReport(report) {
   if (report.mode !== 'hermetic' && report.mode !== 'live') {
     throw new Error('Deep-test report mode must be hermetic or live.');
@@ -1634,6 +1674,13 @@ export function validateDeepTestReport(report) {
     throw new Error(
       `Deep-test report contains a failing step for ${failingStep.tool}.`,
     );
+  }
+
+  if (
+    reportHasToolStep(report, runGatesToolName) &&
+    !reportHasTelemetryPrefix(report, runGatesTelemetryPrefix)
+  ) {
+    throw new Error('Deep-test report is missing run_gates telemetry.');
   }
 
   return true;

@@ -20,6 +20,7 @@ import {
 import {
   decodeWithCodec,
   DEVPLAT_ACTION_EXECUTE_COMMAND,
+  DEVPLAT_ACTION_RUN_GATES,
 } from '@vannadii/devplat-core';
 import {
   CommandExecutionService,
@@ -33,10 +34,18 @@ import {
   DiscordLoopbackResponseTransport,
   DiscordThreadSessionService,
 } from '@vannadii/devplat-discord';
-import { RunGatesService } from '@vannadii/devplat-gates';
+import {
+  GATE_NEXT_ACTION_CONTINUE,
+  GATE_NEXT_ACTION_CREATE_REMEDIATION_PLAN,
+  RunGatesService,
+  type GateRunReport,
+} from '@vannadii/devplat-gates';
 import { GitHubWorkflowService } from '@vannadii/devplat-github';
 import { MemoryEntryService } from '@vannadii/devplat-memory';
-import { TelemetryEventService } from '@vannadii/devplat-observability';
+import {
+  TelemetryEventService,
+  type TelemetryEvent,
+} from '@vannadii/devplat-observability';
 import { DecisionPolicyService } from '@vannadii/devplat-policy';
 import { PullRequestService } from '@vannadii/devplat-prs';
 import { TaskQueueService, type TaskRecord } from '@vannadii/devplat-queue';
@@ -110,8 +119,11 @@ import {
 import {
   LIST_STORED_INDEX_SCHEMA_FILE,
   LIST_STORED_INDEX_TOOL_NAME,
+  OPENCLAW_DEFAULT_ACTOR_ID,
   OPENCLAW_GITHUB_OWNER_ENVIRONMENT_VARIABLE,
   OPENCLAW_GITHUB_REPO_ENVIRONMENT_VARIABLE,
+  OPENCLAW_RUN_GATES_TELEMETRY_ID_PREFIX,
+  OPENCLAW_RUN_GATES_TRACE,
   OPENCLAW_STORAGE_ROOT_ENVIRONMENT_VARIABLE,
   OPENCLAW_TEST_MODE_ENVIRONMENT_VARIABLE,
   OPENCLAW_WORKTREE_ROOT_ENVIRONMENT_VARIABLE,
@@ -123,6 +135,31 @@ import {
 import type { OpenDiscordThreadToolInput } from './codec.js';
 
 type ToolParameterSchema = AnyAgentTool['parameters'] & Record<string, unknown>;
+
+/**
+ * Gate runner behavior used by the OpenClaw gate tool.
+ */
+type OpenClawRunGatesService = Pick<RunGatesService, 'run'>;
+
+/**
+ * Telemetry behavior used by the OpenClaw gate tool.
+ */
+type OpenClawTelemetryRecordService = Pick<TelemetryEventService, 'record'>;
+
+/**
+ * Dependency object accepted by the OpenClaw gate tool.
+ */
+type OpenClawRunGatesToolDependencies = {
+  /**
+   * Gate runner implementation.
+   */
+  runGatesService?: OpenClawRunGatesService;
+
+  /**
+   * Telemetry recorder for persisted gate run evidence.
+   */
+  telemetryEventService?: OpenClawTelemetryRecordService;
+};
 
 /**
  * Minimal task identity accepted by legacy task lifecycle tool calls.
@@ -210,6 +247,77 @@ function isDiscordOperatorInteraction(
 
 function createLoopbackDiscordResponseTransport(): DiscordControlResponseTransport {
   return new DiscordLoopbackResponseTransport();
+}
+
+/**
+ * Returns true when the gate tool argument is the legacy direct service input.
+ */
+function isRunGatesService(
+  input: OpenClawRunGatesService | OpenClawRunGatesToolDependencies,
+): input is OpenClawRunGatesService {
+  return 'run' in input;
+}
+
+/**
+ * Creates a stable telemetry id for one OpenClaw gate tool call.
+ */
+function createRunGatesTelemetryEventId(
+  toolCallId: string,
+  gateRunReportId: string,
+): string {
+  return `${OPENCLAW_RUN_GATES_TELEMETRY_ID_PREFIX}:${toolCallId}:${gateRunReportId}`;
+}
+
+/**
+ * Collects failed gate names from the report when no classification was attached.
+ */
+function collectFailedGateNames(report: GateRunReport): string[] {
+  return report.results
+    .filter((result) => !result.success)
+    .map((result) => result.name);
+}
+
+/**
+ * Resolves the gate run next-action hint for telemetry detail.
+ */
+function resolveRunGatesNextAction(report: GateRunReport): string {
+  return (
+    report.nextAction ??
+    report.classification?.nextAction ??
+    (report.passed
+      ? GATE_NEXT_ACTION_CONTINUE
+      : GATE_NEXT_ACTION_CREATE_REMEDIATION_PLAN)
+  );
+}
+
+/**
+ * Creates the telemetry event that audits one OpenClaw gate run.
+ */
+function createRunGatesTelemetryEvent(input: {
+  toolCallId: string;
+  actorId: string;
+  report: GateRunReport;
+}): TelemetryEvent {
+  const failedGateNames =
+    input.report.classification?.failedGateNames ??
+    collectFailedGateNames(input.report);
+
+  return {
+    id: createRunGatesTelemetryEventId(input.toolCallId, input.report.id),
+    summary: input.report.summary,
+    status: input.report.passed ? 'complete' : 'failed',
+    trace: [...input.report.trace, OPENCLAW_RUN_GATES_TRACE],
+    updatedAt: input.report.updatedAt,
+    actorId: input.actorId,
+    action: DEVPLAT_ACTION_RUN_GATES,
+    scope: 'supervisor',
+    details: {
+      gateRunReportId: input.report.id,
+      passed: input.report.passed,
+      failedGateNames,
+      nextAction: resolveRunGatesNextAction(input.report),
+    },
+  };
 }
 
 /**
@@ -405,8 +513,17 @@ function resolveTaskRecord(
 }
 
 export function createRunGatesTool(
-  runGatesService: Pick<RunGatesService, 'run'> = new RunGatesService(),
+  dependencies:
+    | OpenClawRunGatesService
+    | OpenClawRunGatesToolDependencies = new RunGatesService(),
 ): AnyAgentTool {
+  const runGatesService = isRunGatesService(dependencies)
+    ? dependencies
+    : (dependencies.runGatesService ?? new RunGatesService());
+  const telemetryEventService = isRunGatesService(dependencies)
+    ? createDefaultTelemetryEventService()
+    : (dependencies.telemetryEventService ??
+      createDefaultTelemetryEventService());
   const tool: AnyAgentTool = {
     name: 'run_gates',
     label: 'Run Gates',
@@ -424,7 +541,17 @@ export function createRunGatesTool(
         decoded.value.gateNames,
         decoded.value.summary,
       );
-      return createTextResult(report);
+      const telemetryEvent = await telemetryEventService.record(
+        createRunGatesTelemetryEvent({
+          toolCallId: _toolCallId,
+          actorId: decoded.value.actorId ?? OPENCLAW_DEFAULT_ACTOR_ID,
+          report,
+        }),
+      );
+      return createTextResult({
+        ...report,
+        telemetryEventId: telemetryEvent.id,
+      });
     },
   };
 

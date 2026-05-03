@@ -68,3 +68,18 @@ export const READ_INDEXED_RECORD_SCHEMA_FILE =
  */
 export const LIST_STORED_INDEX_SCHEMA_FILE =
   'tool-list-stored-index-params.schema.json';
+
+/**
+ * Default actor id used when an OpenClaw tool input does not provide one.
+ */
+export const OPENCLAW_DEFAULT_ACTOR_ID = 'openclaw';
+
+/**
+ * Prefix for telemetry events emitted by the OpenClaw gate runner tool.
+ */
+export const OPENCLAW_RUN_GATES_TELEMETRY_ID_PREFIX = 'telemetry:run-gates';
+
+/**
+ * Trace marker for telemetry emitted by the OpenClaw gate runner tool.
+ */
+export const OPENCLAW_RUN_GATES_TRACE = 'openclaw:run-gates';

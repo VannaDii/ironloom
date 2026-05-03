@@ -171,7 +171,9 @@ honor the trimmed configured storage root, and pull-request submission uses the
 trimmed configured GitHub owner/repository identity. Worktree allocation and
 dependent rebase tools honor the trimmed configured worktree root, so
 tool-driven artifacts, telemetry, worktrees, and Discord interaction state stay
-in the same repository-scoped store. Valid operator
+in the same repository-scoped store. Gate runs record passed/failed
+classification, actor, and next-action telemetry through that same store.
+Valid operator
 interactions are deferred before state, telemetry, and audit persistence
 begins, then the bound thread receives the structured status payload after the
 control result is durable. This avoids posting the same operator payload twice

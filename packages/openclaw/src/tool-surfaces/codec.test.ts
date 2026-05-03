@@ -8,6 +8,7 @@ import {
   EvaluateSonarQualityGateToolInputCodec,
   ExecuteRebaseDependentsToolInputCodec,
   ReleaseWorktreeToolInputCodec,
+  RunGatesToolInputCodec,
   RunSupervisorStepToolInputCodec,
   SubmitPullRequestMergeToolInputCodec,
   SyncWorktreeToolInputCodec,
@@ -88,6 +89,14 @@ describe('tool surface codecs', () => {
               },
               releaseMode: 'archive',
               applyToDisk: true,
+            },
+          },
+          {
+            codec: RunGatesToolInputCodec,
+            value: {
+              gateNames: ['lint'],
+              summary: 'Run lint gate.',
+              actorId: 'operator-1',
             },
           },
           {

@@ -581,6 +581,23 @@ describe('openclaw-deep-test helpers', () => {
               }),
             }),
             expect.objectContaining({
+              tool: 'run_gates',
+              phase: 'delivery',
+              params: expect.objectContaining({
+                actorId: 'operator-1',
+                gateNames: ['verify:node'],
+              }),
+              expected: expect.objectContaining({
+                passed: false,
+                classification: expect.objectContaining({
+                  failedGateNames: ['verify:node'],
+                  kind: 'requires-remediation',
+                  nextAction: 'create-remediation-plan',
+                }),
+                nextAction: 'create-remediation-plan',
+              }),
+            }),
+            expect.objectContaining({
               tool: 'validate_artifact',
               phase: 'contracts',
             }),
@@ -599,6 +616,30 @@ describe('openclaw-deep-test helpers', () => {
             steps: [{ tool: 'resolve_runtime_config', ok: true }],
           }),
         ).not.toThrow();
+        expect(() =>
+          validateDeepTestReport({
+            mode: 'hermetic',
+            persisted: {
+              artifacts: ['artifact'],
+              memory: ['memory'],
+              state: ['state'],
+              telemetry: ['telemetry:run-gates:tool-call-1:gate-run-report'],
+            },
+            steps: [{ tool: 'run_gates', ok: true }],
+          }),
+        ).not.toThrow();
+        expect(() =>
+          validateDeepTestReport({
+            mode: 'hermetic',
+            persisted: {
+              artifacts: ['artifact'],
+              memory: ['memory'],
+              state: ['state'],
+              telemetry: ['telemetry-openclaw-1'],
+            },
+            steps: [{ tool: 'run_gates', ok: true }],
+          }),
+        ).toThrow('Deep-test report is missing run_gates telemetry.');
       },
     },
     {

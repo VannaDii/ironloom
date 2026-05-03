@@ -7,6 +7,7 @@ import {
   createArtifactRegistry,
   createDefaultArtifactRegistry,
 } from '@vannadii/devplat-artifacts';
+import type { TelemetryEvent } from '@vannadii/devplat-observability';
 import { FileStoreService } from '@vannadii/devplat-storage';
 import type { WorktreeAllocation } from '@vannadii/devplat-worktrees';
 
@@ -92,6 +93,327 @@ describe('tool surface service', () => {
     expect(result.details).toMatchObject({
       passed: true,
       results: [{ name: 'lint', success: true }],
+    });
+  });
+
+  describe('run_gates operational telemetry', () => {
+    const dependencyCases = [
+      {
+        name: 'constructs with default gate runner dependency',
+        inputs: {
+          dependencies: {
+            telemetryEventService: {
+              async record(event: TelemetryEvent) {
+                return event;
+              },
+            },
+          },
+        },
+        mock: (inputs: {
+          dependencies: Parameters<typeof createRunGatesTool>[0];
+        }) => createRunGatesTool(inputs.dependencies),
+        assert: (tool: ReturnType<typeof createRunGatesTool>) => {
+          expect(tool.name).toBe('run_gates');
+        },
+      },
+      {
+        name: 'constructs with default telemetry dependency',
+        inputs: {
+          dependencies: {
+            runGatesService: {
+              async run() {
+                return {
+                  id: 'gate-run-report-default-telemetry',
+                  summary: 'default telemetry',
+                  status: 'complete',
+                  trace: [],
+                  updatedAt: '2026-04-04T00:00:00.000Z',
+                  passed: true,
+                  results: [],
+                };
+              },
+            },
+          },
+        },
+        mock: (inputs: {
+          dependencies: Parameters<typeof createRunGatesTool>[0];
+        }) => createRunGatesTool(inputs.dependencies),
+        assert: (tool: ReturnType<typeof createRunGatesTool>) => {
+          expect(tool.name).toBe('run_gates');
+        },
+      },
+    ];
+
+    it.each(dependencyCases)('$name', (testCase) => {
+      expect.hasAssertions();
+      const tool = testCase.mock(testCase.inputs);
+
+      testCase.assert(tool);
+    });
+
+    const cases = [
+      {
+        name: 'records passed gate runs through telemetry',
+        inputs: {
+          toolCallId: 'tool-call-gates-telemetry-1',
+          params: {
+            gateNames: ['lint'],
+            summary: 'run lint',
+            actorId: 'operator-1',
+          },
+        },
+        mock: () => {
+          const recorded: unknown[] = [];
+          const tool = createRunGatesTool({
+            runGatesService: {
+              async run(gateNames, summary) {
+                return {
+                  id: 'gate-run-report-1',
+                  summary,
+                  status: 'complete',
+                  trace: ['gates:passed'],
+                  updatedAt: '2026-04-04T00:00:00.000Z',
+                  passed: true,
+                  results: gateNames.map((gateName) => ({
+                    name: gateName,
+                    success: true,
+                    detail: `${gateName} -> exit 0`,
+                  })),
+                };
+              },
+            },
+            telemetryEventService: {
+              async record(event) {
+                recorded.push(event);
+                return event;
+              },
+            },
+          });
+
+          return { tool, recorded };
+        },
+        assert: async (
+          context: {
+            tool: ReturnType<typeof createRunGatesTool>;
+            recorded: unknown[];
+          },
+          inputs: {
+            toolCallId: string;
+            params: {
+              gateNames: string[];
+              summary: string;
+              actorId: string;
+            };
+          },
+        ) => {
+          const result = await context.tool.execute(
+            inputs.toolCallId,
+            inputs.params,
+          );
+
+          expect(result.details).toMatchObject({
+            id: 'gate-run-report-1',
+            passed: true,
+            telemetryEventId:
+              'telemetry:run-gates:tool-call-gates-telemetry-1:gate-run-report-1',
+          });
+          expect(context.recorded).toMatchObject([
+            {
+              id: 'telemetry:run-gates:tool-call-gates-telemetry-1:gate-run-report-1',
+              summary: 'run lint',
+              status: 'complete',
+              actorId: 'operator-1',
+              action: 'run-gates',
+              scope: 'supervisor',
+              details: {
+                gateRunReportId: 'gate-run-report-1',
+                passed: true,
+                failedGateNames: [],
+                nextAction: 'continue',
+              },
+            },
+          ]);
+        },
+      },
+      {
+        name: 'records failed gate runs through telemetry',
+        inputs: {
+          toolCallId: 'tool-call-gates-telemetry-2',
+          params: {
+            gateNames: ['test'],
+            summary: 'run tests',
+          },
+        },
+        mock: () => {
+          const recorded: unknown[] = [];
+          const tool = createRunGatesTool({
+            runGatesService: {
+              async run(gateNames, summary) {
+                return {
+                  id: 'gate-run-report-2',
+                  summary,
+                  status: 'complete',
+                  trace: ['gates:failed'],
+                  updatedAt: '2026-04-04T00:00:00.000Z',
+                  passed: false,
+                  results: gateNames.map((gateName) => ({
+                    name: gateName,
+                    success: false,
+                    detail: `${gateName} -> exit 1`,
+                    failureKind: 'command-failed',
+                    nextAction: 'remediate-failure',
+                  })),
+                  classification: {
+                    kind: 'requires-remediation',
+                    failedGateNames: ['test'],
+                    nextAction: 'create-remediation-plan',
+                  },
+                  nextAction: 'create-remediation-plan',
+                };
+              },
+            },
+            telemetryEventService: {
+              async record(event) {
+                recorded.push(event);
+                return event;
+              },
+            },
+          });
+
+          return { tool, recorded };
+        },
+        assert: async (
+          context: {
+            tool: ReturnType<typeof createRunGatesTool>;
+            recorded: unknown[];
+          },
+          inputs: {
+            toolCallId: string;
+            params: {
+              gateNames: string[];
+              summary: string;
+            };
+          },
+        ) => {
+          const result = await context.tool.execute(
+            inputs.toolCallId,
+            inputs.params,
+          );
+
+          expect(result.details).toMatchObject({
+            id: 'gate-run-report-2',
+            passed: false,
+            telemetryEventId:
+              'telemetry:run-gates:tool-call-gates-telemetry-2:gate-run-report-2',
+          });
+          expect(context.recorded).toMatchObject([
+            {
+              id: 'telemetry:run-gates:tool-call-gates-telemetry-2:gate-run-report-2',
+              summary: 'run tests',
+              status: 'failed',
+              actorId: 'openclaw',
+              action: 'run-gates',
+              scope: 'supervisor',
+              details: {
+                gateRunReportId: 'gate-run-report-2',
+                passed: false,
+                failedGateNames: ['test'],
+                nextAction: 'create-remediation-plan',
+              },
+            },
+          ]);
+        },
+      },
+      {
+        name: 'records unclassified failed gate runs through telemetry',
+        inputs: {
+          toolCallId: 'tool-call-gates-telemetry-3',
+          params: {
+            gateNames: ['coverage'],
+            summary: 'run coverage',
+          },
+        },
+        mock: () => {
+          const recorded: unknown[] = [];
+          const tool = createRunGatesTool({
+            runGatesService: {
+              async run(gateNames, summary) {
+                return {
+                  id: 'gate-run-report-3',
+                  summary,
+                  status: 'complete',
+                  trace: ['gates:failed'],
+                  updatedAt: '2026-04-04T00:00:00.000Z',
+                  passed: false,
+                  results: gateNames.map((gateName) => ({
+                    name: gateName,
+                    success: false,
+                    detail: `${gateName} -> exit 1`,
+                    failureKind: 'command-failed',
+                    nextAction: 'remediate-failure',
+                  })),
+                };
+              },
+            },
+            telemetryEventService: {
+              async record(event) {
+                recorded.push(event);
+                return event;
+              },
+            },
+          });
+
+          return { tool, recorded };
+        },
+        assert: async (
+          context: {
+            tool: ReturnType<typeof createRunGatesTool>;
+            recorded: unknown[];
+          },
+          inputs: {
+            toolCallId: string;
+            params: {
+              gateNames: string[];
+              summary: string;
+            };
+          },
+        ) => {
+          const result = await context.tool.execute(
+            inputs.toolCallId,
+            inputs.params,
+          );
+
+          expect(result.details).toMatchObject({
+            id: 'gate-run-report-3',
+            passed: false,
+            telemetryEventId:
+              'telemetry:run-gates:tool-call-gates-telemetry-3:gate-run-report-3',
+          });
+          expect(context.recorded).toMatchObject([
+            {
+              id: 'telemetry:run-gates:tool-call-gates-telemetry-3:gate-run-report-3',
+              summary: 'run coverage',
+              status: 'failed',
+              actorId: 'openclaw',
+              action: 'run-gates',
+              scope: 'supervisor',
+              details: {
+                gateRunReportId: 'gate-run-report-3',
+                passed: false,
+                failedGateNames: ['coverage'],
+                nextAction: 'create-remediation-plan',
+              },
+            },
+          ]);
+        },
+      },
+    ];
+
+    it.each(cases)('$name', async (testCase) => {
+      expect.hasAssertions();
+      const context = testCase.mock();
+
+      await testCase.assert(context, testCase.inputs);
     });
   });
 
