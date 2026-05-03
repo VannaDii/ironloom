@@ -3,6 +3,7 @@ import {
   ARTIFACT_TYPE_AUDIT_LOG,
   ARTIFACT_TYPE_MERGE_DECISION,
   ARTIFACT_TYPE_REBASE_RESULT,
+  createDevplatFailure,
   decodeWithCodec,
   type DevplatResult,
 } from '@vannadii/devplat-core';
@@ -32,6 +33,7 @@ import {
   RebaseResultArtifactService,
   type RebaseResultArtifact,
 } from '../rebase-result/index.js';
+import type { ArtifactRegistry } from '../artifact-registry/index.js';
 
 /** Artifact type accepted by the validation dispatcher. */
 export type KnownArtifact =
@@ -41,14 +43,74 @@ export type KnownArtifact =
   | RebaseResultArtifact
   | ArtifactEnvelope;
 
+/** Registry constraints that can harden artifact validation. */
+export type ArtifactValidationOptions = {
+  registry?: ArtifactRegistry;
+};
+
+/**
+ * Validates the decoded envelope against the active repository registry.
+ */
+function validateEnvelopeRegistry(
+  envelope: ArtifactEnvelope,
+  registry: ArtifactRegistry | undefined,
+): DevplatResult<ArtifactEnvelope> {
+  if (registry === undefined) {
+    return {
+      ok: true,
+      value: envelope,
+    };
+  }
+
+  const entry = registry.entries.find(
+    (registryEntry) => registryEntry.artifactType === envelope.artifactType,
+  );
+  if (entry === undefined) {
+    return createDevplatFailure({
+      error: `Artifact type ${envelope.artifactType} is not registered for this repository.`,
+    });
+  }
+
+  if (
+    envelope.version < entry.currentVersion &&
+    entry.migrationPolicy === 'required'
+  ) {
+    return createDevplatFailure({
+      error: `Artifact ${envelope.artifactType}@v${String(envelope.version)} requires migration to v${String(entry.currentVersion)} before validation.`,
+    });
+  }
+
+  if (envelope.version > entry.currentVersion) {
+    return createDevplatFailure({
+      error: `Artifact ${envelope.artifactType}@v${String(envelope.version)} is newer than registered v${String(entry.currentVersion)}.`,
+    });
+  }
+
+  return {
+    ok: true,
+    value: envelope,
+  };
+}
+
 /**
  * Validates a generic artifact and dispatches known artifact types to their
  * specialized normalizers.
  */
-export function validateArtifact(input: unknown): DevplatResult<KnownArtifact> {
+export function validateArtifact(
+  input: unknown,
+  options: ArtifactValidationOptions = {},
+): DevplatResult<KnownArtifact> {
   const envelope = decodeWithCodec(ArtifactEnvelopeCodec, input);
   if (!envelope.ok) {
     return envelope;
+  }
+
+  const registryResult = validateEnvelopeRegistry(
+    envelope.value,
+    options.registry,
+  );
+  if (!registryResult.ok) {
+    return registryResult;
   }
 
   switch (envelope.value.artifactType) {

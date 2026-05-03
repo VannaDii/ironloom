@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
+import {
+  createArtifactRegistry,
+  createDefaultArtifactRegistry,
+  type ArtifactRegistry,
+} from '../artifact-registry/index.js';
 import { describeValidatedArtifact, validateArtifact } from './logic.js';
 
 type ArtifactValidationLogicCase = {
@@ -7,9 +12,11 @@ type ArtifactValidationLogicCase = {
   inputs: {
     artifact: unknown;
   };
-  mock: () => Record<string, never>;
+  mock: () => {
+    registry?: ArtifactRegistry;
+  };
   assert: (
-    context: Record<string, never>,
+    context: { registry?: ArtifactRegistry },
     inputs: { artifact: unknown },
   ) => void;
 };
@@ -315,6 +322,184 @@ describe('ArtifactValidation logic', () => {
         const result = validateArtifact(inputs.artifact);
 
         expect(result.ok).toBe(false);
+      },
+    },
+    {
+      name: 'rejects registry-supported artifact envelopes missing from the active registry',
+      inputs: {
+        artifact: {
+          id: 'artifact-generic-2',
+          artifactType: 'review-finding',
+          version: 1,
+          summary: ' Generic artifact ',
+          status: 'approved',
+          trace: [],
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          payload: {
+            findingId: 'finding-2',
+          },
+        },
+      },
+      mock: () => {
+        const defaultRegistry = createDefaultArtifactRegistry('repo-main');
+
+        return {
+          registry: createArtifactRegistry({
+            ...defaultRegistry,
+            entries: defaultRegistry.entries.filter(
+              (entry) => entry.artifactType !== 'review-finding',
+            ),
+          }),
+        };
+      },
+      assert: (context, inputs) => {
+        const result = validateArtifact(inputs.artifact, {
+          registry: context.registry,
+        });
+
+        expect(result).toMatchObject({
+          ok: false,
+          error:
+            'Artifact type review-finding is not registered for this repository.',
+        });
+      },
+    },
+    {
+      name: 'rejects stale artifact versions when registry migration is required',
+      inputs: {
+        artifact: {
+          id: 'artifact-generic-3',
+          artifactType: 'review-finding',
+          version: 1,
+          summary: ' Generic artifact ',
+          status: 'approved',
+          trace: [],
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          payload: {
+            findingId: 'finding-3',
+          },
+        },
+      },
+      mock: () => {
+        const defaultRegistry = createDefaultArtifactRegistry('repo-main');
+
+        return {
+          registry: {
+            ...defaultRegistry,
+            entries: defaultRegistry.entries.map((entry) =>
+              entry.artifactType === 'review-finding'
+                ? {
+                    ...entry,
+                    currentVersion: 2,
+                    migrationPolicy: 'required',
+                  }
+                : entry,
+            ),
+          },
+        };
+      },
+      assert: (context, inputs) => {
+        const result = validateArtifact(inputs.artifact, {
+          registry: context.registry,
+        });
+
+        expect(result).toMatchObject({
+          ok: false,
+          error:
+            'Artifact review-finding@v1 requires migration to v2 before validation.',
+        });
+      },
+    },
+    {
+      name: 'accepts stale artifact versions when registry migration is optional',
+      inputs: {
+        artifact: {
+          id: 'artifact-generic-4',
+          artifactType: 'review-finding',
+          version: 1,
+          summary: ' Generic artifact ',
+          status: 'approved',
+          trace: [],
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          payload: {
+            findingId: 'finding-4',
+          },
+        },
+      },
+      mock: () => {
+        const defaultRegistry = createDefaultArtifactRegistry('repo-main');
+
+        return {
+          registry: {
+            ...defaultRegistry,
+            entries: defaultRegistry.entries.map((entry) =>
+              entry.artifactType === 'review-finding'
+                ? {
+                    ...entry,
+                    currentVersion: 2,
+                    migrationPolicy: 'optional',
+                  }
+                : entry,
+            ),
+          },
+        };
+      },
+      assert: (context, inputs) => {
+        const result = validateArtifact(inputs.artifact, {
+          registry: context.registry,
+        });
+
+        expect(result).toMatchObject({
+          ok: true,
+          value: {
+            artifactType: 'review-finding',
+            version: 1,
+          },
+        });
+      },
+    },
+    {
+      name: 'rejects artifact versions newer than the active registry',
+      inputs: {
+        artifact: {
+          id: 'artifact-generic-5',
+          artifactType: 'review-finding',
+          version: 1,
+          summary: ' Generic artifact ',
+          status: 'approved',
+          trace: [],
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          payload: {
+            findingId: 'finding-5',
+          },
+        },
+      },
+      mock: () => {
+        const defaultRegistry = createDefaultArtifactRegistry('repo-main');
+
+        return {
+          registry: {
+            ...defaultRegistry,
+            entries: defaultRegistry.entries.map((entry) =>
+              entry.artifactType === 'review-finding'
+                ? {
+                    ...entry,
+                    currentVersion: 0,
+                  }
+                : entry,
+            ),
+          },
+        };
+      },
+      assert: (context, inputs) => {
+        const result = validateArtifact(inputs.artifact, {
+          registry: context.registry,
+        });
+
+        expect(result).toMatchObject({
+          ok: false,
+          error: 'Artifact review-finding@v1 is newer than registered v0.',
+        });
       },
     },
   ] satisfies ArtifactValidationLogicCase[];

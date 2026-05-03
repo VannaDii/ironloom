@@ -1,15 +1,23 @@
+import type { DevplatResult } from '@vannadii/devplat-core';
+
 import {
+  type ArtifactValidationOptions,
   describeValidatedArtifact,
   validateArtifact,
   type KnownArtifact,
 } from './logic.js';
-import type { DevplatResult } from '@vannadii/devplat-core';
 
+/** Service shell for artifact validation and operator-facing summaries. */
 export class ArtifactValidationService {
-  public execute(input: unknown): DevplatResult<KnownArtifact> {
-    return validateArtifact(input);
+  /** Validates an artifact with optional active registry constraints. */
+  public execute(
+    input: unknown,
+    options: ArtifactValidationOptions = {},
+  ): DevplatResult<KnownArtifact> {
+    return validateArtifact(input, options);
   }
 
+  /** Describes a validated artifact for operator-facing output. */
   public explain(input: KnownArtifact): string {
     return describeValidatedArtifact(input);
   }

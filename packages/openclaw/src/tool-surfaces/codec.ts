@@ -3,6 +3,7 @@ import * as t from 'io-ts';
 import {
   ApprovalRecordArtifactCodec,
   ArtifactEnvelopeCodec,
+  ArtifactRegistryCodec,
   AuditLogArtifactCodec,
   MergeDecisionArtifactCodec,
   RebaseResultArtifactCodec,
@@ -259,9 +260,15 @@ export const UpdateTaskToolInputCodec = t.intersection([
   }),
 ]);
 
-export const ValidateArtifactToolInputCodec = t.type({
-  artifact: t.UnknownRecord,
-});
+/** Input codec for validating artifacts against optional registry constraints. */
+export const ValidateArtifactToolInputCodec = t.intersection([
+  t.type({
+    artifact: t.UnknownRecord,
+  }),
+  t.partial({
+    registry: ArtifactRegistryCodec,
+  }),
+]);
 
 export const RunSupervisorStepToolInputCodec = t.intersection([
   t.type({
