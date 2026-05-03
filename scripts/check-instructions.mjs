@@ -354,6 +354,14 @@ const RERUN_STABLE_CI_ARTIFACT_PREFIXES = [
  * Upload-artifact option required when artifact names stay stable across reruns.
  */
 const ARTIFACT_OVERWRITE_DECLARATION = 'overwrite: true';
+/**
+ * Workflow step marker used to isolate one GitHub Actions step block.
+ */
+const GITHUB_WORKFLOW_STEP_PREFIX = '- name:';
+/**
+ * GitHub Action used for shared CI artifact uploads.
+ */
+const GITHUB_UPLOAD_ARTIFACT_ACTION = 'uses: actions/upload-artifact@';
 
 export async function collectInstructionErrors({
   rootDirectory = defaultRootDirectory,
@@ -491,6 +499,55 @@ function validateRequiredText({
 }
 
 /**
+ * Splits a workflow into step-sized blocks without depending on key ordering.
+ */
+function collectWorkflowStepBlocks(workflowContent) {
+  const blocks = [];
+  let currentBlock = [];
+
+  for (const line of workflowContent.split('\n')) {
+    if (
+      line.trimStart().startsWith(GITHUB_WORKFLOW_STEP_PREFIX) &&
+      currentBlock.length > 0
+    ) {
+      blocks.push(currentBlock);
+      currentBlock = [];
+    }
+
+    currentBlock.push(line);
+  }
+
+  if (currentBlock.length > 0) {
+    blocks.push(currentBlock);
+  }
+
+  return blocks;
+}
+
+/**
+ * Checks whether a workflow step uses the GitHub upload-artifact action.
+ */
+function isUploadArtifactStep(block) {
+  return block.some((line) =>
+    line.trimStart().startsWith(GITHUB_UPLOAD_ARTIFACT_ACTION),
+  );
+}
+
+/**
+ * Checks whether a workflow step declares a specific artifact name.
+ */
+function hasArtifactName(block, artifactNameLine) {
+  return block.some((line) => line.trim() === artifactNameLine);
+}
+
+/**
+ * Checks whether a workflow step can overwrite a stable artifact on rerun.
+ */
+function hasArtifactOverwrite(block) {
+  return block.some((line) => line.trim() === ARTIFACT_OVERWRITE_DECLARATION);
+}
+
+/**
  * Prevents rerun-only CI failures from losing shared artifacts across attempts.
  */
 async function validateCiArtifactRerunSafety(rootDirectory, errors) {
@@ -499,6 +556,7 @@ async function validateCiArtifactRerunSafety(rootDirectory, errors) {
     return;
   }
   const ciWorkflow = await readFile(ciWorkflowPath, 'utf8');
+  const workflowStepBlocks = collectWorkflowStepBlocks(ciWorkflow);
 
   for (const artifactPrefix of RERUN_STABLE_CI_ARTIFACT_PREFIXES) {
     const artifactNameLine = `name: ${artifactPrefix}-\${{ github.run_id }}`;
@@ -509,15 +567,16 @@ async function validateCiArtifactRerunSafety(rootDirectory, errors) {
       );
     }
 
-    if (
-      ciWorkflow.includes(artifactNameLine) &&
-      !ciWorkflow.includes(
-        `${artifactNameLine}\n          retention-days: 14\n          ${ARTIFACT_OVERWRITE_DECLARATION}`,
-      )
-    ) {
-      errors.push(
-        `${CI_WORKFLOW_PATH} shared CI artifact '${artifactPrefix}' must declare ${ARTIFACT_OVERWRITE_DECLARATION} so full workflow reruns can replace stale artifacts.`,
-      );
+    for (const workflowStepBlock of workflowStepBlocks) {
+      if (
+        isUploadArtifactStep(workflowStepBlock) &&
+        hasArtifactName(workflowStepBlock, artifactNameLine) &&
+        !hasArtifactOverwrite(workflowStepBlock)
+      ) {
+        errors.push(
+          `${CI_WORKFLOW_PATH} shared CI artifact '${artifactPrefix}' must declare ${ARTIFACT_OVERWRITE_DECLARATION} so full workflow reruns can replace stale artifacts.`,
+        );
+      }
     }
   }
 }

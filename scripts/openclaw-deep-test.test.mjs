@@ -1,6 +1,8 @@
+import { execFile } from 'node:child_process';
 import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
+import { promisify } from 'node:util';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -19,6 +21,7 @@ import {
   validateDeepTestReport,
 } from './openclaw-deep-test.mjs';
 
+const execFileAsync = promisify(execFile);
 const temporaryRoots = [];
 
 afterEach(async () => {
@@ -57,6 +60,25 @@ describe('openclaw-deep-test helpers', () => {
           skipBuild: true,
         });
         expect(parsed.reportDir).toContain('artifacts/openclaw-deep');
+      },
+    },
+    {
+      name: 'imports without POSIX uid helpers on non-POSIX Node runtimes',
+      inputs: {
+        script:
+          "process.getuid = undefined; process.getgid = undefined; await import('./scripts/openclaw-deep-test.mjs');",
+      },
+      mock: async () => undefined,
+      assert: async (_context, inputs) => {
+        await expect(
+          execFileAsync(process.execPath, [
+            '--input-type=module',
+            '-e',
+            inputs.script,
+          ]),
+        ).resolves.toMatchObject({
+          stderr: '',
+        });
       },
     },
     {

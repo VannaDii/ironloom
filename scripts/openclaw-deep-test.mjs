@@ -31,13 +31,10 @@ const containerDevplatStateDirectory = '/app/.devplat';
  */
 const hostWritablePermissionMode = 'u+rwX,go-rwx';
 /**
- * Host user id that should own container-created bind-mount content after cleanup normalization.
+ * Warning message used when POSIX host identity helpers are not available.
  */
-const hostRunnerUid = String(process.getuid());
-/**
- * Host group id that should own container-created bind-mount content after cleanup normalization.
- */
-const hostRunnerGid = String(process.getgid());
+const hostRunnerIdentityUnavailableMessage =
+  'Host uid/gid helpers are unavailable on this Node runtime.';
 /**
  * Container user used only for bind-mount ownership normalization.
  */
@@ -56,6 +53,23 @@ const mountedStatePermissionWarningCode =
  */
 const mountedStatePermissionWarningMessage =
   'Container-created .devplat entries may remain owned by the runtime user.';
+
+/**
+ * Resolves the host runner uid/gid when the Node runtime exposes POSIX helpers.
+ */
+function resolveHostRunnerIdentity(processLike = process) {
+  if (
+    typeof processLike.getuid !== 'function' ||
+    typeof processLike.getgid !== 'function'
+  ) {
+    return undefined;
+  }
+
+  return {
+    gid: String(processLike.getgid()),
+    uid: String(processLike.getuid()),
+  };
+}
 
 function parseFlagArguments(argv) {
   const args = new Map();
@@ -479,6 +493,15 @@ async function ensureWritableDirectory(directory) {
  * Makes container-created `.devplat` bind-mount content writable from the host.
  */
 async function ensureMountedStateWritable({ commandRunner, containerName }) {
+  const hostRunnerIdentity = resolveHostRunnerIdentity();
+  if (hostRunnerIdentity === undefined) {
+    return {
+      cause: { message: hostRunnerIdentityUnavailableMessage },
+      code: mountedStatePermissionWarningCode,
+      message: mountedStatePermissionWarningMessage,
+    };
+  }
+
   try {
     await commandRunner('docker', [
       'exec',
@@ -490,8 +513,8 @@ async function ensureMountedStateWritable({ commandRunner, containerName }) {
       hostWritableMountCommand,
       'sh',
       containerDevplatStateDirectory,
-      hostRunnerUid,
-      hostRunnerGid,
+      hostRunnerIdentity.uid,
+      hostRunnerIdentity.gid,
       hostWritablePermissionMode,
     ]);
     return undefined;

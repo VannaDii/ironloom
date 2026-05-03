@@ -174,6 +174,30 @@ describe('check-instructions', () => {
       },
     },
     {
+      name: 'allows shared CI artifact upload metadata to be reordered',
+      inputs: {
+        useFixtureRoot: true,
+      },
+      mock: async ({ rootDirectory }) => {
+        await replaceInFile(
+          rootDirectory,
+          '.github/workflows/ci.yml',
+          '          retention-days: 14\n          overwrite: true\n          path: |\n            packages/*/schemas/*.schema.json',
+          '          overwrite: true\n          retention-days: 7\n          path: |\n            packages/*/schemas/*.schema.json',
+        );
+      },
+      assert: (errors) => {
+        expect(
+          errors.some(
+            (error) =>
+              error.includes('.github/workflows/ci.yml') &&
+              error.includes("shared CI artifact 'schemas'") &&
+              error.includes('overwrite: true'),
+          ),
+        ).toBe(false);
+      },
+    },
+    {
       name: 'fails when the platform scope drifts away from thread-aware Discord control',
       inputs: {
         useFixtureRoot: true,
