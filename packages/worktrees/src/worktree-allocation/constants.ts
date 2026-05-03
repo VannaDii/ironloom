@@ -31,3 +31,15 @@ export const WORKTREE_UNSAFE_GIT_REF_CHARACTERS = [
  * Generic exit code used when Node reports a runner failure without child exit metadata.
  */
 export const WORKTREE_GIT_RUNNER_GENERIC_FAILURE_EXIT_CODE = 1;
+
+/**
+ * Trace marker used when sync refuses a caller-supplied worktree path mismatch.
+ */
+export const WORKTREE_SYNC_PATH_MISMATCH_TRACE =
+  'git:sync:path-mismatch:blocked';
+
+/**
+ * Trace marker used when release refuses a caller-supplied worktree path mismatch.
+ */
+export const WORKTREE_RELEASE_PATH_MISMATCH_TRACE =
+  'git:release:path-mismatch:blocked';

@@ -1,6 +1,7 @@
 ---
 '@vannadii/devplat-branching': patch
 '@vannadii/devplat-openclaw': patch
+'@vannadii/devplat-worktrees': patch
 ---
 
 Project dependent-branch rebase conflicts back into the executed rebase plan.
@@ -19,6 +20,10 @@ action without reinterpreting raw worktree records.
 OpenClaw worktree lifecycle tools now accept explicit `applyToDisk` input. Pure
 record projection remains the default, while `applyToDisk: true` delegates
 allocation, sync, and release to the Git-backed worktree service methods.
+The Git-backed sync and release service methods now recompute the expected
+worktree path from the configured root, task id, and branch name, then block
+before Git execution when a caller-provided allocation path points somewhere
+else.
 
 OpenClaw gate runs now record telemetry through the configured storage root.
 The `run_gates` tool accepts an optional `actorId`, preserves the gate report

@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  WORKTREE_RELEASE_PATH_MISMATCH_TRACE,
+  WORKTREE_SYNC_PATH_MISMATCH_TRACE,
+} from './constants.js';
+import {
   NodeWorktreeGitRunner,
   WorktreeAllocationService,
   type WorktreeGitRunner,
@@ -78,6 +82,11 @@ type WorktreeServiceInputs =
   | {
       mode: 'blocked-branch';
       branchName: string;
+    }
+  | {
+      mode: 'path-mismatch';
+      operation: 'sync' | 'release';
+      expectedTrace: string;
     };
 
 type WorktreeServiceContext = {
@@ -103,7 +112,8 @@ function createServiceContext(
     inputs.mode === 'git-flow' ||
     inputs.mode === 'sync-failure' ||
     inputs.mode === 'archive' ||
-    inputs.mode === 'failed-release'
+    inputs.mode === 'failed-release' ||
+    inputs.mode === 'path-mismatch'
   ) {
     const context = createRunner(inputs.exitCodes);
     return {
@@ -551,6 +561,76 @@ describe('WorktreeAllocationService', () => {
         expect(syncResult.status).toBe('blocked');
         expect(releaseResult.released).toBe(false);
         expect(allocation.trace).toContain('git:worktree:add:blocked');
+      },
+    },
+    {
+      name: 'blocks on-disk sync when allocation path differs from configured root',
+      inputs: {
+        mode: 'path-mismatch',
+        operation: 'sync',
+        expectedTrace: WORKTREE_SYNC_PATH_MISMATCH_TRACE,
+      },
+      mock: createServiceContext,
+      assert: async (context, inputs) => {
+        if (
+          inputs.mode !== 'path-mismatch' ||
+          inputs.operation !== 'sync' ||
+          context.commands === undefined
+        ) {
+          throw new Error('expected path-mismatch sync inputs');
+        }
+
+        const allocation = context.service.allocate(
+          'task-10',
+          'feature/task-10',
+        );
+        const result = await context.service.syncOnDisk(
+          {
+            ...allocation,
+            worktreePath: '/repo/untrusted-worktree',
+          },
+          'main',
+        );
+
+        expect(result.status).toBe('blocked');
+        expect(result.changed).toBe(false);
+        expect(result.trace).toContain(inputs.expectedTrace);
+        expect(context.commands).toEqual([]);
+      },
+    },
+    {
+      name: 'blocks on-disk release when allocation path differs from configured root',
+      inputs: {
+        mode: 'path-mismatch',
+        operation: 'release',
+        expectedTrace: WORKTREE_RELEASE_PATH_MISMATCH_TRACE,
+      },
+      mock: createServiceContext,
+      assert: async (context, inputs) => {
+        if (
+          inputs.mode !== 'path-mismatch' ||
+          inputs.operation !== 'release' ||
+          context.commands === undefined
+        ) {
+          throw new Error('expected path-mismatch release inputs');
+        }
+
+        const allocation = context.service.allocate(
+          'task-11',
+          'feature/task-11',
+        );
+        const result = await context.service.releaseOnDisk(
+          {
+            ...allocation,
+            worktreePath: '/repo/untrusted-worktree',
+          },
+          'delete',
+        );
+
+        expect(result.status).toBe('blocked');
+        expect(result.released).toBe(false);
+        expect(result.trace).toContain(inputs.expectedTrace);
+        expect(context.commands).toEqual([]);
       },
     },
   ] satisfies WorktreeServiceCase[];
