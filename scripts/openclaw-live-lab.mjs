@@ -1668,10 +1668,79 @@ export async function runDiscordInteractionProbe(
     );
   }
 
+  const componentCustomIds = collectDiscordComponentCustomIds(
+    result.threadPayload,
+  );
+  const [buttonCustomId] = componentCustomIds;
+  if (buttonCustomId === undefined) {
+    throw new Error(
+      'Discord interaction probe did not record actionable custom ids.',
+    );
+  }
+
+  const buttonCallback = {
+    id: `live-lab-${runLabel}-button`,
+    token: `simulated-button-token-${runLabel}`,
+    channel_id: threadId,
+    data: {
+      /**
+       * Discord interaction callback wire key returned by button interactions.
+       */
+      custom_id: buttonCustomId,
+    },
+    member: {
+      user: {
+        id: 'live-lab-operator',
+      },
+    },
+  };
+  const buttonInteraction = await interactionFactory(buttonCallback, {
+    threadId,
+    boundThreadId: threadId,
+    boundSession,
+    summary: 'Live-lab simulated button interaction',
+    privileged: false,
+    updatedAt,
+  });
+  const buttonResult = await service.handleInteraction(buttonInteraction);
+
+  if (buttonResult.allowed !== true || buttonResult.failedClosed === true) {
+    throw new Error('Discord button interaction probe failed closed.');
+  }
+
+  if (buttonResult.request.threadId !== threadId) {
+    throw new Error(
+      'Discord button interaction probe resolved the wrong thread.',
+    );
+  }
+
+  if (
+    buttonResult.responseReceipt?.endpoint === undefined ||
+    buttonResult.threadReceipt?.endpoint === undefined
+  ) {
+    throw new Error(
+      'Discord button interaction probe did not record receipts.',
+    );
+  }
+
   return {
     action: result.request.action,
     allowed: result.allowed,
-    componentCustomIds: collectDiscordComponentCustomIds(result.threadPayload),
+    buttonAction: buttonResult.request.action,
+    buttonCustomId,
+    buttonInteractionEndpoint: buttonResult.responseReceipt.endpoint,
+    buttonInteractionMessageId: readDiscordReceiptMessageId(
+      buttonResult.responseReceipt,
+    ),
+    buttonResponseContent: readDiscordReceiptContent(
+      buttonResult.responseReceipt,
+    ),
+    buttonThreadContent: readDiscordReceiptContent(buttonResult.threadReceipt),
+    buttonThreadEndpoint: buttonResult.threadReceipt.endpoint,
+    buttonThreadMessageId: readDiscordReceiptMessageId(
+      buttonResult.threadReceipt,
+    ),
+    componentCustomIds,
     componentRows: result.threadPayload.components.length,
     commandName: interaction.commandName,
     failedClosed: result.failedClosed,

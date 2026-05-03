@@ -148,15 +148,16 @@ probe simulates the operator `/retry-gates` path, routes it through the Discord
 control-plane service, renders the compact operator message payload with
 contextual buttons, defers the interaction acknowledgement, posts the
 bound-thread status into a short-lived implementation thread created under the
-standard `implementation` channel with those contextual buttons intact, and
-records the command registration, response receipt endpoints, Discord message
-ids, posted content, and component custom ids in `live-lab-report.json`. The
-probe runs before the deep-test runtime is cleaned up so the private Gateway
-worker is still alive when the control message is posted. It also writes the
-same bound implementation thread session into the deep-test runtime state
-directory before posting the button-bearing message, allowing manual clicks
-during the hold window to revalidate against the same persisted binding and
-thread id used by the private Gateway worker.
+standard `implementation` channel with those contextual buttons intact, then
+routes one returned button `custom_id` as a second callback-shaped interaction.
+It records the command registration, response receipt endpoints, Discord message
+ids, posted content, component custom ids, and button callback receipts in
+`live-lab-report.json`. The probe runs before the deep-test runtime is cleaned up
+so the private Gateway worker is still alive when the control message is posted.
+It also writes the same bound implementation thread session into the deep-test
+runtime state directory before posting the button-bearing message, allowing
+manual clicks during the hold window to revalidate against the same persisted
+binding and thread id used by the private Gateway worker.
 The `operator_hold_ms` input keeps that runtime open for 150000 ms by default
 after the control message is visible, giving an operator a bounded manual-click
 window. The probe fails if the thread control-plane response loses the button

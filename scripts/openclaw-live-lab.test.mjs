@@ -112,8 +112,10 @@ describe('openclaw-live-lab helpers', () => {
           async handleInteraction(input) {
             serviceCalls.push(input);
             const customId = `devplat:v1:show-status:${input.boundThreadId}`;
+            const action =
+              input.customId === undefined ? 'retry-gates' : 'show-status';
             const acceptedPayload = {
-              content: 'DevPlat accepted retry-gates.',
+              content: `DevPlat accepted ${action}.`,
               /**
                * Discord message payload wire key used to suppress operator pings.
                */
@@ -148,9 +150,9 @@ describe('openclaw-live-lab helpers', () => {
               allowed: true,
               failedClosed: false,
               persistedKey: input.id,
-              policyDecisionId: 'policy-retry-gates',
+              policyDecisionId: `policy-${action}`,
               request: {
-                action: 'retry-gates',
+                action,
                 actorId: input.actorId,
                 channelId: input.channelId,
                 id: input.id,
@@ -183,6 +185,7 @@ describe('openclaw-live-lab helpers', () => {
             boundThreadId: options.boundThreadId,
             boundSession: options.boundSession,
             commandName: callback.data.name,
+            customId: callback.data.custom_id,
             summary: options.summary,
             privileged: options.privileged,
             updatedAt: options.updatedAt,
@@ -237,6 +240,16 @@ describe('openclaw-live-lab helpers', () => {
             '/interactions/live-lab-200-1-retry-gates/simulated-token-200-1/callback',
           responseContent:
             'simulated interaction callback: DevPlat accepted retry-gates.',
+          buttonAction: 'show-status',
+          buttonCustomId: 'devplat:v1:show-status:implementation-thread-1',
+          buttonInteractionEndpoint:
+            '/interactions/live-lab-200-1-button/simulated-button-token-200-1/callback',
+          buttonInteractionMessageId: 'message-3',
+          buttonResponseContent:
+            'simulated interaction callback: DevPlat accepted show-status.',
+          buttonThreadContent: 'DevPlat accepted show-status.',
+          buttonThreadEndpoint: '/channels/implementation-thread-1/messages',
+          buttonThreadMessageId: 'message-4',
           threadContent: 'DevPlat accepted retry-gates.',
           threadEndpoint: '/channels/implementation-thread-1/messages',
           threadMessageId: 'message-2',
@@ -252,6 +265,17 @@ describe('openclaw-live-lab helpers', () => {
             kind: 'implementation',
           },
           commandName: 'retry-gates',
+        });
+        expect(context.serviceCalls[1]).toMatchObject({
+          actorId: 'live-lab-operator',
+          boundThreadId: 'implementation-thread-1',
+          channelId: 'implementation-thread-1',
+          customId: 'devplat:v1:show-status:implementation-thread-1',
+          boundSession: {
+            parentChannelId: 'implementation-1',
+            threadId: 'implementation-thread-1',
+            kind: 'implementation',
+          },
         });
         expect(context.persistedGatewaySessions).toEqual([
           {
@@ -330,6 +354,61 @@ describe('openclaw-live-lab helpers', () => {
                 },
               ],
               content: 'DevPlat accepted retry-gates.',
+            },
+          ],
+          [
+            '/channels/audit-1/messages',
+            {
+              /**
+               * Discord message payload wire key used to suppress operator pings.
+               */
+              allowed_mentions: { parse: [] },
+              components: [
+                {
+                  type: 1,
+                  components: [
+                    {
+                      type: 2,
+                      label: 'Show Status',
+                      style: 2,
+                      /**
+                       * Discord component wire key returned by button interactions.
+                       */
+                      custom_id:
+                        'devplat:v1:show-status:implementation-thread-1',
+                    },
+                  ],
+                },
+              ],
+              content:
+                'simulated interaction callback: DevPlat accepted show-status.',
+            },
+          ],
+          [
+            '/channels/implementation-thread-1/messages',
+            {
+              /**
+               * Discord message payload wire key used to suppress operator pings.
+               */
+              allowed_mentions: { parse: [] },
+              components: [
+                {
+                  type: 1,
+                  components: [
+                    {
+                      type: 2,
+                      label: 'Show Status',
+                      style: 2,
+                      /**
+                       * Discord component wire key returned by button interactions.
+                       */
+                      custom_id:
+                        'devplat:v1:show-status:implementation-thread-1',
+                    },
+                  ],
+                },
+              ],
+              content: 'DevPlat accepted show-status.',
             },
           ],
         ]);
@@ -565,6 +644,474 @@ describe('openclaw-live-lab helpers', () => {
           ),
         ).rejects.toThrow(
           'Discord interaction probe did not publish actionable controls',
+        );
+      },
+    },
+    {
+      name: 'fails the simulated Discord interaction probe when component custom ids are missing',
+      inputs: {
+        runLabel: '200-4',
+      },
+      mock: async () => {
+        const createDiscordControlPlaneService = async ({ transport }) => ({
+          async handleInteraction(input) {
+            const payload = {
+              content: 'DevPlat accepted retry-gates without custom ids.',
+              components: [
+                {
+                  type: 1,
+                  components: [
+                    {
+                      type: 2,
+                      label: 'Show Status',
+                      style: 2,
+                    },
+                  ],
+                },
+              ],
+            };
+            const responseReceipt = await transport.postInteractionResponse(
+              input,
+              payload,
+            );
+            const threadReceipt = await transport.postThreadMessage(
+              input.boundThreadId,
+              payload,
+            );
+
+            return {
+              allowed: true,
+              failedClosed: false,
+              persistedKey: input.id,
+              policyDecisionId: 'policy-retry-gates',
+              request: {
+                action: 'retry-gates',
+                actorId: input.actorId,
+                channelId: input.channelId,
+                id: input.id,
+                privileged: false,
+                status: 'approved',
+                summary: input.summary,
+                threadId: input.boundThreadId,
+                trace: [],
+                updatedAt: input.updatedAt,
+              },
+              responsePayload: payload,
+              responseReceipt,
+              threadPayload: payload,
+              threadReceipt,
+            };
+          },
+        });
+
+        return {
+          createDiscordControlPlaneService,
+          createDiscordOperatorInteractionFromCallback: async (
+            callback,
+            options,
+          ) => ({
+            id: callback.id,
+            token: callback.token,
+            actorId: callback.member.user.id,
+            channelId: callback.channel_id,
+            threadId: options.threadId,
+            boundThreadId: options.boundThreadId,
+            boundSession: options.boundSession,
+            commandName: callback.data.name,
+            customId: callback.data.custom_id,
+            summary: options.summary,
+            privileged: options.privileged,
+            updatedAt: options.updatedAt,
+          }),
+          discordRequest: async () => ({ id: 'message-1' }),
+        };
+      },
+      assert: async (context, inputs) => {
+        await expect(
+          runDiscordInteractionProbe(
+            {
+              discordChannels: {
+                audit: { id: 'audit-1' },
+                implementation: { id: 'implementation-1' },
+              },
+              discordRequest: context.discordRequest,
+              reportDirectory: resolve(tmpdir(), 'devplat-live-lab-probe'),
+              runLabel: inputs.runLabel,
+              updatedAt: '2026-04-30T00:00:00.000Z',
+            },
+            {
+              createDiscordControlPlaneService:
+                context.createDiscordControlPlaneService,
+              createDiscordOperatorInteractionFromCallback:
+                context.createDiscordOperatorInteractionFromCallback,
+            },
+          ),
+        ).rejects.toThrow(
+          'Discord interaction probe did not record actionable custom ids',
+        );
+      },
+    },
+    {
+      name: 'fails the simulated Discord button interaction probe when it fails closed',
+      inputs: {
+        runLabel: '200-5',
+      },
+      mock: async () => {
+        const createDiscordControlPlaneService = async ({ transport }) => ({
+          async handleInteraction(input) {
+            const payload = {
+              content: 'DevPlat accepted retry-gates.',
+              components: [
+                {
+                  type: 1,
+                  components: [
+                    {
+                      type: 2,
+                      label: 'Show Status',
+                      style: 2,
+                      /**
+                       * Discord component wire key returned by button interactions.
+                       */
+                      custom_id: `devplat:v1:show-status:${input.boundThreadId}`,
+                    },
+                  ],
+                },
+              ],
+            };
+            const responseReceipt = await transport.postInteractionResponse(
+              input,
+              payload,
+            );
+            const threadReceipt = await transport.postThreadMessage(
+              input.boundThreadId,
+              payload,
+            );
+
+            return input.customId === undefined
+              ? {
+                  allowed: true,
+                  failedClosed: false,
+                  persistedKey: input.id,
+                  policyDecisionId: 'policy-retry-gates',
+                  request: {
+                    action: 'retry-gates',
+                    actorId: input.actorId,
+                    channelId: input.channelId,
+                    id: input.id,
+                    privileged: false,
+                    status: 'approved',
+                    summary: input.summary,
+                    threadId: input.boundThreadId,
+                    trace: [],
+                    updatedAt: input.updatedAt,
+                  },
+                  responsePayload: payload,
+                  responseReceipt,
+                  threadPayload: payload,
+                  threadReceipt,
+                }
+              : {
+                  allowed: false,
+                  failedClosed: true,
+                  persistedKey: input.id,
+                  policyDecisionId: 'policy-show-status',
+                  request: {
+                    action: 'show-status',
+                    actorId: input.actorId,
+                    channelId: input.channelId,
+                    id: input.id,
+                    privileged: false,
+                    status: 'blocked',
+                    summary: input.summary,
+                    threadId: input.boundThreadId,
+                    trace: [],
+                    updatedAt: input.updatedAt,
+                  },
+                };
+          },
+        });
+
+        return {
+          createDiscordControlPlaneService,
+          createDiscordOperatorInteractionFromCallback: async (
+            callback,
+            options,
+          ) => ({
+            id: callback.id,
+            token: callback.token,
+            actorId: callback.member.user.id,
+            channelId: callback.channel_id,
+            threadId: options.threadId,
+            boundThreadId: options.boundThreadId,
+            boundSession: options.boundSession,
+            commandName: callback.data.name,
+            customId: callback.data.custom_id,
+            summary: options.summary,
+            privileged: options.privileged,
+            updatedAt: options.updatedAt,
+          }),
+          discordRequest: async () => ({ id: 'message-1' }),
+        };
+      },
+      assert: async (context, inputs) => {
+        await expect(
+          runDiscordInteractionProbe(
+            {
+              discordChannels: {
+                audit: { id: 'audit-1' },
+                implementation: { id: 'implementation-1' },
+              },
+              discordRequest: context.discordRequest,
+              reportDirectory: resolve(tmpdir(), 'devplat-live-lab-probe'),
+              runLabel: inputs.runLabel,
+              updatedAt: '2026-04-30T00:00:00.000Z',
+            },
+            {
+              createDiscordControlPlaneService:
+                context.createDiscordControlPlaneService,
+              createDiscordOperatorInteractionFromCallback:
+                context.createDiscordOperatorInteractionFromCallback,
+            },
+          ),
+        ).rejects.toThrow('Discord button interaction probe failed closed');
+      },
+    },
+    {
+      name: 'fails the simulated Discord button interaction probe when it resolves the wrong thread',
+      inputs: {
+        runLabel: '200-6',
+      },
+      mock: async () => {
+        const createDiscordControlPlaneService = async ({ transport }) => ({
+          async handleInteraction(input) {
+            const payload = {
+              content: 'DevPlat accepted retry-gates.',
+              components: [
+                {
+                  type: 1,
+                  components: [
+                    {
+                      type: 2,
+                      label: 'Show Status',
+                      style: 2,
+                      /**
+                       * Discord component wire key returned by button interactions.
+                       */
+                      custom_id: `devplat:v1:show-status:${input.boundThreadId}`,
+                    },
+                  ],
+                },
+              ],
+            };
+            const responseReceipt = await transport.postInteractionResponse(
+              input,
+              payload,
+            );
+            const threadReceipt = await transport.postThreadMessage(
+              input.boundThreadId,
+              payload,
+            );
+
+            return {
+              allowed: true,
+              failedClosed: false,
+              persistedKey: input.id,
+              policyDecisionId: 'policy-probe',
+              request: {
+                action:
+                  input.customId === undefined ? 'retry-gates' : 'show-status',
+                actorId: input.actorId,
+                channelId: input.channelId,
+                id: input.id,
+                privileged: false,
+                status: 'approved',
+                summary: input.summary,
+                threadId:
+                  input.customId === undefined
+                    ? input.boundThreadId
+                    : 'wrong-thread',
+                trace: [],
+                updatedAt: input.updatedAt,
+              },
+              responsePayload: payload,
+              responseReceipt,
+              threadPayload: payload,
+              threadReceipt,
+            };
+          },
+        });
+
+        return {
+          createDiscordControlPlaneService,
+          createDiscordOperatorInteractionFromCallback: async (
+            callback,
+            options,
+          ) => ({
+            id: callback.id,
+            token: callback.token,
+            actorId: callback.member.user.id,
+            channelId: callback.channel_id,
+            threadId: options.threadId,
+            boundThreadId: options.boundThreadId,
+            boundSession: options.boundSession,
+            commandName: callback.data.name,
+            customId: callback.data.custom_id,
+            summary: options.summary,
+            privileged: options.privileged,
+            updatedAt: options.updatedAt,
+          }),
+          discordRequest: async () => ({ id: 'message-1' }),
+        };
+      },
+      assert: async (context, inputs) => {
+        await expect(
+          runDiscordInteractionProbe(
+            {
+              discordChannels: {
+                audit: { id: 'audit-1' },
+                implementation: { id: 'implementation-1' },
+              },
+              discordRequest: context.discordRequest,
+              reportDirectory: resolve(tmpdir(), 'devplat-live-lab-probe'),
+              runLabel: inputs.runLabel,
+              updatedAt: '2026-04-30T00:00:00.000Z',
+            },
+            {
+              createDiscordControlPlaneService:
+                context.createDiscordControlPlaneService,
+              createDiscordOperatorInteractionFromCallback:
+                context.createDiscordOperatorInteractionFromCallback,
+            },
+          ),
+        ).rejects.toThrow(
+          'Discord button interaction probe resolved the wrong thread',
+        );
+      },
+    },
+    {
+      name: 'fails the simulated Discord button interaction probe when receipts are missing',
+      inputs: {
+        runLabel: '200-7',
+      },
+      mock: async () => {
+        const createDiscordControlPlaneService = async ({ transport }) => ({
+          async handleInteraction(input) {
+            const payload = {
+              content: 'DevPlat accepted retry-gates.',
+              components: [
+                {
+                  type: 1,
+                  components: [
+                    {
+                      type: 2,
+                      label: 'Show Status',
+                      style: 2,
+                      /**
+                       * Discord component wire key returned by button interactions.
+                       */
+                      custom_id: `devplat:v1:show-status:${input.boundThreadId}`,
+                    },
+                  ],
+                },
+              ],
+            };
+            const responseReceipt = await transport.postInteractionResponse(
+              input,
+              payload,
+            );
+            const threadReceipt = await transport.postThreadMessage(
+              input.boundThreadId,
+              payload,
+            );
+
+            return input.customId === undefined
+              ? {
+                  allowed: true,
+                  failedClosed: false,
+                  persistedKey: input.id,
+                  policyDecisionId: 'policy-retry-gates',
+                  request: {
+                    action: 'retry-gates',
+                    actorId: input.actorId,
+                    channelId: input.channelId,
+                    id: input.id,
+                    privileged: false,
+                    status: 'approved',
+                    summary: input.summary,
+                    threadId: input.boundThreadId,
+                    trace: [],
+                    updatedAt: input.updatedAt,
+                  },
+                  responsePayload: payload,
+                  responseReceipt,
+                  threadPayload: payload,
+                  threadReceipt,
+                }
+              : {
+                  allowed: true,
+                  failedClosed: false,
+                  persistedKey: input.id,
+                  policyDecisionId: 'policy-show-status',
+                  request: {
+                    action: 'show-status',
+                    actorId: input.actorId,
+                    channelId: input.channelId,
+                    id: input.id,
+                    privileged: false,
+                    status: 'approved',
+                    summary: input.summary,
+                    threadId: input.boundThreadId,
+                    trace: [],
+                    updatedAt: input.updatedAt,
+                  },
+                };
+          },
+        });
+
+        return {
+          createDiscordControlPlaneService,
+          createDiscordOperatorInteractionFromCallback: async (
+            callback,
+            options,
+          ) => ({
+            id: callback.id,
+            token: callback.token,
+            actorId: callback.member.user.id,
+            channelId: callback.channel_id,
+            threadId: options.threadId,
+            boundThreadId: options.boundThreadId,
+            boundSession: options.boundSession,
+            commandName: callback.data.name,
+            customId: callback.data.custom_id,
+            summary: options.summary,
+            privileged: options.privileged,
+            updatedAt: options.updatedAt,
+          }),
+          discordRequest: async () => ({ id: 'message-1' }),
+        };
+      },
+      assert: async (context, inputs) => {
+        await expect(
+          runDiscordInteractionProbe(
+            {
+              discordChannels: {
+                audit: { id: 'audit-1' },
+                implementation: { id: 'implementation-1' },
+              },
+              discordRequest: context.discordRequest,
+              reportDirectory: resolve(tmpdir(), 'devplat-live-lab-probe'),
+              runLabel: inputs.runLabel,
+              updatedAt: '2026-04-30T00:00:00.000Z',
+            },
+            {
+              createDiscordControlPlaneService:
+                context.createDiscordControlPlaneService,
+              createDiscordOperatorInteractionFromCallback:
+                context.createDiscordOperatorInteractionFromCallback,
+            },
+          ),
+        ).rejects.toThrow(
+          'Discord button interaction probe did not record receipts',
         );
       },
     },

@@ -131,14 +131,15 @@ Gateway env vars into the runtime container.
 
 The live lab posts compact status payloads without stale interactive components,
 registers Discord operator commands in the sandbox guild, and records
-callback-shaped interaction evidence in its report, including response
-endpoints, Discord message ids, posted content, and component custom ids from
-the posted control-plane payloads. The initial project-management bootstrap
-message is a required acceptance signal; if Discord cannot post it, the live lab
-fails before mutating sandbox repository state. The report preserves that
-bootstrap receipt with channel id, message id, posted content, and an empty
-component id list so operators can audit the visible start signal without
-leaving unbound status buttons that outlive the ephemeral runner.
+callback-shaped slash-command and button interaction evidence in its report,
+including response endpoints, Discord message ids, posted content, and component
+custom ids from the posted control-plane payloads. The initial
+project-management bootstrap message is a required acceptance signal; if
+Discord cannot post it, the live lab fails before mutating sandbox repository
+state. The report preserves that bootstrap receipt with channel id, message id,
+posted content, and an empty component id list so operators can audit the
+visible start signal without leaving unbound status buttons that outlive the
+ephemeral runner.
 Human-triggered Discord client clicks remain a manual sandbox-guild acceptance
 check because Discord does not expose a supported bot API for clicking buttons
 as a user. The `operator_hold_ms` live-lab input defaults to `150000`, keeping
