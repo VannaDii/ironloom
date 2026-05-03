@@ -31,18 +31,21 @@ const containerDevplatStateDirectory = '/app/.devplat';
  */
 const hostWritablePermissionMode = 'u+rwX,go-rwx';
 /**
- * Host user id that should own container-created bind-mount children after cleanup normalization.
+ * Host user id that should own container-created bind-mount content after cleanup normalization.
  */
 const hostRunnerUid = String(process.getuid());
 /**
- * Host group id that should own container-created bind-mount children after cleanup normalization.
+ * Host group id that should own container-created bind-mount content after cleanup normalization.
  */
 const hostRunnerGid = String(process.getgid());
 /**
- * Shell snippet that updates container-owned children without touching the host-owned mount root.
+ * Container user used only for bind-mount ownership normalization.
  */
-const hostWritableMountChildrenCommand =
-  'find "$1" -mindepth 1 -exec chown "$2:$3" {} \\; -exec chmod "$4" {} \\;';
+const containerPermissionRepairUser = 'root';
+/**
+ * Shell snippet that updates container-owned bind-mount content for host writes.
+ */
+const hostWritableMountCommand = 'chown -R "$2:$3" "$1" && chmod -R "$4" "$1"';
 /**
  * Warning code recorded when mounted state permission normalization fails.
  */
@@ -479,10 +482,12 @@ async function ensureMountedStateWritable({ commandRunner, containerName }) {
   try {
     await commandRunner('docker', [
       'exec',
+      '--user',
+      containerPermissionRepairUser,
       containerName,
       'sh',
       '-c',
-      hostWritableMountChildrenCommand,
+      hostWritableMountCommand,
       'sh',
       containerDevplatStateDirectory,
       hostRunnerUid,

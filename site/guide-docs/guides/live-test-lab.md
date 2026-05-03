@@ -93,7 +93,7 @@ clicks against the same persisted thread-session state written by platform
 tools.
 Before host-side cleanup hooks write additional live-lab session records into
 that mounted store, the deep-test runner asks the still-running container to
-make `/app/.devplat` children owned and writable by the host runner only. That
+make `/app/.devplat` content owned and writable by the host runner only. That
 avoids container UID ownership causing permission failures during the
 manual-operator hold window without making local state world-writable. If this
 auxiliary normalization fails, the report records a warning and cleanup still
@@ -169,8 +169,8 @@ It also writes the same bound implementation thread session into the deep-test
 runtime state directory before posting the button-bearing message, allowing
 manual clicks during the hold window to revalidate against the same persisted
 binding and thread id used by the private Gateway worker. The runner normalizes
-the mounted state directory children immediately before that host-side write, so
-container-created `state/` directories remain auditable and writable by the
+the mounted state directory immediately before that host-side write, so
+container-created state remains auditable and writable by the
 workflow process while retaining owner-only permissions. If the normalization
 step fails, `live-lab-report.json` includes a warning and the cleanup hook still
 runs.

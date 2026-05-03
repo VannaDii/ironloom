@@ -246,9 +246,7 @@ describe('openclaw-deep-test helpers', () => {
               if (args[0] === 'exec') {
                 events.push(args);
                 if (
-                  args.includes(
-                    'find "$1" -mindepth 1 -exec chown "$2:$3" {} \\; -exec chmod "$4" {} \\;',
-                  )
+                  args.includes('chown -R "$2:$3" "$1" && chmod -R "$4" "$1"')
                 ) {
                   return { stdout: '', stderr: '' };
                 }
@@ -278,19 +276,19 @@ describe('openclaw-deep-test helpers', () => {
         const chmodIndex = events.findIndex(
           (event) =>
             Array.isArray(event) &&
-            event.includes(
-              'find "$1" -mindepth 1 -exec chown "$2:$3" {} \\; -exec chmod "$4" {} \\;',
-            ),
+            event.includes('chown -R "$2:$3" "$1" && chmod -R "$4" "$1"'),
         );
         const cleanupIndex = events.indexOf('before-cleanup');
 
         expect(report.mode).toBe('live');
         expect(events[chmodIndex]).toEqual([
           'exec',
+          '--user',
+          'root',
           report.containerName,
           'sh',
           '-c',
-          'find "$1" -mindepth 1 -exec chown "$2:$3" {} \\; -exec chmod "$4" {} \\;',
+          'chown -R "$2:$3" "$1" && chmod -R "$4" "$1"',
           'sh',
           '/app/.devplat',
           inputs.hostUid,
@@ -344,9 +342,7 @@ describe('openclaw-deep-test helpers', () => {
               }
               if (args[0] === 'exec') {
                 if (
-                  args.includes(
-                    'find "$1" -mindepth 1 -exec chown "$2:$3" {} \\; -exec chmod "$4" {} \\;',
-                  )
+                  args.includes('chown -R "$2:$3" "$1" && chmod -R "$4" "$1"')
                 ) {
                   throw new Error('chmod unavailable');
                 }
