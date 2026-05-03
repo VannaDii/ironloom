@@ -541,6 +541,15 @@ function hasArtifactName(block, artifactNameLine) {
 }
 
 /**
+ * Finds the artifact name line for a shared CI artifact prefix.
+ */
+function findSharedArtifactNameLine(block, artifactPrefix) {
+  return block
+    .map((line) => line.trim())
+    .find((line) => line.startsWith(`name: ${artifactPrefix}-`));
+}
+
+/**
  * Checks whether a workflow step can overwrite a stable artifact on rerun.
  */
 function hasArtifactOverwrite(block) {
@@ -560,14 +569,22 @@ async function validateCiArtifactRerunSafety(rootDirectory, errors) {
 
   for (const artifactPrefix of RERUN_STABLE_CI_ARTIFACT_PREFIXES) {
     const artifactNameLine = `name: ${artifactPrefix}-\${{ github.run_id }}`;
-    const attemptScopedArtifactNameLine = `${artifactNameLine}-${GITHUB_RUN_ATTEMPT_EXPRESSION}`;
-    if (ciWorkflow.includes(attemptScopedArtifactNameLine)) {
-      errors.push(
-        `${CI_WORKFLOW_PATH} shared CI artifact names must not include ${GITHUB_RUN_ATTEMPT_EXPRESSION}; failed-job reruns need stable ${artifactPrefix} artifact handoffs.`,
-      );
-    }
 
     for (const workflowStepBlock of workflowStepBlocks) {
+      const sharedArtifactNameLine = findSharedArtifactNameLine(
+        workflowStepBlock,
+        artifactPrefix,
+      );
+      if (
+        isUploadArtifactStep(workflowStepBlock) &&
+        sharedArtifactNameLine !== undefined &&
+        sharedArtifactNameLine.includes(GITHUB_RUN_ATTEMPT_EXPRESSION)
+      ) {
+        errors.push(
+          `${CI_WORKFLOW_PATH} shared CI artifact names must not include ${GITHUB_RUN_ATTEMPT_EXPRESSION}; failed-job reruns need stable ${artifactPrefix} artifact handoffs.`,
+        );
+      }
+
       if (
         isUploadArtifactStep(workflowStepBlock) &&
         hasArtifactName(workflowStepBlock, artifactNameLine) &&

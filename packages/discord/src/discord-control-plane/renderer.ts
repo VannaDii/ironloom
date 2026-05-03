@@ -523,6 +523,28 @@ export function renderDiscordInteractionCompletionMessage(
 }
 
 /**
+ * Renders the minimal follow-up that closes a deferred interaction after thread posting fails.
+ */
+export function renderDiscordInteractionThreadPostFailureCompletionMessage(
+  request: DiscordControlRequest,
+  reason: string,
+): DiscordMessagePayload {
+  const content = renderDiscordMessageContent({
+    actionLabel: 'Interaction completed',
+    fields: {
+      Status: 'thread-post-failed',
+      Scope: renderDiscordScopeValue(request),
+      Item: renderDiscordItemValue(request),
+      Reason: reason,
+    },
+    indicator: '🔴',
+    result: 'Action was recorded, but the bound-thread status message failed.',
+  });
+
+  return createDiscordContentOnlyPayload(content);
+}
+
+/**
  * Renders the standard accepted-action message.
  */
 export function renderDiscordControlAcceptedMessage(

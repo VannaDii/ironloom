@@ -8,6 +8,7 @@ import {
   renderDiscordControlBlockedMessage,
   renderDiscordFailureExplanationMessage,
   renderDiscordInteractionCompletionMessage,
+  renderDiscordInteractionThreadPostFailureCompletionMessage,
   renderDiscordRouteFailureMessage,
   renderDiscordStatusMessage,
 } from './renderer.js';
@@ -81,6 +82,40 @@ describe('Discord control-plane renderer', () => {
         expect(payload.content).toContain('Scope: implementation · thread-1');
         expect(payload.content).toContain(
           '→ Result posted to the bound thread.',
+        );
+        expect(payload.components).toBeUndefined();
+        expect(payload.flags).toBe(64);
+      },
+    },
+    {
+      name: 'renders deferred interaction thread-post failure completion without action buttons',
+      inputs: {
+        request,
+        reason: 'Discord thread status message returned HTTP 403.',
+      },
+      mock: ({
+        request: inputRequest,
+        reason,
+      }: {
+        request: DiscordControlRequest;
+        reason: string;
+      }) =>
+        renderDiscordInteractionThreadPostFailureCompletionMessage(
+          inputRequest,
+          reason,
+        ),
+      assert: (
+        payload: ReturnType<
+          typeof renderDiscordInteractionThreadPostFailureCompletionMessage
+        >,
+      ) => {
+        expect(payload.content).toContain('🔴 DevPlat · Interaction completed');
+        expect(payload.content).toContain('Status: thread-post-failed');
+        expect(payload.content).toContain(
+          'Reason: Discord thread status message returned HTTP 403.',
+        );
+        expect(payload.content).toContain(
+          '→ Action was recorded, but the bound-thread status message failed.',
         );
         expect(payload.components).toBeUndefined();
         expect(payload.flags).toBe(64);

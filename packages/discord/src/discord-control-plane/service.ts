@@ -19,6 +19,7 @@ import {
   renderDiscordControlAcceptedMessage,
   renderDiscordControlBlockedMessage,
   renderDiscordInteractionCompletionMessage,
+  renderDiscordInteractionThreadPostFailureCompletionMessage,
   renderDiscordRouteFailureMessage,
 } from './renderer.js';
 import type {
@@ -802,15 +803,18 @@ export class DiscordControlPlaneService {
       request.threadId,
       threadPayload,
     );
-    const completionPayload =
-      renderDiscordInteractionCompletionMessage(request);
-    const completionResult = threadPostResult.ok
-      ? await this.postInteractionCompletion(input, completionPayload)
-      : undefined;
+    const completionPayload = threadPostResult.ok
+      ? renderDiscordInteractionCompletionMessage(request)
+      : renderDiscordInteractionThreadPostFailureCompletionMessage(
+          request,
+          threadPostResult.threadPostError,
+        );
+    const completionResult = await this.postInteractionCompletion(
+      input,
+      completionPayload,
+    );
     const completionProjection =
-      completionResult === undefined
-        ? {}
-        : createDiscordCompletionResultProjection(completionResult);
+      createDiscordCompletionResultProjection(completionResult);
 
     return {
       ...result,

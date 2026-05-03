@@ -150,6 +150,30 @@ describe('check-instructions', () => {
       },
     },
     {
+      name: 'fails when shared CI artifact names include run attempts before the run id',
+      inputs: {
+        useFixtureRoot: true,
+      },
+      mock: async ({ rootDirectory }) => {
+        await replaceInFile(
+          rootDirectory,
+          '.github/workflows/ci.yml',
+          'name: schemas-${{ github.run_id }}',
+          'name: schemas-${{ github.run_attempt }}-${{ github.run_id }}',
+        );
+      },
+      assert: (errors) => {
+        expect(
+          errors.some(
+            (error) =>
+              error.includes('.github/workflows/ci.yml') &&
+              error.includes('shared CI artifact names') &&
+              error.includes('github.run_attempt'),
+          ),
+        ).toBe(true);
+      },
+    },
+    {
       name: 'fails when shared CI artifact uploads cannot overwrite rerun artifacts',
       inputs: {
         useFixtureRoot: true,

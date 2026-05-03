@@ -30,10 +30,10 @@ acknowledgement transport throws, or a route-refusal acknowledgement is rejected
 the action fails closed, skips lifecycle state writes, writes an audit event,
 and exposes `responsePostError`. If the bound-thread status post fails after
 acknowledgement, the result preserves the interaction acknowledgement receipt
-and durable action record while exposing `threadPostError` for diagnostics,
-including when Discord returns a non-2xx thread-message receipt. Interaction
-completion failures expose `completionPostError` without reposting the full
-button-bearing operator payload.
+and durable action record, exposes `threadPostError`, and still sends a minimal
+ephemeral completion follow-up so Discord closes the deferred interaction
+deterministically. Interaction completion failures expose `completionPostError`
+without reposting the full button-bearing operator payload.
 requests are normalized once, so persisted traces contain one Discord route
 marker for the action. The webhook helper returns the same structured payload
 shape for explicit deployments that choose inbound callbacks, but the production
@@ -76,7 +76,8 @@ flowchart LR
   Components --> Response[Deferred acknowledgement over REST]
   Response --> State[Persist state telemetry and audit]
   State --> Thread[Thread status message]
-  Thread --> Complete[Ephemeral interaction completion]
+  Thread -->|posted| Complete[Ephemeral interaction completion]
+  Thread -->|failed| FailureComplete[Ephemeral failure completion]
 ```
 
 ## Boundaries

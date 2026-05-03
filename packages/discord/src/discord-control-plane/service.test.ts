@@ -150,6 +150,34 @@ function createThreadRejectingResponseTransport(): DiscordControlResponseTranspo
 }
 
 /**
+ * Creates a transport that rejects both the thread message and deferred completion.
+ */
+function createThreadAndCompletionRejectingResponseTransport(): DiscordControlResponseTransport {
+  return {
+    async postInteractionResponse(input) {
+      return createReceipt(`/interactions/${input.id}/${input.token}/callback`);
+    },
+    async postInteractionDeferred(input) {
+      return createReceipt(`/interactions/${input.id}/${input.token}/callback`);
+    },
+    async postInteractionCompletion(input) {
+      return {
+        endpoint: `/webhooks/application/${input.token}`,
+        statusCode: 404,
+        responseBody: { message: 'Unknown interaction webhook' },
+      };
+    },
+    async postThreadMessage(threadId) {
+      return {
+        endpoint: `/channels/${threadId}/messages`,
+        statusCode: 403,
+        responseBody: { message: 'Missing permissions' },
+      };
+    },
+  };
+}
+
+/**
  * Creates a transport that returns a rejected interaction acknowledgement.
  */
 function createAcknowledgementRejectingResponseTransport(): DiscordControlResponseTransport {
@@ -937,6 +965,9 @@ describe('DiscordControlPlaneService', () => {
         expect(result.threadPostError).toBe(
           'Discord thread status message returned HTTP 403.',
         );
+        expect(result.completionReceipt?.endpoint).toBe(
+          '/webhooks/application/token-thread-failure-3',
+        );
         expect(await context.store.list('state')).toContain(
           'interaction-thread-failure-003',
         );
@@ -993,6 +1024,9 @@ describe('DiscordControlPlaneService', () => {
         );
         expect(result.threadReceipt).toBeUndefined();
         expect(result.threadPostError).toBe(inputs.expectedError);
+        expect(result.completionReceipt?.endpoint).toBe(
+          '/webhooks/application/token-thread-failure-1',
+        );
         expect(await context.store.list('state')).toContain(
           'interaction-thread-failure-001',
         );
@@ -1049,11 +1083,67 @@ describe('DiscordControlPlaneService', () => {
         );
         expect(result.threadReceipt).toBeUndefined();
         expect(result.threadPostError).toBe(inputs.expectedError);
+        expect(result.completionReceipt?.endpoint).toBe(
+          '/webhooks/application/token-thread-failure-2',
+        );
         expect(await context.store.list('state')).toContain(
           'interaction-thread-failure-002',
         );
         expect(await context.store.list('audit')).toContain(
           'interaction-thread-failure-002:audit',
+        );
+      },
+    },
+    {
+      name: 'reports completion rejection when thread posting returns a rejected receipt',
+      inputs: {
+        interaction: {
+          id: 'interaction-thread-failure-004',
+          token: 'token-thread-failure-4',
+          actorId: 'user-thread-failure-4',
+          channelId: 'channel-thread-failure-4',
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          commandName: 'show status',
+          threadId: 'thread-failure-4',
+        } satisfies DiscordOperatorInteraction,
+      },
+      mock: async () => {
+        const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+        const store = new FileStoreService(rootDirectory);
+        return {
+          store,
+          service: new DiscordControlPlaneService(
+            new DecisionPolicyService(),
+            new TelemetryEventService(store),
+            store,
+            createThreadAndCompletionRejectingResponseTransport(),
+          ),
+        };
+      },
+      assert: async (
+        context: {
+          store: FileStoreService;
+          service: DiscordControlPlaneService;
+        },
+        inputs: {
+          interaction: DiscordOperatorInteraction;
+        },
+      ) => {
+        const result = await context.service.handleInteraction(
+          inputs.interaction,
+        );
+
+        expect(result.allowed).toBe(true);
+        expect(result.threadReceipt?.statusCode).toBe(403);
+        expect(result.threadPostError).toBe(
+          'Discord thread status message returned HTTP 403.',
+        );
+        expect(result.completionReceipt?.statusCode).toBe(404);
+        expect(result.completionPostError).toBe(
+          'Discord interaction completion returned HTTP 404.',
+        );
+        expect(await context.store.list('state')).toContain(
+          'interaction-thread-failure-004',
         );
       },
     },
