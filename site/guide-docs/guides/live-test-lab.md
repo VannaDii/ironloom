@@ -91,6 +91,10 @@ Live-mode containers also set `DISCORD_GATEWAY_ENABLED=true` and
 worker starts beside the OpenClaw gateway and resolves button or slash-command
 clicks against the same persisted thread-session state written by platform
 tools.
+Before host-side cleanup hooks write additional live-lab session records into
+that mounted store, the deep-test runner asks the still-running container to
+make `/app/.devplat` host-writable. That avoids container UID ownership causing
+permission failures during the manual-operator hold window.
 
 The matching local invocation is:
 
@@ -161,7 +165,10 @@ so the private Gateway worker is still alive when the control message is posted.
 It also writes the same bound implementation thread session into the deep-test
 runtime state directory before posting the button-bearing message, allowing
 manual clicks during the hold window to revalidate against the same persisted
-binding and thread id used by the private Gateway worker.
+binding and thread id used by the private Gateway worker. The runner normalizes
+the mounted state directory permissions immediately before that host-side write,
+so container-created `state/` directories remain auditable and writable by the
+workflow process.
 The `operator_hold_ms` input keeps that runtime open for 150000 ms by default
 after the control message is visible, giving an operator a bounded manual-click
 window. The probe fails if the thread control-plane response loses the button

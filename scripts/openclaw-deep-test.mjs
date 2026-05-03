@@ -22,6 +22,19 @@ const snapshotKeyIgnoredCharacterPattern = /[^a-z0-9]/giu;
  * Worktree root used by the hermetic scenario and mirrored into the runtime.
  */
 const defaultWorktreeRoot = 'devplat-state/worktrees';
+/**
+ * Runtime path where the host-backed DevPlat state store is mounted.
+ */
+const containerDevplatStateDirectory = '/app/.devplat';
+/**
+ * Permission mode that lets the host runner write files after container-owned state writes.
+ */
+const hostWritablePermissionMode = 'ugo+rwX';
+/**
+ * Shell snippet that updates container-owned children without touching the host-owned mount root.
+ */
+const hostWritableMountChildrenCommand =
+  'find "$1" -mindepth 1 -exec chmod "$2" {} \\;';
 
 function parseFlagArguments(argv) {
   const args = new Map();
@@ -291,7 +304,7 @@ export function buildDockerRunArgs({
     '-e',
     'OPENCLAW_CONFIG_PATH=/state/openclaw.json',
     '-e',
-    'DEVPLAT_STORAGE_ROOT=/app/.devplat',
+    `DEVPLAT_STORAGE_ROOT=${containerDevplatStateDirectory}`,
     '-e',
     'HOME=/state/home',
     '-e',
@@ -306,7 +319,7 @@ export function buildDockerRunArgs({
     '-v',
     `${runtimeDirectory}:/state`,
     '-v',
-    `${devplatStateDirectory}:/app/.devplat`,
+    `${devplatStateDirectory}:${containerDevplatStateDirectory}`,
     '-v',
     `${bundledExtensionsDirectory}:/app/node_modules/openclaw/dist/extensions:ro`,
   ];
@@ -439,6 +452,22 @@ async function runCommand(command, args, options = {}) {
 async function ensureWritableDirectory(directory) {
   await mkdir(directory, { recursive: true });
   await chmod(directory, 0o777);
+}
+
+/**
+ * Makes container-created `.devplat` bind-mount content writable from the host.
+ */
+async function ensureMountedStateWritable({ commandRunner, containerName }) {
+  await commandRunner('docker', [
+    'exec',
+    containerName,
+    'sh',
+    '-c',
+    hostWritableMountChildrenCommand,
+    'sh',
+    containerDevplatStateDirectory,
+    hostWritablePermissionMode,
+  ]);
 }
 
 async function collectStoredKeys(rootDirectory) {
@@ -1800,6 +1829,10 @@ export async function runDeepTest(options, dependencies = {}) {
     report.persisted = await collectStoredKeysFn(devplatStateDirectory);
     report.completedAt = new Date().toISOString();
     validateReport(report);
+    await ensureMountedStateWritable({
+      commandRunner,
+      containerName,
+    });
     await beforeCleanup({
       containerName,
       devplatStateDirectory,

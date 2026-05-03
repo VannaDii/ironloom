@@ -196,10 +196,101 @@ describe('openclaw-deep-test helpers', () => {
           ['run'],
           ['exec'],
           ['exec'],
+          ['exec'],
           ['before-cleanup', report.containerName, inputs.reportDir],
           ['logs'],
           ['rm'],
         ]);
+      },
+    },
+    {
+      name: 'makes mounted state writable before host cleanup hooks run',
+      inputs: {
+        reportDir: resolve(tmpdir(), 'devplat-openclaw-before-cleanup-chmod'),
+      },
+      mock: async () => undefined,
+      assert: async (_context, inputs) => {
+        const events = [];
+        temporaryRoots.push(inputs.reportDir);
+        const report = await runDeepTest(
+          {
+            image: 'devplat:test',
+            mode: 'live',
+            reportDir: inputs.reportDir,
+            scenario: [
+              {
+                expected: { status: 'ok' },
+                params: { scope: 'state' },
+                phase: 'config',
+                tool: 'list_stored_records',
+              },
+            ],
+            skipBuild: true,
+            beforeCleanup: async () => {
+              events.push('before-cleanup');
+            },
+          },
+          {
+            collectStoredKeys: async () => ({
+              artifacts: ['artifact-1'],
+              memory: ['memory-1'],
+              state: ['state-1'],
+              telemetry: ['telemetry-1'],
+            }),
+            commandRunner: async (_command, args) => {
+              if (args[0] === 'run') {
+                return { stdout: 'container-1\n', stderr: '' };
+              }
+              if (args[0] === 'exec') {
+                events.push(args);
+                if (
+                  args.includes('find "$1" -mindepth 1 -exec chmod "$2" {} \\;')
+                ) {
+                  return { stdout: '', stderr: '' };
+                }
+
+                return {
+                  stdout: JSON.stringify({
+                    status: 200,
+                    body: {
+                      ok: true,
+                      result: {
+                        details: { status: 'ok' },
+                      },
+                    },
+                  }),
+                  stderr: '',
+                };
+              }
+              if (args[0] === 'logs' || args[0] === 'rm') {
+                return { stdout: '', stderr: '' };
+              }
+
+              throw new Error(`Unexpected docker args: ${args.join(' ')}`);
+            },
+            onProgress: () => undefined,
+          },
+        );
+        const chmodIndex = events.findIndex(
+          (event) =>
+            Array.isArray(event) &&
+            event.includes('find "$1" -mindepth 1 -exec chmod "$2" {} \\;'),
+        );
+        const cleanupIndex = events.indexOf('before-cleanup');
+
+        expect(report.mode).toBe('live');
+        expect(events[chmodIndex]).toEqual([
+          'exec',
+          report.containerName,
+          'sh',
+          '-c',
+          'find "$1" -mindepth 1 -exec chmod "$2" {} \\;',
+          'sh',
+          '/app/.devplat',
+          'ugo+rwX',
+        ]);
+        expect(chmodIndex).toBeGreaterThan(-1);
+        expect(cleanupIndex).toBeGreaterThan(chmodIndex);
       },
     },
     {
