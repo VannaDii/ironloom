@@ -1475,6 +1475,23 @@ class LiveLabDiscordInteractionTransport {
     };
   }
 
+  async postInteractionCompletion(input, content) {
+    const endpoint = `/webhooks/simulated-live-lab/${encodeURIComponent(input.token)}`;
+
+    return {
+      body: {
+        content: content.content,
+      },
+      endpoint,
+      responseBody: {
+        content: content.content,
+        interactionId: input.id,
+        mode: 'simulated',
+      },
+      statusCode: 202,
+    };
+  }
+
   async postThreadMessage(threadId, content) {
     const endpoint = `/channels/${encodeURIComponent(threadId)}/messages`;
     const receipt = await sendDiscordMessage(
@@ -1708,7 +1725,8 @@ export async function runDiscordInteractionProbe(
 
   if (
     result.responseReceipt?.endpoint === undefined ||
-    result.threadReceipt?.endpoint === undefined
+    result.threadReceipt?.endpoint === undefined ||
+    result.completionReceipt?.endpoint === undefined
   ) {
     throw new Error('Discord interaction probe did not record receipts.');
   }
@@ -1767,7 +1785,8 @@ export async function runDiscordInteractionProbe(
 
   if (
     buttonResult.responseReceipt?.endpoint === undefined ||
-    buttonResult.threadReceipt?.endpoint === undefined
+    buttonResult.threadReceipt?.endpoint === undefined ||
+    buttonResult.completionReceipt?.endpoint === undefined
   ) {
     throw new Error(
       'Discord button interaction probe did not record receipts.',
@@ -1779,6 +1798,13 @@ export async function runDiscordInteractionProbe(
     allowed: result.allowed,
     buttonAction: buttonResult.request.action,
     buttonCustomId,
+    buttonCompletionEndpoint: buttonResult.completionReceipt.endpoint,
+    buttonCompletionMessageId: readDiscordReceiptMessageId(
+      buttonResult.completionReceipt,
+    ),
+    buttonCompletionContent: readDiscordReceiptContent(
+      buttonResult.completionReceipt,
+    ),
     buttonInteractionEndpoint: buttonResult.responseReceipt.endpoint,
     buttonInteractionMessageId: readDiscordReceiptMessageId(
       buttonResult.responseReceipt,
@@ -1794,6 +1820,9 @@ export async function runDiscordInteractionProbe(
     componentCustomIds,
     componentRows: result.threadPayload.components.length,
     commandName: interaction.commandName,
+    completionEndpoint: result.completionReceipt.endpoint,
+    completionMessageId: readDiscordReceiptMessageId(result.completionReceipt),
+    completionContent: readDiscordReceiptContent(result.completionReceipt),
     failedClosed: result.failedClosed,
     interactionEndpoint: result.responseReceipt.endpoint,
     interactionMessageId: readDiscordReceiptMessageId(result.responseReceipt),

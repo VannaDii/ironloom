@@ -17,6 +17,8 @@ The live-lab probe now also routes one returned button `custom_id` as a callback
 
 Simulated live-lab interaction acknowledgements now stay loopback-only because callback-shaped probe payloads do not carry real Discord interaction tokens. The bound operator result still posts through the real Discord thread transport with components intact, while human sandbox-guild clicks during the hold window continue to exercise the private Gateway worker's real deferred-response path.
 
+Simulated live-lab interaction completion receipts now also stay loopback-only for callback-shaped probes, while real human sandbox-guild clicks complete through the private Gateway worker's deferred interaction follow-up path during the hold window.
+
 Plain Node live-lab runs now fail fast with a `npm run build:workspace` instruction when a workspace package is missing its compiled `dist/index.js` entrypoint. Source package entrypoints remain available for preflight tests or explicit TypeScript-loader execution, so preflight can still validate package wiring before workspace builds exist.
 
 The deep-test runner now normalizes the container-owned `.devplat` bind-mount permissions from inside the still-running runtime container before host-side cleanup hooks persist extra live-lab session records. It changes bind-mount content to the host runner owner with owner-only write permissions, keeping live-lab audit/session writes available without making local state world-writable. If the auxiliary permission normalization fails, the runner records a warning in the report and still runs cleanup so deep-test failures continue to reflect platform contract regressions.

@@ -355,10 +355,27 @@
                   "required": ["content"],
                   "additionalProperties": false
                 },
+                "completionReceipt": {
+                  "type": "object",
+                  "properties": {
+                    "endpoint": {
+                      "type": "string"
+                    },
+                    "statusCode": {
+                      "type": "number"
+                    },
+                    "responseBody": {}
+                  },
+                  "required": ["endpoint", "statusCode", "responseBody"],
+                  "additionalProperties": false
+                },
                 "responsePostError": {
                   "type": "string"
                 },
                 "threadPostError": {
+                  "type": "string"
+                },
+                "completionPostError": {
                   "type": "string"
                 }
               },

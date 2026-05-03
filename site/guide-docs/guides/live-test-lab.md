@@ -159,10 +159,11 @@ probe simulates the operator `/retry-gates` path, routes it through the Discord
 control-plane service, renders the compact operator message payload with
 contextual buttons, records a local simulated deferred acknowledgement, posts the
 bound-thread status into a short-lived implementation thread created under the
-standard `implementation` channel with those contextual buttons intact, then
-routes one returned button `custom_id` as a second callback-shaped interaction.
-It records the command registration, response receipt endpoints, Discord message
-ids, posted content, component custom ids, and button callback receipts in
+standard `implementation` channel with those contextual buttons intact, records a
+minimal simulated deferred-completion receipt, then routes one returned button
+`custom_id` as a second callback-shaped interaction. It records the command
+registration, response receipt endpoints, Discord message ids, posted content,
+component custom ids, completion receipts, and button callback receipts in
 `live-lab-report.json`. The probe runs before the deep-test runtime is cleaned up
 so the private Gateway worker is still alive when the control message is posted.
 It also writes the same bound implementation thread session into the deep-test
@@ -187,7 +188,7 @@ normalization, routing, thread posting, and structured-message path with a
 callback-shaped payload. Simulated acknowledgements remain local receipts because
 there is no real Discord interaction token to acknowledge; human-triggered
 slash/button clicks in the sandbox guild use the private Gateway worker and real
-Discord deferred-response path during the hold window.
+Discord deferred-response and completion-follow-up path during the hold window.
 
 The Discord package also exposes a private outbound Gateway runtime for
 production mounts. That runtime identifies with Discord Gateway, heartbeats,

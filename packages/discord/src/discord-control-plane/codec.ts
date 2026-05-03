@@ -203,8 +203,10 @@ export const DiscordControlResultCodec = t.intersection([
     threadReceipt: DiscordResponseReceiptCodec,
     responsePayload: DiscordMessagePayloadCodec,
     threadPayload: DiscordMessagePayloadCodec,
+    completionReceipt: DiscordResponseReceiptCodec,
     responsePostError: t.string,
     threadPostError: t.string,
+    completionPostError: t.string,
   }),
 ]);
 

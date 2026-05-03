@@ -221,6 +221,10 @@ describe('openclaw-live-lab helpers', () => {
               input.boundThreadId,
               acceptedPayload,
             );
+            const completionReceipt = await transport.postInteractionCompletion(
+              input,
+              acceptedPayload,
+            );
 
             return {
               allowed: true,
@@ -241,6 +245,7 @@ describe('openclaw-live-lab helpers', () => {
               },
               responseReceipt,
               responsePayload: acceptedPayload,
+              completionReceipt,
               threadReceipt,
               threadPayload: acceptedPayload,
             };
@@ -595,6 +600,10 @@ describe('openclaw-live-lab helpers', () => {
               input.boundThreadId,
               payload,
             );
+            const completionReceipt = await transport.postInteractionCompletion(
+              input,
+              payload,
+            );
 
             return {
               allowed: true,
@@ -615,6 +624,7 @@ describe('openclaw-live-lab helpers', () => {
               },
               responsePayload: payload,
               responseReceipt,
+              completionReceipt,
               threadPayload: payload,
               threadReceipt,
             };
@@ -698,6 +708,10 @@ describe('openclaw-live-lab helpers', () => {
               input.boundThreadId,
               payload,
             );
+            const completionReceipt = await transport.postInteractionCompletion(
+              input,
+              payload,
+            );
 
             return {
               allowed: true,
@@ -718,6 +732,7 @@ describe('openclaw-live-lab helpers', () => {
               },
               responsePayload: payload,
               responseReceipt,
+              completionReceipt,
               threadPayload: payload,
               threadReceipt,
             };
@@ -806,6 +821,10 @@ describe('openclaw-live-lab helpers', () => {
               input.boundThreadId,
               payload,
             );
+            const completionReceipt = await transport.postInteractionCompletion(
+              input,
+              payload,
+            );
 
             return input.customId === undefined
               ? {
@@ -827,6 +846,7 @@ describe('openclaw-live-lab helpers', () => {
                   },
                   responsePayload: payload,
                   responseReceipt,
+                  completionReceipt,
                   threadPayload: payload,
                   threadReceipt,
                 }
@@ -931,6 +951,10 @@ describe('openclaw-live-lab helpers', () => {
               input.boundThreadId,
               payload,
             );
+            const completionReceipt = await transport.postInteractionCompletion(
+              input,
+              payload,
+            );
 
             return {
               allowed: true,
@@ -955,6 +979,7 @@ describe('openclaw-live-lab helpers', () => {
               },
               responsePayload: payload,
               responseReceipt,
+              completionReceipt,
               threadPayload: payload,
               threadReceipt,
             };
@@ -1043,6 +1068,10 @@ describe('openclaw-live-lab helpers', () => {
               input.boundThreadId,
               payload,
             );
+            const completionReceipt = await transport.postInteractionCompletion(
+              input,
+              payload,
+            );
 
             return input.customId === undefined
               ? {
@@ -1064,6 +1093,7 @@ describe('openclaw-live-lab helpers', () => {
                   },
                   responsePayload: payload,
                   responseReceipt,
+                  completionReceipt,
                   threadPayload: payload,
                   threadReceipt,
                 }

@@ -105,6 +105,8 @@ export function startDiscordInteractionGatewayRuntimeFromEnvironment(
     new DiscordRestResponseTransport(
       config.discord.botToken,
       config.discord.apiBaseUrl,
+      fetch,
+      config.discord.applicationId,
     ),
   );
   const gatewayHandler = new DiscordInteractionGatewayService(

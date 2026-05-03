@@ -43,6 +43,9 @@ function createResponseTransport(): DiscordControlResponseTransport {
     async postInteractionDeferred(input) {
       return createReceipt(`/interactions/${input.id}/${input.token}/callback`);
     },
+    async postInteractionCompletion(input) {
+      return createReceipt(`/webhooks/application/${input.token}`);
+    },
     async postThreadMessage(threadId) {
       return createReceipt(`/channels/${threadId}/messages`);
     },
@@ -89,6 +92,10 @@ function createObservedResponseTransport(
       events.push(`interaction-deferred:${input.id}`);
       return createReceipt(`/interactions/${input.id}/${input.token}/callback`);
     },
+    async postInteractionCompletion(input) {
+      events.push(`interaction-completion:${input.id}`);
+      return createReceipt(`/webhooks/application/${input.token}`);
+    },
     async postThreadMessage(threadId) {
       events.push(`thread-message:${threadId}`);
       return createReceipt(`/channels/${threadId}/messages`);
@@ -109,6 +116,9 @@ function createThreadFailingResponseTransport(
     async postInteractionDeferred(input) {
       return createReceipt(`/interactions/${input.id}/${input.token}/callback`);
     },
+    async postInteractionCompletion(input) {
+      return createReceipt(`/webhooks/application/${input.token}`);
+    },
     async postThreadMessage() {
       throw error;
     },
@@ -125,6 +135,9 @@ function createThreadRejectingResponseTransport(): DiscordControlResponseTranspo
     },
     async postInteractionDeferred(input) {
       return createReceipt(`/interactions/${input.id}/${input.token}/callback`);
+    },
+    async postInteractionCompletion(input) {
+      return createReceipt(`/webhooks/application/${input.token}`);
     },
     async postThreadMessage(threadId) {
       return {
@@ -155,6 +168,9 @@ function createAcknowledgementRejectingResponseTransport(): DiscordControlRespon
         responseBody: { message: 'Unknown interaction' },
       };
     },
+    async postInteractionCompletion(input) {
+      return createReceipt(`/webhooks/application/${input.token}`);
+    },
     async postThreadMessage(threadId) {
       return createReceipt(`/channels/${threadId}/messages`);
     },
@@ -172,6 +188,55 @@ function createAcknowledgementThrowingResponseTransport(
       throw error;
     },
     async postInteractionDeferred() {
+      throw error;
+    },
+    async postInteractionCompletion(input) {
+      return createReceipt(`/webhooks/application/${input.token}`);
+    },
+    async postThreadMessage(threadId) {
+      return createReceipt(`/channels/${threadId}/messages`);
+    },
+  };
+}
+
+/**
+ * Creates a transport that returns a rejected deferred-completion receipt.
+ */
+function createCompletionRejectingResponseTransport(): DiscordControlResponseTransport {
+  return {
+    async postInteractionResponse(input) {
+      return createReceipt(`/interactions/${input.id}/${input.token}/callback`);
+    },
+    async postInteractionDeferred(input) {
+      return createReceipt(`/interactions/${input.id}/${input.token}/callback`);
+    },
+    async postInteractionCompletion(input) {
+      return {
+        endpoint: `/webhooks/application/${input.token}`,
+        statusCode: 404,
+        responseBody: { message: 'Unknown interaction webhook' },
+      };
+    },
+    async postThreadMessage(threadId) {
+      return createReceipt(`/channels/${threadId}/messages`);
+    },
+  };
+}
+
+/**
+ * Creates a transport that throws while completing a deferred interaction.
+ */
+function createCompletionThrowingResponseTransport(
+  error: unknown,
+): DiscordControlResponseTransport {
+  return {
+    async postInteractionResponse(input) {
+      return createReceipt(`/interactions/${input.id}/${input.token}/callback`);
+    },
+    async postInteractionDeferred(input) {
+      return createReceipt(`/interactions/${input.id}/${input.token}/callback`);
+    },
+    async postInteractionCompletion() {
       throw error;
     },
     async postThreadMessage(threadId) {
@@ -391,6 +456,12 @@ describe('DiscordControlPlaneService', () => {
                     `/interactions/${input.id}/${input.token}/callback`,
                   );
                 },
+                async postInteractionCompletion(input, payload) {
+                  events.push(
+                    `interaction-completion:${input.id}:${payload.content}`,
+                  );
+                  return createReceipt(`/webhooks/application/${input.token}`);
+                },
                 async postThreadMessage(threadId, payload) {
                   events.push(`thread-message:${threadId}:${payload.content}`);
                   return createReceipt(`/channels/${threadId}/messages`);
@@ -424,6 +495,12 @@ describe('DiscordControlPlaneService', () => {
           );
           expect(context.events.join('\n')).toContain(
             'thread-message:thread-deferred-1:🟡 DevPlat · Gates retry queued',
+          );
+          expect(context.events.join('\n')).toContain(
+            'interaction-completion:interaction-deferred-001:ℹ️ DevPlat · Interaction completed',
+          );
+          expect(result.completionReceipt?.endpoint).toBe(
+            '/webhooks/application/token-deferred-1',
           );
           expect(await context.store.list('state')).toContain(
             'interaction-deferred-001',
@@ -482,6 +559,9 @@ describe('DiscordControlPlaneService', () => {
                   return createReceipt(
                     `/interactions/${input.id}/${input.token}/callback`,
                   );
+                },
+                async postInteractionCompletion(input) {
+                  return createReceipt(`/webhooks/application/${input.token}`);
                 },
                 async postThreadMessage(threadId, payload) {
                   messages.push(payload.content);
@@ -692,6 +772,122 @@ describe('DiscordControlPlaneService', () => {
       await assert(context, inputs);
     },
   );
+
+  const completionFailureCases = [
+    {
+      name: 'reports completion rejection after the bound thread post succeeds',
+      inputs: {
+        interaction: {
+          id: 'interaction-completion-failure-001',
+          token: 'token-completion-failure-1',
+          actorId: 'user-completion-failure-1',
+          channelId: 'channel-completion-failure-1',
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          commandName: 'show status',
+          threadId: 'thread-completion-failure-1',
+        } satisfies DiscordOperatorInteraction,
+      },
+      mock: async () => {
+        const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+        const store = new FileStoreService(rootDirectory);
+        return {
+          store,
+          service: new DiscordControlPlaneService(
+            new DecisionPolicyService(),
+            new TelemetryEventService(store),
+            store,
+            createCompletionRejectingResponseTransport(),
+          ),
+        };
+      },
+      assert: async (
+        context: {
+          store: FileStoreService;
+          service: DiscordControlPlaneService;
+        },
+        inputs: {
+          interaction: DiscordOperatorInteraction;
+        },
+      ) => {
+        const result = await context.service.handleInteraction(
+          inputs.interaction,
+        );
+
+        expect(result.allowed).toBe(true);
+        expect(result.failedClosed).toBe(false);
+        expect(result.threadReceipt?.endpoint).toBe(
+          '/channels/thread-completion-failure-1/messages',
+        );
+        expect(result.completionReceipt?.statusCode).toBe(404);
+        expect(result.completionPostError).toBe(
+          'Discord interaction completion returned HTTP 404.',
+        );
+        expect(await context.store.list('state')).toContain(
+          'interaction-completion-failure-001',
+        );
+      },
+    },
+    {
+      name: 'reports completion transport errors after the bound thread post succeeds',
+      inputs: {
+        interaction: {
+          id: 'interaction-completion-failure-002',
+          token: 'token-completion-failure-2',
+          actorId: 'user-completion-failure-2',
+          channelId: 'channel-completion-failure-2',
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          commandName: 'show status',
+          threadId: 'thread-completion-failure-2',
+        } satisfies DiscordOperatorInteraction,
+      },
+      mock: async () => {
+        const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+        const store = new FileStoreService(rootDirectory);
+        return {
+          store,
+          service: new DiscordControlPlaneService(
+            new DecisionPolicyService(),
+            new TelemetryEventService(store),
+            store,
+            createCompletionThrowingResponseTransport(
+              new Error('Discord completion network failure'),
+            ),
+          ),
+        };
+      },
+      assert: async (
+        context: {
+          store: FileStoreService;
+          service: DiscordControlPlaneService;
+        },
+        inputs: {
+          interaction: DiscordOperatorInteraction;
+        },
+      ) => {
+        const result = await context.service.handleInteraction(
+          inputs.interaction,
+        );
+
+        expect(result.allowed).toBe(true);
+        expect(result.failedClosed).toBe(false);
+        expect(result.threadReceipt?.endpoint).toBe(
+          '/channels/thread-completion-failure-2/messages',
+        );
+        expect(result.completionReceipt).toBeUndefined();
+        expect(result.completionPostError).toBe(
+          'Discord completion network failure',
+        );
+        expect(await context.store.list('state')).toContain(
+          'interaction-completion-failure-002',
+        );
+      },
+    },
+  ];
+
+  it.each(completionFailureCases)('$name', async ({ inputs, mock, assert }) => {
+    const context = await mock();
+    await assert(context, inputs);
+  });
 
   const threadFailureCases = [
     {
@@ -1307,6 +1503,7 @@ describe('DiscordControlPlaneService', () => {
               'bot-token',
               'https://discord.test/api/v10',
               fetchImpl,
+              'application-7',
             ),
           };
         },
@@ -1346,14 +1543,27 @@ describe('DiscordControlPlaneService', () => {
               content: 'accepted',
             },
           );
+          const completionReceipt =
+            await context.transport.postInteractionCompletion(
+              inputs.interaction,
+              {
+                allowed_mentions: { parse: [] },
+                content: 'completed',
+                flags: 64,
+              },
+            );
 
           expect(interactionReceipt.endpoint).toBe(
             '/interactions/interaction-003/token-3/callback',
           );
           expect(threadReceipt.endpoint).toBe('/channels/thread-7/messages');
+          expect(completionReceipt.endpoint).toBe(
+            '/webhooks/application-7/token-3',
+          );
           expect(context.calls).toEqual([
             'https://discord.test/api/v10/interactions/interaction-003/token-3/callback',
             'https://discord.test/api/v10/channels/thread-7/messages',
+            'https://discord.test/api/v10/webhooks/application-7/token-3',
           ]);
           expect(context.bodies).toEqual([
             JSON.stringify({
@@ -1379,6 +1589,11 @@ describe('DiscordControlPlaneService', () => {
                   type: 1,
                 },
               ],
+            }),
+            JSON.stringify({
+              content: 'completed',
+              allowed_mentions: { parse: [] },
+              flags: 64,
             }),
           ]);
         },
@@ -1472,6 +1687,10 @@ describe('DiscordControlPlaneService', () => {
           const deferredReceipt = await transport.postInteractionDeferred(
             inputs.interaction,
           );
+          const completionReceipt = await transport.postInteractionCompletion(
+            inputs.interaction,
+            createMessagePayload('Completed.'),
+          );
 
           expect(responseReceipt).toMatchObject({
             endpoint: '/interactions/interaction-006/token-6/callback',
@@ -1494,6 +1713,14 @@ describe('DiscordControlPlaneService', () => {
             endpoint: '/interactions/interaction-006/token-6/callback',
             responseBody: {
               deferred: true,
+              interactionId: 'interaction-006',
+              mode: 'loopback',
+            },
+          });
+          expect(completionReceipt).toMatchObject({
+            endpoint: '/webhooks/loopback/token-6',
+            responseBody: {
+              content: 'Completed.',
               interactionId: 'interaction-006',
               mode: 'loopback',
             },
@@ -1580,6 +1807,36 @@ describe('DiscordControlPlaneService', () => {
           ).rejects.toThrow('DISCORD_BOT_TOKEN');
         },
       },
+      {
+        name: 'requires an application id before completing deferred interactions',
+        inputs: {
+          interaction: {
+            id: 'interaction-application-1',
+            token: 'token-application-1',
+            actorId: 'user-application-1',
+            channelId: 'channel-application-1',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'show status',
+            threadId: 'thread-application-1',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () =>
+          new DiscordRestResponseTransport(
+            'bot-token',
+            'https://discord.test/api/v10',
+          ),
+        assert: async (
+          transport: DiscordRestResponseTransport,
+          inputs: { interaction: DiscordOperatorInteraction },
+        ) => {
+          await expect(
+            transport.postInteractionCompletion(
+              inputs.interaction,
+              createMessagePayload('completed'),
+            ),
+          ).rejects.toThrow('DISCORD_APPLICATION_ID');
+        },
+      },
     ];
 
     it.each(cases)('$name', async (testCase) => {
@@ -1617,6 +1874,7 @@ describe('DiscordControlPlaneService', () => {
               '',
               'https://discord.test',
               fetchImpl,
+              'application-rest',
             ),
           };
         },
@@ -1633,16 +1891,26 @@ describe('DiscordControlPlaneService', () => {
           );
           const deferredReceipt =
             await context.transport.postInteractionDeferred(inputs.interaction);
+          const completionReceipt =
+            await context.transport.postInteractionCompletion(
+              inputs.interaction,
+              createMessagePayload('Completed.'),
+            );
 
           expect(receipt.statusCode).toBe(202);
           expect(deferredReceipt.statusCode).toBe(202);
+          expect(completionReceipt.statusCode).toBe(202);
           expect(receipt.responseBody).toBeNull();
           expect(receipt.endpoint).toBe(
             '/interactions/interaction%2Frest%201/token%2Frest%201/callback',
           );
+          expect(completionReceipt.endpoint).toBe(
+            '/webhooks/application-rest/token%2Frest%201',
+          );
           expect(context.calls).toEqual([
             'https://discord.test/interactions/interaction%2Frest%201/token%2Frest%201/callback',
             'https://discord.test/interactions/interaction%2Frest%201/token%2Frest%201/callback',
+            'https://discord.test/webhooks/application-rest/token%2Frest%201',
           ]);
           await expect(
             context.transport.postThreadMessage(

@@ -27,6 +27,7 @@ import {
   DISCORD_BUTTON_STYLE_SUCCESS,
   DISCORD_COMPONENT_CUSTOM_ID_PREFIX,
   DISCORD_CUSTOM_ID_MAX_LENGTH,
+  DISCORD_EPHEMERAL_MESSAGE_FLAG,
 } from './constants.js';
 import { describeDiscordWorkItemBinding } from './logic.js';
 import type {
@@ -483,6 +484,42 @@ function createDiscordPayload(
     allowed_mentions: safeAllowedMentions,
     components: renderDiscordActionComponentRows(request, controls),
   };
+}
+
+/**
+ * Creates a structured payload without controls for ephemeral interaction completion.
+ */
+function createDiscordContentOnlyPayload(
+  content: string,
+): DiscordMessagePayload {
+  return {
+    content,
+    /**
+     * Discord message payload wire key; required to prevent accidental operator pings.
+     */
+    allowed_mentions: safeAllowedMentions,
+    flags: DISCORD_EPHEMERAL_MESSAGE_FLAG,
+  };
+}
+
+/**
+ * Renders the minimal follow-up that completes a deferred Discord interaction.
+ */
+export function renderDiscordInteractionCompletionMessage(
+  request: DiscordControlRequest,
+): DiscordMessagePayload {
+  const content = renderDiscordMessageContent({
+    actionLabel: 'Interaction completed',
+    fields: {
+      Status: 'posted',
+      Scope: renderDiscordScopeValue(request),
+      Item: renderDiscordItemValue(request),
+    },
+    indicator: 'ℹ️',
+    result: 'Result posted to the bound thread.',
+  });
+
+  return createDiscordContentOnlyPayload(content);
 }
 
 /**

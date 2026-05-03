@@ -4,6 +4,7 @@ import { DecisionPolicyService } from '@vannadii/devplat-policy';
 import { FileStoreService } from '@vannadii/devplat-storage';
 
 import {
+  DISCORD_APPLICATION_ID_ENVIRONMENT_VARIABLE,
   DISCORD_REST_SUCCESS_MAX_EXCLUSIVE_STATUS,
   DISCORD_REST_SUCCESS_MIN_STATUS,
   DISCORD_INTERACTION_CHANNEL_MESSAGE_RESPONSE_TYPE,
@@ -17,6 +18,7 @@ import {
 import {
   renderDiscordControlAcceptedMessage,
   renderDiscordControlBlockedMessage,
+  renderDiscordInteractionCompletionMessage,
   renderDiscordRouteFailureMessage,
 } from './renderer.js';
 import type {
@@ -62,6 +64,20 @@ type DiscordInteractionAcknowledgementResult =
       readonly responseReceipt?: DiscordResponseReceipt;
     };
 
+/**
+ * Result of completing a previously deferred Discord interaction.
+ */
+type DiscordInteractionCompletionResult =
+  | {
+      readonly ok: true;
+      readonly completionReceipt: DiscordResponseReceipt;
+    }
+  | {
+      readonly ok: false;
+      readonly completionPostError: string;
+      readonly completionReceipt?: DiscordResponseReceipt;
+    };
+
 export interface DiscordControlResponseTransport {
   postInteractionResponse(
     input: DiscordOperatorInteraction,
@@ -70,10 +86,40 @@ export interface DiscordControlResponseTransport {
   postInteractionDeferred(
     input: DiscordOperatorInteraction,
   ): Promise<DiscordResponseReceipt>;
+  postInteractionCompletion(
+    input: DiscordOperatorInteraction,
+    payload: DiscordMessagePayload,
+  ): Promise<DiscordResponseReceipt>;
   postThreadMessage(
     threadId: string,
     payload: DiscordMessagePayload,
   ): Promise<DiscordResponseReceipt>;
+}
+
+/**
+ * Projects deferred-completion transport results into optional control result fields.
+ */
+function createDiscordCompletionResultProjection(
+  result: DiscordInteractionCompletionResult,
+): Partial<
+  Pick<DiscordControlResult, 'completionPostError' | 'completionReceipt'>
+> {
+  if (result.ok) {
+    return {
+      completionReceipt: result.completionReceipt,
+    };
+  }
+
+  if (result.completionReceipt === undefined) {
+    return {
+      completionPostError: result.completionPostError,
+    };
+  }
+
+  return {
+    completionPostError: result.completionPostError,
+    completionReceipt: result.completionReceipt,
+  };
 }
 
 /**
@@ -135,6 +181,15 @@ function describeDiscordInteractionDeferredRejection(
 }
 
 /**
+ * Builds a stable diagnostic for rejected Discord interaction completion updates.
+ */
+function describeDiscordInteractionCompletionRejection(
+  receipt: DiscordResponseReceipt,
+): string {
+  return `Discord interaction completion returned HTTP ${String(receipt.statusCode)}.`;
+}
+
+/**
  * Builds a stable diagnostic for rejected Discord thread status messages.
  */
 function describeDiscordThreadMessageRejection(
@@ -164,6 +219,9 @@ export class DiscordRestResponseTransport implements DiscordControlResponseTrans
     private readonly baseUrl = process.env['DISCORD_API_BASE_URL'] ??
       'https://discord.com/api/v10',
     private readonly fetchImpl = fetch,
+    private readonly applicationId = process.env[
+      DISCORD_APPLICATION_ID_ENVIRONMENT_VARIABLE
+    ] ?? '',
   ) {}
 
   public async postInteractionResponse(
@@ -202,6 +260,33 @@ export class DiscordRestResponseTransport implements DiscordControlResponseTrans
       body: JSON.stringify({
         type: DISCORD_INTERACTION_DEFERRED_RESPONSE_TYPE,
       }),
+    });
+    const responseBody: unknown = await response.json().catch(() => null);
+
+    return {
+      endpoint,
+      statusCode: response.status,
+      responseBody,
+    };
+  }
+
+  public async postInteractionCompletion(
+    input: DiscordOperatorInteraction,
+    payload: DiscordMessagePayload,
+  ): Promise<DiscordResponseReceipt> {
+    if (this.applicationId.trim().length === 0) {
+      throw new Error(
+        'DISCORD_APPLICATION_ID is required for Discord interaction completion.',
+      );
+    }
+
+    const endpoint = `/webhooks/${encodeURIComponent(this.applicationId)}/${encodeURIComponent(input.token)}`;
+    const response = await this.fetchImpl(`${this.baseUrl}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(createDiscordRestMessageBody(payload)),
     });
     const responseBody: unknown = await response.json().catch(() => null);
 
@@ -265,6 +350,22 @@ export class DiscordLoopbackResponseTransport implements DiscordControlResponseT
       responseBody: {
         mode: 'loopback',
         deferred: true,
+        interactionId: input.id,
+      },
+    });
+  }
+
+  public postInteractionCompletion(
+    input: DiscordOperatorInteraction,
+    payload: DiscordMessagePayload,
+  ): Promise<DiscordResponseReceipt> {
+    return Promise.resolve({
+      endpoint: `/webhooks/loopback/${encodeURIComponent(input.token)}`,
+      statusCode: 200,
+      responseBody: {
+        mode: 'loopback',
+        content: payload.content,
+        payload,
         interactionId: input.id,
       },
     });
@@ -508,6 +609,38 @@ export class DiscordControlPlaneService {
   }
 
   /**
+   * Completes a deferred Discord interaction after the thread result is posted.
+   */
+  private async postInteractionCompletion(
+    input: DiscordOperatorInteraction,
+    payload: DiscordMessagePayload,
+  ): Promise<DiscordInteractionCompletionResult> {
+    try {
+      const completionReceipt = await this.responses.postInteractionCompletion(
+        input,
+        payload,
+      );
+
+      return isDiscordRestSuccessStatus(completionReceipt.statusCode)
+        ? {
+            ok: true,
+            completionReceipt,
+          }
+        : {
+            ok: false,
+            completionReceipt,
+            completionPostError:
+              describeDiscordInteractionCompletionRejection(completionReceipt),
+          };
+    } catch (error) {
+      return {
+        ok: false,
+        completionPostError: describeDiscordTransportError(error),
+      };
+    }
+  }
+
+  /**
    * Records an audit event when Discord rejects the initial acknowledgement.
    */
   private async recordInteractionResponseFailure(
@@ -669,6 +802,15 @@ export class DiscordControlPlaneService {
       request.threadId,
       threadPayload,
     );
+    const completionPayload =
+      renderDiscordInteractionCompletionMessage(request);
+    const completionResult = threadPostResult.ok
+      ? await this.postInteractionCompletion(input, completionPayload)
+      : undefined;
+    const completionProjection =
+      completionResult === undefined
+        ? {}
+        : createDiscordCompletionResultProjection(completionResult);
 
     return {
       ...result,
@@ -683,6 +825,7 @@ export class DiscordControlPlaneService {
               ? {}
               : { threadReceipt: threadPostResult.threadReceipt }),
           }),
+      ...completionProjection,
     };
   }
 

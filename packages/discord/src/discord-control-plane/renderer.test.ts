@@ -7,6 +7,7 @@ import {
   renderDiscordControlAcceptedMessage,
   renderDiscordControlBlockedMessage,
   renderDiscordFailureExplanationMessage,
+  renderDiscordInteractionCompletionMessage,
   renderDiscordRouteFailureMessage,
   renderDiscordStatusMessage,
 } from './renderer.js';
@@ -65,6 +66,26 @@ describe('Discord control-plane renderer', () => {
   } satisfies DiscordOperatorInteraction;
 
   const cases = [
+    {
+      name: 'renders deferred interaction completion without action buttons',
+      inputs: {
+        request,
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordInteractionCompletionMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordInteractionCompletionMessage>,
+      ) => {
+        expect(payload.content).toContain('ℹ️ DevPlat · Interaction completed');
+        expect(payload.content).toContain('Status: posted');
+        expect(payload.content).toContain('Scope: implementation · thread-1');
+        expect(payload.content).toContain(
+          '→ Result posted to the bound thread.',
+        );
+        expect(payload.components).toBeUndefined();
+        expect(payload.flags).toBe(64);
+      },
+    },
     {
       name: 'renders accepted operator messages as compact structured payloads',
       inputs: {
