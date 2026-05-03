@@ -45,6 +45,7 @@ Add the first full-autonomy contract slices:
 - Active artifact-registry validation now includes the applicable migration id in required-migration failures when the registry contains a direct migration record, giving operators an exact upgrade target
 - Changed-file coverage validation now waits briefly for the generated LCOV report to materialize after Vitest exits, preventing local pre-push races from failing after successful coverage runs
 - CI shared generated, coverage, build, and docs artifacts now use run-stable names with overwrite enabled, and instruction validation rejects any attempt-scoped shared artifact name line so failed-job reruns can reuse successful upstream artifacts from the same workflow run
+- Live-lab workspace package entrypoint resolution now distinguishes missing build output from other filesystem access failures, preserving permission and IO diagnostics instead of reporting them as build-required errors
 - Deep-test cleanup now skips bind-mount ownership normalization with an audit warning on non-POSIX Node runtimes instead of throwing during module load, and CI artifact instruction validation now checks upload-artifact steps by step metadata so key order or retention-day changes do not create false failures
 - Command execution now enforces repository-relative working-directory safety at the service boundary, returns a structured refusal result instead of spawning subprocesses from absolute or repository-escaping paths, and includes package-runner regression coverage for repository-relative cwd execution
 

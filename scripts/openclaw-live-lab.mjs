@@ -127,6 +127,13 @@ function createWorkspacePackageBuildRequiredError(packageName) {
 }
 
 /**
+ * Determines whether a filesystem access failure means the package output is missing.
+ */
+function isMissingEntrypointError(error) {
+  return error instanceof Error && error.code === 'ENOENT';
+}
+
+/**
  * Resolves the package entrypoint available in the current execution phase.
  */
 export async function resolveWorkspacePackageEntrypoint(
@@ -136,6 +143,7 @@ export async function resolveWorkspacePackageEntrypoint(
   const rootDirectory = options.rootDirectory ?? repoRootDirectory;
   const env = options.env ?? process.env;
   const execArgv = options.execArgv ?? process.execArgv;
+  const accessFile = options.accessFile ?? access;
   const packageDirectory = resolve(rootDirectory, 'packages', packageName);
   const distEntrypoint = resolve(
     packageDirectory,
@@ -143,9 +151,13 @@ export async function resolveWorkspacePackageEntrypoint(
   );
 
   try {
-    await access(distEntrypoint);
+    await accessFile(distEntrypoint);
     return distEntrypoint;
-  } catch {
+  } catch (error) {
+    if (!isMissingEntrypointError(error)) {
+      throw error;
+    }
+
     if (!canImportTypeScriptEntrypoints({ env, execArgv })) {
       throw createWorkspacePackageBuildRequiredError(packageName);
     }
@@ -154,7 +166,7 @@ export async function resolveWorkspacePackageEntrypoint(
       packageDirectory,
       workspacePackageSourceEntrypoint,
     );
-    await access(sourceEntrypoint);
+    await accessFile(sourceEntrypoint);
     return sourceEntrypoint;
   }
 }

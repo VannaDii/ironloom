@@ -165,6 +165,47 @@ describe('openclaw-live-lab helpers', () => {
       },
     },
     {
+      name: 'preserves non-missing dist entrypoint access failures',
+      inputs: {
+        env: {},
+        execArgv: [],
+        expectedMessage: 'dist entrypoint access denied',
+        packageName: 'fixture',
+      },
+      mock: async () => {
+        const rootDirectory = await mkdtemp(
+          resolve(tmpdir(), 'devplat-live-lab-entrypoint-'),
+        );
+        temporaryRoots.push(rootDirectory);
+        const deniedEntrypoint = resolve(
+          rootDirectory,
+          'packages',
+          'fixture',
+          'dist',
+          'index.js',
+        );
+        const accessFile = async (path) => {
+          if (path === deniedEntrypoint) {
+            const error = new Error('dist entrypoint access denied');
+            error.code = 'EACCES';
+            throw error;
+          }
+        };
+
+        return { accessFile, rootDirectory };
+      },
+      assert: async (context, inputs) => {
+        await expect(
+          resolveWorkspacePackageEntrypoint(inputs.packageName, {
+            accessFile: context.accessFile,
+            env: inputs.env,
+            execArgv: inputs.execArgv,
+            rootDirectory: context.rootDirectory,
+          }),
+        ).rejects.toThrow(inputs.expectedMessage);
+      },
+    },
+    {
       name: 'exercises simulated Discord interaction callbacks through the response transport',
       inputs: {
         runLabel: '200-1',
