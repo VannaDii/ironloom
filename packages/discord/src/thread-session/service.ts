@@ -1,8 +1,7 @@
 import {
-  ARTIFACT_TYPE_PULL_REQUEST_RECORD,
-  ARTIFACT_TYPE_SLICE_PLAN,
-  ARTIFACT_TYPE_SPEC_RECORD,
-  type SupportedArtifactType,
+  ARTIFACT_TYPE_DISCORD_THREAD_SESSION,
+  STORE_SCOPE_ARTIFACTS,
+  STORE_SCOPE_STATE,
 } from '@vannadii/devplat-core';
 import { ArtifactEnvelopeService } from '@vannadii/devplat-artifacts';
 import { TelemetryEventService } from '@vannadii/devplat-observability';
@@ -13,20 +12,48 @@ import {
   describeDiscordThreadSession,
 } from './logic.js';
 import type {
-  DiscordThreadKind,
   DiscordThreadSession,
   DiscordThreadSessionInput,
   DiscordThreadSessionResult,
 } from './codec.js';
+import {
+  DISCORD_THREAD_SESSION_OPEN_ACTION,
+  DISCORD_THREAD_SESSION_SYSTEM_ACTOR_ID,
+  DISCORD_THREAD_SESSION_TELEMETRY_SCOPE,
+} from './constants.js';
 
-const THREAD_ARTIFACT_TYPE_BY_KIND: Record<
-  DiscordThreadKind,
-  SupportedArtifactType
-> = {
-  spec: ARTIFACT_TYPE_SPEC_RECORD,
-  implementation: ARTIFACT_TYPE_SLICE_PLAN,
-  'pull-request': ARTIFACT_TYPE_PULL_REQUEST_RECORD,
+/**
+ * Artifact payload that preserves Discord-owned thread-session metadata.
+ */
+type DiscordThreadSessionArtifactPayload = {
+  guildId: string;
+  channelId: string;
+  parentChannelId: string;
+  threadId: string;
+  kind: DiscordThreadSession['kind'];
+  specId: DiscordThreadSession['specId'];
+  sliceId: DiscordThreadSession['sliceId'];
+  pullRequestNumber: DiscordThreadSession['pullRequestNumber'];
 };
+
+/**
+ * Builds the artifact payload for a Discord thread session without assigning it
+ * to another package's lifecycle schema.
+ */
+function createThreadSessionArtifactPayload(
+  session: DiscordThreadSession,
+): DiscordThreadSessionArtifactPayload {
+  return {
+    guildId: session.guildId,
+    channelId: session.channelId,
+    parentChannelId: session.parentChannelId,
+    threadId: session.threadId,
+    kind: session.kind,
+    specId: session.specId,
+    sliceId: session.sliceId,
+    pullRequestNumber: session.pullRequestNumber,
+  };
+}
 
 export class DiscordThreadSessionService {
   public constructor(
@@ -45,35 +72,25 @@ export class DiscordThreadSessionService {
 
   public async openThread(
     input: DiscordThreadSessionInput,
-    actorId = 'discord-system',
+    actorId = DISCORD_THREAD_SESSION_SYSTEM_ACTOR_ID,
   ): Promise<DiscordThreadSessionResult> {
     const session = this.execute(input);
-    const artifactType = THREAD_ARTIFACT_TYPE_BY_KIND[session.kind];
 
     const artifact = this.artifacts.execute({
       id: session.artifactId,
-      artifactType,
+      artifactType: ARTIFACT_TYPE_DISCORD_THREAD_SESSION,
       version: 1,
       summary: `Discord ${session.kind} thread ${session.threadId}`,
       status: session.status,
       trace: session.trace,
       updatedAt: session.updatedAt,
-      payload: {
-        guildId: session.guildId,
-        channelId: session.channelId,
-        parentChannelId: session.parentChannelId,
-        threadId: session.threadId,
-        kind: session.kind,
-        specId: session.specId,
-        sliceId: session.sliceId,
-        pullRequestNumber: session.pullRequestNumber,
-      },
+      payload: createThreadSessionArtifactPayload(session),
     });
 
     await this.store.store({
       id: session.id,
       key: session.id,
-      scope: 'state',
+      scope: STORE_SCOPE_STATE,
       summary: session.summary,
       status: session.status,
       trace: session.trace,
@@ -84,7 +101,7 @@ export class DiscordThreadSessionService {
     await this.store.store({
       id: artifact.id,
       key: artifact.id,
-      scope: 'artifacts',
+      scope: STORE_SCOPE_ARTIFACTS,
       summary: artifact.summary,
       status: artifact.status,
       trace: artifact.trace,
@@ -99,8 +116,8 @@ export class DiscordThreadSessionService {
       trace: session.trace,
       updatedAt: session.updatedAt,
       actorId,
-      action: 'open-thread',
-      scope: 'discord',
+      action: DISCORD_THREAD_SESSION_OPEN_ACTION,
+      scope: DISCORD_THREAD_SESSION_TELEMETRY_SCOPE,
       details: {
         guildId: session.guildId,
         channelId: session.channelId,

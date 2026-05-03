@@ -12,6 +12,7 @@
           "enum": [
             "approval-record",
             "audit-log",
+            "discord-thread-session",
             "gate-run-report",
             "merge-decision",
             "pull-request-record",

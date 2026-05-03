@@ -3,6 +3,7 @@ import * as t from 'io-ts';
 import {
   ARTIFACT_TYPE_APPROVAL_RECORD,
   ARTIFACT_TYPE_AUDIT_LOG,
+  ARTIFACT_TYPE_DISCORD_THREAD_SESSION,
   ARTIFACT_TYPE_GATE_RUN_REPORT,
   ARTIFACT_TYPE_MERGE_DECISION,
   ARTIFACT_TYPE_PULL_REQUEST_RECORD,
@@ -164,6 +165,7 @@ export const GitBranchNameCodec = new t.Type<string, string, unknown>(
 export const SupportedArtifactTypeCodec = t.union([
   t.literal(ARTIFACT_TYPE_APPROVAL_RECORD),
   t.literal(ARTIFACT_TYPE_AUDIT_LOG),
+  t.literal(ARTIFACT_TYPE_DISCORD_THREAD_SESSION),
   t.literal(ARTIFACT_TYPE_GATE_RUN_REPORT),
   t.literal(ARTIFACT_TYPE_MERGE_DECISION),
   t.literal(ARTIFACT_TYPE_PULL_REQUEST_RECORD),

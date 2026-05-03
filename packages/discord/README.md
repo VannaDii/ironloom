@@ -15,10 +15,11 @@ control actions, must resolve exactly one bound thread or bound thread session,
 project that session into a typed spec/implementation/pull-request work item,
 render compact operator UI payloads with contextual buttons, defer the
 interaction acknowledgement, and post the final thread status message through
-the structured Discord REST transport. Thread sessions and interactive approval handling
-persist supported artifact envelope types instead of Discord-local artifact
-types, so Discord operator decisions remain compatible with the shared artifact
-envelope schema.
+the structured Discord REST transport. Thread sessions persist the dedicated
+shared `discord-thread-session` artifact type, and interactive approvals persist
+approval artifacts, so Discord operator decisions remain compatible with the
+shared artifact envelope schema without masquerading as spec, slice, or pull
+request payloads.
 Interaction acknowledgements are deferred before persistence
 and audit writes so live button clicks satisfy Discord's prompt response window
 without duplicating the final operator message in the same thread; the

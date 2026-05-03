@@ -80,6 +80,7 @@ describe('ArtifactRegistry logic', () => {
 
         expect(registry.registryId).toBe('repo-main:artifact-registry');
         expect(artifactTypes).toContain('research-brief');
+        expect(artifactTypes).toContain('discord-thread-session');
         expect(artifactTypes).toContain('spec-record');
         expect(artifactTypes).toContain('slice-plan');
         expect(artifactTypes).toContain('task-record');

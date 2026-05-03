@@ -80,6 +80,7 @@ describe('DiscordThreadSessionService', () => {
         },
         expectedArtifactId: 'artifact-thread-1',
         expectedStateKey: 'thread-session-001',
+        expectedPayloadType: 'discord-thread-session',
       },
       mock: createService,
       assert: async (context, inputs) => {
@@ -97,6 +98,22 @@ describe('DiscordThreadSessionService', () => {
         expect(await context.store.list('artifacts')).toContain(
           inputs.expectedArtifactId,
         );
+
+        const artifactRecord = await context.store.read(
+          'artifacts',
+          inputs.expectedArtifactId,
+        );
+
+        expect(artifactRecord.ok).toBe(true);
+        if (artifactRecord.ok && inputs.expectedPayloadType !== undefined) {
+          expect(artifactRecord.value.payload).toMatchObject({
+            artifactType: inputs.expectedPayloadType,
+            payload: {
+              kind: inputs.session.kind,
+              threadId: inputs.session.threadId,
+            },
+          });
+        }
       },
     },
     {
@@ -137,7 +154,7 @@ describe('DiscordThreadSessionService', () => {
       },
     },
     {
-      name: 'opens implementation threads with implementation-specific artifacts',
+      name: 'opens implementation threads with dedicated thread-session artifacts',
       inputs: {
         mode: 'open',
         session: {
@@ -158,6 +175,7 @@ describe('DiscordThreadSessionService', () => {
         },
         expectedArtifactId: 'artifact-thread-3',
         expectedTelemetryKey: 'telemetry-thread-session-003',
+        expectedPayloadType: 'discord-thread-session',
       },
       mock: createService,
       assert: async (context, inputs) => {
@@ -174,10 +192,26 @@ describe('DiscordThreadSessionService', () => {
         expect(await context.store.list('telemetry')).toContain(
           inputs.expectedTelemetryKey,
         );
+
+        const artifactRecord = await context.store.read(
+          'artifacts',
+          inputs.expectedArtifactId,
+        );
+
+        expect(artifactRecord.ok).toBe(true);
+        if (artifactRecord.ok && inputs.expectedPayloadType !== undefined) {
+          expect(artifactRecord.value.payload).toMatchObject({
+            artifactType: inputs.expectedPayloadType,
+            payload: {
+              kind: inputs.session.kind,
+              threadId: inputs.session.threadId,
+            },
+          });
+        }
       },
     },
     {
-      name: 'opens pull request threads with pull-request-specific artifacts',
+      name: 'opens pull request threads with dedicated thread-session artifacts',
       inputs: {
         mode: 'open',
         session: {
@@ -197,7 +231,7 @@ describe('DiscordThreadSessionService', () => {
           artifactId: 'artifact-thread-4',
         },
         expectedArtifactId: 'artifact-thread-4',
-        expectedPayloadType: 'pull-request-record',
+        expectedPayloadType: 'discord-thread-session',
       },
       mock: createService,
       assert: async (context, inputs) => {

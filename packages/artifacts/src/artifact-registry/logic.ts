@@ -1,6 +1,7 @@
 import {
   ARTIFACT_TYPE_APPROVAL_RECORD,
   ARTIFACT_TYPE_AUDIT_LOG,
+  ARTIFACT_TYPE_DISCORD_THREAD_SESSION,
   ARTIFACT_TYPE_GATE_RUN_REPORT,
   ARTIFACT_TYPE_MERGE_DECISION,
   ARTIFACT_TYPE_PULL_REQUEST_RECORD,
@@ -62,6 +63,17 @@ function createDefaultLifecycleArtifactEntries(): ArtifactRegistryEntry[] {
       migrationPolicy: 'none',
       updatedAt: DEFAULT_ARTIFACT_REGISTRY_UPDATED_AT,
       description: 'Lifecycle-changing action trace with actor and reason.',
+    },
+    {
+      artifactType: ARTIFACT_TYPE_DISCORD_THREAD_SESSION,
+      currentVersion: 1,
+      schemaName: 'discord-thread-session.schema.json',
+      ownerPackage: '@vannadii/devplat-discord',
+      storageScope: STORE_SCOPE_ARTIFACTS,
+      migrationPolicy: 'optional',
+      updatedAt: DEFAULT_ARTIFACT_REGISTRY_UPDATED_AT,
+      description:
+        'Discord thread binding state used to revalidate operator controls.',
     },
     {
       artifactType: ARTIFACT_TYPE_GATE_RUN_REPORT,

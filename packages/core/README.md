@@ -5,10 +5,10 @@ Shared domain primitives for DevPlat.
 ## Responsibility
 
 This package owns lifecycle statuses, trace records, shared lifecycle action
-constants for operator, policy, GitHub, gate, worktree, and command execution
-flows, codec-first typed value objects, classified platform errors,
-codec-derived public types, and shared decode helpers used by all platform
-packages.
+constants for operator, policy, GitHub, gate, worktree, Discord thread-session,
+and command execution flows, codec-first typed value objects, classified
+platform errors, codec-derived public types, and shared decode helpers used by
+all platform packages.
 
 ## Real-World Flow
 
