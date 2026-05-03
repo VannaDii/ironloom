@@ -90,7 +90,9 @@ surface, and tests stay aligned.
 - `submit_pull_request_update`: update a pull request record
 - `submit_pull_request_merge`: submit a merge-ready pull request decision
 - `plan_rebase_dependents`: plan dependent rebases
-- `execute_rebase_dependents`: execute dependent branch refreshes through worktree sync flows
+- `execute_rebase_dependents`: execute dependent branch refreshes through
+  worktree sync flows and preserve detected conflict classification from the
+  delegated branching package
 - `create_github_action_request`: create a GitHub action request
 - `submit_github_action`: submit a GitHub action request result
 - `validate_artifact`: validate artifact payloads against platform contracts and optional active repository registry constraints; required-migration failures preserve structured diagnostics, including ordered migration ids when the registry can bridge the stale artifact version to the current version

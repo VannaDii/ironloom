@@ -7,7 +7,9 @@ Downstream branch coordination contracts.
 This package owns branch dependency planning, branch-conflict next-action
 constants, and rebase execution result modeling after pull request merges. It
 coordinates with worktree synchronization rather than implementing GitHub review
-or merge behavior directly.
+or merge behavior directly. Dependent rebase execution feeds worktree sync
+conflicts back into the plan's conflict classification so OpenClaw and operator
+surfaces receive the same remediation next action as the execution result.
 
 ## Real-World Flow
 
@@ -16,7 +18,10 @@ flowchart LR
   Merge[PR merged] --> Graph[Dependent branch graph]
   Graph --> Plan[Rebase plan]
   Plan --> Worktrees[Worktree sync]
-  Worktrees --> Result[Rebase result artifact]
+  Worktrees --> Conflict{Conflicts detected?}
+  Conflict -->|yes| Resolve[Resolve conflicts]
+  Conflict -->|no| Result[Rebase result artifact]
+  Resolve --> Result
   Result --> GitHub[GitHub branch updates]
 ```
 

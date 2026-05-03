@@ -38,8 +38,10 @@ flowchart TD
   Remediation --> Execution
   Review --> PRs[PR projection and merge readiness]
   PRs --> GitHubPR[GitHub PR update merge workflow dispatch]
-  GitHubPR --> Branching[Dependent branch graph and rebase plan]
-  Branching --> Worktrees
+  GitHubPR --> Branching[Dependent branch graph and rebase execution]
+  Branching --> Conflict{Branch conflicts?}
+  Conflict -->|yes| Remediation
+  Conflict -->|no| Worktrees
   GitHubPR --> Publishing[Docker Helm npm docs release surfaces]
   Storage --> Artifacts[Versioned artifacts and audit logs]
   Artifacts --> Operator
@@ -145,14 +147,15 @@ state. The report preserves that bootstrap receipt with channel id, message id,
 posted content, and an empty component id list so operators can audit the
 visible start signal without leaving unbound status buttons that outlive the
 ephemeral runner.
-Human-triggered Discord client clicks remain a manual sandbox-guild acceptance
-check because Discord does not expose a supported bot API for clicking buttons
-as a user. The `operator_hold_ms` live-lab input defaults to `150000`, keeping
-the private Gateway runtime open for a bounded 2.5 minute manual-click window
-after the control message is posted. The live-lab control message is posted in
-a short-lived implementation thread created under the `test` category's
-standard implementation channel, so real button clicks resolve to the same
-thread id encoded in the component payload and persisted Gateway session.
+Human-triggered Discord client clicks are deferred as a manual sandbox-guild
+acceptance check because Discord does not expose a supported bot API for
+clicking buttons as a user. The `operator_hold_ms` live-lab input defaults to
+`150000`, keeping the private Gateway runtime open for a bounded 2.5 minute
+manual-click window after the control message is posted. The live-lab control
+message is posted in a short-lived implementation thread created under the
+`test` category's standard implementation channel, so real button clicks
+resolve to the same thread id encoded in the component payload and persisted
+Gateway session.
 Live-lab status posts render compact workflow links with URL previews
 suppressed, and reports include selected channel `parentId` values so category
 placement can be audited.
