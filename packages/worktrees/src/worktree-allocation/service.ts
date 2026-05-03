@@ -10,7 +10,10 @@ import {
   releaseWorktree,
   syncWorktree,
 } from './logic.js';
-import { WORKTREE_DEFAULT_ROOT } from './constants.js';
+import {
+  WORKTREE_DEFAULT_ROOT,
+  WORKTREE_GIT_RUNNER_GENERIC_FAILURE_EXIT_CODE,
+} from './constants.js';
 import type {
   WorktreeAllocation,
   WorktreeReleaseMode,
@@ -22,7 +25,93 @@ import type {
 
 const execFileAsync = promisify(execFile);
 
+/**
+ * Result returned by the Node child-process execution adapter.
+ */
+type NodeWorktreeExecFileResult = {
+  /** Captured stdout text. */
+  stdout: string;
+  /** Captured stderr text. */
+  stderr: string;
+};
+
+/**
+ * Node child-process execution adapter used by the git runner.
+ */
+type NodeWorktreeExecFile = (
+  command: string,
+  args: readonly string[],
+  options: { cwd: string },
+) => Promise<NodeWorktreeExecFileResult>;
+
+/**
+ * Runs a child process using Node's `execFile` API.
+ */
+async function runNodeExecFile(
+  command: string,
+  args: readonly string[],
+  options: { cwd: string },
+): Promise<NodeWorktreeExecFileResult> {
+  const result = await execFileAsync(command, [...args], options);
+  return {
+    stdout: result.stdout,
+    stderr: result.stderr,
+  };
+}
+
+/**
+ * Reads the child-process exit code from a Node exec failure.
+ */
+function readProcessExitCode(error: unknown): number {
+  if (typeof error === 'object' && error !== null && 'code' in error) {
+    const exitCode = error.code;
+    if (typeof exitCode === 'number') {
+      return exitCode;
+    }
+  }
+
+  return WORKTREE_GIT_RUNNER_GENERIC_FAILURE_EXIT_CODE;
+}
+
+/**
+ * Reads captured stdout from a Node exec failure.
+ */
+function readProcessStdout(error: unknown): string | undefined {
+  if (typeof error === 'object' && error !== null && 'stdout' in error) {
+    const output = error.stdout;
+    return typeof output === 'string' ? output : undefined;
+  }
+
+  return undefined;
+}
+
+/**
+ * Reads captured stderr from a Node exec failure.
+ */
+function readProcessStderr(error: unknown): string | undefined {
+  if (typeof error === 'object' && error !== null && 'stderr' in error) {
+    const output = error.stderr;
+    return typeof output === 'string' ? output : undefined;
+  }
+
+  return undefined;
+}
+
+/**
+ * Creates stderr text for runner failures that did not expose captured stderr.
+ */
+function readProcessErrorText(error: unknown): string {
+  const stderr = readProcessStderr(error);
+  return stderr === undefined || stderr.length === 0 ? String(error) : stderr;
+}
+
+/**
+ * Git command execution boundary for worktree operations.
+ */
 export interface WorktreeGitRunner {
+  /**
+   * Runs a git command in the provided working directory.
+   */
   run(
     command: string,
     args: readonly string[],
@@ -30,14 +119,27 @@ export interface WorktreeGitRunner {
   ): Promise<WorktreeGitCommandResult>;
 }
 
+/**
+ * Node child-process backed git command runner.
+ */
 export class NodeWorktreeGitRunner implements WorktreeGitRunner {
+  /**
+   * Creates the Node-backed runner with an injectable execution adapter.
+   */
+  public constructor(
+    private readonly execFileImpl: NodeWorktreeExecFile = runNodeExecFile,
+  ) {}
+
+  /**
+   * Runs the command and preserves child-process exit and stream metadata.
+   */
   public async run(
     command: string,
     args: readonly string[],
     cwd: string,
   ): Promise<WorktreeGitCommandResult> {
     try {
-      const result = await execFileAsync(command, [...args], { cwd });
+      const result = await this.execFileImpl(command, args, { cwd });
       return {
         command,
         args: [...args],
@@ -51,33 +153,51 @@ export class NodeWorktreeGitRunner implements WorktreeGitRunner {
         command,
         args: [...args],
         cwd,
-        exitCode: 1,
-        stdout: '',
-        stderr: String(error),
+        exitCode: readProcessExitCode(error),
+        stdout: readProcessStdout(error) ?? '',
+        stderr: readProcessErrorText(error),
       };
     }
   }
 }
 
+/**
+ * Worktree allocation, synchronization, and release service boundary.
+ */
 export class WorktreeAllocationService {
+  /**
+   * Creates the worktree service with injected git runner and root paths.
+   */
   public constructor(
     private readonly runner: WorktreeGitRunner = new NodeWorktreeGitRunner(),
     private readonly repositoryRoot = process.cwd(),
     private readonly worktreeRoot = WORKTREE_DEFAULT_ROOT,
   ) {}
 
+  /**
+   * Normalizes a precomputed worktree allocation record.
+   */
   public execute(input: WorktreeAllocation): WorktreeAllocation {
     return createWorktreeAllocation(input);
   }
 
+  /**
+   * Describes a worktree allocation for operator output.
+   */
   public explain(input: WorktreeAllocation): string {
     return describeWorktreeAllocation(input);
   }
 
+  /**
+   * Allocates a deterministic worktree record without touching disk.
+   */
   public allocate(taskId: string, branchName: string): WorktreeAllocation {
     return allocateWorktree(taskId, branchName, this.worktreeRoot);
   }
 
+  /**
+   * Allocates a git worktree on disk unless branch safety blocks it.
+   */
   public async allocateOnDisk(
     taskId: string,
     branchName: string,
@@ -114,6 +234,9 @@ export class WorktreeAllocationService {
     });
   }
 
+  /**
+   * Computes a worktree sync result without touching disk.
+   */
   public sync(
     allocation: WorktreeAllocation,
     baseBranch: string,
@@ -122,6 +245,9 @@ export class WorktreeAllocationService {
     return syncWorktree(allocation, baseBranch, syncMode);
   }
 
+  /**
+   * Synchronizes an allocated worktree on disk with a base branch.
+   */
   public async syncOnDisk(
     allocation: WorktreeAllocation,
     baseBranch: string,
@@ -182,6 +308,9 @@ export class WorktreeAllocationService {
     });
   }
 
+  /**
+   * Computes a worktree release result without touching disk.
+   */
   public release(
     allocation: WorktreeAllocation,
     releaseMode?: WorktreeReleaseMode,
@@ -189,6 +318,9 @@ export class WorktreeAllocationService {
     return releaseWorktree(allocation, releaseMode);
   }
 
+  /**
+   * Releases a worktree on disk by archiving or deleting it.
+   */
   public async releaseOnDisk(
     allocation: WorktreeAllocation,
     releaseMode: WorktreeReleaseMode = 'archive',

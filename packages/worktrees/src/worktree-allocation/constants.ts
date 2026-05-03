@@ -26,3 +26,8 @@ export const WORKTREE_UNSAFE_GIT_REF_CHARACTERS = [
   ']',
   '\\',
 ];
+
+/**
+ * Generic exit code used when Node reports a runner failure without child exit metadata.
+ */
+export const WORKTREE_GIT_RUNNER_GENERIC_FAILURE_EXIT_CODE = 1;

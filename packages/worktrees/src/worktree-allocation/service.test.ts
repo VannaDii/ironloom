@@ -56,6 +56,9 @@ type WorktreeServiceInputs =
       args: readonly string[];
       cwd: string;
       expectedExitCode: number;
+      expectedStderr?: string;
+      expectedStdout?: string;
+      syntheticError?: unknown;
     }
   | {
       mode: 'sync-failure';
@@ -116,7 +119,12 @@ function createServiceContext(
   if (inputs.mode === 'node-runner') {
     return {
       service: new WorktreeAllocationService(),
-      runner: new NodeWorktreeGitRunner(),
+      runner:
+        inputs.syntheticError === undefined
+          ? new NodeWorktreeGitRunner()
+          : new NodeWorktreeGitRunner(async () => {
+              throw inputs.syntheticError;
+            }),
     };
   }
 
@@ -257,6 +265,37 @@ describe('WorktreeAllocationService', () => {
       },
     },
     {
+      name: 'preserves Node runner failed subprocess exit code and streams',
+      inputs: {
+        mode: 'node-runner',
+        command: process.execPath,
+        args: [
+          '-e',
+          'process.stdout.write("out"); process.stderr.write("bad"); process.exit(7)',
+        ],
+        cwd: process.cwd(),
+        expectedExitCode: 7,
+        expectedStderr: 'bad',
+        expectedStdout: 'out',
+      },
+      mock: createServiceContext,
+      assert: async (context, inputs) => {
+        if (inputs.mode !== 'node-runner' || context.runner === undefined) {
+          throw new Error('expected node-runner inputs');
+        }
+
+        const result = await context.runner.run(
+          inputs.command,
+          inputs.args,
+          inputs.cwd,
+        );
+
+        expect(result.exitCode).toBe(inputs.expectedExitCode);
+        expect(result.stdout).toBe(inputs.expectedStdout);
+        expect(result.stderr).toBe(inputs.expectedStderr);
+      },
+    },
+    {
       name: 'captures Node runner command failures',
       inputs: {
         mode: 'node-runner',
@@ -279,6 +318,93 @@ describe('WorktreeAllocationService', () => {
 
         expect(result.exitCode).toBe(inputs.expectedExitCode);
         expect(result.stderr.length).toBeGreaterThan(0);
+      },
+    },
+    {
+      name: 'uses fallback runner metadata when spawning cannot start',
+      inputs: {
+        mode: 'node-runner',
+        command: process.execPath,
+        args: ['-e', 'process.exit(0)'],
+        cwd: '/definitely-missing-devplat-worktree-cwd',
+        expectedExitCode: 1,
+        expectedStdout: '',
+      },
+      mock: createServiceContext,
+      assert: async (context, inputs) => {
+        if (inputs.mode !== 'node-runner' || context.runner === undefined) {
+          throw new Error('expected node-runner inputs');
+        }
+
+        const result = await context.runner.run(
+          inputs.command,
+          inputs.args,
+          inputs.cwd,
+        );
+
+        expect(result.exitCode).toBe(inputs.expectedExitCode);
+        expect(result.stdout).toBe(inputs.expectedStdout);
+        expect(result.stderr.length).toBeGreaterThan(0);
+      },
+    },
+    {
+      name: 'uses fallback runner metadata when error details are absent',
+      inputs: {
+        mode: 'node-runner',
+        command: 'git',
+        args: ['status'],
+        cwd: process.cwd(),
+        expectedExitCode: 1,
+        expectedStdout: '',
+        syntheticError: new Error('synthetic runner failure'),
+      },
+      mock: createServiceContext,
+      assert: async (context, inputs) => {
+        if (inputs.mode !== 'node-runner' || context.runner === undefined) {
+          throw new Error('expected node-runner inputs');
+        }
+
+        const result = await context.runner.run(
+          inputs.command,
+          inputs.args,
+          inputs.cwd,
+        );
+
+        expect(result.exitCode).toBe(inputs.expectedExitCode);
+        expect(result.stdout).toBe(inputs.expectedStdout);
+        expect(result.stderr).toContain('synthetic runner failure');
+      },
+    },
+    {
+      name: 'ignores malformed runner stream metadata',
+      inputs: {
+        mode: 'node-runner',
+        command: 'git',
+        args: ['status'],
+        cwd: process.cwd(),
+        expectedExitCode: 1,
+        expectedStdout: '',
+        syntheticError: {
+          code: 1,
+          stdout: 42,
+          stderr: 42,
+        },
+      },
+      mock: createServiceContext,
+      assert: async (context, inputs) => {
+        if (inputs.mode !== 'node-runner' || context.runner === undefined) {
+          throw new Error('expected node-runner inputs');
+        }
+
+        const result = await context.runner.run(
+          inputs.command,
+          inputs.args,
+          inputs.cwd,
+        );
+
+        expect(result.exitCode).toBe(inputs.expectedExitCode);
+        expect(result.stdout).toBe(inputs.expectedStdout);
+        expect(result.stderr).toBe('[object Object]');
       },
     },
     {
