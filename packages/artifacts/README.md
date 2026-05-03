@@ -6,7 +6,7 @@ Versioned artifact contracts for DevPlat.
 
 This package owns auditable artifact envelopes, the default lifecycle artifact registry, migration records, and known artifact payloads for approvals, audit logs, merge decisions, rebase results, and validation. It is the contract layer for handoffs between planning, execution, review, remediation, Discord, OpenClaw, and GitHub-facing flows.
 
-Artifact envelopes use the shared supported artifact vocabulary from `@vannadii/devplat-core`, and the generated artifact-envelope schema exposes that vocabulary as the allowed `artifactType` enum. Artifact validation then dispatches locally owned payload codecs for approval, audit, merge-decision, and rebase-result records. Registry-supported lifecycle artifacts owned by downstream packages validate at the generic envelope boundary, including the dedicated Discord thread-session artifact type, while unsupported artifact types fail before generic normalization so unknown payload families cannot be persisted as valid handoffs. When an active repository registry is supplied, validation also rejects unregistered artifact types, newer-than-registered versions, and stale versions whose registry entry requires migration. Required migration failures include the matching registry migration id when one exists so operators can route the exact artifact upgrade.
+Artifact envelopes use the shared supported artifact vocabulary from `@vannadii/devplat-core`, and the generated artifact-envelope schema exposes that vocabulary as the allowed `artifactType` enum. Artifact validation then dispatches locally owned payload codecs for approval, audit, merge-decision, and rebase-result records. Registry-supported lifecycle artifacts owned by downstream packages validate at the generic envelope boundary, including the dedicated Discord thread-session artifact type, while unsupported artifact types fail before generic normalization so unknown payload families cannot be persisted as valid handoffs. When an active repository registry is supplied, validation also rejects unregistered artifact types, newer-than-registered versions, and stale versions whose registry entry requires migration. Required migration failures include the matching registry migration id or ordered migration path when records can bridge the artifact version to the active version, so operators can route the exact artifact upgrade.
 
 ## Real-World Flow
 
@@ -18,8 +18,9 @@ flowchart LR
   Registry --> Supported[Supported artifact type guard]
   Supported --> Active[Active repository registry check]
   Active -->|migration required| Hint[Migration id diagnostic]
+  Hint --> Path[Ordered migration path]
   Active -->|current or optional| Lifecycle[Research spec slice task review records]
-  Hint --> Operator[Discord and OpenClaw status]
+  Path --> Operator[Discord and OpenClaw status]
   Lifecycle --> Migration[Explicit migration record]
   Migration --> Payload[Approval audit merge rebase validation payload]
   Payload --> Storage[Storage persistence]

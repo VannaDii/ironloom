@@ -1823,7 +1823,13 @@ export function createValidateArtifactTool(): AnyAgentTool {
       );
       if (!artifact.ok) {
         return Promise.resolve(
-          createTextResult({ status: 'failed', error: artifact.error }),
+          createTextResult({
+            status: 'failed',
+            error: artifact.error,
+            ...(artifact.diagnostic === undefined
+              ? {}
+              : { diagnostic: artifact.diagnostic }),
+          }),
         );
       }
 

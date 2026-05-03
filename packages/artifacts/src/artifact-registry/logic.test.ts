@@ -4,6 +4,7 @@ import {
   createDefaultArtifactRegistry,
   createArtifactRegistry,
   describeArtifactRegistry,
+  findArtifactMigrationPath,
   recordArtifactMigration,
   registerArtifactType,
 } from './logic.js';
@@ -192,6 +193,224 @@ describe('ArtifactRegistry logic', () => {
         expect(registry.migrations[0]?.fromVersion).toBe(1);
         expect(registry.migrations[0]?.toVersion).toBe(1);
         expect(registry.updatedAt).toBe('2026-04-30T02:00:00.000Z');
+      },
+    },
+    {
+      name: 'finds an ordered migration path across multiple registry records',
+      inputs: {
+        registry: createArtifactRegistry({
+          ...baseRegistry,
+          migrations: [
+            {
+              migrationId: 'spec-3-to-4',
+              artifactType: 'spec-record',
+              fromVersion: 3,
+              toVersion: 4,
+              summary: 'Add artifact lineage.',
+              migratedAt: '2026-04-30T00:04:00.000Z',
+            },
+            {
+              migrationId: 'review-1-to-2',
+              artifactType: 'review-finding',
+              fromVersion: 1,
+              toVersion: 2,
+              summary: 'Update review finding evidence.',
+              migratedAt: '2026-04-30T00:05:00.000Z',
+            },
+            {
+              migrationId: 'spec-2-to-3',
+              artifactType: 'spec-record',
+              fromVersion: 2,
+              toVersion: 3,
+              summary: 'Add rendered PR body.',
+              migratedAt: '2026-04-30T00:03:00.000Z',
+            },
+            {
+              migrationId: 'spec-1-to-2',
+              artifactType: 'spec-record',
+              fromVersion: 1,
+              toVersion: 2,
+              summary: 'Carry revision history.',
+              migratedAt: '2026-04-30T00:02:00.000Z',
+            },
+          ],
+        }),
+        artifactType: 'spec-record',
+        fromVersion: 1,
+        toVersion: 4,
+      },
+      mock: () => undefined,
+      assert: (inputs: {
+        registry: ArtifactRegistry;
+        artifactType: 'spec-record';
+        fromVersion: number;
+        toVersion: number;
+      }) => {
+        const path = findArtifactMigrationPath(
+          inputs.registry,
+          inputs.artifactType,
+          inputs.fromVersion,
+          inputs.toVersion,
+        );
+
+        expect(path.map((migration) => migration.migrationId)).toEqual([
+          'spec-1-to-2',
+          'spec-2-to-3',
+          'spec-3-to-4',
+        ]);
+      },
+    },
+    {
+      name: 'uses migration ids to order equal target-version candidates',
+      inputs: {
+        registry: createArtifactRegistry({
+          ...baseRegistry,
+          migrations: [
+            {
+              migrationId: 'spec-b-to-2',
+              artifactType: 'spec-record',
+              fromVersion: 1,
+              toVersion: 2,
+              summary: 'Second equivalent migration.',
+              migratedAt: '2026-04-30T00:02:00.000Z',
+            },
+            {
+              migrationId: 'spec-a-to-2',
+              artifactType: 'spec-record',
+              fromVersion: 1,
+              toVersion: 2,
+              summary: 'First equivalent migration.',
+              migratedAt: '2026-04-30T00:01:00.000Z',
+            },
+          ],
+        }),
+        artifactType: 'spec-record',
+        fromVersion: 1,
+        toVersion: 2,
+      },
+      mock: () => undefined,
+      assert: (inputs: {
+        registry: ArtifactRegistry;
+        artifactType: 'spec-record';
+        fromVersion: number;
+        toVersion: number;
+      }) => {
+        const path = findArtifactMigrationPath(
+          inputs.registry,
+          inputs.artifactType,
+          inputs.fromVersion,
+          inputs.toVersion,
+        );
+
+        expect(path.map((migration) => migration.migrationId)).toEqual([
+          'spec-a-to-2',
+        ]);
+      },
+    },
+    {
+      name: 'uses target versions to prefer the lowest forward migration hop',
+      inputs: {
+        registry: createArtifactRegistry({
+          ...baseRegistry,
+          migrations: [
+            {
+              migrationId: 'spec-1-to-3',
+              artifactType: 'spec-record',
+              fromVersion: 1,
+              toVersion: 3,
+              summary: 'Skip the intermediate version.',
+              migratedAt: '2026-04-30T00:03:00.000Z',
+            },
+            {
+              migrationId: 'spec-2-to-4',
+              artifactType: 'spec-record',
+              fromVersion: 2,
+              toVersion: 4,
+              summary: 'Finish the current migration path.',
+              migratedAt: '2026-04-30T00:04:00.000Z',
+            },
+            {
+              migrationId: 'spec-1-to-2',
+              artifactType: 'spec-record',
+              fromVersion: 1,
+              toVersion: 2,
+              summary: 'Use the next sequential migration.',
+              migratedAt: '2026-04-30T00:02:00.000Z',
+            },
+          ],
+        }),
+        artifactType: 'spec-record',
+        fromVersion: 1,
+        toVersion: 4,
+      },
+      mock: () => undefined,
+      assert: (inputs: {
+        registry: ArtifactRegistry;
+        artifactType: 'spec-record';
+        fromVersion: number;
+        toVersion: number;
+      }) => {
+        const path = findArtifactMigrationPath(
+          inputs.registry,
+          inputs.artifactType,
+          inputs.fromVersion,
+          inputs.toVersion,
+        );
+
+        expect(path.map((migration) => migration.migrationId)).toEqual([
+          'spec-1-to-2',
+          'spec-2-to-4',
+        ]);
+      },
+    },
+    {
+      name: 'returns an empty migration path when a version hop is missing',
+      inputs: {
+        registry: createArtifactRegistry(baseRegistry),
+        artifactType: 'spec-record',
+        fromVersion: 1,
+        toVersion: 4,
+      },
+      mock: () => undefined,
+      assert: (inputs: {
+        registry: ArtifactRegistry;
+        artifactType: 'spec-record';
+        fromVersion: number;
+        toVersion: number;
+      }) => {
+        const path = findArtifactMigrationPath(
+          inputs.registry,
+          inputs.artifactType,
+          inputs.fromVersion,
+          inputs.toVersion,
+        );
+
+        expect(path).toEqual([]);
+      },
+    },
+    {
+      name: 'returns an empty migration path when the source is already current',
+      inputs: {
+        registry: createArtifactRegistry(baseRegistry),
+        artifactType: 'spec-record',
+        fromVersion: 2,
+        toVersion: 2,
+      },
+      mock: () => undefined,
+      assert: (inputs: {
+        registry: ArtifactRegistry;
+        artifactType: 'spec-record';
+        fromVersion: number;
+        toVersion: number;
+      }) => {
+        const path = findArtifactMigrationPath(
+          inputs.registry,
+          inputs.artifactType,
+          inputs.fromVersion,
+          inputs.toVersion,
+        );
+
+        expect(path).toEqual([]);
       },
     },
   ];

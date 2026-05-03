@@ -35,11 +35,14 @@ import {
   type RebaseResultArtifact,
 } from '../rebase-result/index.js';
 import type {
-  ArtifactMigrationRecord,
   ArtifactRegistry,
   ArtifactRegistryEntry,
 } from '../artifact-registry/index.js';
-import { ARTIFACT_VALIDATION_MIGRATION_REQUIRED_ERROR_CODE } from './constants.js';
+import { findArtifactMigrationPath } from '../artifact-registry/index.js';
+import {
+  ARTIFACT_VALIDATION_MIGRATION_PATH_SEPARATOR,
+  ARTIFACT_VALIDATION_MIGRATION_REQUIRED_ERROR_CODE,
+} from './constants.js';
 
 /** Artifact type accepted by the validation dispatcher. */
 export type KnownArtifact =
@@ -55,19 +58,46 @@ export type ArtifactValidationOptions = {
 };
 
 /**
- * Finds the direct migration record that updates an artifact to the registry version.
+ * Finds the migration path that updates an artifact to the registry version.
  */
-function findApplicableMigration(
+function findApplicableMigrations(
   registry: ArtifactRegistry,
   envelope: ArtifactEnvelope,
   entry: ArtifactRegistryEntry,
-): ArtifactMigrationRecord | undefined {
-  return registry.migrations.find(
-    (migration) =>
-      migration.artifactType === envelope.artifactType &&
-      migration.fromVersion === envelope.version &&
-      migration.toVersion === entry.currentVersion,
+): ReturnType<typeof findArtifactMigrationPath> {
+  return findArtifactMigrationPath(
+    registry,
+    envelope.artifactType,
+    envelope.version,
+    entry.currentVersion,
   );
+}
+
+/**
+ * Builds migration diagnostic details with optional migration path metadata.
+ */
+function createMigrationDiagnosticDetails(
+  registry: ArtifactRegistry,
+  envelope: ArtifactEnvelope,
+  entry: ArtifactRegistryEntry,
+  migrationIds: readonly string[],
+): Record<string, unknown> {
+  const details = {
+    artifactType: envelope.artifactType,
+    artifactVersion: envelope.version,
+    currentVersion: entry.currentVersion,
+    registryId: registry.registryId,
+  };
+
+  if (migrationIds.length === 0) {
+    return details;
+  }
+
+  return {
+    ...details,
+    migrationId: migrationIds[0],
+    migrationIds,
+  };
 }
 
 /**
@@ -78,9 +108,12 @@ function createMigrationRequiredFailure(
   envelope: ArtifactEnvelope,
   entry: ArtifactRegistryEntry,
 ): DevplatResult<ArtifactEnvelope> {
-  const migration = findApplicableMigration(registry, envelope, entry);
+  const migrations = findApplicableMigrations(registry, envelope, entry);
+  const migrationIds = migrations.map((migration) => migration.migrationId);
   const migrationHint =
-    migration === undefined ? '' : ` ${migration.migrationId}`;
+    migrationIds.length === 0
+      ? ''
+      : ` ${migrationIds.join(ARTIFACT_VALIDATION_MIGRATION_PATH_SEPARATOR)}`;
   const error = `Artifact ${envelope.artifactType}@v${String(envelope.version)} requires migration${migrationHint} to v${String(entry.currentVersion)} before validation.`;
 
   return createDevplatFailure({
@@ -89,21 +122,12 @@ function createMigrationRequiredFailure(
       kind: 'validation',
       message: error,
       code: ARTIFACT_VALIDATION_MIGRATION_REQUIRED_ERROR_CODE,
-      details:
-        migration === undefined
-          ? {
-              artifactType: envelope.artifactType,
-              artifactVersion: envelope.version,
-              currentVersion: entry.currentVersion,
-              registryId: registry.registryId,
-            }
-          : {
-              artifactType: envelope.artifactType,
-              artifactVersion: envelope.version,
-              currentVersion: entry.currentVersion,
-              registryId: registry.registryId,
-              migrationId: migration.migrationId,
-            },
+      details: createMigrationDiagnosticDetails(
+        registry,
+        envelope,
+        entry,
+        migrationIds,
+      ),
     }),
   });
 }

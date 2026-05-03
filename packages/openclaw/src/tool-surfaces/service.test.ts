@@ -3517,6 +3517,79 @@ describe('tool surface service', () => {
           });
         },
       },
+      {
+        name: 'returns migration path diagnostics for required artifact upgrades',
+        inputs: {
+          toolCallId: 'tool-call-11e',
+          params: {
+            artifact: {
+              id: 'artifact-review-2',
+              artifactType: 'review-finding',
+              version: 1,
+              summary: 'artifact',
+              status: 'approved',
+              trace: [],
+              updatedAt: '2026-04-04T00:00:00.000Z',
+              payload: {
+                findingId: 'finding-2',
+              },
+            },
+            registry: createArtifactRegistry({
+              ...defaultRegistry,
+              entries: defaultRegistry.entries.map((entry) =>
+                entry.artifactType === 'review-finding'
+                  ? {
+                      ...entry,
+                      currentVersion: 3,
+                      migrationPolicy: 'required',
+                    }
+                  : entry,
+              ),
+              migrations: [
+                {
+                  migrationId: 'review-finding-1-to-2',
+                  artifactType: 'review-finding',
+                  fromVersion: 1,
+                  toVersion: 2,
+                  summary: 'Migrate review findings to v2 evidence.',
+                  migratedAt: '2026-04-30T00:00:00.000Z',
+                },
+                {
+                  migrationId: 'review-finding-2-to-3',
+                  artifactType: 'review-finding',
+                  fromVersion: 2,
+                  toVersion: 3,
+                  summary: 'Migrate review findings to v3 verdicts.',
+                  migratedAt: '2026-04-30T00:01:00.000Z',
+                },
+              ],
+            }),
+          },
+        },
+        mock: () => ({
+          tool: createValidateArtifactTool(),
+        }),
+        assert: async (context, inputs) => {
+          const result = await context.tool.execute(
+            inputs.toolCallId,
+            inputs.params,
+          );
+
+          expect(result.details).toMatchObject({
+            status: 'failed',
+            error:
+              'Artifact review-finding@v1 requires migration review-finding-1-to-2 -> review-finding-2-to-3 to v3 before validation.',
+            diagnostic: {
+              details: {
+                migrationIds: [
+                  'review-finding-1-to-2',
+                  'review-finding-2-to-3',
+                ],
+              },
+            },
+          });
+        },
+      },
     ] satisfies ValidateArtifactToolCase[];
 
     it.each(cases)('$name', async (testCase) => {

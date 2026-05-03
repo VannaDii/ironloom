@@ -474,6 +474,77 @@ describe('ArtifactValidation logic', () => {
       },
     },
     {
+      name: 'reports an ordered migration path for required stale artifacts without direct migrations',
+      inputs: {
+        artifact: {
+          id: 'artifact-generic-3c',
+          artifactType: 'review-finding',
+          version: 1,
+          summary: ' Generic artifact ',
+          status: 'approved',
+          trace: [],
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          payload: {
+            findingId: 'finding-3c',
+          },
+        },
+      },
+      mock: () => {
+        const defaultRegistry = createDefaultArtifactRegistry('repo-main');
+
+        return {
+          registry: createArtifactRegistry({
+            ...defaultRegistry,
+            entries: defaultRegistry.entries.map((entry) =>
+              entry.artifactType === 'review-finding'
+                ? {
+                    ...entry,
+                    currentVersion: 3,
+                    migrationPolicy: 'required',
+                  }
+                : entry,
+            ),
+            migrations: [
+              {
+                migrationId: 'review-finding-2-to-3',
+                artifactType: 'review-finding',
+                fromVersion: 2,
+                toVersion: 3,
+                summary: 'Migrate review findings to the v3 verdict shape.',
+                migratedAt: '2026-04-30T00:01:00.000Z',
+              },
+              {
+                migrationId: 'review-finding-1-to-2',
+                artifactType: 'review-finding',
+                fromVersion: 1,
+                toVersion: 2,
+                summary: 'Migrate review findings to the v2 evidence shape.',
+                migratedAt: '2026-04-30T00:00:00.000Z',
+              },
+            ],
+          }),
+        };
+      },
+      assert: (context, inputs) => {
+        const result = validateArtifact(inputs.artifact, {
+          registry: context.registry,
+        });
+
+        expect(result).toMatchObject({
+          ok: false,
+          error:
+            'Artifact review-finding@v1 requires migration review-finding-1-to-2 -> review-finding-2-to-3 to v3 before validation.',
+          diagnostic: {
+            code: ARTIFACT_VALIDATION_MIGRATION_REQUIRED_ERROR_CODE,
+            details: {
+              migrationId: 'review-finding-1-to-2',
+              migrationIds: ['review-finding-1-to-2', 'review-finding-2-to-3'],
+            },
+          },
+        });
+      },
+    },
+    {
       name: 'accepts stale artifact versions when registry migration is optional',
       inputs: {
         artifact: {
