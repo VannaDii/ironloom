@@ -94,6 +94,9 @@
         },
         "syncMode": {
           "enum": ["fast-forward", "rebase"]
+        },
+        "applyToDisk": {
+          "type": "boolean"
         }
       },
       "required": ["allocation", "baseBranch"],

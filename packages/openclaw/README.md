@@ -28,8 +28,12 @@ tools use the trimmed `DEVPLAT_STORAGE_ROOT` value when it is configured so
 live runtime containers and local tool calls read and write the same mounted
 `.devplat` state. Pull-request submission also uses trimmed `GITHUB_OWNER` and
 `GITHUB_REPO` values so PR updates target the configured repository. Worktree
-allocation and dependent rebase tools use the trimmed `DEVPLAT_WORKTREE_ROOT`
-value so generated worktree paths stay inside the configured runtime layout.
+allocation, sync, release, and dependent rebase tools use the trimmed
+`DEVPLAT_WORKTREE_ROOT` value so generated worktree paths stay inside the
+configured runtime layout. The worktree lifecycle tools default to pure record
+projection; pass `applyToDisk: true` when OpenClaw should delegate to the
+Git-backed worktree operations that create, sync, or release the worktree on
+disk.
 Command execution cwd validation is owned by `@vannadii/devplat-execution`; the
 OpenClaw tool only decodes input, asks policy, delegates cwd normalization and
 execution, then records telemetry.
@@ -59,9 +63,9 @@ surface, and tests stay aligned.
 - `create_merge_decision`: create a merge decision artifact
 - `create_rebase_result`: create a rebase result artifact
 - `execute_command`: run a repository command through the execution service
-- `allocate_worktree`: allocate a tracked worktree
-- `sync_worktree`: sync an allocated worktree against its base branch
-- `release_worktree`: release an allocated worktree with an explicit cleanup strategy
+- `allocate_worktree`: allocate a tracked worktree, optionally materializing it on disk with `applyToDisk`
+- `sync_worktree`: sync an allocated worktree against its base branch, optionally applying the Git operation with `applyToDisk`
+- `release_worktree`: release an allocated worktree with an explicit cleanup strategy, optionally applying cleanup with `applyToDisk`
 - `bind_discord_thread`: persist Discord thread bindings
 - `open_discord_thread`: normalize Discord thread session state
 - `handle_discord_approval`: process Discord approval input

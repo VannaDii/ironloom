@@ -89,10 +89,16 @@ export const ExecuteCommandToolInputCodec = t.intersection([
   }),
 ]);
 
-export const AllocateWorktreeToolInputCodec = t.type({
-  taskId: t.string,
-  branchName: t.string,
-});
+export const AllocateWorktreeToolInputCodec = t.intersection([
+  t.type({
+    taskId: t.string,
+    branchName: t.string,
+  }),
+  t.partial({
+    baseBranch: t.string,
+    applyToDisk: t.boolean,
+  }),
+]);
 
 export const SyncWorktreeToolInputCodec = t.intersection([
   t.type({
@@ -101,6 +107,7 @@ export const SyncWorktreeToolInputCodec = t.intersection([
   }),
   t.partial({
     syncMode: WorktreeSyncModeCodec,
+    applyToDisk: t.boolean,
   }),
 ]);
 
@@ -110,6 +117,7 @@ export const ReleaseWorktreeToolInputCodec = t.intersection([
   }),
   t.partial({
     releaseMode: WorktreeReleaseModeCodec,
+    applyToDisk: t.boolean,
   }),
 ]);
 

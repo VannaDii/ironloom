@@ -10,6 +10,12 @@
         },
         "branchName": {
           "type": "string"
+        },
+        "baseBranch": {
+          "type": "string"
+        },
+        "applyToDisk": {
+          "type": "boolean"
         }
       },
       "required": ["taskId", "branchName"],

@@ -91,6 +91,9 @@
         },
         "releaseMode": {
           "enum": ["archive", "delete"]
+        },
+        "applyToDisk": {
+          "type": "boolean"
         }
       },
       "required": ["allocation"],

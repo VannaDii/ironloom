@@ -8,6 +8,7 @@ import {
   createDefaultArtifactRegistry,
 } from '@vannadii/devplat-artifacts';
 import { FileStoreService } from '@vannadii/devplat-storage';
+import type { WorktreeAllocation } from '@vannadii/devplat-worktrees';
 
 import {
   createApproveSpecRecordTool,
@@ -887,6 +888,191 @@ describe('tool surface service', () => {
     });
 
     expect(result.details).toMatchObject({ status: 'failed' });
+  });
+
+  describe('Git-backed worktree tool execution', () => {
+    const allocation: WorktreeAllocation = {
+      id: 'worktree-task-1',
+      summary: 'allocated worktree',
+      status: 'approved',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      taskId: 'task-1',
+      branchName: 'feature/task-1',
+      worktreePath: '.worktrees/feature/task-1',
+    };
+
+    const cases = [
+      {
+        name: 'allocates worktrees on disk when requested',
+        inputs: {
+          toolCallId: 'tool-call-worktree-disk-1',
+          params: {
+            taskId: 'task-1',
+            branchName: 'feature/task-1',
+            baseBranch: 'main',
+            applyToDisk: true,
+          },
+        },
+        mock: () =>
+          createAllocateWorktreeTool({
+            worktreeAllocationService: {
+              allocate() {
+                return allocation;
+              },
+              async allocateOnDisk() {
+                return {
+                  ...allocation,
+                  status: 'approved',
+                  trace: ['git:worktree:add:ok'],
+                };
+              },
+            },
+          }),
+        assert: async (
+          tool: ReturnType<typeof createAllocateWorktreeTool>,
+          inputs: {
+            toolCallId: string;
+            params: {
+              taskId: string;
+              branchName: string;
+              baseBranch: string;
+              applyToDisk: boolean;
+            };
+          },
+        ) => {
+          const result = await tool.execute(inputs.toolCallId, inputs.params);
+
+          expect(result.details).toMatchObject({
+            taskId: 'task-1',
+            trace: ['git:worktree:add:ok'],
+          });
+        },
+      },
+      {
+        name: 'syncs worktrees on disk when requested',
+        inputs: {
+          toolCallId: 'tool-call-worktree-disk-2',
+          params: {
+            allocation,
+            baseBranch: 'main',
+            syncMode: 'rebase',
+            applyToDisk: true,
+          },
+        },
+        mock: () =>
+          createSyncWorktreeTool({
+            worktreeAllocationService: {
+              sync() {
+                return {
+                  ...allocation,
+                  id: 'worktree-task-1:sync:rebase',
+                  summary: 'Synced worktree for feature/task-1',
+                  baseBranch: 'main',
+                  syncMode: 'rebase',
+                  changed: true,
+                  conflictsDetected: false,
+                };
+              },
+              async syncOnDisk() {
+                return {
+                  ...allocation,
+                  id: 'worktree-task-1:sync:rebase',
+                  summary: 'Synced worktree for feature/task-1',
+                  status: 'complete',
+                  trace: ['git:fetch:ok', 'git:rebase:ok'],
+                  baseBranch: 'main',
+                  syncMode: 'rebase',
+                  changed: true,
+                  conflictsDetected: false,
+                };
+              },
+            },
+          }),
+        assert: async (
+          tool: ReturnType<typeof createSyncWorktreeTool>,
+          inputs: {
+            toolCallId: string;
+            params: {
+              allocation: WorktreeAllocation;
+              baseBranch: string;
+              syncMode: 'rebase';
+              applyToDisk: boolean;
+            };
+          },
+        ) => {
+          const result = await tool.execute(inputs.toolCallId, inputs.params);
+
+          expect(result.details).toMatchObject({
+            taskId: 'task-1',
+            trace: ['git:fetch:ok', 'git:rebase:ok'],
+            changed: true,
+          });
+        },
+      },
+      {
+        name: 'releases worktrees on disk when requested',
+        inputs: {
+          toolCallId: 'tool-call-worktree-disk-3',
+          params: {
+            allocation,
+            releaseMode: 'delete',
+            applyToDisk: true,
+          },
+        },
+        mock: () =>
+          createReleaseWorktreeTool({
+            worktreeAllocationService: {
+              release() {
+                return {
+                  ...allocation,
+                  id: 'worktree-task-1:release:delete',
+                  summary: 'Released worktree for feature/task-1',
+                  releaseMode: 'delete',
+                  released: true,
+                };
+              },
+              async releaseOnDisk() {
+                return {
+                  ...allocation,
+                  id: 'worktree-task-1:release:delete',
+                  summary: 'Released worktree for feature/task-1',
+                  status: 'complete',
+                  trace: ['git:worktree:remove:ok'],
+                  releaseMode: 'delete',
+                  released: true,
+                };
+              },
+            },
+          }),
+        assert: async (
+          tool: ReturnType<typeof createReleaseWorktreeTool>,
+          inputs: {
+            toolCallId: string;
+            params: {
+              allocation: WorktreeAllocation;
+              releaseMode: 'delete';
+              applyToDisk: boolean;
+            };
+          },
+        ) => {
+          const result = await tool.execute(inputs.toolCallId, inputs.params);
+
+          expect(result.details).toMatchObject({
+            taskId: 'task-1',
+            trace: ['git:worktree:remove:ok'],
+            released: true,
+          });
+        },
+      },
+    ];
+
+    it.each(cases)('$name', async (testCase) => {
+      expect.hasAssertions();
+      const tool = testCase.mock();
+
+      await testCase.assert(tool, testCase.inputs);
+    });
   });
 
   it('binds Discord threads from valid tool input', async () => {

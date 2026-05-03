@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { decodeWithCodec } from '@vannadii/devplat-core';
 
 import {
+  AllocateWorktreeToolInputCodec,
   CreateResearchBriefToolInputCodec,
   EvaluateSonarQualityGateToolInputCodec,
   ExecuteRebaseDependentsToolInputCodec,
@@ -46,6 +47,15 @@ describe('tool surface codecs', () => {
             },
           },
           {
+            codec: AllocateWorktreeToolInputCodec,
+            value: {
+              taskId: 'task-1',
+              branchName: 'feature/thread-aware',
+              baseBranch: 'main',
+              applyToDisk: true,
+            },
+          },
+          {
             codec: SyncWorktreeToolInputCodec,
             value: {
               allocation: {
@@ -60,6 +70,7 @@ describe('tool surface codecs', () => {
               },
               baseBranch: 'main',
               syncMode: 'rebase',
+              applyToDisk: true,
             },
           },
           {
@@ -76,6 +87,7 @@ describe('tool surface codecs', () => {
                 worktreePath: '/var/devplat/worktree-1',
               },
               releaseMode: 'archive',
+              applyToDisk: true,
             },
           },
           {

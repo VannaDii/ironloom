@@ -133,6 +133,30 @@ type TaskRecordIdentity = {
   threadId: string;
 };
 
+/**
+ * Worktree methods used by the OpenClaw allocation tool.
+ */
+type OpenClawWorktreeAllocateService = Pick<
+  WorktreeAllocationService,
+  'allocate' | 'allocateOnDisk'
+>;
+
+/**
+ * Worktree methods used by the OpenClaw sync tool.
+ */
+type OpenClawWorktreeSyncService = Pick<
+  WorktreeAllocationService,
+  'sync' | 'syncOnDisk'
+>;
+
+/**
+ * Worktree methods used by the OpenClaw release tool.
+ */
+type OpenClawWorktreeReleaseService = Pick<
+  WorktreeAllocationService,
+  'release' | 'releaseOnDisk'
+>;
+
 function isToolParameterSchema(value: unknown): value is ToolParameterSchema {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -870,82 +894,118 @@ export function createExecuteCommandTool(
   return tool;
 }
 
-export function createAllocateWorktreeTool(): AnyAgentTool {
+export function createAllocateWorktreeTool(
+  dependencies: {
+    worktreeAllocationService?: OpenClawWorktreeAllocateService;
+  } = {},
+): AnyAgentTool {
+  const worktreeAllocationService =
+    dependencies.worktreeAllocationService ??
+    createDefaultWorktreeAllocationService();
   const tool: AnyAgentTool = {
     name: 'allocate_worktree',
     label: 'Allocate Worktree',
-    description: 'Allocate a deterministic worktree path for a task branch.',
+    description:
+      'Allocate a deterministic worktree path for a task branch, optionally materializing the git worktree on disk.',
     parameters: readSchema('tool-allocate-worktree-params.schema.json'),
-    execute(_toolCallId: string, params: unknown) {
+    async execute(_toolCallId: string, params: unknown) {
       const rawParams: unknown = params;
       const decoded = decodeWithCodec(
         AllocateWorktreeToolInputCodec,
         rawParams,
       );
       if (!decoded.ok) {
-        return Promise.resolve(
-          createTextResult({ status: 'failed', error: decoded.error }),
-        );
+        return createTextResult({ status: 'failed', error: decoded.error });
       }
 
-      const allocation = createDefaultWorktreeAllocationService().allocate(
-        decoded.value.taskId,
-        decoded.value.branchName,
-      );
-      return Promise.resolve(createTextResult(allocation));
+      const allocation =
+        decoded.value.applyToDisk === true
+          ? await worktreeAllocationService.allocateOnDisk(
+              decoded.value.taskId,
+              decoded.value.branchName,
+              decoded.value.baseBranch,
+            )
+          : worktreeAllocationService.allocate(
+              decoded.value.taskId,
+              decoded.value.branchName,
+            );
+      return createTextResult(allocation);
     },
   };
 
   return tool;
 }
 
-export function createSyncWorktreeTool(): AnyAgentTool {
+export function createSyncWorktreeTool(
+  dependencies: {
+    worktreeAllocationService?: OpenClawWorktreeSyncService;
+  } = {},
+): AnyAgentTool {
+  const worktreeAllocationService =
+    dependencies.worktreeAllocationService ??
+    createDefaultWorktreeAllocationService();
   const tool: AnyAgentTool = {
     name: 'sync_worktree',
     label: 'Sync Worktree',
     description:
-      'Synchronize an allocated worktree with its base branch using an explicit sync mode.',
+      'Synchronize an allocated worktree with its base branch using an explicit sync mode, optionally applying the git operation on disk.',
     parameters: readSchema('tool-sync-worktree-params.schema.json'),
-    execute(_toolCallId: string, params: unknown) {
+    async execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(SyncWorktreeToolInputCodec, params);
       if (!decoded.ok) {
-        return Promise.resolve(
-          createTextResult({ status: 'failed', error: decoded.error }),
-        );
+        return createTextResult({ status: 'failed', error: decoded.error });
       }
 
-      const result = createDefaultWorktreeAllocationService().sync(
-        decoded.value.allocation,
-        decoded.value.baseBranch,
-        decoded.value.syncMode,
-      );
-      return Promise.resolve(createTextResult(result));
+      const result =
+        decoded.value.applyToDisk === true
+          ? await worktreeAllocationService.syncOnDisk(
+              decoded.value.allocation,
+              decoded.value.baseBranch,
+              decoded.value.syncMode,
+            )
+          : worktreeAllocationService.sync(
+              decoded.value.allocation,
+              decoded.value.baseBranch,
+              decoded.value.syncMode,
+            );
+      return createTextResult(result);
     },
   };
 
   return tool;
 }
 
-export function createReleaseWorktreeTool(): AnyAgentTool {
+export function createReleaseWorktreeTool(
+  dependencies: {
+    worktreeAllocationService?: OpenClawWorktreeReleaseService;
+  } = {},
+): AnyAgentTool {
+  const worktreeAllocationService =
+    dependencies.worktreeAllocationService ??
+    createDefaultWorktreeAllocationService();
   const tool: AnyAgentTool = {
     name: 'release_worktree',
     label: 'Release Worktree',
     description:
-      'Release an allocated worktree using an explicit cleanup strategy.',
+      'Release an allocated worktree using an explicit cleanup strategy, optionally applying the cleanup on disk.',
     parameters: readSchema('tool-release-worktree-params.schema.json'),
-    execute(_toolCallId: string, params: unknown) {
+    async execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(ReleaseWorktreeToolInputCodec, params);
       if (!decoded.ok) {
-        return Promise.resolve(
-          createTextResult({ status: 'failed', error: decoded.error }),
-        );
+        return createTextResult({ status: 'failed', error: decoded.error });
       }
 
-      const result = createDefaultWorktreeAllocationService().release(
-        decoded.value.allocation,
-        decoded.value.releaseMode,
-      );
-      return Promise.resolve(createTextResult(result));
+      const result =
+        decoded.value.applyToDisk === true
+          ? await worktreeAllocationService.releaseOnDisk(
+              decoded.value.allocation,
+              decoded.value.releaseMode,
+            )
+          : worktreeAllocationService.release(
+              decoded.value.allocation,
+              decoded.value.releaseMode,
+            );
+      return createTextResult(result);
     },
   };
 
