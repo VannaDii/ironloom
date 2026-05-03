@@ -92,7 +92,9 @@ PR event so publish and Sonar upload paths stay skipped locally. The CI workflow
 also skips remote artifact upload/download actions under `ACT=true` and skips
 the nested-Docker deep-test job for the `devplat-local-act` actor while still
 executing repo, coverage, build, docs, generated artifact, and compatibility
-jobs.
+jobs. Remote CI names shared generated, coverage, build, and docs artifacts by
+workflow run id rather than run attempt, with overwrite enabled, so rerunning a
+failed job can still download the artifacts produced earlier in the same run.
 
 `npm run sonar:install-cli` installs the SonarQube CLI through the repo helper,
 which selects the documented SonarSource installer for macOS, Linux, or Windows.

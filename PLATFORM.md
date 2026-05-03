@@ -365,6 +365,9 @@ The primary CI workflow must continue to cover:
 - build
 - docs build
 - SonarCloud scan
+- shared generated, coverage, build, and docs artifacts must use run-stable
+  artifact names with overwrite enabled so failed-job reruns can reuse upstream
+  artifacts from the same workflow run
 
 ### TypeScript Matrix
 

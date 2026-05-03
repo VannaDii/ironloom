@@ -19,7 +19,10 @@ local wrapper cleans up `act-*` Docker containers and `.artifacts/act` after
 each workflow, then runs the hermetic OpenClaw deep test outside `act` so nested
 Docker volume paths resolve on the host. The event fixture skips
 secret-backed publish, Sonar upload, remote artifact-transfer paths, and the
-nested-Docker deep-test job while running the normal PR validation jobs.
+nested-Docker deep-test job while running the normal PR validation jobs. Remote
+CI keeps shared generated, coverage, build, and docs artifact names stable per
+workflow run and enables artifact overwrite, so rerunning only failed jobs can
+still consume artifacts created by successful upstream jobs in the same run.
 
 Install the SonarQube CLI with `npm run sonar:install-cli`; the repo helper
 selects the documented SonarSource installer for macOS, Linux, or Windows. Then

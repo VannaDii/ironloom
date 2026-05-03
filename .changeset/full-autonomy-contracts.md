@@ -40,5 +40,6 @@ Add the first full-autonomy contract slices:
 - live-lab Discord command registration and callback-shaped interaction probing with required callback/thread receipts
 - Helm chart values for enabling the private outbound Discord Gateway worker without public webhook ingress
 - GitHub REST submission, GitHub repository/PR/spec-link state contracts, Git-backed worktree operations, and fail-closed worktree branch safety metadata
+- CI shared generated, coverage, build, and docs artifacts now use run-stable names with overwrite enabled, and instruction validation rejects attempt-scoped shared artifact names so failed-job reruns can reuse successful upstream artifacts from the same workflow run
 
 Repository validation now requires package-local README coverage with real-world Mermaid flow diagrams, and generated schemas/manifests are emitted in Prettier-stable JSON so generation, repo validation, and formatting checks agree.
