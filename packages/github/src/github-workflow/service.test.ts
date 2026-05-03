@@ -183,6 +183,47 @@ describe('GitHubWorkflowService', () => {
           expect(result.receipt?.statusCode).toBe(201);
         },
       },
+      {
+        name: 'marks allowed GitHub actions as unsubmitted when GitHub rejects them',
+        inputs: {
+          request: {
+            repoFullName: 'VannaDii/devplat',
+            action: 'update-pr',
+            summary: 'Refresh the PR body',
+            privileged: false,
+            targetNumber: 42,
+            updatedAt: '2026-04-04T00:00:00.000Z',
+          } satisfies GitHubActionRequest,
+        },
+        mock: async () => {
+          const rootDirectory = await mkdtemp(
+            resolve(tmpdir(), 'devplat-github-'),
+          );
+          const store = new FileStoreService(rootDirectory);
+          return {
+            service: new GitHubWorkflowService(
+              new DecisionPolicyService(),
+              new TelemetryEventService(store),
+              createTransport({
+                method: 'PATCH',
+                endpoint: '/repos/VannaDii/devplat/pulls/42',
+                statusCode: 422,
+                responseBody: { message: 'Validation failed' },
+              }),
+            ),
+          };
+        },
+        assert: async (
+          context: { service: GitHubWorkflowService },
+          inputs: { request: GitHubActionRequest },
+        ) => {
+          const result = await context.service.submit(inputs.request);
+
+          expect(result.allowed).toBe(true);
+          expect(result.submitted).toBe(false);
+          expect(result.receipt?.statusCode).toBe(422);
+        },
+      },
     ];
 
     it.each(cases)('$name', async (testCase) => {
