@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import {
+  access,
   appendFile,
   mkdir,
   readdir,
@@ -29,6 +30,14 @@ const defaultWorkflowFileName = 'live-dispatch-canary.yml';
 const defaultSonarProjectTimeoutMs = 180_000;
 const defaultWorkflowTimeoutMs = 180_000;
 const defaultPollMs = 5_000;
+/**
+ * Compiled workspace package entrypoint used by normal live-lab execution.
+ */
+const workspacePackageDistEntrypoint = 'dist/index.js';
+/**
+ * Source workspace package entrypoint used by preflight tests before builds exist.
+ */
+const workspacePackageSourceEntrypoint = 'src/index.ts';
 /**
  * Default window that keeps the private runtime online after operator controls are posted.
  */
@@ -73,6 +82,24 @@ const liveLabGitHubAppPermissions = Object.freeze({
   pull_requests: 'write',
   workflows: 'write',
 });
+
+/**
+ * Resolves the package entrypoint available in the current execution phase.
+ */
+async function resolveWorkspacePackageEntrypoint(packageName) {
+  const packageDirectory = resolve(repoRootDirectory, 'packages', packageName);
+  const distEntrypoint = resolve(
+    packageDirectory,
+    workspacePackageDistEntrypoint,
+  );
+
+  try {
+    await access(distEntrypoint);
+    return distEntrypoint;
+  } catch {
+    return resolve(packageDirectory, workspacePackageSourceEntrypoint);
+  }
+}
 
 function parseFlagArguments(argv) {
   const args = new Map();
@@ -1410,14 +1437,10 @@ async function createDiscordControlPlaneService({
   reportDirectory,
   transport,
 }) {
-  const discordModule = await import(
-    pathToFileURL(resolve(repoRootDirectory, 'packages/discord/dist/index.js'))
-      .href
-  );
-  const storageModule = await import(
-    pathToFileURL(resolve(repoRootDirectory, 'packages/storage/dist/index.js'))
-      .href
-  );
+  const discordEntrypoint = await resolveWorkspacePackageEntrypoint('discord');
+  const storageEntrypoint = await resolveWorkspacePackageEntrypoint('storage');
+  const discordModule = await import(pathToFileURL(discordEntrypoint).href);
+  const storageModule = await import(pathToFileURL(storageEntrypoint).href);
   const store = new storageModule.FileStoreService(
     resolve(reportDirectory, 'discord-interactions'),
   );
@@ -1431,10 +1454,8 @@ async function createDiscordControlPlaneService({
 }
 
 async function createLiveLabFileStore(rootDirectory) {
-  const storageModule = await import(
-    pathToFileURL(resolve(repoRootDirectory, 'packages/storage/dist/index.js'))
-      .href
-  );
+  const storageEntrypoint = await resolveWorkspacePackageEntrypoint('storage');
+  const storageModule = await import(pathToFileURL(storageEntrypoint).href);
 
   return new storageModule.FileStoreService(rootDirectory);
 }
@@ -1466,19 +1487,15 @@ export async function persistDiscordGatewayBoundSession(
 }
 
 async function createDiscordApplicationCommandPayloads() {
-  const discordModule = await import(
-    pathToFileURL(resolve(repoRootDirectory, 'packages/discord/dist/index.js'))
-      .href
-  );
+  const discordEntrypoint = await resolveWorkspacePackageEntrypoint('discord');
+  const discordModule = await import(pathToFileURL(discordEntrypoint).href);
 
   return discordModule.createDiscordApplicationCommandPayloads();
 }
 
 async function createDiscordOperatorInteractionFromCallback(callback, options) {
-  const discordModule = await import(
-    pathToFileURL(resolve(repoRootDirectory, 'packages/discord/dist/index.js'))
-      .href
-  );
+  const discordEntrypoint = await resolveWorkspacePackageEntrypoint('discord');
+  const discordModule = await import(pathToFileURL(discordEntrypoint).href);
 
   return discordModule.createDiscordOperatorInteractionFromCallback(
     callback,
