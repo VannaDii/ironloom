@@ -25,6 +25,12 @@ The `run_gates` tool accepts an optional `actorId`, preserves the gate report
 shape, and adds the persisted telemetry event id to its result so downstream
 operators can audit pass/fail classification and next actions.
 
+OpenClaw Sonar quality-gate evaluations now record telemetry through the same
+storage path. The `evaluate_sonar_quality_gate` tool accepts an optional
+`actorId`, delegates threshold evaluation to the SonarCloud package, and returns
+the persisted telemetry event id with project, coverage, blocking issue, status,
+and next-action details.
+
 OpenClaw worktree tool `baseBranch` inputs now use the shared Git branch codec
 instead of raw strings. Generated schemas also carry the shared Git branch
 pattern so adapter decoding and external tool contracts reject flag-like,

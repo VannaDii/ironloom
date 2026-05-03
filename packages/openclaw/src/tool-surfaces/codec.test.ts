@@ -106,6 +106,7 @@ describe('tool surface codecs', () => {
               overallCoverage: 95,
               newCodeCoverage: 95,
               blockingIssues: 0,
+              actorId: 'operator-1',
             },
           },
           {

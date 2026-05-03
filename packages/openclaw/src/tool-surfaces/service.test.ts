@@ -2019,32 +2019,309 @@ describe('tool surface service', () => {
     expect(result.details).toMatchObject({ status: 'failed' });
   });
 
-  it('evaluates Sonar quality gates from valid tool input', async () => {
-    const result = await createEvaluateSonarQualityGateTool().execute(
-      'tool-call-sq1',
+  describe('evaluate_sonar_quality_gate operational telemetry', () => {
+    const cases = [
       {
-        projectKey: 'vannadii_devplat',
-        overallCoverage: 91,
-        newCodeCoverage: 92,
-        blockingIssues: 0,
-      },
-    );
+        name: 'records passed Sonar quality gates through telemetry',
+        inputs: {
+          toolCallId: 'tool-call-sq1',
+          params: {
+            projectKey: 'vannadii_devplat',
+            overallCoverage: 91,
+            newCodeCoverage: 92,
+            blockingIssues: 0,
+            actorId: 'operator-1',
+          },
+        },
+        mock: () => {
+          const recorded: unknown[] = [];
+          const tool = createEvaluateSonarQualityGateTool({
+            sonarQualityGateService: {
+              evaluate(
+                projectKey,
+                overallCoverage,
+                newCodeCoverage,
+                blockingIssues,
+              ) {
+                return {
+                  projectKey,
+                  status: 'passed',
+                  overallCoverage,
+                  newCodeCoverage,
+                  blockingIssues,
+                  evaluatedAt: '2026-04-04T00:00:00.000Z',
+                  nextAction: 'continue',
+                };
+              },
+            },
+            telemetryEventService: {
+              async record(event) {
+                recorded.push(event);
+                return event;
+              },
+            },
+          });
 
-    expect(result.details).toMatchObject({
-      projectKey: 'vannadii_devplat',
-      status: 'passed',
+          return { recorded, tool };
+        },
+        assert: async (
+          context: {
+            recorded: unknown[];
+            tool: ReturnType<typeof createEvaluateSonarQualityGateTool>;
+          },
+          inputs: {
+            toolCallId: string;
+            params: {
+              projectKey: string;
+              overallCoverage: number;
+              newCodeCoverage: number;
+              blockingIssues: number;
+              actorId: string;
+            };
+          },
+        ) => {
+          const result = await context.tool.execute(
+            inputs.toolCallId,
+            inputs.params,
+          );
+
+          expect(result.details).toMatchObject({
+            projectKey: 'vannadii_devplat',
+            status: 'passed',
+            telemetryEventId:
+              'telemetry:sonar-quality-gate:tool-call-sq1:vannadii_devplat',
+          });
+          expect(context.recorded).toMatchObject([
+            {
+              id: 'telemetry:sonar-quality-gate:tool-call-sq1:vannadii_devplat',
+              summary: 'Sonar quality gate passed for vannadii_devplat',
+              status: 'complete',
+              actorId: 'operator-1',
+              action: 'evaluate-sonar-quality-gate',
+              scope: 'supervisor',
+              details: {
+                projectKey: 'vannadii_devplat',
+                qualityGateStatus: 'passed',
+                overallCoverage: 91,
+                newCodeCoverage: 92,
+                blockingIssues: 0,
+                nextAction: 'continue',
+              },
+            },
+          ]);
+        },
+      },
+      {
+        name: 'records failed Sonar quality gates through telemetry',
+        inputs: {
+          toolCallId: 'tool-call-sq2',
+          params: {
+            projectKey: 'vannadii_devplat',
+            overallCoverage: 82,
+            newCodeCoverage: 88,
+            blockingIssues: 1,
+          },
+        },
+        mock: () => {
+          const recorded: unknown[] = [];
+          const tool = createEvaluateSonarQualityGateTool({
+            sonarQualityGateService: {
+              evaluate(
+                projectKey,
+                overallCoverage,
+                newCodeCoverage,
+                blockingIssues,
+              ) {
+                return {
+                  projectKey,
+                  status: 'failed',
+                  overallCoverage,
+                  newCodeCoverage,
+                  blockingIssues,
+                  evaluatedAt: '2026-04-04T00:00:00.000Z',
+                  nextAction: 'review-sonar',
+                };
+              },
+            },
+            telemetryEventService: {
+              async record(event) {
+                recorded.push(event);
+                return event;
+              },
+            },
+          });
+
+          return { recorded, tool };
+        },
+        assert: async (
+          context: {
+            recorded: unknown[];
+            tool: ReturnType<typeof createEvaluateSonarQualityGateTool>;
+          },
+          inputs: {
+            toolCallId: string;
+            params: {
+              projectKey: string;
+              overallCoverage: number;
+              newCodeCoverage: number;
+              blockingIssues: number;
+            };
+          },
+        ) => {
+          const result = await context.tool.execute(
+            inputs.toolCallId,
+            inputs.params,
+          );
+
+          expect(result.details).toMatchObject({
+            projectKey: 'vannadii_devplat',
+            status: 'failed',
+            telemetryEventId:
+              'telemetry:sonar-quality-gate:tool-call-sq2:vannadii_devplat',
+          });
+          expect(context.recorded).toMatchObject([
+            {
+              id: 'telemetry:sonar-quality-gate:tool-call-sq2:vannadii_devplat',
+              summary: 'Sonar quality gate failed for vannadii_devplat',
+              status: 'failed',
+              actorId: 'openclaw',
+              action: 'evaluate-sonar-quality-gate',
+              scope: 'supervisor',
+              details: {
+                projectKey: 'vannadii_devplat',
+                qualityGateStatus: 'failed',
+                overallCoverage: 82,
+                newCodeCoverage: 88,
+                blockingIssues: 1,
+                nextAction: 'review-sonar',
+              },
+            },
+          ]);
+        },
+      },
+      {
+        name: 'records absent Sonar next action as null telemetry detail',
+        inputs: {
+          toolCallId: 'tool-call-sq3',
+          params: {
+            projectKey: 'vannadii_devplat',
+            overallCoverage: 95,
+            newCodeCoverage: 95,
+            blockingIssues: 0,
+          },
+        },
+        mock: () => {
+          const recorded: unknown[] = [];
+          const tool = createEvaluateSonarQualityGateTool({
+            sonarQualityGateService: {
+              evaluate(
+                projectKey,
+                overallCoverage,
+                newCodeCoverage,
+                blockingIssues,
+              ) {
+                return {
+                  projectKey,
+                  status: 'passed',
+                  overallCoverage,
+                  newCodeCoverage,
+                  blockingIssues,
+                  evaluatedAt: '2026-04-04T00:00:00.000Z',
+                };
+              },
+            },
+            telemetryEventService: {
+              async record(event) {
+                recorded.push(event);
+                return event;
+              },
+            },
+          });
+
+          return { recorded, tool };
+        },
+        assert: async (
+          context: {
+            recorded: unknown[];
+            tool: ReturnType<typeof createEvaluateSonarQualityGateTool>;
+          },
+          inputs: {
+            toolCallId: string;
+            params: {
+              projectKey: string;
+              overallCoverage: number;
+              newCodeCoverage: number;
+              blockingIssues: number;
+            };
+          },
+        ) => {
+          const result = await context.tool.execute(
+            inputs.toolCallId,
+            inputs.params,
+          );
+
+          expect(result.details).toMatchObject({
+            projectKey: 'vannadii_devplat',
+            status: 'passed',
+          });
+          expect(context.recorded).toMatchObject([
+            {
+              id: 'telemetry:sonar-quality-gate:tool-call-sq3:vannadii_devplat',
+              details: {
+                nextAction: null,
+              },
+            },
+          ]);
+        },
+      },
+      {
+        name: 'returns decode failures for invalid Sonar quality gate input',
+        inputs: {
+          toolCallId: 'tool-call-sq4',
+          params: {
+            projectKey: 'vannadii_devplat',
+          },
+        },
+        mock: () => {
+          const recorded: unknown[] = [];
+          const tool = createEvaluateSonarQualityGateTool({
+            telemetryEventService: {
+              async record(event) {
+                recorded.push(event);
+                return event;
+              },
+            },
+          });
+
+          return { recorded, tool };
+        },
+        assert: async (
+          context: {
+            recorded: unknown[];
+            tool: ReturnType<typeof createEvaluateSonarQualityGateTool>;
+          },
+          inputs: {
+            toolCallId: string;
+            params: {
+              projectKey: string;
+            };
+          },
+        ) => {
+          const result = await context.tool.execute(
+            inputs.toolCallId,
+            inputs.params,
+          );
+
+          expect(result.details).toMatchObject({ status: 'failed' });
+          expect(context.recorded).toEqual([]);
+        },
+      },
+    ];
+
+    it.each(cases)('$name', async (testCase) => {
+      const context = testCase.mock(testCase.inputs);
+      await testCase.assert(context, testCase.inputs);
     });
-  });
-
-  it('returns decode failures for invalid Sonar quality gate input', async () => {
-    const result = await createEvaluateSonarQualityGateTool().execute(
-      'tool-call-sq2',
-      {
-        projectKey: 'vannadii_devplat',
-      },
-    );
-
-    expect(result.details).toMatchObject({ status: 'failed' });
   });
 
   it('creates review finding artifacts from valid tool input', async () => {

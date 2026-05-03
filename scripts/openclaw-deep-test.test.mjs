@@ -598,6 +598,18 @@ describe('openclaw-deep-test helpers', () => {
               }),
             }),
             expect.objectContaining({
+              tool: 'evaluate_sonar_quality_gate',
+              phase: 'delivery',
+              params: expect.objectContaining({
+                actorId: 'operator-1',
+                projectKey: 'vannadii_devplat-test-101-1',
+              }),
+              expected: expect.objectContaining({
+                nextAction: 'continue',
+                status: 'passed',
+              }),
+            }),
+            expect.objectContaining({
               tool: 'validate_artifact',
               phase: 'contracts',
             }),
@@ -635,11 +647,37 @@ describe('openclaw-deep-test helpers', () => {
               artifacts: ['artifact'],
               memory: ['memory'],
               state: ['state'],
+              telemetry: [
+                'telemetry:sonar-quality-gate:tool-call-1:vannadii_devplat',
+              ],
+            },
+            steps: [{ tool: 'evaluate_sonar_quality_gate', ok: true }],
+          }),
+        ).not.toThrow();
+        expect(() =>
+          validateDeepTestReport({
+            mode: 'hermetic',
+            persisted: {
+              artifacts: ['artifact'],
+              memory: ['memory'],
+              state: ['state'],
               telemetry: ['telemetry-openclaw-1'],
             },
             steps: [{ tool: 'run_gates', ok: true }],
           }),
         ).toThrow('Deep-test report is missing run_gates telemetry.');
+        expect(() =>
+          validateDeepTestReport({
+            mode: 'hermetic',
+            persisted: {
+              artifacts: ['artifact'],
+              memory: ['memory'],
+              state: ['state'],
+              telemetry: ['telemetry-openclaw-1'],
+            },
+            steps: [{ tool: 'evaluate_sonar_quality_gate', ok: true }],
+          }),
+        ).toThrow('Deep-test report is missing Sonar quality gate telemetry.');
       },
     },
     {

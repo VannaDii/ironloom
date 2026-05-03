@@ -83,3 +83,20 @@ export const OPENCLAW_RUN_GATES_TELEMETRY_ID_PREFIX = 'telemetry:run-gates';
  * Trace marker for telemetry emitted by the OpenClaw gate runner tool.
  */
 export const OPENCLAW_RUN_GATES_TRACE = 'openclaw:run-gates';
+
+/**
+ * Action name used for Sonar quality-gate telemetry events emitted by OpenClaw.
+ */
+export const OPENCLAW_ACTION_EVALUATE_SONAR_QUALITY_GATE =
+  'evaluate-sonar-quality-gate';
+
+/**
+ * Prefix for telemetry events emitted by the OpenClaw Sonar quality-gate tool.
+ */
+export const OPENCLAW_SONAR_QUALITY_GATE_TELEMETRY_ID_PREFIX =
+  'telemetry:sonar-quality-gate';
+
+/**
+ * Trace marker for telemetry emitted by the OpenClaw Sonar quality-gate tool.
+ */
+export const OPENCLAW_SONAR_QUALITY_GATE_TRACE = 'openclaw:sonar-quality-gate';

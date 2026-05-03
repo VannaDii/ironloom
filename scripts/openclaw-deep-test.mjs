@@ -19,9 +19,17 @@ const redactedValue = '[redacted]';
  */
 const runGatesToolName = 'run_gates';
 /**
+ * OpenClaw tool name used by the deep scenario for Sonar quality-gate evaluation.
+ */
+const sonarQualityGateToolName = 'evaluate_sonar_quality_gate';
+/**
  * Telemetry key prefix emitted by the OpenClaw gate execution tool.
  */
 const runGatesTelemetryPrefix = 'telemetry:run-gates';
+/**
+ * Telemetry key prefix emitted by the OpenClaw Sonar quality-gate tool.
+ */
+const sonarQualityGateTelemetryPrefix = 'telemetry:sonar-quality-gate';
 /**
  * Characters ignored while classifying snapshot keys for secret redaction.
  */
@@ -1423,14 +1431,19 @@ export function createDeepScenario(runtimeEnv) {
       'delivery',
     ),
     createStep(
-      'evaluate_sonar_quality_gate',
+      sonarQualityGateToolName,
       {
         projectKey: runtimeEnv.SONAR_PROJECT_KEY,
         overallCoverage: 91,
         newCodeCoverage: 92,
         blockingIssues: 0,
+        actorId: 'operator-1',
       },
-      { projectKey: runtimeEnv.SONAR_PROJECT_KEY, status: 'passed' },
+      {
+        projectKey: runtimeEnv.SONAR_PROJECT_KEY,
+        status: 'passed',
+        nextAction: 'continue',
+      },
       'delivery',
     ),
     createStep(
@@ -1681,6 +1694,15 @@ export function validateDeepTestReport(report) {
     !reportHasTelemetryPrefix(report, runGatesTelemetryPrefix)
   ) {
     throw new Error('Deep-test report is missing run_gates telemetry.');
+  }
+
+  if (
+    reportHasToolStep(report, sonarQualityGateToolName) &&
+    !reportHasTelemetryPrefix(report, sonarQualityGateTelemetryPrefix)
+  ) {
+    throw new Error(
+      'Deep-test report is missing Sonar quality gate telemetry.',
+    );
   }
 
   return true;

@@ -56,6 +56,7 @@ import { SlicePlanService } from '@vannadii/devplat-slicing';
 import {
   SonarBootstrapVerificationService,
   SonarQualityGateService,
+  type SonarQualityGateResult,
 } from '@vannadii/devplat-sonarcloud';
 import { SpecRecordService } from '@vannadii/devplat-specs';
 import { FileStoreService } from '@vannadii/devplat-storage';
@@ -119,11 +120,14 @@ import {
 import {
   LIST_STORED_INDEX_SCHEMA_FILE,
   LIST_STORED_INDEX_TOOL_NAME,
+  OPENCLAW_ACTION_EVALUATE_SONAR_QUALITY_GATE,
   OPENCLAW_DEFAULT_ACTOR_ID,
   OPENCLAW_GITHUB_OWNER_ENVIRONMENT_VARIABLE,
   OPENCLAW_GITHUB_REPO_ENVIRONMENT_VARIABLE,
   OPENCLAW_RUN_GATES_TELEMETRY_ID_PREFIX,
   OPENCLAW_RUN_GATES_TRACE,
+  OPENCLAW_SONAR_QUALITY_GATE_TELEMETRY_ID_PREFIX,
+  OPENCLAW_SONAR_QUALITY_GATE_TRACE,
   OPENCLAW_STORAGE_ROOT_ENVIRONMENT_VARIABLE,
   OPENCLAW_TEST_MODE_ENVIRONMENT_VARIABLE,
   OPENCLAW_WORKTREE_ROOT_ENVIRONMENT_VARIABLE,
@@ -157,6 +161,29 @@ type OpenClawRunGatesToolDependencies = {
 
   /**
    * Telemetry recorder for persisted gate run evidence.
+   */
+  telemetryEventService?: OpenClawTelemetryRecordService;
+};
+
+/**
+ * Sonar quality-gate behavior used by the OpenClaw quality-gate tool.
+ */
+type OpenClawSonarQualityGateService = Pick<
+  SonarQualityGateService,
+  'evaluate'
+>;
+
+/**
+ * Dependency object accepted by the OpenClaw Sonar quality-gate tool.
+ */
+type OpenClawSonarQualityGateToolDependencies = {
+  /**
+   * Sonar quality-gate evaluator.
+   */
+  sonarQualityGateService?: OpenClawSonarQualityGateService;
+
+  /**
+   * Telemetry recorder for persisted Sonar gate evidence.
    */
   telemetryEventService?: OpenClawTelemetryRecordService;
 };
@@ -316,6 +343,47 @@ function createRunGatesTelemetryEvent(input: {
       passed: input.report.passed,
       failedGateNames,
       nextAction: resolveRunGatesNextAction(input.report),
+    },
+  };
+}
+
+/**
+ * Creates a stable telemetry id for one OpenClaw Sonar quality-gate tool call.
+ */
+function createSonarQualityGateTelemetryEventId(
+  toolCallId: string,
+  projectKey: string,
+): string {
+  return `${OPENCLAW_SONAR_QUALITY_GATE_TELEMETRY_ID_PREFIX}:${toolCallId}:${projectKey}`;
+}
+
+/**
+ * Creates the telemetry event that audits one Sonar quality-gate evaluation.
+ */
+function createSonarQualityGateTelemetryEvent(input: {
+  toolCallId: string;
+  actorId: string;
+  result: SonarQualityGateResult;
+}): TelemetryEvent {
+  return {
+    id: createSonarQualityGateTelemetryEventId(
+      input.toolCallId,
+      input.result.projectKey,
+    ),
+    summary: `Sonar quality gate ${input.result.status} for ${input.result.projectKey}`,
+    status: input.result.status === 'passed' ? 'complete' : 'failed',
+    trace: [OPENCLAW_SONAR_QUALITY_GATE_TRACE],
+    updatedAt: input.result.evaluatedAt,
+    actorId: input.actorId,
+    action: OPENCLAW_ACTION_EVALUATE_SONAR_QUALITY_GATE,
+    scope: 'supervisor',
+    details: {
+      projectKey: input.result.projectKey,
+      qualityGateStatus: input.result.status,
+      overallCoverage: input.result.overallCoverage,
+      newCodeCoverage: input.result.newCodeCoverage,
+      blockingIssues: input.result.blockingIssues,
+      nextAction: input.result.nextAction ?? null,
     },
   };
 }
@@ -1292,7 +1360,13 @@ export function createVerifySonarBootstrapTool(): AnyAgentTool {
   return tool;
 }
 
-export function createEvaluateSonarQualityGateTool(): AnyAgentTool {
+export function createEvaluateSonarQualityGateTool(
+  dependencies: OpenClawSonarQualityGateToolDependencies = {},
+): AnyAgentTool {
+  const sonarQualityGateService =
+    dependencies.sonarQualityGateService ?? new SonarQualityGateService();
+  const telemetryEventService =
+    dependencies.telemetryEventService ?? createDefaultTelemetryEventService();
   const tool: AnyAgentTool = {
     name: 'evaluate_sonar_quality_gate',
     label: 'Evaluate Sonar Quality Gate',
@@ -1301,24 +1375,32 @@ export function createEvaluateSonarQualityGateTool(): AnyAgentTool {
     parameters: readSchema(
       'tool-evaluate-sonar-quality-gate-params.schema.json',
     ),
-    execute(_toolCallId: string, params: unknown) {
+    async execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(
         EvaluateSonarQualityGateToolInputCodec,
         params,
       );
       if (!decoded.ok) {
-        return Promise.resolve(
-          createTextResult({ status: 'failed', error: decoded.error }),
-        );
+        return createTextResult({ status: 'failed', error: decoded.error });
       }
 
-      const result = new SonarQualityGateService().evaluate(
+      const result = sonarQualityGateService.evaluate(
         decoded.value.projectKey,
         decoded.value.overallCoverage,
         decoded.value.newCodeCoverage,
         decoded.value.blockingIssues,
       );
-      return Promise.resolve(createTextResult(result));
+      const telemetryEvent = await telemetryEventService.record(
+        createSonarQualityGateTelemetryEvent({
+          toolCallId: _toolCallId,
+          actorId: decoded.value.actorId ?? OPENCLAW_DEFAULT_ACTOR_ID,
+          result,
+        }),
+      );
+      return createTextResult({
+        ...result,
+        telemetryEventId: telemetryEvent.id,
+      });
     },
   };
 

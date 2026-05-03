@@ -41,6 +41,10 @@ Gate execution uses `@vannadii/devplat-gates` for command execution and
 classification, then records a telemetry event through the configured
 `.devplat` storage root. Pass `actorId` when the gate run is operator-initiated;
 otherwise the tool records the OpenClaw runtime as the actor.
+Sonar quality-gate evaluation follows the same audit path: it delegates
+threshold evaluation to `@vannadii/devplat-sonarcloud`, accepts optional
+`actorId`, persists a telemetry event, and returns the telemetry event id with
+the quality-gate result.
 
 ## Exposed Tools
 
@@ -78,7 +82,9 @@ surface, and tests stay aligned.
   runs use the Discord loopback response transport so callback-shaped input is
   validated without network access
 - `verify_sonar_bootstrap`: validate Sonar bootstrap requirements
-- `evaluate_sonar_quality_gate`: interpret Sonar quality gate results
+- `evaluate_sonar_quality_gate`: interpret Sonar quality gate results and
+  persist telemetry for the evaluated project, status, coverage, blocking
+  issues, actor, and next action
 - `create_review_finding`: create a review finding artifact
 - `create_remediation_plan`: create a remediation plan artifact
 - `remember_memory_entry`: normalize and persist memory entry state

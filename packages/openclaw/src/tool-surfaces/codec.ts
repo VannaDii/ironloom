@@ -153,12 +153,17 @@ export const HandleDiscordControlToolInputCodec = t.union([
 export const VerifySonarBootstrapToolInputCodec =
   SonarBootstrapVerificationInputCodec;
 
-export const EvaluateSonarQualityGateToolInputCodec = t.type({
-  projectKey: t.string,
-  overallCoverage: t.number,
-  newCodeCoverage: t.number,
-  blockingIssues: t.number,
-});
+export const EvaluateSonarQualityGateToolInputCodec = t.intersection([
+  t.type({
+    projectKey: t.string,
+    overallCoverage: t.number,
+    newCodeCoverage: t.number,
+    blockingIssues: t.number,
+  }),
+  t.partial({
+    actorId: t.string,
+  }),
+]);
 
 export const CreateReviewFindingToolInputCodec = ReviewFindingCodec;
 
