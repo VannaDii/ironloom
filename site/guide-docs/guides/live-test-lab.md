@@ -16,9 +16,11 @@ CI.
   successfully before any sandbox repository mutation
 - registers Discord command contracts, normalizes a Discord callback-shaped
   slash command payload, records a local simulated deferred acknowledgement,
-  and posts the bound-thread status through the same response transport used by the runtime;
-  the run fails if the interaction resolves to the wrong thread or does not
-  record both callback and thread message receipts plus thread-posted actionable component ids
+  posts the bound-thread status through the same response transport used by the
+  runtime, completes the deferred interaction, and routes one simulated button
+  callback through the same bound thread; the run fails if the interaction
+  resolves to the wrong thread or does not record callback, thread message,
+  deferred-completion, and actionable component id receipts
 - waits for SonarQube Cloud to auto-import the repository
 - runs the OpenClaw live deep test against the real container with network
   access enabled
