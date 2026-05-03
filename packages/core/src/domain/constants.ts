@@ -353,3 +353,10 @@ export const GIT_BRANCH_DISALLOWED_CONTROL_OR_SPACE_PATTERN = new RegExp(
   )}${String.fromCharCode(GIT_BRANCH_DELETE_CONTROL_CODE)}]`,
   'u',
 );
+
+/**
+ * JSON Schema pattern equivalent for Git branch names accepted by
+ * `GitBranchNameCodec`.
+ */
+export const GIT_BRANCH_NAME_JSON_SCHEMA_PATTERN =
+  '^(?!-)(?!/)(?!.*(?:\\.\\.|//|@\\{|\\\\|~|\\^|:|\\?|\\*|\\[|(?:^|/)[^/]*\\.lock(?:/|$)))(?!.*[\\x00-\\x20\\x7f])(?!.*/$)(?!.*\\.$)(?!@$).+$';

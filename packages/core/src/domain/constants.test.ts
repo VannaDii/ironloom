@@ -34,6 +34,7 @@ import {
   DEVPLAT_ACTION_SYNC_WORKTREE,
   DEVPLAT_ACTION_UPDATE_PR,
   DEVPLAT_ACTION_UPDATE_SPEC,
+  GIT_BRANCH_NAME_JSON_SCHEMA_PATTERN,
 } from './constants.js';
 
 describe('domain constants', () => {
@@ -78,6 +79,34 @@ describe('domain constants', () => {
         expect(DEVPLAT_ACTION_DESTRUCTIVE_CLEANUP).toBe('destructive-cleanup');
         expect(DEVPLAT_ACTION_DELETE_WORKTREE).toBe('delete-worktree');
         expect(DEVPLAT_ACTION_CLEANUP_ARTIFACTS).toBe('cleanup-artifacts');
+      },
+    },
+    {
+      name: 'exports a Git branch JSON schema pattern aligned with codec constraints',
+      inputs: {
+        validBranchNames: ['main', 'release/next', 'feature/thread-aware'],
+        invalidBranchNames: [
+          '--upload-pack=sh',
+          'invalid branch',
+          'feature/../main',
+          'feature/name.lock',
+          '@',
+        ],
+      },
+      mock: () => ({
+        pattern: new RegExp(GIT_BRANCH_NAME_JSON_SCHEMA_PATTERN, 'u'),
+      }),
+      assert: (
+        context: { pattern: RegExp },
+        inputs: { validBranchNames: string[]; invalidBranchNames: string[] },
+      ) => {
+        for (const branchName of inputs.validBranchNames) {
+          expect(context.pattern.test(branchName)).toBe(true);
+        }
+
+        for (const branchName of inputs.invalidBranchNames) {
+          expect(context.pattern.test(branchName)).toBe(false);
+        }
       },
     },
   ];

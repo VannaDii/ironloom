@@ -24,3 +24,9 @@ OpenClaw gate runs now record telemetry through the configured storage root.
 The `run_gates` tool accepts an optional `actorId`, preserves the gate report
 shape, and adds the persisted telemetry event id to its result so downstream
 operators can audit pass/fail classification and next actions.
+
+OpenClaw worktree tool `baseBranch` inputs now use the shared Git branch codec
+instead of raw strings. Generated schemas also carry the shared Git branch
+pattern so adapter decoding and external tool contracts reject flag-like,
+whitespace-containing, or otherwise invalid branch refs before any Git-backed
+worktree operation runs.

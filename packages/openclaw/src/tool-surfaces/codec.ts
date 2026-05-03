@@ -1,5 +1,6 @@
 import * as t from 'io-ts';
 
+import { GitBranchNameCodec } from '@vannadii/devplat-core';
 import {
   ApprovalRecordArtifactCodec,
   ArtifactEnvelopeCodec,
@@ -100,7 +101,7 @@ export const AllocateWorktreeToolInputCodec = t.intersection([
     branchName: t.string,
   }),
   t.partial({
-    baseBranch: t.string,
+    baseBranch: GitBranchNameCodec,
     applyToDisk: t.boolean,
   }),
 ]);
@@ -108,7 +109,7 @@ export const AllocateWorktreeToolInputCodec = t.intersection([
 export const SyncWorktreeToolInputCodec = t.intersection([
   t.type({
     allocation: WorktreeAllocationCodec,
-    baseBranch: t.string,
+    baseBranch: GitBranchNameCodec,
   }),
   t.partial({
     syncMode: WorktreeSyncModeCodec,

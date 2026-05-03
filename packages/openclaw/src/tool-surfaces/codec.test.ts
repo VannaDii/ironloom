@@ -158,6 +158,49 @@ describe('tool surface codecs', () => {
       },
     },
     {
+      name: 'normalize safe git-backed worktree base branches',
+      inputs: {
+        allocateInput: {
+          taskId: 'task-1',
+          branchName: 'feature/thread-aware',
+          baseBranch: ' main ',
+          applyToDisk: true,
+        },
+        syncInput: {
+          allocation: {
+            id: 'worktree-1',
+            summary: 'Allocate a worktree.',
+            status: 'queued',
+            trace: [],
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            taskId: 'task-1',
+            branchName: 'feature/thread-aware',
+            worktreePath: '/var/devplat/worktree-1',
+          },
+          baseBranch: ' release/next ',
+          syncMode: 'rebase',
+          applyToDisk: true,
+        },
+      },
+      mock: async ({ allocateInput, syncInput }) => ({
+        allocateResult: decodeWithCodec(
+          AllocateWorktreeToolInputCodec,
+          allocateInput,
+        ),
+        syncResult: decodeWithCodec(SyncWorktreeToolInputCodec, syncInput),
+      }),
+      assert: ({ allocateResult, syncResult }) => {
+        expect(allocateResult.ok).toBe(true);
+        expect(syncResult.ok).toBe(true);
+        if (!allocateResult.ok || !syncResult.ok) {
+          return;
+        }
+
+        expect(allocateResult.value.baseBranch).toBe('main');
+        expect(syncResult.value.baseBranch).toBe('release/next');
+      },
+    },
+    {
       name: 'reject invalid tool inputs',
       inputs: {
         decoders: [
@@ -173,6 +216,33 @@ describe('tool surface codecs', () => {
               action: 'retry-gates',
               actorId: 1,
               privileged: true,
+            },
+          },
+          {
+            codec: AllocateWorktreeToolInputCodec,
+            value: {
+              taskId: 'task-1',
+              branchName: 'feature/thread-aware',
+              baseBranch: '--upload-pack=sh',
+              applyToDisk: true,
+            },
+          },
+          {
+            codec: SyncWorktreeToolInputCodec,
+            value: {
+              allocation: {
+                id: 'worktree-1',
+                summary: 'Allocate a worktree.',
+                status: 'queued',
+                trace: [],
+                updatedAt: '2026-04-04T00:00:00.000Z',
+                taskId: 'task-1',
+                branchName: 'feature/thread-aware',
+                worktreePath: '/var/devplat/worktree-1',
+              },
+              baseBranch: 'invalid branch',
+              syncMode: 'rebase',
+              applyToDisk: true,
             },
           },
         ],
