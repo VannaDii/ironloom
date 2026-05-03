@@ -3,6 +3,7 @@ import {
   ARTIFACT_TYPE_AUDIT_LOG,
   ARTIFACT_TYPE_MERGE_DECISION,
   ARTIFACT_TYPE_REBASE_RESULT,
+  createDevplatError,
   createDevplatFailure,
   decodeWithCodec,
   type DevplatResult,
@@ -33,7 +34,12 @@ import {
   RebaseResultArtifactService,
   type RebaseResultArtifact,
 } from '../rebase-result/index.js';
-import type { ArtifactRegistry } from '../artifact-registry/index.js';
+import type {
+  ArtifactMigrationRecord,
+  ArtifactRegistry,
+  ArtifactRegistryEntry,
+} from '../artifact-registry/index.js';
+import { ARTIFACT_VALIDATION_MIGRATION_REQUIRED_ERROR_CODE } from './constants.js';
 
 /** Artifact type accepted by the validation dispatcher. */
 export type KnownArtifact =
@@ -47,6 +53,60 @@ export type KnownArtifact =
 export type ArtifactValidationOptions = {
   registry?: ArtifactRegistry;
 };
+
+/**
+ * Finds the direct migration record that updates an artifact to the registry version.
+ */
+function findApplicableMigration(
+  registry: ArtifactRegistry,
+  envelope: ArtifactEnvelope,
+  entry: ArtifactRegistryEntry,
+): ArtifactMigrationRecord | undefined {
+  return registry.migrations.find(
+    (migration) =>
+      migration.artifactType === envelope.artifactType &&
+      migration.fromVersion === envelope.version &&
+      migration.toVersion === entry.currentVersion,
+  );
+}
+
+/**
+ * Formats the required-migration validation failure with registry context.
+ */
+function createMigrationRequiredFailure(
+  registry: ArtifactRegistry,
+  envelope: ArtifactEnvelope,
+  entry: ArtifactRegistryEntry,
+): DevplatResult<ArtifactEnvelope> {
+  const migration = findApplicableMigration(registry, envelope, entry);
+  const migrationHint =
+    migration === undefined ? '' : ` ${migration.migrationId}`;
+  const error = `Artifact ${envelope.artifactType}@v${String(envelope.version)} requires migration${migrationHint} to v${String(entry.currentVersion)} before validation.`;
+
+  return createDevplatFailure({
+    error,
+    diagnostic: createDevplatError({
+      kind: 'validation',
+      message: error,
+      code: ARTIFACT_VALIDATION_MIGRATION_REQUIRED_ERROR_CODE,
+      details:
+        migration === undefined
+          ? {
+              artifactType: envelope.artifactType,
+              artifactVersion: envelope.version,
+              currentVersion: entry.currentVersion,
+              registryId: registry.registryId,
+            }
+          : {
+              artifactType: envelope.artifactType,
+              artifactVersion: envelope.version,
+              currentVersion: entry.currentVersion,
+              registryId: registry.registryId,
+              migrationId: migration.migrationId,
+            },
+    }),
+  });
+}
 
 /**
  * Validates the decoded envelope against the active repository registry.
@@ -75,9 +135,7 @@ function validateEnvelopeRegistry(
     envelope.version < entry.currentVersion &&
     entry.migrationPolicy === 'required'
   ) {
-    return createDevplatFailure({
-      error: `Artifact ${envelope.artifactType}@v${String(envelope.version)} requires migration to v${String(entry.currentVersion)} before validation.`,
-    });
+    return createMigrationRequiredFailure(registry, envelope, entry);
   }
 
   if (envelope.version > entry.currentVersion) {

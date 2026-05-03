@@ -5,6 +5,7 @@ import {
   createDefaultArtifactRegistry,
   type ArtifactRegistry,
 } from '../artifact-registry/index.js';
+import { ARTIFACT_VALIDATION_MIGRATION_REQUIRED_ERROR_CODE } from './constants.js';
 import { describeValidatedArtifact, validateArtifact } from './logic.js';
 
 type ArtifactValidationLogicCase = {
@@ -407,6 +408,68 @@ describe('ArtifactValidation logic', () => {
           ok: false,
           error:
             'Artifact review-finding@v1 requires migration to v2 before validation.',
+        });
+      },
+    },
+    {
+      name: 'reports the applicable migration id for required stale artifacts',
+      inputs: {
+        artifact: {
+          id: 'artifact-generic-3b',
+          artifactType: 'review-finding',
+          version: 1,
+          summary: ' Generic artifact ',
+          status: 'approved',
+          trace: [],
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          payload: {
+            findingId: 'finding-3b',
+          },
+        },
+      },
+      mock: () => {
+        const defaultRegistry = createDefaultArtifactRegistry('repo-main');
+
+        return {
+          registry: createArtifactRegistry({
+            ...defaultRegistry,
+            entries: defaultRegistry.entries.map((entry) =>
+              entry.artifactType === 'review-finding'
+                ? {
+                    ...entry,
+                    currentVersion: 2,
+                    migrationPolicy: 'required',
+                  }
+                : entry,
+            ),
+            migrations: [
+              {
+                migrationId: 'review-finding-1-to-2',
+                artifactType: 'review-finding',
+                fromVersion: 1,
+                toVersion: 2,
+                summary: 'Migrate review findings to the v2 evidence shape.',
+                migratedAt: '2026-04-30T00:00:00.000Z',
+              },
+            ],
+          }),
+        };
+      },
+      assert: (context, inputs) => {
+        const result = validateArtifact(inputs.artifact, {
+          registry: context.registry,
+        });
+
+        expect(result).toMatchObject({
+          ok: false,
+          error:
+            'Artifact review-finding@v1 requires migration review-finding-1-to-2 to v2 before validation.',
+          diagnostic: {
+            code: ARTIFACT_VALIDATION_MIGRATION_REQUIRED_ERROR_CODE,
+            details: {
+              migrationId: 'review-finding-1-to-2',
+            },
+          },
         });
       },
     },
