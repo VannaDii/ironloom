@@ -229,11 +229,22 @@ describe('openclaw-deep-test helpers', () => {
       name: 'makes mounted state owned by the host runner before cleanup hooks run',
       inputs: {
         reportDir: resolve(tmpdir(), 'devplat-openclaw-before-cleanup-chmod'),
-        hostGid: String(process.getgid()),
-        hostUid: String(process.getuid()),
       },
       mock: async () => undefined,
       assert: async (_context, inputs) => {
+        if (
+          typeof process.getuid !== 'function' ||
+          typeof process.getgid !== 'function'
+        ) {
+          expect(
+            typeof process.getuid === 'function' &&
+              typeof process.getgid === 'function',
+          ).toBe(false);
+          return;
+        }
+
+        const hostGid = String(process.getgid());
+        const hostUid = String(process.getuid());
         const events = [];
         temporaryRoots.push(inputs.reportDir);
         const report = await runDeepTest(
@@ -313,8 +324,8 @@ describe('openclaw-deep-test helpers', () => {
           'chown -R "$2:$3" "$1" && chmod -R "$4" "$1"',
           'sh',
           '/app/.devplat',
-          inputs.hostUid,
-          inputs.hostGid,
+          hostUid,
+          hostGid,
           'u+rwX,go-rwx',
         ]);
         expect(chmodIndex).toBeGreaterThan(-1);
