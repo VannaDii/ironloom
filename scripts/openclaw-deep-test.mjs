@@ -29,12 +29,30 @@ const containerDevplatStateDirectory = '/app/.devplat';
 /**
  * Permission mode that lets the host runner write files after container-owned state writes.
  */
-const hostWritablePermissionMode = 'ugo+rwX';
+const hostWritablePermissionMode = 'u+rwX,go-rwx';
+/**
+ * Host user id that should own container-created bind-mount children after cleanup normalization.
+ */
+const hostRunnerUid = String(process.getuid());
+/**
+ * Host group id that should own container-created bind-mount children after cleanup normalization.
+ */
+const hostRunnerGid = String(process.getgid());
 /**
  * Shell snippet that updates container-owned children without touching the host-owned mount root.
  */
 const hostWritableMountChildrenCommand =
-  'find "$1" -mindepth 1 -exec chmod "$2" {} \\;';
+  'find "$1" -mindepth 1 -exec chown "$2:$3" {} \\; -exec chmod "$4" {} \\;';
+/**
+ * Warning code recorded when mounted state permission normalization fails.
+ */
+const mountedStatePermissionWarningCode =
+  'mounted-state-permission-normalization-failed';
+/**
+ * Operator-facing warning when mounted state may remain container-owned.
+ */
+const mountedStatePermissionWarningMessage =
+  'Container-created .devplat entries may remain owned by the runtime user.';
 
 function parseFlagArguments(argv) {
   const args = new Map();
@@ -458,16 +476,27 @@ async function ensureWritableDirectory(directory) {
  * Makes container-created `.devplat` bind-mount content writable from the host.
  */
 async function ensureMountedStateWritable({ commandRunner, containerName }) {
-  await commandRunner('docker', [
-    'exec',
-    containerName,
-    'sh',
-    '-c',
-    hostWritableMountChildrenCommand,
-    'sh',
-    containerDevplatStateDirectory,
-    hostWritablePermissionMode,
-  ]);
+  try {
+    await commandRunner('docker', [
+      'exec',
+      containerName,
+      'sh',
+      '-c',
+      hostWritableMountChildrenCommand,
+      'sh',
+      containerDevplatStateDirectory,
+      hostRunnerUid,
+      hostRunnerGid,
+      hostWritablePermissionMode,
+    ]);
+    return undefined;
+  } catch (error) {
+    return {
+      cause: serializeError(error),
+      code: mountedStatePermissionWarningCode,
+      message: mountedStatePermissionWarningMessage,
+    };
+  }
 }
 
 async function collectStoredKeys(rootDirectory) {
@@ -486,6 +515,15 @@ async function collectStoredKeys(rootDirectory) {
   }
 
   return result;
+}
+
+/**
+ * Records an optional warning on a deep-test report.
+ */
+function appendDeepTestWarning(report, warning) {
+  if (warning !== undefined) {
+    report.warnings.push(warning);
+  }
 }
 
 function createBasePullRequestRecord() {
@@ -1749,6 +1787,7 @@ export async function runDeepTest(options, dependencies = {}) {
     reportDirectory,
     startedAt: new Date().toISOString(),
     steps: [],
+    warnings: [],
   };
 
   let containerStarted = false;
@@ -1829,10 +1868,11 @@ export async function runDeepTest(options, dependencies = {}) {
     report.persisted = await collectStoredKeysFn(devplatStateDirectory);
     report.completedAt = new Date().toISOString();
     validateReport(report);
-    await ensureMountedStateWritable({
+    const mountedStateWarning = await ensureMountedStateWritable({
       commandRunner,
       containerName,
     });
+    appendDeepTestWarning(report, mountedStateWarning);
     await beforeCleanup({
       containerName,
       devplatStateDirectory,

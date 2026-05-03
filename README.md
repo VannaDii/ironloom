@@ -183,9 +183,10 @@ execution and fails fast with a `npm run build:workspace` instruction if those
 compiled entrypoints are missing under plain Node. Source package entrypoints
 are only allowed for preflight tests or explicit TypeScript-loader execution.
 Before host-side live-lab cleanup hooks persist extra Discord session records,
-the deep-test runner normalizes the container-owned `.devplat` bind-mount
-permissions so the workflow runner can write audit artifacts without requiring
-post-failure repair.
+the deep-test runner normalizes container-owned `.devplat` bind-mount children
+to the host runner owner with owner-only write permissions. If that auxiliary
+normalization fails, the report records a warning and cleanup still runs, so
+platform contract failures remain separate from local Docker permission repair.
 
 Public contract schemas are generated from exported `io-ts` codecs. For
 codec-owned lifecycle records, derive TypeScript types from those codecs rather
