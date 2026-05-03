@@ -4,18 +4,20 @@ Subprocess execution runtime.
 
 ## Responsibility
 
-This package owns structured command execution, repository-relative working-directory normalization, timeout handling, captured output, and command result normalization for gate and supervisor flows.
+This package owns structured command execution, repository-relative working-directory enforcement, timeout handling, captured output, and command result normalization for gate and supervisor flows.
 
 ## Real-World Flow
 
 ```mermaid
 flowchart LR
-  Policy[Allowed command action] --> Execute[Spawn subprocess]
-  Execute --> Cwd[Normalize repository-relative cwd]
+  Policy[Allowed command action] --> Cwd[Validate repository-relative cwd]
+  Cwd -->|safe| Execute[Spawn subprocess]
+  Cwd -->|unsafe| Refuse[Structured refusal result]
   Execute --> Retry[Retry policy]
   Execute --> Timeout[Timeout handling]
   Execute --> Output[Output truncation]
   Output --> Result[Structured command result]
+  Refuse --> Result
   Result --> Gates[Gate classification]
 ```
 

@@ -1,32 +1,92 @@
 import { spawn } from 'node:child_process';
+import { join } from 'node:path';
 
 import {
   createCommandResult,
   createCommandExecutionPolicy,
   describeCommandResult,
   isSuccessfulCommandResult,
+  normalizeCommandExecutionCwd,
   truncateCommandOutput,
 } from './logic.js';
 import type { CommandExecutionOptions, CommandResult } from './codec.js';
 
 export class CommandExecutionService {
+  /**
+   * Creates the command execution service with the repository root boundary.
+   */
+  public constructor(private readonly repositoryRoot = process.cwd()) {}
+
+  /**
+   * Executes a command after normalizing the working-directory boundary.
+   */
   public async execute(
     command: string,
     args: readonly string[] = [],
     options: CommandExecutionOptions = {},
   ): Promise<CommandResult> {
+    const normalizedCwd = normalizeCommandExecutionCwd(options.cwd);
+    if (!normalizedCwd.ok) {
+      return this.createRefusedResult(
+        command,
+        args,
+        options,
+        normalizedCwd.error,
+      );
+    }
+
+    const executionOptions = {
+      ...options,
+      cwd:
+        normalizedCwd.value === undefined
+          ? this.repositoryRoot
+          : join(this.repositoryRoot, normalizedCwd.value),
+    };
     const attempts = Math.max(1, Math.trunc(options.retry?.attempts ?? 1));
     let attempt = 1;
-    let result = await this.executeOnce(command, args, options, attempt);
+    let result = await this.executeOnce(
+      command,
+      args,
+      executionOptions,
+      attempt,
+    );
 
     while (!isSuccessfulCommandResult(result) && attempt < attempts) {
       attempt += 1;
-      result = await this.executeOnce(command, args, options, attempt);
+      result = await this.executeOnce(command, args, executionOptions, attempt);
     }
 
     return result;
   }
 
+  /**
+   * Creates a command result for policy-refused execution before spawning.
+   */
+  private createRefusedResult(
+    command: string,
+    args: readonly string[],
+    options: CommandExecutionOptions,
+    reason: string,
+  ): CommandResult {
+    return this.normalizeCapturedResult(
+      {
+        command,
+        args: [...args],
+        exitCode: 1,
+        timedOut: false,
+        stdout: '',
+        stderr: reason,
+        durationMs: 0,
+        attempts: 1,
+        policy: createCommandExecutionPolicy(options),
+      },
+      options,
+    );
+  }
+
+  /**
+   * Executes one subprocess attempt and captures its streams.
+   */
   private async executeOnce(
     command: string,
     args: readonly string[],
@@ -97,6 +157,9 @@ export class CommandExecutionService {
     });
   }
 
+  /**
+   * Applies output truncation and canonical result normalization.
+   */
   private normalizeCapturedResult(
     input: CommandResult,
     options: CommandExecutionOptions,
@@ -111,6 +174,9 @@ export class CommandExecutionService {
     });
   }
 
+  /**
+   * Describes a command result for operator output.
+   */
   public explain(input: CommandResult): string {
     return describeCommandResult(input);
   }
