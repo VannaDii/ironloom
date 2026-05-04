@@ -50,5 +50,6 @@ Add the first full-autonomy contract slices:
 - Live-lab workspace package entrypoint resolution now distinguishes missing build output from other filesystem access failures, preserving permission and IO diagnostics instead of reporting them as build-required errors
 - Deep-test cleanup now skips bind-mount ownership normalization with an audit warning on non-POSIX Node runtimes instead of throwing during module load, and CI artifact instruction validation now checks upload-artifact steps by step metadata so key order or retention-day changes do not create false failures
 - Command execution now enforces repository-relative working-directory safety at the service boundary, returns a structured refusal result instead of spawning subprocesses from absolute or repository-escaping paths, and includes package-runner regression coverage for repository-relative cwd execution
+- Memory, research, review, and remediation lifecycle codecs now reject non-ISO durable timestamps and expose the stricter contracts through regenerated package and OpenClaw schemas
 
 Repository validation now requires package-local README coverage with real-world Mermaid flow diagrams, and generated schemas/manifests are emitted in Prettier-stable JSON so generation, repo validation, and formatting checks agree.

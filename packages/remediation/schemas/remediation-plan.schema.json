@@ -27,7 +27,8 @@
           "type": "boolean"
         },
         "updatedAt": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "results": {
           "type": "array",
@@ -44,7 +45,8 @@
                 "type": "string"
               },
               "completedAt": {
-                "type": "string"
+                "type": "string",
+                "format": "date-time"
               },
               "artifactId": {
                 "type": "string"

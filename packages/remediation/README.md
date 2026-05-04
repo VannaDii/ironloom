@@ -26,6 +26,7 @@ flowchart LR
 - Consume gate remediation hooks emitted by `@vannadii/devplat-gates`.
 - Do not execute fixes directly.
 - Keep remediation plan, result, and summary types derived from the exported codecs.
+- Decode remediation `updatedAt` and `completedAt` values through the shared ISO timestamp codec.
 - Keep remediation outputs artifact-ready and auditable.
 
 ## Development

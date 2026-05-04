@@ -1,11 +1,15 @@
 import * as t from 'io-ts';
 
+import { IsoTimestampCodec } from '@vannadii/devplat-core';
+
+/** Codec for an implementation conformance summary against a spec. */
 export const SpecConformanceSummaryCodec = t.type({
   specId: t.string,
   satisfiedCriteria: t.array(t.string),
   missingCriteria: t.array(t.string),
 });
 
+/** Codec for a durable review finding. */
 export const ReviewFindingCodec = t.intersection([
   t.type({
     findingId: t.string,
@@ -20,7 +24,7 @@ export const ReviewFindingCodec = t.intersection([
     rationale: t.string,
     fixRecommendation: t.string,
     blocking: t.boolean,
-    updatedAt: t.string,
+    updatedAt: IsoTimestampCodec,
   }),
   t.partial({
     source: t.union([
@@ -32,6 +36,7 @@ export const ReviewFindingCodec = t.intersection([
   }),
 ]);
 
+/** Codec for a durable review summary used for PR projection. */
 export const ReviewSummaryCodec = t.type({
   summaryId: t.string,
   specId: t.string,
@@ -40,7 +45,7 @@ export const ReviewSummaryCodec = t.type({
   satisfiedCriteria: t.array(t.string),
   missingCriteria: t.array(t.string),
   implementationMatchesSpec: t.boolean,
-  updatedAt: t.string,
+  updatedAt: IsoTimestampCodec,
 });
 
 /** Summary of implementation conformance to a spec. */

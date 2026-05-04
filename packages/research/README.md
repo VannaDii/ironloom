@@ -21,6 +21,7 @@ flowchart LR
 
 - Keep research artifacts structured and source-linked.
 - Keep research brief and attribution types derived from the exported codecs.
+- Decode durable brief `updatedAt` values through the shared ISO timestamp codec.
 - Do not approve specs or create implementation tasks here.
 - Keep brief output compatible with artifact validation.
 
