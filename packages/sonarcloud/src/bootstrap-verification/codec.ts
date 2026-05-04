@@ -1,11 +1,15 @@
 import * as t from 'io-ts';
 
+import { IsoTimestampCodec } from '@vannadii/devplat-core';
+
+/** Codec for raw Sonar quality gate statuses used by bootstrap checks. */
 export const SonarApiQualityGateStatusCodec = t.union([
   t.literal('ERROR'),
   t.literal('NONE'),
   t.literal('OK'),
 ]);
 
+/** Codec for one Sonar quality gate condition snapshot. */
 export const SonarQualityGateConditionSnapshotCodec = t.type({
   metricKey: t.string,
   comparator: t.string,
@@ -13,13 +17,15 @@ export const SonarQualityGateConditionSnapshotCodec = t.type({
   actualValue: t.union([t.string, t.null]),
 });
 
+/** Codec for raw Sonar bootstrap verification input. */
 export const SonarBootstrapVerificationInputCodec = t.type({
   projectKey: t.string,
   qualityGateStatus: SonarApiQualityGateStatusCodec,
   conditions: t.array(SonarQualityGateConditionSnapshotCodec),
-  evaluatedAt: t.string,
+  evaluatedAt: IsoTimestampCodec,
 });
 
+/** Codec for computed Sonar bootstrap verification checks. */
 export const SonarBootstrapVerificationChecksCodec = t.type({
   qualityGateComputed: t.boolean,
   qualityGatePassing: t.boolean,
@@ -27,6 +33,7 @@ export const SonarBootstrapVerificationChecksCodec = t.type({
   newCodeCoverageCondition: t.boolean,
 });
 
+/** Codec for normalized Sonar bootstrap verification results. */
 export const SonarBootstrapVerificationResultCodec = t.type({
   projectKey: t.string,
   status: t.union([t.literal('failed'), t.literal('passed')]),
@@ -35,7 +42,7 @@ export const SonarBootstrapVerificationResultCodec = t.type({
   newCodeCoverageThreshold: t.number,
   checks: SonarBootstrapVerificationChecksCodec,
   issues: t.array(t.string),
-  evaluatedAt: t.string,
+  evaluatedAt: IsoTimestampCodec,
 });
 
 /** Raw Sonar quality gate status used by bootstrap checks. */

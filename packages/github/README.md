@@ -7,6 +7,9 @@ GitHub-native integration contracts.
 This package owns GitHub action request normalization, repository state projection, pull request state projection, issue/spec/PR links, and submission decisions for repository operations such as branch sync, pull request update, merge, and workflow dispatch. GitHub action constants re-export the shared action vocabulary from `@vannadii/devplat-core` so policy and GitHub routes cannot drift.
 Allowed actions are projected into concrete GitHub REST requests for PR
 creation, PR updates, PR comments, PR merges, and branch synchronization.
+Repository snapshots validate default and protected branch refs with the shared
+Git branch codec, while pull request snapshots and action requests continue to
+share that same branch contract for head/base refs.
 Submission receipts classify dry-run and 2xx responses as submitted while
 preserving non-2xx GitHub responses as unsubmitted decisions with the original
 receipt attached. Every submission decision also returns the telemetry event id

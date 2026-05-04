@@ -144,8 +144,8 @@ export const GitHubIssueSpecLinkStatusCodec = t.union([
  */
 export const GitHubRepositoryStateCodec = t.type({
   repoFullName: t.string,
-  defaultBranch: t.string,
-  protectedBranches: t.array(t.string),
+  defaultBranch: GitBranchNameCodec,
+  protectedBranches: t.array(GitBranchNameCodec),
   openPullRequestNumbers: t.array(t.number),
   linkedIssueNumbers: t.array(t.number),
   updatedAt: IsoTimestampCodec,
