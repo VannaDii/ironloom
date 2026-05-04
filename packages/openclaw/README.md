@@ -35,7 +35,9 @@ allocation, sync, release, and dependent rebase tools use the trimmed
 configured runtime layout. The worktree lifecycle tools default to pure record
 projection; pass `applyToDisk: true` when OpenClaw should delegate to the
 Git-backed worktree operations that create, sync, or release the worktree on
-disk.
+disk. Git-backed allocation requires an explicit `baseBranch` so runtime calls
+cannot silently fall back to a repository-default branch that may be wrong for
+the configured project.
 Command execution cwd validation is owned by `@vannadii/devplat-execution`; the
 OpenClaw tool only decodes input, asks policy, delegates cwd normalization and
 execution, then records telemetry.

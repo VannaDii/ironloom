@@ -95,15 +95,29 @@ export const ExecuteCommandToolInputCodec = t.intersection([
   }),
 ]);
 
-export const AllocateWorktreeToolInputCodec = t.intersection([
+/** Input for pure worktree allocation without disk materialization. */
+export const AllocateWorktreePlanInputCodec = t.intersection([
   t.type({
     taskId: t.string,
     branchName: t.string,
   }),
   t.partial({
     baseBranch: GitBranchNameCodec,
-    applyToDisk: t.boolean,
+    applyToDisk: t.literal(false),
   }),
+]);
+
+/** Input for Git-backed worktree allocation that requires an explicit base ref. */
+export const AllocateWorktreeDiskInputCodec = t.type({
+  taskId: t.string,
+  branchName: t.string,
+  baseBranch: GitBranchNameCodec,
+  applyToDisk: t.literal(true),
+});
+
+export const AllocateWorktreeToolInputCodec = t.union([
+  AllocateWorktreeDiskInputCodec,
+  AllocateWorktreePlanInputCodec,
 ]);
 
 export const SyncWorktreeToolInputCodec = t.intersection([

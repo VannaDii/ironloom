@@ -15,6 +15,7 @@ import {
 import {
   WORKTREE_DEFAULT_ROOT,
   WORKTREE_GIT_RUNNER_GENERIC_FAILURE_EXIT_CODE,
+  WORKTREE_SYNC_BASE_BRANCH_BLOCKED_TRACE,
   WORKTREE_RELEASE_PATH_MISMATCH_TRACE,
   WORKTREE_SYNC_PATH_MISMATCH_TRACE,
 } from './constants.js';
@@ -287,6 +288,32 @@ export class WorktreeAllocationService {
       normalized.branchName,
       this.worktreeRoot,
     );
+    const validatedBaseBranch = createWorktreeSyncResult({
+      id: `${normalized.id}:sync:${syncMode}`,
+      summary: `Validated worktree sync base for ${normalized.branchName}`,
+      status: 'queued',
+      trace: [],
+      updatedAt: new Date().toISOString(),
+      taskId: normalized.taskId,
+      branchName: normalized.branchName,
+      worktreePath: normalized.worktreePath,
+      baseBranch,
+      syncMode,
+      changed: false,
+      conflictsDetected: false,
+    });
+    if (
+      validatedBaseBranch.trace.includes(
+        WORKTREE_SYNC_BASE_BRANCH_BLOCKED_TRACE,
+      )
+    ) {
+      return createWorktreeSyncResult({
+        ...validatedBaseBranch,
+        summary: `Blocked worktree sync for ${normalized.branchName}`,
+        trace: [...normalized.trace, WORKTREE_SYNC_BASE_BRANCH_BLOCKED_TRACE],
+      });
+    }
+
     if (normalized.branchSafety?.status === 'blocked') {
       return createWorktreeSyncResult({
         id: `${normalized.id}:sync:${syncMode}`,
@@ -297,7 +324,7 @@ export class WorktreeAllocationService {
         taskId: normalized.taskId,
         branchName: normalized.branchName,
         worktreePath: normalized.worktreePath,
-        baseBranch,
+        baseBranch: validatedBaseBranch.baseBranch,
         syncMode,
         changed: false,
         conflictsDetected: false,
@@ -321,7 +348,7 @@ export class WorktreeAllocationService {
         taskId: normalized.taskId,
         branchName: normalized.branchName,
         worktreePath: normalized.worktreePath,
-        baseBranch,
+        baseBranch: validatedBaseBranch.baseBranch,
         syncMode,
         changed: false,
         conflictsDetected: false,
@@ -331,13 +358,13 @@ export class WorktreeAllocationService {
 
     const fetchResult = await this.runner.run(
       'git',
-      ['fetch', 'origin', baseBranch],
+      ['fetch', 'origin', validatedBaseBranch.baseBranch],
       this.repositoryRoot,
     );
     const syncArgs =
       syncMode === 'rebase'
-        ? ['rebase', `origin/${baseBranch}`]
-        : ['merge', '--ff-only', `origin/${baseBranch}`];
+        ? ['rebase', `origin/${validatedBaseBranch.baseBranch}`]
+        : ['merge', '--ff-only', `origin/${validatedBaseBranch.baseBranch}`];
     const syncResult = await this.runner.run(
       'git',
       syncArgs,
@@ -358,7 +385,7 @@ export class WorktreeAllocationService {
       taskId: normalized.taskId,
       branchName: normalized.branchName,
       worktreePath: normalized.worktreePath,
-      baseBranch,
+      baseBranch: validatedBaseBranch.baseBranch,
       syncMode,
       changed: succeeded,
       conflictsDetected: syncResult.exitCode !== 0,

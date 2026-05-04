@@ -224,6 +224,14 @@ describe('tool surface codecs', () => {
             value: {
               taskId: 'task-1',
               branchName: 'feature/thread-aware',
+              applyToDisk: true,
+            },
+          },
+          {
+            codec: AllocateWorktreeToolInputCodec,
+            value: {
+              taskId: 'task-1',
+              branchName: 'feature/thread-aware',
               baseBranch: '--upload-pack=sh',
               applyToDisk: true,
             },

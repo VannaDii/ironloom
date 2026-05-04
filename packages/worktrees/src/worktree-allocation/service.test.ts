@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  WORKTREE_BLOCKED_BASE_BRANCH_NAME,
   WORKTREE_RELEASE_PATH_MISMATCH_TRACE,
+  WORKTREE_SYNC_BASE_BRANCH_BLOCKED_TRACE,
   WORKTREE_SYNC_PATH_MISMATCH_TRACE,
 } from './constants.js';
 import {
@@ -561,6 +563,39 @@ describe('WorktreeAllocationService', () => {
         expect(syncResult.status).toBe('blocked');
         expect(releaseResult.released).toBe(false);
         expect(allocation.trace).toContain('git:worktree:add:blocked');
+      },
+    },
+    {
+      name: 'blocks on-disk sync when base branch is unsafe',
+      inputs: {
+        mode: 'path-mismatch',
+        operation: 'sync',
+        expectedTrace: WORKTREE_SYNC_BASE_BRANCH_BLOCKED_TRACE,
+      },
+      mock: createServiceContext,
+      assert: async (context, inputs) => {
+        if (
+          inputs.mode !== 'path-mismatch' ||
+          inputs.operation !== 'sync' ||
+          context.commands === undefined
+        ) {
+          throw new Error('expected base-branch sync inputs');
+        }
+
+        const allocation = context.service.allocate(
+          'task-unsafe-base',
+          'feature/task-unsafe-base',
+        );
+        const result = await context.service.syncOnDisk(
+          allocation,
+          '--upload-pack=sh',
+        );
+
+        expect(result.status).toBe('blocked');
+        expect(result.changed).toBe(false);
+        expect(result.baseBranch).toBe(WORKTREE_BLOCKED_BASE_BRANCH_NAME);
+        expect(result.trace).toContain(inputs.expectedTrace);
+        expect(context.commands).toEqual([]);
       },
     },
     {

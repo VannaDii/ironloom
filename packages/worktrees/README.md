@@ -13,6 +13,9 @@ Git-backed sync and release also recompute the deterministic worktree path from
 the configured worktree root, task id, and branch name; caller-provided
 allocation records with mismatched paths are blocked before any Git command can
 run.
+Git-backed sync validates the requested base branch before fetch/rebase or
+fast-forward commands run, and blocked sync records use a safe placeholder base
+branch so persisted records continue to satisfy the shared branch codec.
 Git command failures preserve the child-process exit code and captured
 stdout/stderr so gate output and operator diagnostics can point at the real
 failure.
@@ -43,6 +46,7 @@ flowchart LR
 
 - Keep Git worktree behavior here.
 - Fail closed before Git execution when branch names are unsafe.
+- Fail closed before Git execution when sync base branches are unsafe.
 - Validate persisted lifecycle timestamps and sync base refs with shared core
   codecs.
 - Require policy mediation before destructive release actions.

@@ -43,3 +43,14 @@ export const WORKTREE_SYNC_PATH_MISMATCH_TRACE =
  */
 export const WORKTREE_RELEASE_PATH_MISMATCH_TRACE =
   'git:release:path-mismatch:blocked';
+
+/**
+ * Safe placeholder branch recorded when sync refuses an unsafe base branch.
+ */
+export const WORKTREE_BLOCKED_BASE_BRANCH_NAME = 'blocked-base-branch';
+
+/**
+ * Trace marker used when sync refuses an unsafe base branch before Git runs.
+ */
+export const WORKTREE_SYNC_BASE_BRANCH_BLOCKED_TRACE =
+  'git:sync:base-branch:blocked';
