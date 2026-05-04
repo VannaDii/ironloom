@@ -114,10 +114,21 @@ function createServiceContext(
     inputs.mode === 'git-flow' ||
     inputs.mode === 'sync-failure' ||
     inputs.mode === 'archive' ||
-    inputs.mode === 'failed-release' ||
-    inputs.mode === 'path-mismatch'
+    inputs.mode === 'failed-release'
   ) {
     const context = createRunner(inputs.exitCodes);
+    return {
+      service: new WorktreeAllocationService(
+        context.runner,
+        '/repo',
+        '/repo/.worktrees',
+      ),
+      commands: context.commands,
+    };
+  }
+
+  if (inputs.mode === 'path-mismatch') {
+    const context = createRunner([]);
     return {
       service: new WorktreeAllocationService(
         context.runner,
