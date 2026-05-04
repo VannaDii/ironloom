@@ -3,6 +3,7 @@
 '@vannadii/devplat-github': patch
 '@vannadii/devplat-openclaw': patch
 '@vannadii/devplat-prs': patch
+'@vannadii/devplat-queue': patch
 '@vannadii/devplat-worktrees': patch
 ---
 
@@ -62,3 +63,8 @@ through the shared Git branch codec. Generated worktree and embedded OpenClaw
 schemas now expose the stricter date-time contract for persisted allocation
 input while blocked worktree records can still preserve unsafe operator branch
 input for auditability.
+
+Queue task records now decode `updatedAt` and transition `occurredAt` values
+through the shared ISO timestamp codec. Generated queue and OpenClaw task tool
+schemas now expose date-time formats for durable lifecycle records and
+transition-event history.

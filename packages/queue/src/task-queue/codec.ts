@@ -1,7 +1,13 @@
 import * as t from 'io-ts';
 
-import { LifecycleStatusCodec } from '@vannadii/devplat-core';
+import {
+  IsoTimestampCodec,
+  LifecycleStatusCodec,
+} from '@vannadii/devplat-core';
 
+/**
+ * Codec for durable task lifecycle transition events.
+ */
 export const TaskTransitionEventCodec = t.intersection([
   t.type({
     toStatus: LifecycleStatusCodec,
@@ -15,7 +21,7 @@ export const TaskTransitionEventCodec = t.intersection([
       t.literal('resume'),
     ]),
     reason: t.string,
-    occurredAt: t.string,
+    occurredAt: IsoTimestampCodec,
   }),
   t.partial({
     fromStatus: LifecycleStatusCodec,
@@ -23,13 +29,16 @@ export const TaskTransitionEventCodec = t.intersection([
   }),
 ]);
 
+/**
+ * Codec for durable task queue records.
+ */
 export const TaskRecordCodec = t.intersection([
   t.type({
     id: t.string,
     summary: t.string,
     status: LifecycleStatusCodec,
     trace: t.array(t.string),
-    updatedAt: t.string,
+    updatedAt: IsoTimestampCodec,
     taskId: t.string,
     sliceId: t.string,
     threadId: t.string,
