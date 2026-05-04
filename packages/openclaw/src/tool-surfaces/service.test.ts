@@ -1147,6 +1147,7 @@ describe('tool surface service', () => {
           maxOutputBytes: number;
           retry: {
             attempts: number;
+            retryableExitCodes?: number[];
           };
         };
       };
@@ -1177,6 +1178,7 @@ describe('tool surface service', () => {
             maxOutputBytes: 3,
             retry: {
               attempts: 2,
+              retryableExitCodes: [2],
             },
           },
         },
@@ -1204,7 +1206,9 @@ describe('tool surface service', () => {
                 policy: {
                   retry: {
                     attempts: options.retry?.attempts ?? 1,
-                    retryableExitCodes: [1, 124],
+                    retryableExitCodes: options.retry?.retryableExitCodes ?? [
+                      1, 124,
+                    ],
                   },
                   truncation: {
                     maxOutputBytes: options.maxOutputBytes ?? 1,
@@ -1246,6 +1250,7 @@ describe('tool surface service', () => {
               maxOutputBytes: 3,
               retry: {
                 attempts: 2,
+                retryableExitCodes: [2],
               },
             },
           ]);
@@ -1257,18 +1262,115 @@ describe('tool surface service', () => {
               maxOutputBytes: 3,
               retry: {
                 attempts: 2,
+                retryableExitCodes: [2],
               },
             },
             result: {
               attempts: 2,
               truncated: true,
               policy: {
+                retry: {
+                  retryableExitCodes: [2],
+                },
                 truncation: {
                   maxOutputBytes: 3,
                 },
               },
             },
             telemetryEventId: 'telemetry-execute-command-1',
+          });
+        },
+      },
+      {
+        name: 'passes retry attempts without custom retryable exit codes',
+        inputs: {
+          params: {
+            command: process.execPath,
+            args: ['-e', 'process.stdout.write("ok")'],
+            actorId: 'operator-1',
+            privileged: false,
+            cwd: 'packages',
+            timeoutMs: 25,
+            maxOutputBytes: 3,
+            retry: {
+              attempts: 2,
+            },
+          },
+        },
+        mock: () => {
+          const capturedOptions: CommandExecutionOptions[] = [];
+          const commandExecutionService = {
+            async execute(
+              command: string,
+              args: readonly string[],
+              options: CommandExecutionOptions,
+            ): Promise<CommandResult> {
+              capturedOptions.push(options);
+              return {
+                command,
+                args: [...args],
+                exitCode: 0,
+                timedOut: false,
+                stdout: 'ok',
+                stderr: '',
+                durationMs: 5,
+                attempts: options.retry?.attempts ?? 1,
+                policy: {
+                  retry: {
+                    attempts: options.retry?.attempts ?? 1,
+                    retryableExitCodes: [1, 124],
+                  },
+                },
+              };
+            },
+          };
+
+          return {
+            capturedOptions,
+            tool: createExecuteCommandTool({
+              commandExecutionService,
+              telemetryEventService: {
+                async record(event: TelemetryEvent): Promise<TelemetryEvent> {
+                  return {
+                    ...event,
+                    id: 'telemetry-execute-command-default-retry-codes',
+                  };
+                },
+              },
+            }),
+          };
+        },
+        assert: async (context, inputs) => {
+          const result = await context.tool.execute(
+            'tool-call-ex10',
+            inputs.params,
+          );
+
+          expect(context.capturedOptions).toEqual([
+            {
+              cwd: 'packages',
+              timeoutMs: 25,
+              maxOutputBytes: 3,
+              retry: {
+                attempts: 2,
+              },
+            },
+          ]);
+          expect(result.details).toMatchObject({
+            allowed: true,
+            request: {
+              retry: {
+                attempts: 2,
+              },
+            },
+            result: {
+              policy: {
+                retry: {
+                  retryableExitCodes: [1, 124],
+                },
+              },
+            },
+            telemetryEventId: 'telemetry-execute-command-default-retry-codes',
           });
         },
       },
@@ -1285,6 +1387,7 @@ describe('tool surface service', () => {
             maxOutputBytes: 3,
             retry: {
               attempts: 2,
+              retryableExitCodes: [2],
             },
           },
         },
@@ -1327,6 +1430,7 @@ describe('tool surface service', () => {
               maxOutputBytes: 3,
               retry: {
                 attempts: 2,
+                retryableExitCodes: [2],
               },
             },
             telemetryEventId: 'telemetry-execute-command-blocked',

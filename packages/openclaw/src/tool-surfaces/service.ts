@@ -178,7 +178,7 @@ type ExecuteCommandRequestSnapshot = {
   cwd: string | null;
   timeoutMs: number | null;
   maxOutputBytes: number | null;
-  retry: { attempts: number } | null;
+  retry: { attempts: number; retryableExitCodes?: number[] } | null;
 };
 
 /**
@@ -322,6 +322,9 @@ function createExecuteCommandOptions(
       : {
           retry: {
             attempts: request.retry.attempts,
+            ...(request.retry.retryableExitCodes === undefined
+              ? {}
+              : { retryableExitCodes: request.retry.retryableExitCodes }),
           },
         }),
   };
@@ -1125,6 +1128,7 @@ export function createExecuteCommandTool(
           cwd: normalizedCwd.value ?? null,
           maxOutputBytes: request.maxOutputBytes ?? null,
           retryAttempts: request.retry?.attempts ?? null,
+          retryableExitCodes: request.retry?.retryableExitCodes ?? null,
           exitCode: result.exitCode,
           timedOut: result.timedOut,
           attempts: result.attempts ?? null,
