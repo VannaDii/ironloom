@@ -56,7 +56,7 @@ Add the first full-autonomy contract slices:
 - OpenClaw command execution now exposes and delegates `retry.retryableExitCodes`, letting callers retry non-default subprocess exit codes while preserving the normalized retry policy in telemetry and results
 - OpenClaw command execution results now return the persisted telemetry event id for policy-allowed and policy-blocked execution paths so callers can audit the stored command lifecycle evidence directly
 - Memory, research, review, and remediation lifecycle codecs now reject non-ISO durable timestamps and expose the stricter contracts through regenerated package and OpenClaw schemas
-- Policy, gates, supervisor, slicing, and OpenClaw plugin-config lifecycle codecs now reject non-ISO durable timestamps, and slice work-packet branch refs now use the shared Git branch codec
+- Policy, gates, supervisor, slicing, and OpenClaw plugin-config lifecycle codecs now reject non-ISO durable timestamps, and slice work-packet plus pull-request lifecycle branch refs now use the shared Git branch codec
 - Discord approval, binding, thread-session, control-request, operator-interaction, and callback-option codecs now reject non-ISO durable timestamps without changing the deferred live human-click acceptance boundary
 - Sonar bootstrap verification and quality-gate codecs now reject non-ISO evidence timestamps, and GitHub repository and pull-request snapshots now validate default, protected, head, and base branch refs with the shared Git branch codec
 

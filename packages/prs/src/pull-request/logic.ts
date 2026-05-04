@@ -1,3 +1,5 @@
+import { createGitBranchName } from '@vannadii/devplat-core';
+
 import type {
   PullRequestProjection,
   PullRequestRecord,
@@ -250,8 +252,8 @@ export function createPullRequestRecord(
       : normalizeRemediationProjection(input.remediationProjection);
   const record = {
     ...input,
-    branchName: input.branchName.trim(),
-    baseBranch: input.baseBranch.trim(),
+    branchName: createGitBranchName(input.branchName),
+    baseBranch: createGitBranchName(input.baseBranch),
     title: input.title.trim(),
     labels,
     updatedAt: new Date(input.updatedAt).toISOString(),
