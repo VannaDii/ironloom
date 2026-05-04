@@ -1,6 +1,7 @@
 ---
 '@vannadii/devplat-branching': patch
 '@vannadii/devplat-github': patch
+'@vannadii/devplat-observability': patch
 '@vannadii/devplat-openclaw': patch
 '@vannadii/devplat-prs': patch
 '@vannadii/devplat-queue': patch
@@ -68,3 +69,8 @@ Queue task records now decode `updatedAt` and transition `occurredAt` values
 through the shared ISO timestamp codec. Generated queue and OpenClaw task tool
 schemas now expose date-time formats for durable lifecycle records and
 transition-event history.
+
+Telemetry events, audit records, and run summaries now decode event, audit, and
+run boundary timestamps through the shared ISO timestamp codec. Generated
+observability and OpenClaw telemetry-record schemas now expose date-time formats
+for persisted telemetry and audit surfaces.

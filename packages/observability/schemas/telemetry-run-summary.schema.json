@@ -128,10 +128,12 @@
           "additionalProperties": false
         },
         "startedAt": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "completedAt": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         }
       },
       "required": [

@@ -1,7 +1,13 @@
 import * as t from 'io-ts';
 
-import { LifecycleStatusCodec } from '@vannadii/devplat-core';
+import {
+  IsoTimestampCodec,
+  LifecycleStatusCodec,
+} from '@vannadii/devplat-core';
 
+/**
+ * Codec for the platform area that emitted telemetry.
+ */
 export const TelemetryScopeCodec = t.union([
   t.literal('discord'),
   t.literal('github'),
@@ -9,18 +15,24 @@ export const TelemetryScopeCodec = t.union([
   t.literal('storage'),
 ]);
 
+/**
+ * Codec for operational telemetry events emitted by platform services.
+ */
 export const TelemetryEventCodec = t.type({
   id: t.string,
   summary: t.string,
   status: LifecycleStatusCodec,
   trace: t.array(t.string),
-  updatedAt: t.string,
+  updatedAt: IsoTimestampCodec,
   actorId: t.string,
   action: t.string,
   scope: TelemetryScopeCodec,
   details: t.UnknownRecord,
 });
 
+/**
+ * Codec for policy-relevant audit outcomes derived from telemetry.
+ */
 export const TelemetryAuditOutcomeCodec = t.union([
   t.literal('approved'),
   t.literal('blocked'),
@@ -29,6 +41,9 @@ export const TelemetryAuditOutcomeCodec = t.union([
   t.literal('pending'),
 ]);
 
+/**
+ * Codec for persisted audit records attached to telemetry events.
+ */
 export const TelemetryAuditRecordCodec = t.intersection([
   t.type({
     auditId: t.string,
@@ -40,7 +55,7 @@ export const TelemetryAuditRecordCodec = t.intersection([
     outcome: TelemetryAuditOutcomeCodec,
     reason: t.string,
     artifactIds: t.array(t.string),
-    recordedAt: t.string,
+    recordedAt: IsoTimestampCodec,
     details: t.UnknownRecord,
   }),
   t.partial({
@@ -48,16 +63,25 @@ export const TelemetryAuditRecordCodec = t.intersection([
   }),
 ]);
 
+/**
+ * Codec for telemetry counts grouped by platform scope.
+ */
 export const TelemetryScopeCountCodec = t.type({
   scope: TelemetryScopeCodec,
   count: t.number,
 });
 
+/**
+ * Codec for telemetry counts grouped by lifecycle status.
+ */
 export const TelemetryStatusCountCodec = t.type({
   status: LifecycleStatusCodec,
   count: t.number,
 });
 
+/**
+ * Codec for aggregated telemetry metrics for one run.
+ */
 export const TelemetryRunMetricsCodec = t.type({
   runId: t.string,
   durationMs: t.number,
@@ -70,6 +94,9 @@ export const TelemetryRunMetricsCodec = t.type({
   artifactIds: t.array(t.string),
 });
 
+/**
+ * Codec for the telemetry summary captured for one platform run.
+ */
 export const TelemetryRunSummaryCodec = t.type({
   runId: t.string,
   eventIds: t.array(t.string),
@@ -79,8 +106,8 @@ export const TelemetryRunSummaryCodec = t.type({
   auditRecordIds: t.array(t.string),
   artifactIds: t.array(t.string),
   runMetrics: TelemetryRunMetricsCodec,
-  startedAt: t.string,
-  completedAt: t.string,
+  startedAt: IsoTimestampCodec,
+  completedAt: IsoTimestampCodec,
 });
 
 /** Area of the platform that emitted telemetry. */
