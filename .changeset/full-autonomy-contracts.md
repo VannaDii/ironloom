@@ -53,6 +53,7 @@ Add the first full-autonomy contract slices:
 - Command execution now enforces repository-relative working-directory safety at the service boundary, returns a structured refusal result instead of spawning subprocesses from absolute or repository-escaping paths, and includes package-runner regression coverage for repository-relative cwd execution
 - Command execution retry handling now honors the configured retryable exit-code policy instead of retrying every failed subprocess exit
 - OpenClaw command execution now reuses the execution-owned option codec so tool callers can pass `maxOutputBytes` and `retry.attempts`, with the delegated request snapshot and telemetry preserving truncation and retry policy evidence
+- OpenClaw command execution results now return the persisted telemetry event id for policy-allowed and policy-blocked execution paths so callers can audit the stored command lifecycle evidence directly
 - Memory, research, review, and remediation lifecycle codecs now reject non-ISO durable timestamps and expose the stricter contracts through regenerated package and OpenClaw schemas
 - Policy, gates, supervisor, slicing, and OpenClaw plugin-config lifecycle codecs now reject non-ISO durable timestamps, and slice work-packet branch refs now use the shared Git branch codec
 - Discord approval, binding, thread-session, control-request, operator-interaction, and callback-option codecs now reject non-ISO durable timestamps without changing the deferred live human-click acceptance boundary

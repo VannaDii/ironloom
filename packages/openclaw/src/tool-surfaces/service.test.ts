@@ -1224,7 +1224,10 @@ describe('tool surface service', () => {
               commandExecutionService,
               telemetryEventService: {
                 async record(event: TelemetryEvent): Promise<TelemetryEvent> {
-                  return event;
+                  return {
+                    ...event,
+                    id: 'telemetry-execute-command-1',
+                  };
                 },
               },
             }),
@@ -1265,6 +1268,68 @@ describe('tool surface service', () => {
                 },
               },
             },
+            telemetryEventId: 'telemetry-execute-command-1',
+          });
+        },
+      },
+      {
+        name: 'returns telemetry ids for policy-blocked command execution',
+        inputs: {
+          params: {
+            command: process.execPath,
+            args: ['-e', 'process.stdout.write("blocked")'],
+            actorId: 'operator-1',
+            privileged: true,
+            cwd: 'packages',
+            timeoutMs: 25,
+            maxOutputBytes: 3,
+            retry: {
+              attempts: 2,
+            },
+          },
+        },
+        mock: () => {
+          const capturedOptions: CommandExecutionOptions[] = [];
+          const commandExecutionService = {
+            async execute(): Promise<CommandResult> {
+              throw new Error('policy-blocked command should not execute');
+            },
+          };
+
+          return {
+            capturedOptions,
+            tool: createExecuteCommandTool({
+              commandExecutionService,
+              telemetryEventService: {
+                async record(event: TelemetryEvent): Promise<TelemetryEvent> {
+                  return {
+                    ...event,
+                    id: 'telemetry-execute-command-blocked',
+                  };
+                },
+              },
+            }),
+          };
+        },
+        assert: async (context, inputs) => {
+          const result = await context.tool.execute(
+            'tool-call-ex9',
+            inputs.params,
+          );
+
+          expect(context.capturedOptions).toEqual([]);
+          expect(result.details).toMatchObject({
+            allowed: false,
+            policyDecisionId: 'policy-execute-command',
+            request: {
+              cwd: 'packages',
+              timeoutMs: 25,
+              maxOutputBytes: 3,
+              retry: {
+                attempts: 2,
+              },
+            },
+            telemetryEventId: 'telemetry-execute-command-blocked',
           });
         },
       },

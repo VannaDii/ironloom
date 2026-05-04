@@ -42,7 +42,7 @@ Command execution cwd validation, retry, timeout, and truncation policy are
 owned by `@vannadii/devplat-execution`; the OpenClaw tool decodes the
 execution-owned option contract, asks policy, delegates execution, records
 telemetry, and returns the auditable request snapshot with `timeoutMs`,
-`maxOutputBytes`, and `retry.attempts` when supplied.
+`maxOutputBytes`, `retry.attempts`, and the persisted `telemetryEventId`.
 Gate execution uses `@vannadii/devplat-gates` for command execution and
 classification, then records a telemetry event through the configured
 `.devplat` storage root. Pass `actorId` when the gate run is operator-initiated;

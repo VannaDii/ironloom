@@ -1065,7 +1065,7 @@ export function createExecuteCommandTool(
       );
 
       if (!policy.allowed) {
-        await telemetryEventService.record({
+        const telemetryEvent = await telemetryEventService.record({
           id: `telemetry:execute-command:${String(Date.now())}`,
           summary: `Blocked command execution for ${request.command}`,
           status: 'blocked',
@@ -1087,6 +1087,7 @@ export function createExecuteCommandTool(
             request,
             request.cwd ?? null,
           ),
+          telemetryEventId: telemetryEvent.id,
         });
       }
 
@@ -1108,7 +1109,7 @@ export function createExecuteCommandTool(
         executionOptions,
       );
 
-      await telemetryEventService.record({
+      const telemetryEvent = await telemetryEventService.record({
         id: `telemetry:execute-command:${String(Date.now())}`,
         summary: `Executed ${request.command}`,
         status:
@@ -1139,6 +1140,7 @@ export function createExecuteCommandTool(
           normalizedCwd.value ?? null,
         ),
         result,
+        telemetryEventId: telemetryEvent.id,
       });
     },
   };
