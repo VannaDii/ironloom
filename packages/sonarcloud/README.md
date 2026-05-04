@@ -4,7 +4,7 @@ SonarCloud integration and policy interpretation.
 
 ## Responsibility
 
-This package owns SonarCloud bootstrap verification, quality gate interpretation, issue normalization, review-finding projection, and coverage threshold decisions. Bootstrap verification inputs and results use the shared ISO timestamp codec so stale or loosely formatted Sonar evidence cannot enter durable lifecycle state.
+This package owns SonarCloud bootstrap verification, quality gate interpretation, issue normalization, review-finding projection, and coverage threshold decisions. Bootstrap verification inputs, bootstrap results, and quality-gate results use the shared ISO timestamp codec so stale or loosely formatted Sonar evidence cannot enter durable lifecycle state.
 
 ## Real-World Flow
 
