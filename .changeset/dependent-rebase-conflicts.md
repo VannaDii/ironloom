@@ -2,6 +2,7 @@
 '@vannadii/devplat-branching': patch
 '@vannadii/devplat-github': patch
 '@vannadii/devplat-openclaw': patch
+'@vannadii/devplat-prs': patch
 '@vannadii/devplat-worktrees': patch
 ---
 
@@ -48,3 +49,9 @@ id returned from the policy and REST submission boundary. OpenClaw pull request
 update and merge tools continue to delegate to the PR/GitHub packages, but their
 operator-facing output can now point directly at the durable GitHub workflow
 telemetry record for accepted, blocked, dry-run, and rejected submissions.
+
+Pull request records now decode `branchName` and `baseBranch` through the shared
+Git branch codec and `updatedAt` through the shared ISO timestamp codec.
+Generated PR and OpenClaw PR-tool schemas carry the same branch pattern and
+date-time format, so unsafe refs and malformed timestamps are rejected before PR
+update or merge submission.

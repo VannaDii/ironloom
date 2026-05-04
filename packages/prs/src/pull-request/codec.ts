@@ -1,5 +1,8 @@
 import * as t from 'io-ts';
 
+import { GitBranchNameCodec, IsoTimestampCodec } from '@vannadii/devplat-core';
+
+/** Codec for rendered pull request body projections. */
 export const PullRequestProjectionCodec = t.type({
   body: t.string,
   checklist: t.array(t.string),
@@ -8,6 +11,7 @@ export const PullRequestProjectionCodec = t.type({
   artifactIds: t.array(t.string),
 });
 
+/** Codec for review summary state projected into a pull request. */
 export const PullRequestReviewProjectionCodec = t.type({
   summaryId: t.string,
   findingIds: t.array(t.string),
@@ -16,6 +20,7 @@ export const PullRequestReviewProjectionCodec = t.type({
   implementationMatchesSpec: t.boolean,
 });
 
+/** Codec for remediation status projected into a pull request. */
 export const PullRequestRemediationProjectionCodec = t.intersection([
   t.type({
     planId: t.string,
@@ -30,6 +35,7 @@ export const PullRequestRemediationProjectionCodec = t.intersection([
   }),
 ]);
 
+/** Codec for pull request review states tracked by DevPlat. */
 export const PullRequestReviewStateCodec = t.union([
   t.literal('draft'),
   t.literal('review'),
@@ -37,16 +43,17 @@ export const PullRequestReviewStateCodec = t.union([
   t.literal('changes-requested'),
 ]);
 
+/** Codec for durable pull request lifecycle records. */
 export const PullRequestRecordCodec = t.intersection([
   t.type({
     prNumber: t.number,
-    branchName: t.string,
-    baseBranch: t.string,
+    branchName: GitBranchNameCodec,
+    baseBranch: GitBranchNameCodec,
     title: t.string,
     labels: t.array(t.string),
     reviewState: PullRequestReviewStateCodec,
     mergeReady: t.boolean,
-    updatedAt: t.string,
+    updatedAt: IsoTimestampCodec,
   }),
   t.partial({
     projection: PullRequestProjectionCodec,

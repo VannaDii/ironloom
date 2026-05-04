@@ -12,10 +12,12 @@
               "type": "number"
             },
             "branchName": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^(?!-)(?!/)(?!.*(?:\\.\\.|//|@\\{|\\\\|~|\\^|:|\\?|\\*|\\[|(?:^|/)[^/]*\\.lock(?:/|$)))(?!.*[\\x00-\\x20\\x7f])(?!.*/$)(?!.*\\.$)(?!@$).+$"
             },
             "baseBranch": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^(?!-)(?!/)(?!.*(?:\\.\\.|//|@\\{|\\\\|~|\\^|:|\\?|\\*|\\[|(?:^|/)[^/]*\\.lock(?:/|$)))(?!.*[\\x00-\\x20\\x7f])(?!.*/$)(?!.*\\.$)(?!@$).+$"
             },
             "title": {
               "type": "string"
@@ -33,7 +35,8 @@
               "type": "boolean"
             },
             "updatedAt": {
-              "type": "string"
+              "type": "string",
+              "format": "date-time"
             },
             "projection": {
               "type": "object",

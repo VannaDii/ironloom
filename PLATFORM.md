@@ -163,7 +163,7 @@ the package responsibilities below. Current completion work focuses on:
 - `@vannadii/devplat-sonarcloud`: current code covers bootstrap verification, quality gate interpretation, normalized issue records, and Sonar issue projection into review findings for remediation planning.
 - `@vannadii/devplat-review`: current code covers structured review findings, review summary generation, and spec-vs-implementation conformance contracts.
 - `@vannadii/devplat-remediation`: current code covers remediation planning from review findings and gate remediation hooks, remediation result records, and unresolved-issue summaries.
-- `@vannadii/devplat-prs`: current code covers PR normalization, review/remediation-aware body projections, update submission semantics, and merge submission semantics.
+- `@vannadii/devplat-prs`: current code covers PR normalization, shared branch/timestamp contract validation, review/remediation-aware body projections, update submission semantics, and merge submission semantics.
 - `@vannadii/devplat-branching`: current code covers dependent rebase planning, explicit merge-triggered execution through worktree sync orchestration, branch dependency graphs, conflict classification, and execution-result conflict projection back into the returned rebase plan.
 - `@vannadii/devplat-supervisor`: current code covers next-step decisions, telemetry, lifecycle signals, blocker-aware route plans, and phase routing across research, specs, slicing, implementation, gates, review, remediation, merge, and continuation.
 - `@vannadii/devplat-observability`: current code covers telemetry events, audit records, run metrics, run summaries, and persisted audit/telemetry evidence.

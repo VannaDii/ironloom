@@ -4,7 +4,11 @@ Pull request lifecycle management contracts.
 
 ## Responsibility
 
-This package owns pull request records, update submission semantics, merge readiness, and PR-facing projections for the autonomous delivery cycle.
+This package owns pull request records, update submission semantics, merge
+readiness, and PR-facing projections for the autonomous delivery cycle. Pull
+request records use the shared Git branch and ISO timestamp codecs, so PR
+updates and merge submissions reject unsafe refs and malformed timestamps before
+GitHub workflow submission.
 
 ## Real-World Flow
 
@@ -14,7 +18,7 @@ flowchart LR
   Remediation[Remediation summary] --> Projection
   Artifacts[Source artifacts] --> Projection
   Projection --> Body[Rendered PR body]
-  Body --> Record[Pull request record]
+  Body --> Record[Codec-validated PR record]
   Record --> MergeReady[Merge readiness]
   MergeReady --> GitHub[GitHub update or merge request]
   GitHub --> Audit[Persisted PR artifact]
