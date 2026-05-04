@@ -4,7 +4,10 @@ import { pathToFileURL } from 'node:url';
 
 import { format } from 'prettier';
 
-import { GIT_BRANCH_NAME_JSON_SCHEMA_PATTERN } from '../packages/core/src/domain/constants.ts';
+import {
+  GIT_BRANCH_NAME_JSON_SCHEMA_PATTERN,
+  REPOSITORY_KEY_JSON_SCHEMA_PATTERN,
+} from '../packages/core/src/domain/constants.ts';
 import { schemaRegistry } from './schema-registry.mjs';
 
 const rootDirectory = resolve(import.meta.dirname, '..');
@@ -22,6 +25,13 @@ const namedStringCodecSchemas = new Map([
     {
       type: 'string',
       pattern: GIT_BRANCH_NAME_JSON_SCHEMA_PATTERN,
+    },
+  ],
+  [
+    'RepositoryKey',
+    {
+      type: 'string',
+      pattern: REPOSITORY_KEY_JSON_SCHEMA_PATTERN,
     },
   ],
 ]);

@@ -1,4 +1,6 @@
 ---
+'@vannadii/devplat-config': patch
+'@vannadii/devplat-core': patch
 '@vannadii/devplat-branching': patch
 '@vannadii/devplat-github': patch
 '@vannadii/devplat-observability': patch
@@ -74,3 +76,9 @@ Telemetry events, audit records, and run summaries now decode event, audit, and
 run boundary timestamps through the shared ISO timestamp codec. Generated
 observability and OpenClaw telemetry-record schemas now expose date-time formats
 for persisted telemetry and audit surfaces.
+
+Runtime config now decodes repository default branches and worktree base
+branches through the shared Git branch codec, repository keys through the shared
+repository key codec, and config `updatedAt` through the shared ISO timestamp
+codec. The schema generator now supports the shared repository-key codec through
+a tested core-owned JSON Schema pattern.

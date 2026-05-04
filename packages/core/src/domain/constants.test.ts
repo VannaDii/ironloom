@@ -35,6 +35,7 @@ import {
   DEVPLAT_ACTION_UPDATE_PR,
   DEVPLAT_ACTION_UPDATE_SPEC,
   GIT_BRANCH_NAME_JSON_SCHEMA_PATTERN,
+  REPOSITORY_KEY_JSON_SCHEMA_PATTERN,
 } from './constants.js';
 
 describe('domain constants', () => {
@@ -106,6 +107,40 @@ describe('domain constants', () => {
 
         for (const branchName of inputs.invalidBranchNames) {
           expect(context.pattern.test(branchName)).toBe(false);
+        }
+      },
+    },
+    {
+      name: 'exports a repository key JSON schema pattern aligned with codec constraints',
+      inputs: {
+        validRepositoryKeys: ['VannaDii/devplat', 'a/b', 'owner/repo name'],
+        invalidRepositoryKeys: [
+          'VannaDii',
+          '/devplat',
+          'VannaDii/',
+          'VannaDii/devplat/extra',
+          ' VannaDii/devplat',
+          'VannaDii/devplat ',
+          'VannaDii/ devplat',
+          'VannaDii /devplat',
+        ],
+      },
+      mock: () => ({
+        pattern: new RegExp(REPOSITORY_KEY_JSON_SCHEMA_PATTERN, 'u'),
+      }),
+      assert: (
+        context: { pattern: RegExp },
+        inputs: {
+          validRepositoryKeys: string[];
+          invalidRepositoryKeys: string[];
+        },
+      ) => {
+        for (const repositoryKey of inputs.validRepositoryKeys) {
+          expect(context.pattern.test(repositoryKey)).toBe(true);
+        }
+
+        for (const repositoryKey of inputs.invalidRepositoryKeys) {
+          expect(context.pattern.test(repositoryKey)).toBe(false);
         }
       },
     },

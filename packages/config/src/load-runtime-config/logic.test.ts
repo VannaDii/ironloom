@@ -198,6 +198,28 @@ describe('DevplatConfig logic', () => {
       },
     },
     {
+      name: 'rejects invalid repository branch overrides',
+      inputs: {
+        env: {
+          DISCORD_APPLICATION_ID: 'application-1',
+          DISCORD_PUBLIC_KEY: 'public-key-1',
+          DISCORD_BOT_TOKEN: 'bot-token-1',
+          GITHUB_DEFAULT_BRANCH: 'bad branch',
+        },
+      },
+      mock:
+        ({ env }: { env: Record<string, string> }) =>
+        () =>
+          createDefaultDevplatConfig(env),
+      assert: (
+        createConfig: () => ReturnType<typeof createDefaultDevplatConfig>,
+      ) => {
+        expect(createConfig).toThrow(
+          'Repository runtime configuration is invalid:',
+        );
+      },
+    },
+    {
       name: 'requires Discord credentials to be present',
       inputs: {
         env: {

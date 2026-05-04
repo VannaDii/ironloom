@@ -360,3 +360,10 @@ export const GIT_BRANCH_DISALLOWED_CONTROL_OR_SPACE_PATTERN = new RegExp(
  */
 export const GIT_BRANCH_NAME_JSON_SCHEMA_PATTERN =
   '^(?!-)(?!/)(?!.*(?:\\.\\.|//|@\\{|\\\\|~|\\^|:|\\?|\\*|\\[|(?:^|/)[^/]*\\.lock(?:/|$)))(?!.*[\\x00-\\x20\\x7f])(?!.*/$)(?!.*\\.$)(?!@$).+$';
+
+/**
+ * JSON Schema pattern equivalent for repository keys accepted by
+ * `RepositoryKeyCodec`.
+ */
+export const REPOSITORY_KEY_JSON_SCHEMA_PATTERN =
+  '^(?!.*(?:^|/)\\s)(?!.*\\s(?:/|$))[^/]+/[^/]+$';

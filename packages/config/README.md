@@ -11,6 +11,10 @@ SonarCloud project configuration. Discord category names default to the
 configured repository name so multiple configured repositories can share a guild
 without mixing operator surfaces; tests and live-lab runs override the category
 to `test`.
+Repository default branches and worktree base branches validate with the shared
+Git branch codec, repository keys validate with the shared repository-key codec,
+and persisted config records validate `updatedAt` with the shared ISO timestamp
+codec.
 
 ## Real-World Flow
 
@@ -31,6 +35,8 @@ flowchart LR
 ## Boundaries
 
 - Keep environment parsing, defaults, and structured config validation here.
+- Validate repository identity, branch refs, and config timestamps with shared
+  core codecs.
 - Do not perform network checks or load external service state.
 - Keep schema, codec, docs, and tests aligned whenever config fields change.
 - Keep public TypeScript contracts derived from the exported codecs.

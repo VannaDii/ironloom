@@ -2,16 +2,28 @@ import * as t from 'io-ts';
 
 import {
   DevplatErrorSeverityCodec,
+  GitBranchNameCodec,
+  IsoTimestampCodec,
   LifecycleStatusCodec,
+  RepositoryKeyCodec,
 } from '@vannadii/devplat-core';
 
+/**
+ * Codec for the supported Discord REST API version.
+ */
 export const DiscordApiVersionCodec = t.literal('v10');
 
+/**
+ * Codec for Discord OAuth install scopes required by DevPlat.
+ */
 export const DiscordInstallScopeCodec = t.union([
   t.literal('bot'),
   t.literal('applications.commands'),
 ]);
 
+/**
+ * Codec for Discord bot permissions required by DevPlat.
+ */
 export const DiscordPermissionCodec = t.union([
   t.literal('ViewChannel'),
   t.literal('SendMessages'),
@@ -22,21 +34,33 @@ export const DiscordPermissionCodec = t.union([
   t.literal('ReadMessageHistory'),
 ]);
 
+/**
+ * Codec for the supported Discord interaction transport.
+ */
 export const DiscordInteractionTransportCodec = t.literal('gateway');
 
+/**
+ * Codec for repository identity and default branch runtime configuration.
+ */
 export const RepositoryRuntimeConfigCodec = t.type({
   owner: t.string,
   repo: t.string,
-  defaultBranch: t.string,
-  repositoryKey: t.string,
+  defaultBranch: GitBranchNameCodec,
+  repositoryKey: RepositoryKeyCodec,
 });
 
+/**
+ * Codec for GitHub API and web endpoint runtime configuration.
+ */
 export const GitHubRuntimeConfigCodec = t.type({
   apiBaseUrl: t.string,
   webBaseUrl: t.string,
   tokenEnvironmentVariable: t.string,
 });
 
+/**
+ * Codec for DevPlat storage layout runtime configuration.
+ */
 export const StorageRuntimeConfigCodec = t.type({
   rootDirectory: t.string,
   layoutVersion: t.literal(1),
@@ -45,17 +69,26 @@ export const StorageRuntimeConfigCodec = t.type({
   auditLogDirectory: t.string,
 });
 
+/**
+ * Codec for Git worktree runtime configuration.
+ */
 export const WorktreeRuntimeConfigCodec = t.type({
   rootDirectory: t.string,
-  baseBranch: t.string,
+  baseBranch: GitBranchNameCodec,
   syncStrategy: t.literal('rebase-or-fast-forward'),
 });
 
+/**
+ * Codec for supported runtime deployment targets.
+ */
 export const DeploymentTargetCodec = t.union([
   t.literal('local-docker'),
   t.literal('kubernetes'),
 ]);
 
+/**
+ * Codec for Docker and Helm deployment runtime configuration.
+ */
 export const DeploymentRuntimeConfigCodec = t.type({
   target: DeploymentTargetCodec,
   dockerImageRepository: t.string,
@@ -66,6 +99,9 @@ export const DeploymentRuntimeConfigCodec = t.type({
   stateMountPath: t.string,
 });
 
+/**
+ * Codec for Discord runtime configuration.
+ */
 export const DiscordRuntimeConfigCodec = t.type({
   apiBaseUrl: t.string,
   apiVersion: DiscordApiVersionCodec,
@@ -87,12 +123,18 @@ export const DiscordRuntimeConfigCodec = t.type({
   gatewayIntents: t.number,
 });
 
+/**
+ * Codec for the private OpenClaw gateway runtime configuration.
+ */
 export const OpenClawGatewayConfigCodec = t.type({
   bind: t.literal('loopback'),
   port: t.number,
   authMode: t.literal('token'),
 });
 
+/**
+ * Codec for OpenClaw action-gate runtime toggles.
+ */
 export const OpenClawActionGateConfigCodec = t.type({
   approveThis: t.boolean,
   mergeNow: t.boolean,
@@ -100,6 +142,9 @@ export const OpenClawActionGateConfigCodec = t.type({
   rebaseAllDependents: t.boolean,
 });
 
+/**
+ * Codec for structured runtime configuration validation issues.
+ */
 export const RuntimeConfigValidationIssueCodec = t.type({
   field: t.string,
   code: t.string,
@@ -107,12 +152,15 @@ export const RuntimeConfigValidationIssueCodec = t.type({
   severity: DevplatErrorSeverityCodec,
 });
 
+/**
+ * Codec for complete DevPlat runtime configuration.
+ */
 export const DevplatConfigCodec = t.type({
   id: t.string,
   summary: t.string,
   status: LifecycleStatusCodec,
   trace: t.array(t.string),
-  updatedAt: t.string,
+  updatedAt: IsoTimestampCodec,
   githubOwner: t.string,
   githubRepo: t.string,
   repository: RepositoryRuntimeConfigCodec,
