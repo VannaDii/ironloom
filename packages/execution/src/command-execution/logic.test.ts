@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
+import { decodeWithCodec } from '@vannadii/devplat-core';
+
+import { CommandExecutionOptionsCodec } from './codec.js';
 import {
   normalizeCommandExecutionCwd,
   createCommandExecutionPolicy,
@@ -94,6 +97,33 @@ describe('CommandResult logic', () => {
             mode: 'bytes',
           },
           timeoutMs: 50,
+        });
+      },
+    },
+    {
+      name: 'normalizes configured retryable subprocess exit codes',
+      inputs: {
+        options: {
+          retry: { attempts: 3, retryableExitCodes: [2.8, 75] },
+        },
+      },
+      mock: () => undefined,
+      assert: (inputs: { options: unknown }) => {
+        const decoded = decodeWithCodec(
+          CommandExecutionOptionsCodec,
+          inputs.options,
+        );
+
+        expect(decoded.ok).toBe(true);
+        if (!decoded.ok) {
+          return;
+        }
+
+        expect(createCommandExecutionPolicy(decoded.value)).toEqual({
+          retry: {
+            attempts: 3,
+            retryableExitCodes: [2, 75],
+          },
         });
       },
     },

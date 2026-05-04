@@ -167,6 +167,31 @@ describe('CommandExecutionService', () => {
       },
     },
     {
+      name: 'retries caller-configured retryable subprocess exit codes',
+      inputs: {
+        args: ['-e', 'process.stderr.write("retry"); process.exit(2)'],
+        options: { retry: { attempts: 2, retryableExitCodes: [2] } },
+      },
+      mock: () => new CommandExecutionService(),
+      assert: async (
+        service: CommandExecutionService,
+        inputs: {
+          args: string[];
+          options: Parameters<CommandExecutionService['execute']>[2];
+        },
+      ) => {
+        const snapshot = await service.execute(
+          process.execPath,
+          inputs.args,
+          inputs.options,
+        );
+
+        expect(snapshot.exitCode).toBe(2);
+        expect(snapshot.attempts).toBe(2);
+        expect(snapshot.stderr).toBe('retry');
+      },
+    },
+    {
       name: 'refuses absolute command working directories before spawning',
       inputs: {
         args: ['-e', 'process.exit(0)'],

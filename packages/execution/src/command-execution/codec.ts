@@ -38,9 +38,14 @@ export const CommandExecutionOptionsCodec = t.partial({
   env: t.record(t.string, t.string),
   timeoutMs: t.number,
   maxOutputBytes: t.number,
-  retry: t.type({
-    attempts: t.number,
-  }),
+  retry: t.intersection([
+    t.type({
+      attempts: t.number,
+    }),
+    t.partial({
+      retryableExitCodes: t.array(t.number),
+    }),
+  ]),
 });
 
 /** Policy for retries, truncation, and timeout handling. */

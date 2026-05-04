@@ -43,7 +43,7 @@ Required foundation-phase tool coverage includes:
 - slice generation and readiness evaluation
 - queue claim and lifecycle updates
 - worktree allocation, sync, and release
-- command execution with execution-owned cwd, timeout, truncation, and retry-attempt options
+- command execution with execution-owned cwd, timeout, truncation, retry-attempt, and retryable-exit-code options
 - gate execution
 - artifact validation
 - review and remediation triggering

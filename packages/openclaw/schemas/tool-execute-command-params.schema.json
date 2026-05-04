@@ -40,6 +40,12 @@
           "properties": {
             "attempts": {
               "type": "number"
+            },
+            "retryableExitCodes": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
             }
           },
           "required": ["attempts"],

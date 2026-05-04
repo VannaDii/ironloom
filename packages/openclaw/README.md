@@ -42,7 +42,8 @@ Command execution cwd validation, retry, timeout, and truncation policy are
 owned by `@vannadii/devplat-execution`; the OpenClaw tool decodes the
 execution-owned option contract, asks policy, delegates execution, records
 telemetry, and returns the auditable request snapshot with `timeoutMs`,
-`maxOutputBytes`, `retry.attempts`, and the persisted `telemetryEventId`.
+`maxOutputBytes`, `retry.attempts`, `retry.retryableExitCodes`, and the
+persisted `telemetryEventId`.
 Gate execution uses `@vannadii/devplat-gates` for command execution and
 classification, then records a telemetry event through the configured
 `.devplat` storage root. Pass `actorId` when the gate run is operator-initiated;
@@ -76,7 +77,7 @@ surface, and tests stay aligned.
 - `create_audit_log`: create an audit log artifact
 - `create_merge_decision`: create a merge decision artifact
 - `create_rebase_result`: create a rebase result artifact
-- `execute_command`: run a repository command through the execution service with optional cwd, timeout, truncation, and retry-attempt controls
+- `execute_command`: run a repository command through the execution service with optional cwd, timeout, truncation, retry-attempt, and retryable-exit-code controls
 - `allocate_worktree`: allocate a tracked worktree, optionally materializing it on disk with `applyToDisk`
 - `sync_worktree`: sync an allocated worktree against its base branch, optionally applying the Git operation with `applyToDisk`
 - `release_worktree`: release an allocated worktree with an explicit cleanup strategy, optionally applying cleanup with `applyToDisk`
