@@ -6,6 +6,7 @@ import {
   AllocateWorktreeToolInputCodec,
   CreateResearchBriefToolInputCodec,
   EvaluateSonarQualityGateToolInputCodec,
+  ExecuteCommandToolInputCodec,
   ExecuteRebaseDependentsToolInputCodec,
   ReleaseWorktreeToolInputCodec,
   RunGatesToolInputCodec,
@@ -107,6 +108,20 @@ describe('tool surface codecs', () => {
               newCodeCoverage: 95,
               blockingIssues: 0,
               actorId: 'operator-1',
+            },
+          },
+          {
+            codec: ExecuteCommandToolInputCodec,
+            value: {
+              command: 'npm',
+              args: ['run', 'lint'],
+              actorId: 'operator-1',
+              privileged: false,
+              timeoutMs: 30_000,
+              maxOutputBytes: 12_000,
+              retry: {
+                attempts: 2,
+              },
             },
           },
           {

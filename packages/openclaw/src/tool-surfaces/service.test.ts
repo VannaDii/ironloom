@@ -7,6 +7,10 @@ import {
   createArtifactRegistry,
   createDefaultArtifactRegistry,
 } from '@vannadii/devplat-artifacts';
+import type {
+  CommandExecutionOptions,
+  CommandResult,
+} from '@vannadii/devplat-execution';
 import type { TelemetryEvent } from '@vannadii/devplat-observability';
 import { FileStoreService } from '@vannadii/devplat-storage';
 import type { WorktreeAllocation } from '@vannadii/devplat-worktrees';
@@ -1126,6 +1130,151 @@ describe('tool surface service', () => {
         exitCode: 124,
         timedOut: true,
       },
+    });
+  });
+
+  describe('execute_command execution policy inputs', () => {
+    type ExecuteCommandPolicyCase = {
+      name: string;
+      inputs: {
+        params: {
+          command: string;
+          args: string[];
+          actorId: string;
+          privileged: boolean;
+          cwd: string;
+          timeoutMs: number;
+          maxOutputBytes: number;
+          retry: {
+            attempts: number;
+          };
+        };
+      };
+      mock: () => {
+        capturedOptions: CommandExecutionOptions[];
+        tool: ReturnType<typeof createExecuteCommandTool>;
+      };
+      assert: (
+        context: {
+          capturedOptions: CommandExecutionOptions[];
+          tool: ReturnType<typeof createExecuteCommandTool>;
+        },
+        inputs: ExecuteCommandPolicyCase['inputs'],
+      ) => Promise<void>;
+    };
+
+    const cases = [
+      {
+        name: 'passes retry and truncation policy options into command execution',
+        inputs: {
+          params: {
+            command: process.execPath,
+            args: ['-e', 'process.stdout.write("abcdef")'],
+            actorId: 'operator-1',
+            privileged: false,
+            cwd: 'packages',
+            timeoutMs: 25,
+            maxOutputBytes: 3,
+            retry: {
+              attempts: 2,
+            },
+          },
+        },
+        mock: () => {
+          const capturedOptions: CommandExecutionOptions[] = [];
+          const commandExecutionService = {
+            async execute(
+              command: string,
+              args: readonly string[],
+              options: CommandExecutionOptions,
+            ): Promise<CommandResult> {
+              capturedOptions.push(options);
+              return {
+                command,
+                args: [...args],
+                exitCode: 0,
+                timedOut: false,
+                stdout: 'abc',
+                stderr: '',
+                durationMs: 5,
+                truncated: true,
+                ...(options.retry === undefined
+                  ? {}
+                  : { attempts: options.retry.attempts }),
+                policy: {
+                  retry: {
+                    attempts: options.retry?.attempts ?? 1,
+                    retryableExitCodes: [1, 124],
+                  },
+                  truncation: {
+                    maxOutputBytes: options.maxOutputBytes ?? 1,
+                    mode: 'bytes',
+                  },
+                  ...(typeof options.timeoutMs === 'number'
+                    ? { timeoutMs: options.timeoutMs }
+                    : {}),
+                },
+              };
+            },
+          };
+
+          return {
+            capturedOptions,
+            tool: createExecuteCommandTool({
+              commandExecutionService,
+              telemetryEventService: {
+                async record(event: TelemetryEvent): Promise<TelemetryEvent> {
+                  return event;
+                },
+              },
+            }),
+          };
+        },
+        assert: async (context, inputs) => {
+          const result = await context.tool.execute(
+            'tool-call-ex8',
+            inputs.params,
+          );
+
+          expect(context.capturedOptions).toEqual([
+            {
+              cwd: 'packages',
+              timeoutMs: 25,
+              maxOutputBytes: 3,
+              retry: {
+                attempts: 2,
+              },
+            },
+          ]);
+          expect(result.details).toMatchObject({
+            allowed: true,
+            request: {
+              cwd: 'packages',
+              timeoutMs: 25,
+              maxOutputBytes: 3,
+              retry: {
+                attempts: 2,
+              },
+            },
+            result: {
+              attempts: 2,
+              truncated: true,
+              policy: {
+                truncation: {
+                  maxOutputBytes: 3,
+                },
+              },
+            },
+          });
+        },
+      },
+    ] satisfies ExecuteCommandPolicyCase[];
+
+    it.each(cases)('$name', async (testCase) => {
+      expect.hasAssertions();
+      const context = testCase.mock();
+
+      await testCase.assert(context, testCase.inputs);
     });
   });
 

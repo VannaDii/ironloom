@@ -38,9 +38,11 @@ Git-backed worktree operations that create, sync, or release the worktree on
 disk. Git-backed allocation requires an explicit `baseBranch` so runtime calls
 cannot silently fall back to a repository-default branch that may be wrong for
 the configured project.
-Command execution cwd validation is owned by `@vannadii/devplat-execution`; the
-OpenClaw tool only decodes input, asks policy, delegates cwd normalization and
-execution, then records telemetry.
+Command execution cwd validation, retry, timeout, and truncation policy are
+owned by `@vannadii/devplat-execution`; the OpenClaw tool decodes the
+execution-owned option contract, asks policy, delegates execution, records
+telemetry, and returns the auditable request snapshot with `timeoutMs`,
+`maxOutputBytes`, and `retry.attempts` when supplied.
 Gate execution uses `@vannadii/devplat-gates` for command execution and
 classification, then records a telemetry event through the configured
 `.devplat` storage root. Pass `actorId` when the gate run is operator-initiated;
@@ -74,7 +76,7 @@ surface, and tests stay aligned.
 - `create_audit_log`: create an audit log artifact
 - `create_merge_decision`: create a merge decision artifact
 - `create_rebase_result`: create a rebase result artifact
-- `execute_command`: run a repository command through the execution service
+- `execute_command`: run a repository command through the execution service with optional cwd, timeout, truncation, and retry-attempt controls
 - `allocate_worktree`: allocate a tracked worktree, optionally materializing it on disk with `applyToDisk`
 - `sync_worktree`: sync an allocated worktree against its base branch, optionally applying the Git operation with `applyToDisk`
 - `release_worktree`: release an allocated worktree with an explicit cleanup strategy, optionally applying cleanup with `applyToDisk`

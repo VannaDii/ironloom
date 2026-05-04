@@ -29,6 +29,7 @@ import { SpecRecordCodec } from '@vannadii/devplat-specs';
 import { SupervisorLifecycleSignalCodec } from '@vannadii/devplat-supervisor';
 import { PullRequestRecordCodec } from '@vannadii/devplat-prs';
 import { TaskRecordCodec } from '@vannadii/devplat-queue';
+import { CommandExecutionOptionsCodec } from '@vannadii/devplat-execution';
 import {
   StoredRecordCodec,
   StoreIndexNameCodec,
@@ -81,6 +82,7 @@ export const CreateMergeDecisionToolInputCodec = MergeDecisionArtifactCodec;
 
 export const CreateRebaseResultToolInputCodec = RebaseResultArtifactCodec;
 
+/** OpenClaw command execution input using execution-owned option codecs. */
 export const ExecuteCommandToolInputCodec = t.intersection([
   t.type({
     command: t.string,
@@ -88,11 +90,7 @@ export const ExecuteCommandToolInputCodec = t.intersection([
     actorId: t.string,
     privileged: t.boolean,
   }),
-  t.partial({
-    cwd: t.string,
-    env: t.record(t.string, t.string),
-    timeoutMs: t.number,
-  }),
+  CommandExecutionOptionsCodec,
 ]);
 
 /** Input for pure worktree allocation without disk materialization. */

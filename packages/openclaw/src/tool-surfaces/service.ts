@@ -25,6 +25,7 @@ import {
 import {
   CommandExecutionService,
   normalizeCommandExecutionCwd,
+  type CommandExecutionOptions,
 } from '@vannadii/devplat-execution';
 import { RuntimeConfigService } from '@vannadii/devplat-config';
 import {
@@ -136,7 +137,10 @@ import {
   READ_STORED_INDEX_SCHEMA_FILE,
   READ_STORED_INDEX_TOOL_NAME,
 } from './constants.js';
-import type { OpenDiscordThreadToolInput } from './codec.js';
+import type {
+  ExecuteCommandToolInput,
+  OpenDiscordThreadToolInput,
+} from './codec.js';
 
 type ToolParameterSchema = AnyAgentTool['parameters'] & Record<string, unknown>;
 
@@ -163,6 +167,18 @@ type OpenClawRunGatesToolDependencies = {
    * Telemetry recorder for persisted gate run evidence.
    */
   telemetryEventService?: OpenClawTelemetryRecordService;
+};
+
+/**
+ * Auditable request snapshot returned by the execute command tool.
+ */
+type ExecuteCommandRequestSnapshot = {
+  command: string;
+  args: string[];
+  cwd: string | null;
+  timeoutMs: number | null;
+  maxOutputBytes: number | null;
+  retry: { attempts: number } | null;
 };
 
 /**
@@ -283,6 +299,49 @@ function isRunGatesService(
   input: OpenClawRunGatesService | OpenClawRunGatesToolDependencies,
 ): input is OpenClawRunGatesService {
   return 'run' in input;
+}
+
+/**
+ * Creates the execution option bag delegated to the execution package.
+ */
+function createExecuteCommandOptions(
+  request: ExecuteCommandToolInput,
+  normalizedCwd: string | undefined,
+): CommandExecutionOptions {
+  return {
+    ...(normalizedCwd ? { cwd: normalizedCwd } : {}),
+    ...(request.env ? { env: request.env } : {}),
+    ...(typeof request.timeoutMs === 'number'
+      ? { timeoutMs: request.timeoutMs }
+      : {}),
+    ...(typeof request.maxOutputBytes === 'number'
+      ? { maxOutputBytes: request.maxOutputBytes }
+      : {}),
+    ...(request.retry === undefined
+      ? {}
+      : {
+          retry: {
+            attempts: request.retry.attempts,
+          },
+        }),
+  };
+}
+
+/**
+ * Creates the operator-facing request snapshot for execute command results.
+ */
+function createExecuteCommandRequestSnapshot(
+  request: ExecuteCommandToolInput,
+  cwd: string | null,
+): ExecuteCommandRequestSnapshot {
+  return {
+    command: request.command,
+    args: request.args,
+    cwd,
+    timeoutMs: request.timeoutMs ?? null,
+    maxOutputBytes: request.maxOutputBytes ?? null,
+    retry: request.retry ?? null,
+  };
 }
 
 /**
@@ -1024,12 +1083,10 @@ export function createExecuteCommandTool(
         return createTextResult({
           allowed: false,
           policyDecisionId: policy.id,
-          request: {
-            command: request.command,
-            args: request.args,
-            cwd: request.cwd ?? null,
-            timeoutMs: request.timeoutMs ?? null,
-          },
+          request: createExecuteCommandRequestSnapshot(
+            request,
+            request.cwd ?? null,
+          ),
         });
       }
 
@@ -1041,16 +1098,14 @@ export function createExecuteCommandTool(
         });
       }
 
+      const executionOptions = createExecuteCommandOptions(
+        request,
+        normalizedCwd.value,
+      );
       const result = await commandExecutionService.execute(
         request.command,
         request.args,
-        {
-          ...(normalizedCwd.value ? { cwd: normalizedCwd.value } : {}),
-          ...(request.env ? { env: request.env } : {}),
-          ...(typeof request.timeoutMs === 'number'
-            ? { timeoutMs: request.timeoutMs }
-            : {}),
-        },
+        executionOptions,
       );
 
       await telemetryEventService.record({
@@ -1067,20 +1122,22 @@ export function createExecuteCommandTool(
           command: request.command,
           args: request.args,
           cwd: normalizedCwd.value ?? null,
+          maxOutputBytes: request.maxOutputBytes ?? null,
+          retryAttempts: request.retry?.attempts ?? null,
           exitCode: result.exitCode,
           timedOut: result.timedOut,
+          attempts: result.attempts ?? null,
+          truncated: result.truncated ?? false,
         },
       });
 
       return createTextResult({
         allowed: true,
         policyDecisionId: policy.id,
-        request: {
-          command: request.command,
-          args: request.args,
-          cwd: normalizedCwd.value ?? null,
-          timeoutMs: request.timeoutMs ?? null,
-        },
+        request: createExecuteCommandRequestSnapshot(
+          request,
+          normalizedCwd.value ?? null,
+        ),
         result,
       });
     },
