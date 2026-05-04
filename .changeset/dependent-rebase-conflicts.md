@@ -7,6 +7,7 @@
 '@vannadii/devplat-openclaw': patch
 '@vannadii/devplat-prs': patch
 '@vannadii/devplat-queue': patch
+'@vannadii/devplat-specs': patch
 '@vannadii/devplat-worktrees': patch
 ---
 
@@ -82,3 +83,7 @@ branches through the shared Git branch codec, repository keys through the shared
 repository key codec, and config `updatedAt` through the shared ISO timestamp
 codec. The schema generator now supports the shared repository-key codec through
 a tested core-owned JSON Schema pattern.
+
+Specification records and revision metadata now decode `updatedAt` through the
+shared ISO timestamp codec. Generated spec and OpenClaw spec tool schemas now
+expose date-time formats for durable spec history.

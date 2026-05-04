@@ -1,10 +1,15 @@
 import * as t from 'io-ts';
 
+import { IsoTimestampCodec } from '@vannadii/devplat-core';
+
+/**
+ * Codec for versioned specification revision metadata.
+ */
 export const SpecRevisionCodec = t.intersection([
   t.type({
     version: t.number,
     summary: t.string,
-    updatedAt: t.string,
+    updatedAt: IsoTimestampCodec,
   }),
   t.partial({
     revisionId: t.string,
@@ -14,12 +19,18 @@ export const SpecRevisionCodec = t.intersection([
   }),
 ]);
 
+/**
+ * Codec for specification approval states.
+ */
 export const SpecApprovalStateCodec = t.union([
   t.literal('draft'),
   t.literal('review'),
   t.literal('approved'),
 ]);
 
+/**
+ * Codec for durable specification records.
+ */
 export const SpecRecordCodec = t.intersection([
   t.type({
     specId: t.string,
@@ -29,7 +40,7 @@ export const SpecRecordCodec = t.intersection([
     acceptanceCriteria: t.array(t.string),
     approvalState: SpecApprovalStateCodec,
     version: t.number,
-    updatedAt: t.string,
+    updatedAt: IsoTimestampCodec,
   }),
   t.partial({
     revisionHistory: t.array(SpecRevisionCodec),
