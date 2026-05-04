@@ -36,7 +36,8 @@
               }
             },
             "updatedAt": {
-              "type": "string"
+              "type": "string",
+              "format": "date-time"
             },
             "guildId": {
               "type": "string"
@@ -116,7 +117,8 @@
               }
             },
             "updatedAt": {
-              "type": "string"
+              "type": "string",
+              "format": "date-time"
             },
             "guildId": {
               "type": "string"
@@ -203,7 +205,8 @@
               }
             },
             "updatedAt": {
-              "type": "string"
+              "type": "string",
+              "format": "date-time"
             },
             "guildId": {
               "type": "string"

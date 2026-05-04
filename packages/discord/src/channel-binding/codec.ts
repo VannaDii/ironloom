@@ -1,6 +1,9 @@
 import * as t from 'io-ts';
 
-import { LifecycleStatusCodec } from '@vannadii/devplat-core';
+import {
+  IsoTimestampCodec,
+  LifecycleStatusCodec,
+} from '@vannadii/devplat-core';
 
 export const DiscordBindingKindCodec = t.union([
   t.literal('spec'),
@@ -14,7 +17,7 @@ export const DiscordChannelBindingCodec = t.type({
   summary: t.string,
   status: LifecycleStatusCodec,
   trace: t.array(t.string),
-  updatedAt: t.string,
+  updatedAt: IsoTimestampCodec,
   guildId: t.string,
   channelId: t.string,
   kind: DiscordBindingKindCodec,

@@ -81,6 +81,36 @@ describe('discord thread session codec', () => {
       },
     },
     {
+      name: 'reject thread sessions with invalid lifecycle timestamps',
+      inputs: {
+        values: [
+          {
+            id: 'thread-session-invalid-timestamp',
+            summary: 'Spec thread',
+            status: 'approved',
+            trace: [],
+            updatedAt: '2026-04-04',
+            guildId: 'guild-1',
+            channelId: 'thread-invalid-timestamp',
+            parentChannelId: 'channel-spec',
+            threadId: 'thread-invalid-timestamp',
+            kind: 'spec',
+            specId: 'spec-1',
+            sliceId: null,
+            pullRequestNumber: null,
+            artifactId: 'artifact-invalid-timestamp',
+          },
+        ],
+      },
+      mock: async ({ values }) =>
+        values.map((value) =>
+          decodeWithCodec(DiscordThreadSessionCodec, value),
+        ),
+      assert: (decodedValues) => {
+        expect(decodedValues.every((decoded) => !decoded.ok)).toBe(true);
+      },
+    },
+    {
       name: 'reject thread sessions whose kind-specific fields do not match',
       inputs: {
         values: [

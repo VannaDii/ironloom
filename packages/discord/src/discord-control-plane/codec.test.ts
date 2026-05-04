@@ -173,6 +173,50 @@ describe('discord control request codec', () => {
       },
     },
     {
+      name: 'reject invalid control and interaction lifecycle timestamps',
+      inputs: {
+        values: [
+          {
+            codec: DiscordControlRequestCodec,
+            value: {
+              id: 'control-invalid-timestamp',
+              summary: 'Show status.',
+              status: 'review',
+              trace: [],
+              updatedAt: '2026-04-04',
+              actorId: 'operator-1',
+              threadId: 'thread-1',
+              channelId: 'channel-1',
+              action: 'show-status',
+              privileged: false,
+            },
+          },
+          {
+            codec: DiscordOperatorInteractionCodec,
+            value: {
+              id: 'interaction-invalid-timestamp',
+              token: 'token-1',
+              actorId: 'operator-1',
+              channelId: 'channel-1',
+              updatedAt: 'April 4, 2026',
+            },
+          },
+          {
+            codec: DiscordInteractionCallbackOptionsCodec,
+            value: {
+              threadId: 'thread-1',
+              updatedAt: 'not-a-date',
+            },
+          },
+        ],
+      },
+      mock: async ({ values }) =>
+        values.map(({ codec, value }) => decodeWithCodec(codec, value)),
+      assert: (decodedValues) => {
+        expect(decodedValues.every((decoded) => !decoded.ok)).toBe(true);
+      },
+    },
+    {
       name: 'decode operator interactions with bound thread sessions',
       inputs: {
         values: [

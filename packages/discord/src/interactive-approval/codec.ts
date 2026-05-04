@@ -1,6 +1,9 @@
 import * as t from 'io-ts';
 
-import { LifecycleStatusCodec } from '@vannadii/devplat-core';
+import {
+  IsoTimestampCodec,
+  LifecycleStatusCodec,
+} from '@vannadii/devplat-core';
 
 export const DiscordApprovalActionCodec = t.union([
   t.literal('approve'),
@@ -14,7 +17,7 @@ export const DiscordApprovalRequestCodec = t.type({
   summary: t.string,
   status: LifecycleStatusCodec,
   trace: t.array(t.string),
-  updatedAt: t.string,
+  updatedAt: IsoTimestampCodec,
   actorId: t.string,
   channelId: t.string,
   threadId: t.string,

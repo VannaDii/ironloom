@@ -45,7 +45,8 @@
                   }
                 },
                 "updatedAt": {
-                  "type": "string"
+                  "type": "string",
+                  "format": "date-time"
                 },
                 "guildId": {
                   "type": "string"
@@ -125,7 +126,8 @@
                   }
                 },
                 "updatedAt": {
-                  "type": "string"
+                  "type": "string",
+                  "format": "date-time"
                 },
                 "guildId": {
                   "type": "string"
@@ -212,7 +214,8 @@
                   }
                 },
                 "updatedAt": {
-                  "type": "string"
+                  "type": "string",
+                  "format": "date-time"
                 },
                 "guildId": {
                   "type": "string"
@@ -284,7 +287,8 @@
           "type": "boolean"
         },
         "updatedAt": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         }
       },
       "required": [],

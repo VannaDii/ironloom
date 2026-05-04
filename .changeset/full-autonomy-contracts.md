@@ -52,5 +52,6 @@ Add the first full-autonomy contract slices:
 - Command execution now enforces repository-relative working-directory safety at the service boundary, returns a structured refusal result instead of spawning subprocesses from absolute or repository-escaping paths, and includes package-runner regression coverage for repository-relative cwd execution
 - Memory, research, review, and remediation lifecycle codecs now reject non-ISO durable timestamps and expose the stricter contracts through regenerated package and OpenClaw schemas
 - Policy, gates, supervisor, slicing, and OpenClaw plugin-config lifecycle codecs now reject non-ISO durable timestamps, and slice work-packet branch refs now use the shared Git branch codec
+- Discord approval, binding, thread-session, control-request, operator-interaction, and callback-option codecs now reject non-ISO durable timestamps without changing the deferred live human-click acceptance boundary
 
 Repository validation now requires package-local README coverage with real-world Mermaid flow diagrams, and generated schemas/manifests are emitted in Prettier-stable JSON so generation, repo validation, and formatting checks agree.
