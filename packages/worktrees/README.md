@@ -16,6 +16,10 @@ run.
 Git command failures preserve the child-process exit code and captured
 stdout/stderr so gate output and operator diagnostics can point at the real
 failure.
+Persisted allocation, sync, and release records require ISO-8601 millisecond
+timestamps, and sync result contracts validate `baseBranch` with the shared Git
+branch codec while still preserving unsafe operator-provided branch input on
+blocked audit records.
 
 ## Real-World Flow
 
@@ -39,6 +43,8 @@ flowchart LR
 
 - Keep Git worktree behavior here.
 - Fail closed before Git execution when branch names are unsafe.
+- Validate persisted lifecycle timestamps and sync base refs with shared core
+  codecs.
 - Require policy mediation before destructive release actions.
 - Do not submit GitHub pull request updates directly.
 

@@ -37,7 +37,8 @@
               }
             },
             "updatedAt": {
-              "type": "string"
+              "type": "string",
+              "format": "date-time"
             },
             "taskId": {
               "type": "string"

@@ -55,3 +55,10 @@ Git branch codec and `updatedAt` through the shared ISO timestamp codec.
 Generated PR and OpenClaw PR-tool schemas carry the same branch pattern and
 date-time format, so unsafe refs and malformed timestamps are rejected before PR
 update or merge submission.
+
+Worktree allocation, sync, and release records now decode `updatedAt` through
+the shared ISO timestamp codec, and sync result `baseBranch` values decode
+through the shared Git branch codec. Generated worktree and embedded OpenClaw
+schemas now expose the stricter date-time contract for persisted allocation
+input while blocked worktree records can still preserve unsafe operator branch
+input for auditability.
