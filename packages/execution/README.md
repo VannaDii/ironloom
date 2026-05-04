@@ -4,7 +4,7 @@ Subprocess execution runtime.
 
 ## Responsibility
 
-This package owns structured command execution, repository-relative working-directory enforcement, timeout handling, captured output, and command result normalization for gate and supervisor flows.
+This package owns structured command execution, repository-relative working-directory enforcement, timeout handling, captured output, retryable exit-code policy, and command result normalization for gate and supervisor flows.
 
 ## Real-World Flow
 
@@ -13,7 +13,7 @@ flowchart LR
   Policy[Allowed command action] --> Cwd[Validate repository-relative cwd]
   Cwd -->|safe| Execute[Spawn subprocess]
   Cwd -->|unsafe| Refuse[Structured refusal result]
-  Execute --> Retry[Retry policy]
+  Execute --> Retry[Retry only configured exit codes]
   Execute --> Timeout[Timeout handling]
   Execute --> Output[Output truncation]
   Output --> Result[Structured command result]
@@ -27,7 +27,7 @@ flowchart LR
 - Do not decide whether privileged commands are allowed; use policy before execution.
 - Reject absolute or repository-escaping working directories before execution.
 - Keep command result and execution-policy types derived from the exported codecs.
-- Keep cwd normalization, truncation, retry, and timeout behavior covered by tests.
+- Keep cwd normalization, truncation, retryable exit-code, and timeout behavior covered by tests.
 
 ## Development
 
