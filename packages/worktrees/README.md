@@ -21,8 +21,9 @@ stdout/stderr so gate output and operator diagnostics can point at the real
 failure.
 Persisted allocation, sync, and release records require ISO-8601 millisecond
 timestamps, and sync result contracts validate `baseBranch` with the shared Git
-branch codec while still preserving unsafe operator-provided branch input on
-blocked audit records.
+branch codec. Unsafe allocation branch names are preserved in branch-safety
+details for auditability, while unsafe sync base branches are replaced with a
+safe blocked placeholder so persisted sync records remain codec-valid.
 
 ## Real-World Flow
 
