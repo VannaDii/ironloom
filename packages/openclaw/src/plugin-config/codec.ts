@@ -1,6 +1,9 @@
 import * as t from 'io-ts';
 
-import { LifecycleStatusCodec } from '@vannadii/devplat-core';
+import {
+  IsoTimestampCodec,
+  LifecycleStatusCodec,
+} from '@vannadii/devplat-core';
 
 export const OpenClawPluginConfigDiscordInstallScopeCodec = t.union([
   t.literal('bot'),
@@ -22,7 +25,7 @@ export const OpenClawPluginConfigCodec = t.type({
   summary: t.string,
   status: LifecycleStatusCodec,
   trace: t.array(t.string),
-  updatedAt: t.string,
+  updatedAt: IsoTimestampCodec,
   apiBaseUrl: t.string,
   apiVersion: t.literal('v10'),
   applicationId: t.string,

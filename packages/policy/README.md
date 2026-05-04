@@ -31,6 +31,7 @@ flowchart LR
 - Keep policy category vocabulary in `constants.ts`, consume shared lifecycle action constants from `@vannadii/devplat-core`, and cover exported action sets with package tests.
 - Do not perform the requested action from policy code.
 - Return explicit denial reasons, escalation guidance, next-action hints, and audit reasons for Discord, OpenClaw, and audit artifacts.
+- Decode policy decision and action-evaluation `updatedAt` values through the shared ISO timestamp codec.
 
 - Keep public TypeScript contracts derived from the exported codecs.
 

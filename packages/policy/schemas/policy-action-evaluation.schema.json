@@ -62,7 +62,8 @@
           "type": "string"
         },
         "updatedAt": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         }
       },
       "required": [

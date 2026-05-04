@@ -24,6 +24,7 @@ flowchart LR
 - Keep slice readiness deterministic.
 - Do not claim tasks or allocate worktrees here.
 - Keep dependency and work-packet metadata usable by queue, PR, review, and branching flows.
+- Decode slice `updatedAt` and dependency-graph `generatedAt` values through the shared ISO timestamp codec, and work-packet branch names through the shared Git branch codec.
 
 - Keep public TypeScript contracts derived from the exported codecs.
 
