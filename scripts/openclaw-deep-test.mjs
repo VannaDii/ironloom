@@ -23,6 +23,14 @@ const runGatesToolName = 'run_gates';
  */
 const sonarQualityGateToolName = 'evaluate_sonar_quality_gate';
 /**
+ * OpenClaw tool name used by the deep scenario for pull request updates.
+ */
+const submitPullRequestUpdateToolName = 'submit_pull_request_update';
+/**
+ * OpenClaw tool name used by the deep scenario for pull request merges.
+ */
+const submitPullRequestMergeToolName = 'submit_pull_request_merge';
+/**
  * Telemetry key prefix emitted by the OpenClaw gate execution tool.
  */
 const runGatesTelemetryPrefix = 'telemetry:run-gates';
@@ -30,6 +38,14 @@ const runGatesTelemetryPrefix = 'telemetry:run-gates';
  * Telemetry key prefix emitted by the OpenClaw Sonar quality-gate tool.
  */
 const sonarQualityGateTelemetryPrefix = 'telemetry:sonar-quality-gate';
+/**
+ * Telemetry key prefix emitted by the delegated GitHub pull request update flow.
+ */
+const pullRequestUpdateTelemetryPrefix = 'telemetry:update-pr';
+/**
+ * Telemetry key prefix emitted by the delegated GitHub pull request merge flow.
+ */
+const pullRequestMergeTelemetryPrefix = 'telemetry:merge-pr';
 /**
  * Characters ignored while classifying snapshot keys for secret redaction.
  */
@@ -1702,6 +1718,24 @@ export function validateDeepTestReport(report) {
   ) {
     throw new Error(
       'Deep-test report is missing Sonar quality gate telemetry.',
+    );
+  }
+
+  if (
+    reportHasToolStep(report, submitPullRequestUpdateToolName) &&
+    !reportHasTelemetryPrefix(report, pullRequestUpdateTelemetryPrefix)
+  ) {
+    throw new Error(
+      'Deep-test report is missing pull request update telemetry.',
+    );
+  }
+
+  if (
+    reportHasToolStep(report, submitPullRequestMergeToolName) &&
+    !reportHasTelemetryPrefix(report, pullRequestMergeTelemetryPrefix)
+  ) {
+    throw new Error(
+      'Deep-test report is missing pull request merge telemetry.',
     );
   }
 

@@ -101,8 +101,10 @@ surface, and tests stay aligned.
 - `list_stored_index`: enumerate secondary storage index keys
 - `store_record`: persist a record through the storage adapter
 - `create_pull_request_record`: create a pull request record
-- `submit_pull_request_update`: update a pull request record
-- `submit_pull_request_merge`: submit a merge-ready pull request decision
+- `submit_pull_request_update`: update a pull request record and surface the
+  delegated GitHub workflow telemetry event id
+- `submit_pull_request_merge`: submit a merge-ready pull request decision and
+  surface the delegated GitHub workflow telemetry event id
 - `plan_rebase_dependents`: plan dependent rebases
 - `execute_rebase_dependents`: execute dependent branch refreshes through
   worktree sync flows and preserve detected conflict classification from the

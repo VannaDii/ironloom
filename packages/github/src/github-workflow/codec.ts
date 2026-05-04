@@ -92,6 +92,7 @@ export const GitHubActionDecisionCodec = t.intersection([
     request: GitHubActionRequestCodec,
     allowed: t.boolean,
     policyDecisionId: t.string,
+    telemetryEventId: t.string,
     submitted: t.boolean,
   }),
   t.partial({

@@ -10,7 +10,9 @@ import {
   GITHUB_SUBMISSION_MODE_DRY_RUN,
   GITHUB_SUBMISSION_MODE_LIVE,
   GITHUB_WORKFLOW_DEFAULT_ACTOR_ID,
+  GITHUB_WORKFLOW_TELEMETRY_ID_PREFIX,
   GITHUB_WORKFLOW_TELEMETRY_SCOPE,
+  GITHUB_WORKFLOW_TELEMETRY_TRACE,
 } from './constants.js';
 import {
   createGitHubActionRequest,
@@ -22,6 +24,7 @@ import {
   isPrivilegedGitHubAction,
 } from './logic.js';
 import type {
+  GitHubAction,
   GitHubActionDecision,
   GitHubActionRequest,
   GitHubIssueSpecLink,
@@ -40,6 +43,13 @@ function isSubmittedGitHubReceipt(receipt: GitHubSubmissionReceipt): boolean {
     (receipt.statusCode >= GITHUB_HTTP_SUCCESS_MIN_STATUS_CODE &&
       receipt.statusCode < GITHUB_HTTP_SUCCESS_MAX_EXCLUSIVE_STATUS_CODE)
   );
+}
+
+/**
+ * Creates the persisted telemetry event identifier for a GitHub action.
+ */
+function createGitHubWorkflowTelemetryEventId(action: GitHubAction): string {
+  return `${GITHUB_WORKFLOW_TELEMETRY_ID_PREFIX}:${action}:${String(Date.now())}`;
 }
 
 /**
@@ -161,21 +171,27 @@ export class GitHubWorkflowService {
     return createGitHubIssueSpecLink(input);
   }
 
+  /**
+   * Evaluates policy, records telemetry, and submits an allowed GitHub action.
+   */
   public async submit(
     input: GitHubActionRequest,
     actorId = GITHUB_WORKFLOW_DEFAULT_ACTOR_ID,
   ): Promise<GitHubActionDecision> {
     const request = createGitHubActionRequest(input);
+    const telemetryEventId = createGitHubWorkflowTelemetryEventId(
+      request.action,
+    );
     const decision = this.policy.evaluateControlAction(
       request.action,
       isPrivilegedGitHubAction(request),
     );
 
     await this.telemetry.record({
-      id: `telemetry:${request.action}:${String(Date.now())}`,
+      id: telemetryEventId,
       summary: request.summary,
       status: decision.allowed ? 'approved' : 'blocked',
-      trace: ['github:workflow'],
+      trace: [GITHUB_WORKFLOW_TELEMETRY_TRACE],
       updatedAt: request.updatedAt,
       actorId,
       action: `github:${request.action}`,
@@ -192,6 +208,7 @@ export class GitHubWorkflowService {
         request,
         allowed: decision.allowed,
         policyDecisionId: decision.id,
+        telemetryEventId,
         submitted: false,
       };
     }
@@ -202,6 +219,7 @@ export class GitHubWorkflowService {
       request,
       allowed: decision.allowed,
       policyDecisionId: decision.id,
+      telemetryEventId,
       submitted: isSubmittedGitHubReceipt(receipt),
       receipt,
     };

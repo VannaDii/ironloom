@@ -202,7 +202,7 @@ The foundation-phase adapter must expose tools for:
 - storage read/list/write actions
 - telemetry and policy evaluation
 - supervisor step control
-- pull request update and merge submission
+- pull request update and merge submission with delegated GitHub telemetry ids
 - dependent rebase planning and explicit execution semantics
 
 The current implementation already includes these capabilities in code and docs. Tool registration is centralized through the OpenClaw tool inventory factory; the remaining gap is depth and completeness of delegated platform behavior.

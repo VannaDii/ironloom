@@ -661,6 +661,30 @@ describe('openclaw-deep-test helpers', () => {
               artifacts: ['artifact'],
               memory: ['memory'],
               state: ['state'],
+              telemetry: ['telemetry:update-pr:1700000000000'],
+            },
+            steps: [{ tool: 'submit_pull_request_update', ok: true }],
+          }),
+        ).not.toThrow();
+        expect(() =>
+          validateDeepTestReport({
+            mode: 'hermetic',
+            persisted: {
+              artifacts: ['artifact'],
+              memory: ['memory'],
+              state: ['state'],
+              telemetry: ['telemetry:merge-pr:1700000000000'],
+            },
+            steps: [{ tool: 'submit_pull_request_merge', ok: true }],
+          }),
+        ).not.toThrow();
+        expect(() =>
+          validateDeepTestReport({
+            mode: 'hermetic',
+            persisted: {
+              artifacts: ['artifact'],
+              memory: ['memory'],
+              state: ['state'],
               telemetry: ['telemetry-openclaw-1'],
             },
             steps: [{ tool: 'run_gates', ok: true }],
@@ -678,6 +702,30 @@ describe('openclaw-deep-test helpers', () => {
             steps: [{ tool: 'evaluate_sonar_quality_gate', ok: true }],
           }),
         ).toThrow('Deep-test report is missing Sonar quality gate telemetry.');
+        expect(() =>
+          validateDeepTestReport({
+            mode: 'hermetic',
+            persisted: {
+              artifacts: ['artifact'],
+              memory: ['memory'],
+              state: ['state'],
+              telemetry: ['telemetry-openclaw-1'],
+            },
+            steps: [{ tool: 'submit_pull_request_update', ok: true }],
+          }),
+        ).toThrow('Deep-test report is missing pull request update telemetry.');
+        expect(() =>
+          validateDeepTestReport({
+            mode: 'hermetic',
+            persisted: {
+              artifacts: ['artifact'],
+              memory: ['memory'],
+              state: ['state'],
+              telemetry: ['telemetry-openclaw-1'],
+            },
+            steps: [{ tool: 'submit_pull_request_merge', ok: true }],
+          }),
+        ).toThrow('Deep-test report is missing pull request merge telemetry.');
       },
     },
     {

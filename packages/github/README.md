@@ -9,7 +9,10 @@ Allowed actions are projected into concrete GitHub REST requests for PR
 creation, PR updates, PR comments, PR merges, and branch synchronization.
 Submission receipts classify dry-run and 2xx responses as submitted while
 preserving non-2xx GitHub responses as unsubmitted decisions with the original
-receipt attached.
+receipt attached. Every submission decision also returns the telemetry event id
+persisted before policy denial or REST submission, so OpenClaw and Discord
+operators can link PR updates and merge attempts back to the durable GitHub
+workflow audit trail.
 
 ## Real-World Flow
 
@@ -17,10 +20,13 @@ receipt attached.
 flowchart LR
   PR[PR lifecycle request] --> Policy[Privilege decision]
   Policy --> Request[GitHub REST request]
+  Policy --> Telemetry[Telemetry event id]
   Request --> Submit[API submission result]
   Submit --> Accepted{dry-run or 2xx?}
   Accepted -->|yes| Submitted[submitted decision]
   Accepted -->|no| Rejected[unsubmitted receipt]
+  Telemetry --> Submitted
+  Telemetry --> Rejected
   Submit --> Repo[Repository state]
   Submit --> State[Pull request state]
   State --> Link[Issue/spec/PR link]

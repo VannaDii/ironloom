@@ -1,5 +1,6 @@
 ---
 '@vannadii/devplat-branching': patch
+'@vannadii/devplat-github': patch
 '@vannadii/devplat-openclaw': patch
 '@vannadii/devplat-worktrees': patch
 ---
@@ -41,3 +42,9 @@ instead of raw strings. Generated schemas also carry the shared Git branch
 pattern so adapter decoding and external tool contracts reject flag-like,
 whitespace-containing, or otherwise invalid branch refs before any Git-backed
 worktree operation runs.
+
+GitHub workflow submission decisions now include the persisted telemetry event
+id returned from the policy and REST submission boundary. OpenClaw pull request
+update and merge tools continue to delegate to the PR/GitHub packages, but their
+operator-facing output can now point directly at the durable GitHub workflow
+telemetry record for accepted, blocked, dry-run, and rejected submissions.
