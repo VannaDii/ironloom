@@ -29,4 +29,7 @@ component-encoded thread id when Discord reports the interaction channel as the
 parent channel. The resolver still revalidates the encoded thread against the
 stored session and requires the callback channel to match the persisted thread
 or parent channel, so unrelated-channel replays fail closed while live-lab
-manual button clicks can route to the bound thread.
+manual button clicks can route to the bound thread. Callback channel and
+component thread identifiers are computed once per interaction before scanning
+stored sessions, and OpenClaw artifact validation now constructs its delegated
+validator map once before optional registry hardening is attached.

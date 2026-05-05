@@ -13,6 +13,7 @@ import { RebaseDependentsService } from '@vannadii/devplat-branching';
 import {
   ApprovalRecordArtifactService,
   ArtifactEnvelopeService,
+  type ArtifactValidationOptions,
   type ArtifactPayloadValidator,
   ArtifactValidationService,
   AuditLogArtifactService,
@@ -2244,15 +2245,12 @@ export function createValidateArtifactTool(): AnyAgentTool {
         );
       }
 
-      const validationOptions =
-        decoded.value.registry === undefined
-          ? {
-              payloadValidators: createOpenClawArtifactPayloadValidators(),
-            }
-          : {
-              registry: decoded.value.registry,
-              payloadValidators: createOpenClawArtifactPayloadValidators(),
-            };
+      const validationOptions: ArtifactValidationOptions = {
+        payloadValidators: createOpenClawArtifactPayloadValidators(),
+      };
+      if (decoded.value.registry !== undefined) {
+        validationOptions.registry = decoded.value.registry;
+      }
       const artifact = new ArtifactValidationService().execute(
         decoded.value.artifact,
         validationOptions,

@@ -78,22 +78,26 @@ function callbackChannelMatchesSession(
   );
 }
 
+/** Precomputed Discord callback identifiers used while scanning sessions. */
+type DiscordGatewayCallbackContext = {
+  callbackChannelId: string;
+  componentThreadId: string | undefined;
+};
+
 /**
  * Returns true when a stored session matches the live callback context.
  */
 function sessionMatchesGatewayCallback(
-  input: DiscordInteractionCallback,
+  context: DiscordGatewayCallbackContext,
   session: DiscordThreadSession,
 ): boolean {
-  const callbackChannelId = input.channel_id.trim();
-  const componentThreadId = resolveCallbackComponentThreadId(input);
-  const channelMatchesThread = session.threadId === callbackChannelId;
-  const componentMatchesThread = session.threadId === componentThreadId;
+  const channelMatchesThread = session.threadId === context.callbackChannelId;
+  const componentMatchesThread = session.threadId === context.componentThreadId;
 
   return (
     channelMatchesThread ||
     (componentMatchesThread &&
-      callbackChannelMatchesSession(callbackChannelId, session))
+      callbackChannelMatchesSession(context.callbackChannelId, session))
   );
 }
 
@@ -106,9 +110,12 @@ export function createStorageBackedDiscordGatewayBindingResolver(
   return async (
     input: DiscordInteractionCallback,
   ): ReturnType<DiscordInteractionGatewayBindingResolver> => {
-    const threadId = input.channel_id.trim();
+    const callbackContext: DiscordGatewayCallbackContext = {
+      callbackChannelId: input.channel_id.trim(),
+      componentThreadId: resolveCallbackComponentThreadId(input),
+    };
     const sessions = (await listStoredDiscordThreadSessions(store)).filter(
-      (session) => sessionMatchesGatewayCallback(input, session),
+      (session) => sessionMatchesGatewayCallback(callbackContext, session),
     );
     const [session] = sessions;
 
@@ -121,7 +128,7 @@ export function createStorageBackedDiscordGatewayBindingResolver(
     }
 
     return {
-      threadId,
+      threadId: callbackContext.callbackChannelId,
       boundThreadId: sessions.length === 0 ? 'unresolved' : 'ambiguous',
       summary:
         sessions.length === 0
