@@ -13,6 +13,7 @@ import {
   DISCORD_GATEWAY_INTERACTION_CREATE_EVENT,
 } from './constants.js';
 
+/** Codec for discord gateway dispatch event. */
 export const DiscordGatewayDispatchEventCodec = t.intersection([
   t.type({
     op: t.literal(DISCORD_GATEWAY_DISPATCH_OPCODE),
@@ -24,6 +25,7 @@ export const DiscordGatewayDispatchEventCodec = t.intersection([
   }),
 ]);
 
+/** Codec for discord gateway interaction create event. */
 export const DiscordGatewayInteractionCreateEventCodec = t.intersection([
   t.type({
     op: t.literal(DISCORD_GATEWAY_DISPATCH_OPCODE),
@@ -35,6 +37,7 @@ export const DiscordGatewayInteractionCreateEventCodec = t.intersection([
   }),
 ]);
 
+/** Codec for discord gateway hello event. */
 export const DiscordGatewayHelloEventCodec = t.type({
   op: t.literal(DISCORD_GATEWAY_HELLO_OPCODE),
   d: t.type({
@@ -45,10 +48,12 @@ export const DiscordGatewayHelloEventCodec = t.type({
   }),
 });
 
+/** Codec for discord gateway heartbeat ack event. */
 export const DiscordGatewayHeartbeatAckEventCodec = t.type({
   op: t.literal(DISCORD_GATEWAY_HEARTBEAT_ACK_OPCODE),
 });
 
+/** Codec for discord gateway identify payload. */
 export const DiscordGatewayIdentifyPayloadCodec = t.type({
   op: t.literal(DISCORD_GATEWAY_IDENTIFY_OPCODE),
   d: t.type({
@@ -62,22 +67,26 @@ export const DiscordGatewayIdentifyPayloadCodec = t.type({
   }),
 });
 
+/** Codec for discord gateway heartbeat payload. */
 export const DiscordGatewayHeartbeatPayloadCodec = t.type({
   op: t.literal(DISCORD_GATEWAY_HEARTBEAT_OPCODE),
   d: t.union([t.number, t.null]),
 });
 
+/** Codec for discord interaction gateway ignored result. */
 export const DiscordInteractionGatewayIgnoredResultCodec = t.type({
   status: t.literal('ignored'),
   eventName: t.string,
 });
 
+/** Codec for discord interaction gateway rejected result. */
 export const DiscordInteractionGatewayRejectedResultCodec = t.type({
   status: t.literal('rejected'),
   eventName: t.string,
   reason: t.string,
 });
 
+/** Codec for discord interaction gateway handled result. */
 export const DiscordInteractionGatewayHandledResultCodec = t.type({
   status: t.literal('handled'),
   interactionId: t.string,
@@ -85,6 +94,7 @@ export const DiscordInteractionGatewayHandledResultCodec = t.type({
   controlResult: DiscordControlResultCodec,
 });
 
+/** Codec for discord interaction gateway result. */
 export const DiscordInteractionGatewayResultCodec = t.union([
   DiscordInteractionGatewayIgnoredResultCodec,
   DiscordInteractionGatewayRejectedResultCodec,

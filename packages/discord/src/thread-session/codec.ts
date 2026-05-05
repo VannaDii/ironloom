@@ -5,6 +5,7 @@ import {
   LifecycleStatusCodec,
 } from '@vannadii/devplat-core';
 
+/** Codec for positive pull request number. */
 export const PositivePullRequestNumberCodec = new t.Type<number, number>(
   'PositivePullRequestNumber',
   (input): input is number =>
@@ -20,6 +21,7 @@ export const PositivePullRequestNumberCodec = new t.Type<number, number>(
   t.identity,
 );
 
+/** Codec for discord thread session base. */
 const DiscordThreadSessionBaseCodec = t.type({
   id: t.string,
   summary: t.string,
@@ -33,12 +35,14 @@ const DiscordThreadSessionBaseCodec = t.type({
   artifactId: t.string,
 });
 
+/** Codec for discord thread kind. */
 export const DiscordThreadKindCodec = t.union([
   t.literal('spec'),
   t.literal('implementation'),
   t.literal('pull-request'),
 ]);
 
+/** Codec for discord thread session input. */
 export const DiscordThreadSessionInputCodec = t.intersection([
   DiscordThreadSessionBaseCodec,
   t.type({
@@ -49,6 +53,7 @@ export const DiscordThreadSessionInputCodec = t.intersection([
   }),
 ]);
 
+/** Codec for discord spec thread session. */
 export const DiscordSpecThreadSessionCodec = t.intersection([
   DiscordThreadSessionBaseCodec,
   t.type({
@@ -59,6 +64,7 @@ export const DiscordSpecThreadSessionCodec = t.intersection([
   }),
 ]);
 
+/** Codec for discord implementation thread session. */
 export const DiscordImplementationThreadSessionCodec = t.intersection([
   DiscordThreadSessionBaseCodec,
   t.type({
@@ -69,6 +75,7 @@ export const DiscordImplementationThreadSessionCodec = t.intersection([
   }),
 ]);
 
+/** Codec for discord pull request thread session. */
 export const DiscordPullRequestThreadSessionCodec = t.intersection([
   DiscordThreadSessionBaseCodec,
   t.type({
@@ -79,12 +86,14 @@ export const DiscordPullRequestThreadSessionCodec = t.intersection([
   }),
 ]);
 
+/** Codec for discord thread session. */
 export const DiscordThreadSessionCodec = t.union([
   DiscordSpecThreadSessionCodec,
   DiscordImplementationThreadSessionCodec,
   DiscordPullRequestThreadSessionCodec,
 ]);
 
+/** Codec for discord thread session result. */
 export const DiscordThreadSessionResultCodec = t.type({
   session: DiscordThreadSessionCodec,
   artifactId: t.string,

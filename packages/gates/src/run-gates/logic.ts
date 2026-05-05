@@ -21,27 +21,32 @@ import {
   GATE_NEXT_ACTION_REMEDIATE_FAILURE,
 } from './constants.js';
 
+/** Contract for gate next action. */
 type GateNextAction =
   | typeof DEVPLAT_ACTION_RETRY_GATES
   | typeof GATE_NEXT_ACTION_REMEDIATE_FAILURE
   | typeof GATE_NEXT_ACTION_CONTINUE;
 
+/** Contract for gate command spec. */
 export interface GateCommandSpec {
   command: string;
   args: string[];
 }
 
+/** Contract for gate executor. */
 export type GateExecutor = (
   command: string,
   args: readonly string[],
 ) => Promise<CommandResult>;
 
+/** Get npm command. */
 export function getNpmCommand(
   platform: NodeJS.Platform = process.platform,
 ): string {
   return platform === 'win32' ? 'npm.cmd' : 'npm';
 }
 
+/** Resolves gate command. */
 export function resolveGateCommand(gateName: string): GateCommandSpec {
   const trimmedName = gateName.trim();
   return {
@@ -50,6 +55,7 @@ export function resolveGateCommand(gateName: string): GateCommandSpec {
   };
 }
 
+/** Creates gate check result. */
 export function createGateCheckResult(
   gateName: string,
   commandResult: CommandResult,
@@ -66,6 +72,7 @@ export function createGateCheckResult(
   };
 }
 
+/** Resolves gate failure kind. */
 function resolveGateFailureKind(
   success: boolean,
   commandResult: CommandResult,
@@ -81,6 +88,7 @@ function resolveGateFailureKind(
   return 'command-failed';
 }
 
+/** Resolves gate next action. */
 function resolveGateNextAction(failureKind: GateFailureKind): GateNextAction {
   if (failureKind === 'timeout') {
     return DEVPLAT_ACTION_RETRY_GATES;
@@ -93,6 +101,7 @@ function resolveGateNextAction(failureKind: GateFailureKind): GateNextAction {
   return GATE_NEXT_ACTION_CONTINUE;
 }
 
+/** Classify gate run. */
 export function classifyGateRun(
   results: readonly GateCheckResult[],
 ): GateFailureClassification {
@@ -121,18 +130,22 @@ export function classifyGateRun(
   };
 }
 
+/** Unique trimmed. */
 function uniqueTrimmed(values: readonly string[]): string[] {
   return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
 }
 
+/** Creates gate finding id. */
 function createGateFindingId(gateName: string): string {
   return `gate:${gateName.trim()}`;
 }
 
+/** Creates gate remediation action. */
 function createGateRemediationAction(result: GateCheckResult): string {
   return `Fix ${result.name.trim()} gate failure: ${result.detail.trim()}`;
 }
 
+/** Creates gate remediation hook. */
 export function createGateRemediationHook(
   input: GateRunReport,
 ): GateRemediationHook {
@@ -173,6 +186,7 @@ export function createGateRemediationHook(
   };
 }
 
+/** Creates gate run report. */
 export function createGateRunReport(input: GateRunReport): GateRunReport {
   const classification = input.classification ?? classifyGateRun(input.results);
   const normalizedInput: GateRunReport = {
@@ -196,6 +210,7 @@ export function createGateRunReport(input: GateRunReport): GateRunReport {
   );
 }
 
+/** Run gates. */
 export async function runGates(
   gateNames: string[],
   summary: string,
@@ -220,6 +235,7 @@ export async function runGates(
   });
 }
 
+/** Describes gate run report. */
 export function describeGateRunReport(input: GateRunReport): string {
   return `${String(input.results.length)} gates -> ${input.passed ? 'passed' : 'failed'}`;
 }

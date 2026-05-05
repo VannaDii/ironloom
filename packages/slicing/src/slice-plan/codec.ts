@@ -29,6 +29,7 @@ export const SliceWorkPacketCodec = t.type({
   reviewFocus: t.array(t.string),
 });
 
+/** Codec for slice size. */
 export const SliceSizeCodec = t.union([
   t.literal('small'),
   t.literal('medium'),

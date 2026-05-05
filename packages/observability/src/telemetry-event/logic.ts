@@ -7,6 +7,7 @@ import type {
   TelemetryRunSummary,
 } from './codec.js';
 
+/** Creates telemetry event. */
 export function createTelemetryEvent(input: TelemetryEvent): TelemetryEvent {
   return appendTrace(
     {
@@ -18,10 +19,12 @@ export function createTelemetryEvent(input: TelemetryEvent): TelemetryEvent {
   );
 }
 
+/** Describes telemetry event. */
 export function describeTelemetryEvent(input: TelemetryEvent): string {
   return `${input.scope}:${input.action} -> ${input.summary}`;
 }
 
+/** Unique trimmed. */
 function uniqueTrimmed(values: readonly string[]): string[] {
   return [
     ...new Set(
@@ -30,6 +33,7 @@ function uniqueTrimmed(values: readonly string[]): string[] {
   ];
 }
 
+/** Extract artifact ids. */
 function extractArtifactIds(input: TelemetryEvent): string[] {
   const value = input.details['artifactIds'];
   if (!Array.isArray(value)) {
@@ -42,6 +46,7 @@ function extractArtifactIds(input: TelemetryEvent): string[] {
   );
 }
 
+/** Count by scope. */
 function countByScope(
   events: readonly TelemetryEvent[],
 ): TelemetryRunMetrics['scopeCounts'] {
@@ -56,6 +61,7 @@ function countByScope(
     });
 }
 
+/** Count by status. */
 function countByStatus(
   events: readonly TelemetryEvent[],
 ): TelemetryRunMetrics['statusCounts'] {
@@ -70,6 +76,7 @@ function countByStatus(
     });
 }
 
+/** Creates telemetry audit record. */
 export function createTelemetryAuditRecord(
   input: TelemetryAuditRecord,
 ): TelemetryAuditRecord {
@@ -95,6 +102,7 @@ export function createTelemetryAuditRecord(
   };
 }
 
+/** Creates telemetry run metrics. */
 export function createTelemetryRunMetrics(input: {
   runId: string;
   events: readonly TelemetryEvent[];
@@ -128,6 +136,7 @@ export function createTelemetryRunMetrics(input: {
   };
 }
 
+/** Creates telemetry run summary. */
 export function createTelemetryRunSummary(input: {
   runId: string;
   events: readonly TelemetryEvent[];

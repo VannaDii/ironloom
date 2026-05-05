@@ -5,6 +5,7 @@ import {
   LifecycleStatusCodec,
 } from '@vannadii/devplat-core';
 
+/** Codec for discord approval action. */
 export const DiscordApprovalActionCodec = t.union([
   t.literal('approve'),
   t.literal('retry'),
@@ -12,6 +13,7 @@ export const DiscordApprovalActionCodec = t.union([
   t.literal('escalate'),
 ]);
 
+/** Codec for discord approval request. */
 export const DiscordApprovalRequestCodec = t.type({
   id: t.string,
   summary: t.string,
@@ -26,6 +28,7 @@ export const DiscordApprovalRequestCodec = t.type({
   privileged: t.boolean,
 });
 
+/** Codec for discord approval result. */
 export const DiscordApprovalResultCodec = t.type({
   request: DiscordApprovalRequestCodec,
   policyDecisionId: t.string,

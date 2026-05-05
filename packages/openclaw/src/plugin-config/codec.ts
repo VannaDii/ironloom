@@ -5,11 +5,13 @@ import {
   LifecycleStatusCodec,
 } from '@vannadii/devplat-core';
 
+/** Codec for open claw plugin config discord install scope. */
 export const OpenClawPluginConfigDiscordInstallScopeCodec = t.union([
   t.literal('bot'),
   t.literal('applications.commands'),
 ]);
 
+/** Codec for open claw plugin config discord permission. */
 export const OpenClawPluginConfigDiscordPermissionCodec = t.union([
   t.literal('ViewChannel'),
   t.literal('SendMessages'),
@@ -20,6 +22,7 @@ export const OpenClawPluginConfigDiscordPermissionCodec = t.union([
   t.literal('ReadMessageHistory'),
 ]);
 
+/** Codec for open claw plugin config. */
 export const OpenClawPluginConfigCodec = t.type({
   id: t.string,
   summary: t.string,

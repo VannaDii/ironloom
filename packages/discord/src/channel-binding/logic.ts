@@ -5,12 +5,14 @@ import type {
   DiscordThreadBindingResult,
 } from './codec.js';
 
+/** Assert identifier. */
 function assertIdentifier(name: string, value: string): void {
   if (value.trim().length === 0) {
     throw new Error(`Discord channel binding ${name} must not be empty.`);
   }
 }
 
+/** Creates discord channel binding. */
 export function createDiscordChannelBinding(
   input: DiscordChannelBinding,
 ): DiscordChannelBinding {
@@ -27,6 +29,7 @@ export function createDiscordChannelBinding(
   );
 }
 
+/** Creates discord thread binding result. */
 export function createDiscordThreadBindingResult(
   binding: DiscordChannelBinding,
   threadId: string,
@@ -49,6 +52,7 @@ export function createDiscordThreadBindingResult(
   };
 }
 
+/** Describes discord channel binding. */
 export function describeDiscordChannelBinding(
   input: DiscordChannelBinding,
 ): string {

@@ -17,6 +17,7 @@ import type {
   DiscordInteractionGatewayResult,
 } from './codec.js';
 
+/** Contract for discord interaction gateway binding resolver. */
 export type DiscordInteractionGatewayBindingResolver = (
   input: Parameters<typeof createDiscordOperatorInteractionFromCallback>[0],
 ) => Promise<DiscordInteractionCallbackOptions>;
@@ -33,6 +34,7 @@ function createDefaultControlPlane(): DiscordControlPlaneService {
   );
 }
 
+/** Discord interaction gateway service service. */
 export class DiscordInteractionGatewayService {
   public constructor(
     private readonly controlPlane = createDefaultControlPlane(),

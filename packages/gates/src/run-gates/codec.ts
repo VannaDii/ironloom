@@ -5,12 +5,14 @@ import {
   LifecycleStatusCodec,
 } from '@vannadii/devplat-core';
 
+/** Codec for gate failure kind. */
 export const GateFailureKindCodec = t.union([
   t.literal('command-failed'),
   t.literal('timeout'),
   t.literal('passed'),
 ]);
 
+/** Codec for gate check result. */
 export const GateCheckResultCodec = t.intersection([
   t.type({
     name: t.string,
@@ -23,6 +25,7 @@ export const GateCheckResultCodec = t.intersection([
   }),
 ]);
 
+/** Codec for gate failure classification. */
 export const GateFailureClassificationCodec = t.type({
   kind: t.union([
     t.literal('passed'),
@@ -33,6 +36,7 @@ export const GateFailureClassificationCodec = t.type({
   nextAction: t.string,
 });
 
+/** Codec for gate remediation hook. */
 export const GateRemediationHookCodec = t.type({
   hookId: t.string,
   gateRunReportId: t.string,
@@ -46,6 +50,7 @@ export const GateRemediationHookCodec = t.type({
   createdAt: IsoTimestampCodec,
 });
 
+/** Codec for gate run report. */
 export const GateRunReportCodec = t.intersection([
   t.type({
     id: t.string,

@@ -5,6 +5,7 @@ import {
 
 import type { NormalizedSonarIssue, SonarQualityGateResult } from './codec.js';
 
+/** Normalizes sonar issue. */
 export function normalizeSonarIssue(
   input: NormalizedSonarIssue,
 ): NormalizedSonarIssue {
@@ -22,6 +23,7 @@ export function normalizeSonarIssue(
   };
 }
 
+/** Creates sonar quality gate result. */
 export function createSonarQualityGateResult(
   input: SonarQualityGateResult,
 ): SonarQualityGateResult {
@@ -50,6 +52,7 @@ export function createSonarQualityGateResult(
   };
 }
 
+/** Maps sonar severity to review severity. */
 function mapSonarSeverityToReviewSeverity(
   input: NormalizedSonarIssue['severity'],
 ): ReviewFinding['severity'] {
@@ -68,16 +71,19 @@ function mapSonarSeverityToReviewSeverity(
   return 'low';
 }
 
+/** Creates sonar issue rationale. */
 function createSonarIssueRationale(input: NormalizedSonarIssue): string {
   return `Sonar issue ${input.issueKey} reported ${input.severity} severity with ${String(input.effortMinutes)} minutes of estimated effort.`;
 }
 
+/** Creates sonar issue fix recommendation. */
 function createSonarIssueFixRecommendation(
   input: NormalizedSonarIssue,
 ): string {
   return `Resolve the Sonar finding in ${input.path}: ${input.message}`;
 }
 
+/** Creates review finding from sonar issue. */
 export function createReviewFindingFromSonarIssue(
   input: NormalizedSonarIssue,
   updatedAt: string,
@@ -96,6 +102,7 @@ export function createReviewFindingFromSonarIssue(
   });
 }
 
+/** Creates review findings from sonar quality gate. */
 export function createReviewFindingsFromSonarQualityGate(
   input: SonarQualityGateResult,
 ): ReviewFinding[] {
@@ -105,10 +112,12 @@ export function createReviewFindingsFromSonarQualityGate(
   );
 }
 
+/** Returns whether the quality gate is passing. */
 export function isQualityGatePassing(input: SonarQualityGateResult): boolean {
   return input.status === 'passed';
 }
 
+/** Describes sonar quality gate result. */
 export function describeSonarQualityGateResult(
   input: SonarQualityGateResult,
 ): string {

@@ -219,6 +219,52 @@ describe('check-unit-tests', () => {
         );
       },
     },
+    {
+      name: 'reports case tables that use non-canonical runner variables',
+      inputs: {
+        files: [
+          {
+            path: 'packages/example/src/unit/logic.ts',
+            contents: 'export const value = 1;\n',
+          },
+          {
+            path: 'packages/example/src/unit/logic.test.ts',
+            contents: [
+              'const routeCases = [',
+              '  { name: "case one", inputs: {}, mock: () => ({}), assert: () => undefined },',
+              '];',
+              '',
+              "it.each(routeCases)('$name', () => undefined);",
+              '',
+              'const cases = [',
+              '  { name: "case two", inputs: {}, mock: () => ({}), assert: () => undefined },',
+              '];',
+              "it.each(cases)('$name', () => undefined);",
+            ].join('\n'),
+          },
+        ],
+      },
+      mock: async (inputs) => {
+        const rootDirectory = await mkdtemp(
+          join(tmpdir(), 'devplat-check-unit-tests-'),
+        );
+
+        for (const file of inputs.files) {
+          const filePath = resolve(rootDirectory, file.path);
+          await mkdir(resolve(filePath, '..'), { recursive: true });
+          await writeFile(filePath, file.contents, 'utf8');
+        }
+
+        return { rootDirectory };
+      },
+      assert: async (context) => {
+        expect(
+          await collectTestCaseStyleFailures(context.rootDirectory),
+        ).toContain(
+          "packages/example/src/unit/logic.test.ts must use it.each(cases)('$name', ...) instead of it.each(routeCases).",
+        );
+      },
+    },
   ];
 
   it.each(cases)('$name', async (testCase) => {

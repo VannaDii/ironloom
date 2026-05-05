@@ -14,12 +14,15 @@ import {
 } from './plugin-config/index.js';
 import { createDevplatOpenClawTools } from './tool-surfaces/service.js';
 
+/** Contract for plugin json schema. */
 type PluginJsonSchema = NonNullable<OpenClawPluginConfigSchema['jsonSchema']>;
 
+/** Returns whether the value is a plugin JSON schema. */
 function isPluginJsonSchema(value: unknown): value is PluginJsonSchema {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+/** Reads a schema file. */
 function readSchema(fileName: string): PluginJsonSchema {
   const filePath = resolve(import.meta.dirname, '..', 'schemas', fileName);
   const parsed: unknown = JSON.parse(readFileSync(filePath, 'utf8'));
@@ -30,6 +33,7 @@ function readSchema(fileName: string): PluginJsonSchema {
   return parsed;
 }
 
+/** Validate plugin config. */
 function validatePluginConfig(value: unknown):
   | {
       ok: true;
@@ -53,11 +57,13 @@ function validatePluginConfig(value: unknown):
   };
 }
 
+/** Codec for config schema. */
 const configSchema: OpenClawPluginConfigSchema = {
   validate: validatePluginConfig,
   jsonSchema: readSchema('plugin-config.schema.json'),
 };
 
+/** Codec for devplat open claw plugin. */
 const devplatOpenClawPlugin = definePluginEntry({
   id: '@vannadii/devplat-openclaw',
   name: 'DevPlat OpenClaw Adapter',

@@ -55,6 +55,7 @@ function createThreadSessionArtifactPayload(
   };
 }
 
+/** Discord thread session service service. */
 export class DiscordThreadSessionService {
   public constructor(
     private readonly artifacts = new ArtifactEnvelopeService(),
@@ -62,14 +63,17 @@ export class DiscordThreadSessionService {
     private readonly store = new FileStoreService(),
   ) {}
 
+  /** Executes the service operation. */
   public execute(input: DiscordThreadSessionInput): DiscordThreadSession {
     return createDiscordThreadSession(input);
   }
 
+  /** Describes the service result for operators. */
   public explain(input: DiscordThreadSession): string {
     return describeDiscordThreadSession(input);
   }
 
+  /** Open thread. */
   public async openThread(
     input: DiscordThreadSessionInput,
     actorId = DISCORD_THREAD_SESSION_SYSTEM_ACTOR_ID,

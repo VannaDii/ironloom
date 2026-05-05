@@ -5,6 +5,7 @@ import {
   LifecycleStatusCodec,
 } from '@vannadii/devplat-core';
 
+/** Codec for discord binding kind. */
 export const DiscordBindingKindCodec = t.union([
   t.literal('spec'),
   t.literal('implementation'),
@@ -12,6 +13,7 @@ export const DiscordBindingKindCodec = t.union([
   t.literal('audit'),
 ]);
 
+/** Codec for discord channel binding. */
 export const DiscordChannelBindingCodec = t.type({
   id: t.string,
   summary: t.string,
@@ -24,6 +26,7 @@ export const DiscordChannelBindingCodec = t.type({
   threadBindingMode: t.literal('inherit-parent'),
 });
 
+/** Codec for discord thread binding result. */
 export const DiscordThreadBindingResultCodec = t.type({
   binding: DiscordChannelBindingCodec,
   threadId: t.string,

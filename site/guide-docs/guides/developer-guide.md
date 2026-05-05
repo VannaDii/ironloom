@@ -91,10 +91,11 @@ Use the root `PLATFORM.md` file as the authoritative foundation-scope document. 
 - keep branch names and pull request titles free of registered tool names
 - keep pull request titles in conventional commit format
 - keep pull request bodies aligned with `.github/pull_request_template.md` and fill every section with concrete change details
-- keep tests in structured `const cases = [...]` tables where each case provides `inputs`, `mock`, and `assert`, then exercises a single `it.each(cases)('$name', ...)` implementation per suite; `npm run check:unit-tests` enforces the case-table fields and rejects ad hoc loops over `cases` in `.test.ts`, `.test.mts`, and `.test.mjs` files
+- keep a detailed Changesets entry on every pull request containing code changes, and update it whenever later commits change runtime, operator, package, workflow, or validation impact
+- keep tests in structured `const cases = [...]` tables where each case provides `inputs`, `mock`, and `assert`, then exercises a single `it.each(cases)('$name', ...)` implementation per suite; `npm run check:unit-tests` enforces the case-table fields and rejects ad hoc loops over `cases` plus alternate `it.each(<name>)` table variables in `.test.ts`, `.test.mts`, and `.test.mjs` files
 - keep constants in package-local `constants.ts` files, promote cross-package constants into `@vannadii/devplat-core`, rely on `npm run check:constants` to reject duplicated shared lifecycle action literals in authored package source, and use `npm run check:regex-governance` to ensure package regular expressions live in `constants.ts`, use a `PATTERN` suffix, and have package test references
 - keep authored package TypeScript free of `as`, angle-bracket, and non-null assertions; `npm run check:type-assertions` enforces this with AST parsing before tests run
-- keep JSDoc on authored constants, helpers, codecs, functions, classes, and public types so internal maintainers and API users can read the same intent at the symbol boundary
+- keep JSDoc on authored constants, helpers, codecs, functions, classes, and public types so internal maintainers and API users can read the same intent at the symbol boundary; `npm run check:jsdoc` enforces this for authored package source
 - document release, rollback, and performance impact when a change touches those surfaces
 
 ## Pull Request Feedback

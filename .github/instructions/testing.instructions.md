@@ -6,6 +6,7 @@
 - Test pure logic directly, step by step, and before higher-level orchestration paths.
 - Test services for orchestration, delegation, policy checks, persistence boundaries, side-effect boundaries, and release-surface coordination where relevant.
 - Use structured `const cases = [...]` tables. Each case must declare `inputs`, a `mock` setup function, and an `assert` function, then run through a single `it.each(cases)('$name', ...)` implementation per suite.
+- The table variable must be named `cases`; alternate table names in `it.each(<name>)` calls are not allowed.
 - Treat regular expressions as independently testable contracts. Every named pattern needs matching and non-matching cases that prove the expected edge behavior.
 
 ## Failure Clarity

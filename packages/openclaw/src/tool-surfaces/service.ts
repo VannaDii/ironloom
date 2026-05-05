@@ -178,6 +178,7 @@ import type {
   OpenDiscordThreadToolInput,
 } from './codec.js';
 
+/** Contract for tool parameter schema. */
 type ToolParameterSchema = AnyAgentTool['parameters'] & Record<string, unknown>;
 
 /**
@@ -339,10 +340,12 @@ type OpenClawWorktreeReleaseService = Pick<
   'release' | 'releaseOnDisk'
 >;
 
+/** Returns whether the value is a tool parameter schema. */
 function isToolParameterSchema(value: unknown): value is ToolParameterSchema {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+/** Reads a schema file. */
 function readSchema(fileName: string): ToolParameterSchema {
   const filePath = resolve(
     import.meta.dirname,
@@ -359,6 +362,7 @@ function readSchema(fileName: string): ToolParameterSchema {
   return parsed;
 }
 
+/** Creates text result. */
 function createTextResult(payload: unknown): {
   content: Array<{ type: 'text'; text: string }>;
   details: unknown;
@@ -376,12 +380,14 @@ function createTextResult(payload: unknown): {
   };
 }
 
+/** Converts the input to a Discord thread session. */
 function toDiscordThreadSession(
   input: OpenDiscordThreadToolInput,
 ): DiscordThreadSession {
   return input;
 }
 
+/** Returns whether the input is a Discord operator interaction. */
 function isDiscordOperatorInteraction(
   input:
     | DiscordOperatorInteraction
@@ -390,6 +396,7 @@ function isDiscordOperatorInteraction(
   return 'token' in input;
 }
 
+/** Creates loopback discord response transport. */
 function createLoopbackDiscordResponseTransport(): DiscordControlResponseTransport {
   return new DiscordLoopbackResponseTransport();
 }
@@ -744,6 +751,7 @@ function resolveTaskRecord(
   return input.record ?? createFallbackTaskRecord(input);
 }
 
+/** Creates run gates tool. */
 export function createRunGatesTool(
   dependencies:
     | OpenClawRunGatesService
@@ -790,6 +798,7 @@ export function createRunGatesTool(
   return tool;
 }
 
+/** Creates research brief tool. */
 export function createResearchBriefTool(): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'create_research_brief',
@@ -816,6 +825,7 @@ export function createResearchBriefTool(): AnyAgentTool {
   return tool;
 }
 
+/** Creates spec record tool. */
 export function createSpecRecordTool(): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'create_spec_record',
@@ -839,6 +849,7 @@ export function createSpecRecordTool(): AnyAgentTool {
   return tool;
 }
 
+/** Creates approve spec record tool. */
 export function createApproveSpecRecordTool(): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'approve_spec_record',
@@ -863,6 +874,7 @@ export function createApproveSpecRecordTool(): AnyAgentTool {
   return tool;
 }
 
+/** Creates update spec record tool. */
 export function createUpdateSpecRecordTool(): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'update_spec_record',
@@ -887,6 +899,7 @@ export function createUpdateSpecRecordTool(): AnyAgentTool {
   return tool;
 }
 
+/** Creates slice plan tool. */
 export function createSlicePlanTool(): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'create_slice_plan',
@@ -910,6 +923,7 @@ export function createSlicePlanTool(): AnyAgentTool {
   return tool;
 }
 
+/** Creates evaluate slice plan readiness tool. */
 export function createEvaluateSlicePlanReadinessTool(): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'evaluate_slice_plan_readiness',
@@ -949,6 +963,7 @@ export function createEvaluateSlicePlanReadinessTool(): AnyAgentTool {
   return tool;
 }
 
+/** Creates resolve runtime config tool. */
 export function createResolveRuntimeConfigTool(): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'resolve_runtime_config',
@@ -977,6 +992,7 @@ export function createResolveRuntimeConfigTool(): AnyAgentTool {
   return tool;
 }
 
+/** Creates open claw plugin config tool. */
 export function createOpenClawPluginConfigTool(): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'create_openclaw_plugin_config',
@@ -1005,6 +1021,7 @@ export function createOpenClawPluginConfigTool(): AnyAgentTool {
   return tool;
 }
 
+/** Creates artifact envelope tool. */
 export function createArtifactEnvelopeTool(): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'create_artifact_envelope',
@@ -1031,6 +1048,7 @@ export function createArtifactEnvelopeTool(): AnyAgentTool {
   return tool;
 }
 
+/** Creates approval record tool. */
 export function createApprovalRecordTool(): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'create_approval_record',
@@ -1059,6 +1077,7 @@ export function createApprovalRecordTool(): AnyAgentTool {
   return tool;
 }
 
+/** Creates audit log tool. */
 export function createAuditLogTool(): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'create_audit_log',
@@ -1082,6 +1101,7 @@ export function createAuditLogTool(): AnyAgentTool {
   return tool;
 }
 
+/** Creates merge decision tool. */
 export function createMergeDecisionTool(): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'create_merge_decision',
@@ -1110,6 +1130,7 @@ export function createMergeDecisionTool(): AnyAgentTool {
   return tool;
 }
 
+/** Creates rebase result tool. */
 export function createRebaseResultTool(): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'create_rebase_result',
@@ -1133,6 +1154,7 @@ export function createRebaseResultTool(): AnyAgentTool {
   return tool;
 }
 
+/** Creates execute command tool. */
 export function createExecuteCommandTool(
   dependencies: {
     commandExecutionService?: Pick<CommandExecutionService, 'execute'>;
@@ -1254,6 +1276,7 @@ export function createExecuteCommandTool(
   return tool;
 }
 
+/** Creates allocate worktree tool. */
 export function createAllocateWorktreeTool(
   dependencies: {
     worktreeAllocationService?: OpenClawWorktreeAllocateService;
@@ -1296,6 +1319,7 @@ export function createAllocateWorktreeTool(
   return tool;
 }
 
+/** Creates sync worktree tool. */
 export function createSyncWorktreeTool(
   dependencies: {
     worktreeAllocationService?: OpenClawWorktreeSyncService;
@@ -1335,6 +1359,7 @@ export function createSyncWorktreeTool(
   return tool;
 }
 
+/** Creates release worktree tool. */
 export function createReleaseWorktreeTool(
   dependencies: {
     worktreeAllocationService?: OpenClawWorktreeReleaseService;
@@ -1372,6 +1397,7 @@ export function createReleaseWorktreeTool(
   return tool;
 }
 
+/** Creates bind discord thread tool. */
 export function createBindDiscordThreadTool(): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'bind_discord_thread',
@@ -1409,6 +1435,7 @@ export function createBindDiscordThreadTool(): AnyAgentTool {
   return tool;
 }
 
+/** Creates open discord thread tool. */
 export function createOpenDiscordThreadTool(): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'open_discord_thread',
@@ -1434,6 +1461,7 @@ export function createOpenDiscordThreadTool(): AnyAgentTool {
   return tool;
 }
 
+/** Creates handle discord approval tool. */
 export function createHandleDiscordApprovalTool(): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'handle_discord_approval',
@@ -1461,6 +1489,7 @@ export function createHandleDiscordApprovalTool(): AnyAgentTool {
   return tool;
 }
 
+/** Creates handle discord control tool. */
 export function createHandleDiscordControlTool(
   dependencies: {
     discordControlPlaneService?: Pick<
@@ -1497,6 +1526,7 @@ export function createHandleDiscordControlTool(
   return tool;
 }
 
+/** Creates verify sonar bootstrap tool. */
 export function createVerifySonarBootstrapTool(): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'verify_sonar_bootstrap',
@@ -1525,6 +1555,7 @@ export function createVerifySonarBootstrapTool(): AnyAgentTool {
   return tool;
 }
 
+/** Creates evaluate sonar quality gate tool. */
 export function createEvaluateSonarQualityGateTool(
   dependencies: OpenClawSonarQualityGateToolDependencies = {},
 ): AnyAgentTool {
@@ -1572,6 +1603,7 @@ export function createEvaluateSonarQualityGateTool(
   return tool;
 }
 
+/** Creates review finding tool. */
 export function createReviewFindingTool(): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'create_review_finding',
@@ -1598,6 +1630,7 @@ export function createReviewFindingTool(): AnyAgentTool {
   return tool;
 }
 
+/** Creates remediation plan tool. */
 export function createRemediationPlanTool(): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'create_remediation_plan',
@@ -1627,6 +1660,7 @@ export function createRemediationPlanTool(): AnyAgentTool {
   return tool;
 }
 
+/** Creates remember memory entry tool. */
 export function createRememberMemoryEntryTool(): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'remember_memory_entry',
@@ -1653,6 +1687,7 @@ export function createRememberMemoryEntryTool(): AnyAgentTool {
   return tool;
 }
 
+/** Creates evaluate policy action tool. */
 export function createEvaluatePolicyActionTool(): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'evaluate_policy_action',
@@ -1682,6 +1717,7 @@ export function createEvaluatePolicyActionTool(): AnyAgentTool {
   return tool;
 }
 
+/** Creates record telemetry event tool. */
 export function createRecordTelemetryEventTool(): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'record_telemetry_event',
@@ -1708,6 +1744,7 @@ export function createRecordTelemetryEventTool(): AnyAgentTool {
   return tool;
 }
 
+/** Creates task record tool. */
 export function createTaskRecordTool(): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'create_task_record',
@@ -1731,6 +1768,7 @@ export function createTaskRecordTool(): AnyAgentTool {
   return tool;
 }
 
+/** Creates read stored record tool. */
 export function createReadStoredRecordTool(): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'read_stored_record',
@@ -1769,6 +1807,7 @@ export function createReadStoredRecordTool(): AnyAgentTool {
   return tool;
 }
 
+/** Creates list stored records tool. */
 export function createListStoredRecordsTool(): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'list_stored_records',
@@ -1902,6 +1941,7 @@ export function createListStoredIndexTool(): AnyAgentTool {
   return tool;
 }
 
+/** Creates store record tool. */
 export function createStoreRecordTool(): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'store_record',
@@ -1976,6 +2016,7 @@ export function createStoreRecordTool(): AnyAgentTool {
   return tool;
 }
 
+/** Creates pull request record tool. */
 export function createPullRequestRecordTool(): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'create_pull_request_record',
@@ -2004,6 +2045,7 @@ export function createPullRequestRecordTool(): AnyAgentTool {
   return tool;
 }
 
+/** Creates submit pull request update tool. */
 export function createSubmitPullRequestUpdateTool(): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'submit_pull_request_update',
@@ -2033,6 +2075,7 @@ export function createSubmitPullRequestUpdateTool(): AnyAgentTool {
   return tool;
 }
 
+/** Creates submit pull request merge tool. */
 export function createSubmitPullRequestMergeTool(): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'submit_pull_request_merge',
@@ -2060,6 +2103,7 @@ export function createSubmitPullRequestMergeTool(): AnyAgentTool {
   return tool;
 }
 
+/** Creates plan rebase dependents tool. */
 export function createPlanRebaseDependentsTool(): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'plan_rebase_dependents',
@@ -2089,6 +2133,7 @@ export function createPlanRebaseDependentsTool(): AnyAgentTool {
   return tool;
 }
 
+/** Creates execute rebase dependents tool. */
 export function createExecuteRebaseDependentsTool(): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'execute_rebase_dependents',
@@ -2117,6 +2162,7 @@ export function createExecuteRebaseDependentsTool(): AnyAgentTool {
   return tool;
 }
 
+/** Creates submit git hub action tool. */
 export function createSubmitGitHubActionTool(
   gitHubWorkflowService: Pick<
     GitHubWorkflowService,
@@ -2146,6 +2192,7 @@ export function createSubmitGitHubActionTool(
   return tool;
 }
 
+/** Creates git hub action request tool. */
 export function createGitHubActionRequestTool(): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'create_github_action_request',
@@ -2174,6 +2221,7 @@ export function createGitHubActionRequestTool(): AnyAgentTool {
   return tool;
 }
 
+/** Creates claim task tool. */
 export function createClaimTaskTool(): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'claim_task',
@@ -2200,6 +2248,7 @@ export function createClaimTaskTool(): AnyAgentTool {
   return tool;
 }
 
+/** Creates update task tool. */
 export function createUpdateTaskTool(): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'update_task',
@@ -2226,6 +2275,7 @@ export function createUpdateTaskTool(): AnyAgentTool {
   return tool;
 }
 
+/** Creates validate artifact tool. */
 export function createValidateArtifactTool(): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'validate_artifact',
@@ -2274,6 +2324,7 @@ export function createValidateArtifactTool(): AnyAgentTool {
   return tool;
 }
 
+/** Creates run supervisor step tool. */
 export function createRunSupervisorStepTool(): AnyAgentTool {
   const tool: AnyAgentTool = {
     name: 'run_supervisor_step',

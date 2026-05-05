@@ -10,6 +10,7 @@
 - Keep branch names and pull request titles free of registered tool names.
 - Keep pull request titles in conventional commit form.
 - Keep pull request bodies aligned with `.github/pull_request_template.md` and populate every section with the actual change details.
+- Every pull request containing any code change must include a detailed Changesets entry before it is opened or updated; keep that changeset accurate as the branch evolves.
 - Prefer explicit, traceable behavior over hidden convenience.
 
 ## Architectural Boundaries
@@ -27,7 +28,7 @@
 
 - Use folder-per-unit structure with `constants.ts` when constants exist, `codec.ts`, `logic.ts`, `logic.test.ts`, `service.ts`, and `service.test.ts`. Keep `types.ts` only when it contains non-codec-derived helper types.
 - Keep `logic.ts` pure. Keep orchestration, IO, and framework glue in `service.ts`.
-- Use structured `const cases = [...]` test tables. Each case must declare `inputs`, a `mock` setup function, and an `assert` function, then run through a single `it.each(cases)('$name', ...)` implementation per suite.
+- Use structured `const cases = [...]` test tables. Each case must declare `inputs`, a `mock` setup function, and an `assert` function, then run through a single `it.each(cases)('$name', ...)` implementation per suite. The table variable must be named `cases`; alternate table names in `it.each(<name>)` calls are not allowed.
 - Keep constants in package-local `constants.ts` files. Promote constants used by more than one package into `@vannadii/devplat-core`.
 - Treat regular expressions as constants and test every pattern with matching and non-matching edge cases.
 - Add JSDoc to authored constants, helpers, codecs, functions, classes, and public types unless the symbol is only a trivial re-export.

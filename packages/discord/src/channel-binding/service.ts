@@ -11,20 +11,24 @@ import type {
   DiscordThreadBindingResult,
 } from './codec.js';
 
+/** Discord channel binding service service. */
 export class DiscordChannelBindingService {
   public constructor(
     private readonly telemetry = new TelemetryEventService(),
     private readonly store = new FileStoreService(),
   ) {}
 
+  /** Executes the service operation. */
   public execute(input: DiscordChannelBinding): DiscordChannelBinding {
     return createDiscordChannelBinding(input);
   }
 
+  /** Describes the service result for operators. */
   public explain(input: DiscordChannelBinding): string {
     return describeDiscordChannelBinding(input);
   }
 
+  /** Bind thread. */
   public async bindThread(
     input: DiscordChannelBinding,
     threadId: string,

@@ -10,17 +10,22 @@ import {
 } from './logic.js';
 import type { ReviewFinding } from './codec.js';
 
+/** Review findings service service. */
 export class ReviewFindingsService {
+  /** Artifacts. */
   private readonly artifacts = new ArtifactEnvelopeService();
 
+  /** Evaluate. */
   public evaluate(input: ReviewFinding): ReviewFinding {
     return createReviewFinding(input);
   }
 
+  /** Executes the service operation. */
   public execute(input: ReviewFinding): ReviewFinding {
     return this.evaluate(input);
   }
 
+  /** Converts the result to an artifact. */
   public toArtifact(input: ReviewFinding): ArtifactEnvelope<ReviewFinding> {
     const finding = createReviewFinding(input);
     return this.artifacts.execute({
@@ -35,6 +40,7 @@ export class ReviewFindingsService {
     });
   }
 
+  /** Describes the service result for operators. */
   public explain(input: ReviewFinding): string {
     return describeReviewFinding(input);
   }

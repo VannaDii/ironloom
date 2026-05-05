@@ -5,10 +5,12 @@ import type {
   ResearchSourceAttribution,
 } from './codec.js';
 
+/** Unique trimmed. */
 function uniqueTrimmed(values: readonly string[]): string[] {
   return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
 }
 
+/** Normalizes source attribution. */
 function normalizeSourceAttribution(
   input: ResearchSourceAttribution,
 ): ResearchSourceAttribution {
@@ -20,6 +22,7 @@ function normalizeSourceAttribution(
   };
 }
 
+/** Normalizes capability comparison. */
 function normalizeCapabilityComparison(
   input: ResearchCapabilityComparison,
 ): ResearchCapabilityComparison {
@@ -30,6 +33,7 @@ function normalizeCapabilityComparison(
   };
 }
 
+/** Normalizes feasibility. */
 function normalizeFeasibility(input: ResearchFeasibility): ResearchFeasibility {
   return {
     feasible: input.feasible,
@@ -38,6 +42,7 @@ function normalizeFeasibility(input: ResearchFeasibility): ResearchFeasibility {
   };
 }
 
+/** Creates research brief. */
 export function createResearchBrief(input: ResearchBrief): ResearchBrief {
   return {
     ...input,
@@ -68,6 +73,7 @@ export function createResearchBrief(input: ResearchBrief): ResearchBrief {
   };
 }
 
+/** Describes research brief. */
 export function describeResearchBrief(input: ResearchBrief): string {
   return `Research brief -> ${input.topic}`;
 }

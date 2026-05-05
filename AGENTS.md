@@ -33,7 +33,7 @@
 - Keep relative `NodeNext` import and export specifiers explicit with emitted `.js` extensions.
 - Add JSDoc to every authored constant, codec, function, class, public type, and internal helper unless the symbol is a trivial re-export.
 - Every non-trivial unit needs sibling tests that reveal failure source and operational impact.
-- Use structured test tables with `const cases = [...]`. Each case must declare `inputs`, a `mock` setup function, and an `assert` function, then run through a single `it.each(cases)('$name', ...)` implementation per suite.
+- Use structured test tables with `const cases = [...]`. Each case must declare `inputs`, a `mock` setup function, and an `assert` function, then run through a single `it.each(cases)('$name', ...)` implementation per suite. The table variable must be named `cases`; alternate table names in `it.each(<name>)` calls are not allowed.
 - Public contract changes require aligned codec-owned types, `io-ts` codecs, generated schemas, docs, and tests.
 - Export public types near their source codec definitions; delete `types.ts` files when they only re-export or alias codec-owned types.
 - Keep constants in the owning package's `constants.ts`. If more than one package needs the same constant, define it once in `@vannadii/devplat-core` and import it from there.

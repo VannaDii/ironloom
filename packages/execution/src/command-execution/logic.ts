@@ -22,6 +22,7 @@ export type NormalizedCommandExecutionCwd =
       error: string;
     };
 
+/** Truncate command output. */
 export function truncateCommandOutput(
   value: string,
   maxOutputBytes: number | undefined,
@@ -77,6 +78,7 @@ export function normalizeCommandExecutionCwd(
   };
 }
 
+/** Creates command result. */
 export function createCommandResult(input: CommandResult): CommandResult {
   return {
     ...input,
@@ -91,6 +93,7 @@ export function createCommandResult(input: CommandResult): CommandResult {
   };
 }
 
+/** Creates command execution policy. */
 export function createCommandExecutionPolicy(
   input: CommandExecutionOptions,
 ): CommandExecutionPolicy {
@@ -125,10 +128,12 @@ export function createCommandExecutionPolicy(
   };
 }
 
+/** Returns whether the command result succeeded. */
 export function isSuccessfulCommandResult(input: CommandResult): boolean {
   return input.exitCode === 0 && !input.timedOut;
 }
 
+/** Describes command result. */
 export function describeCommandResult(input: CommandResult): string {
   return `${input.command} -> exit ${String(input.exitCode)}`;
 }

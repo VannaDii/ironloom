@@ -33,3 +33,10 @@ manual button clicks can route to the bound thread. Callback channel and
 component thread identifiers are computed once per interaction before scanning
 stored sessions, and OpenClaw artifact validation now constructs its delegated
 validator map once before optional registry hardening is attached.
+
+Repository governance is also tightened so instruction drift is caught locally
+before review. `check:repo` now includes a package-source JSDoc gate, the unit
+test checker rejects non-canonical `it.each(<name>)` case-table variables, and
+the instruction checker requires the code-change Changesets rule, canonical
+test-table wording, and JSDoc governance documentation to stay aligned across
+the agent, contributor, GitHub, and developer-guide surfaces.

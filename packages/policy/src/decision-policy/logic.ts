@@ -27,6 +27,7 @@ import {
   POLICY_SENSITIVE_ACTIONS,
 } from './constants.js';
 
+/** Creates policy decision. */
 export function createPolicyDecision(input: PolicyDecision): PolicyDecision {
   return appendTrace(
     {
@@ -38,6 +39,7 @@ export function createPolicyDecision(input: PolicyDecision): PolicyDecision {
   );
 }
 
+/** Evaluate policy decision. */
 export function evaluatePolicyDecision(
   action: string,
   privileged: boolean,
@@ -65,6 +67,7 @@ export function evaluatePolicyDecision(
   });
 }
 
+/** Evaluate lifecycle policy action. */
 export function evaluateLifecyclePolicyAction(
   action: string,
   privileged: boolean,
@@ -107,6 +110,7 @@ export function evaluateLifecyclePolicyAction(
   };
 }
 
+/** Resolves action category. */
 function resolveActionCategory(action: string): PolicyActionCategory {
   if (POLICY_MERGE_ACTIONS.includes(action)) {
     return POLICY_ACTION_CATEGORY_MERGE;
@@ -139,6 +143,7 @@ function resolveActionCategory(action: string): PolicyActionCategory {
   return POLICY_ACTION_CATEGORY_ROUTINE;
 }
 
+/** Resolves risk level. */
 function resolveRiskLevel(
   actionCategory: PolicyActionCategory,
   privileged: boolean,
@@ -168,6 +173,7 @@ function resolveRiskLevel(
   return 'low';
 }
 
+/** Resolves requires approval. */
 function resolveRequiresApproval(
   action: string,
   actionCategory: PolicyActionCategory,
@@ -185,6 +191,7 @@ function resolveRequiresApproval(
   );
 }
 
+/** Resolves privilege level. */
 function resolvePrivilegeLevel(
   actionCategory: PolicyActionCategory,
   requiresApproval: boolean,
@@ -207,6 +214,7 @@ function resolvePrivilegeLevel(
   return 'automatic';
 }
 
+/** Resolves escalation target. */
 function resolveEscalationTarget(
   actionCategory: PolicyActionCategory,
   riskLevel: PolicyRiskLevel,
@@ -226,6 +234,7 @@ function resolveEscalationTarget(
   return 'none';
 }
 
+/** Resolves next action. */
 function resolveNextAction(
   actionCategory: PolicyActionCategory,
   allowed: boolean,
@@ -256,6 +265,7 @@ function resolveNextAction(
   }
 }
 
+/** Describes policy decision. */
 export function describePolicyDecision(input: PolicyDecision): string {
   return `${input.action} -> ${input.reason}`;
 }

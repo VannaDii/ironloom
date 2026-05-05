@@ -10,6 +10,7 @@ import {
   REMEDIATION_NEXT_ACTION_REQUEST_APPROVAL,
 } from './constants.js';
 
+/** Contract for remediation next action. */
 type RemediationNextAction =
   | typeof REMEDIATION_NEXT_ACTION_APPLY_REMEDIATION
   | typeof REMEDIATION_NEXT_ACTION_REQUEST_APPROVAL

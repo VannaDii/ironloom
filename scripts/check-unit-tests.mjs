@@ -163,6 +163,13 @@ function collectCaseRunnerFailures({ contents, relativePath, testFile }) {
       );
     }
 
+    const nonCanonicalRunnerName = getNonCanonicalCaseRunnerName(node);
+    if (nonCanonicalRunnerName !== undefined) {
+      failures.push(
+        `${relativePath} must use ${canonicalCaseRunnerDisplay} instead of it.each(${nonCanonicalRunnerName}).`,
+      );
+    }
+
     if (isCanonicalCaseRunner(node)) {
       hasCanonicalRunner = true;
     }
@@ -173,6 +180,36 @@ function collectCaseRunnerFailures({ contents, relativePath, testFile }) {
   }
 
   return failures;
+}
+
+/**
+ * Returns the table variable name for `it.each(...)` calls that do not use
+ * the canonical `cases` table.
+ */
+function getNonCanonicalCaseRunnerName(node) {
+  if (!ts.isCallExpression(node) || !ts.isCallExpression(node.expression)) {
+    return undefined;
+  }
+
+  const runnerFactory = node.expression;
+  if (!ts.isPropertyAccessExpression(runnerFactory.expression)) {
+    return undefined;
+  }
+
+  const receiver = runnerFactory.expression.expression;
+  const firstArgument = runnerFactory.arguments[0];
+  if (
+    !ts.isIdentifier(receiver) ||
+    receiver.text !== 'it' ||
+    runnerFactory.expression.name.text !== 'each' ||
+    firstArgument === undefined ||
+    !ts.isIdentifier(firstArgument) ||
+    firstArgument.text === 'cases'
+  ) {
+    return undefined;
+  }
+
+  return firstArgument.text;
 }
 
 /**

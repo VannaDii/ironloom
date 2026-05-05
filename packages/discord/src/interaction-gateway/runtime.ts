@@ -21,6 +21,7 @@ import {
 import { DiscordInteractionGatewayService } from './service.js';
 import type { DiscordInteractionGatewayBindingResolver } from './service.js';
 
+/** Contract for discord interaction gateway runtime dependencies. */
 export interface DiscordInteractionGatewayRuntimeDependencies {
   /** Optional preconfigured client used by tests or custom launchers. */
   client?: DiscordInteractionGatewayClientService;

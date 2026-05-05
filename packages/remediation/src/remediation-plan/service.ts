@@ -4,11 +4,14 @@ import type { ReviewFinding } from '@vannadii/devplat-review';
 import { createRemediationPlan, describeRemediationPlan } from './logic.js';
 import type { RemediationPlan } from './codec.js';
 
+/** Remediation plan service service. */
 export class RemediationPlanService {
+  /** Creates create. */
   public create(input: RemediationPlan): RemediationPlan {
     return createRemediationPlan(input);
   }
 
+  /** From findings. */
   public fromFindings(
     findings: readonly ReviewFinding[],
     autofix: boolean,
@@ -28,6 +31,7 @@ export class RemediationPlanService {
     });
   }
 
+  /** From gate hook. */
   public fromGateHook(
     hook: GateRemediationHook,
     autofix = hook.autofixEligible,
@@ -42,10 +46,12 @@ export class RemediationPlanService {
     });
   }
 
+  /** Executes the service operation. */
   public execute(input: RemediationPlan): RemediationPlan {
     return this.create(input);
   }
 
+  /** Describes the service result for operators. */
   public explain(input: RemediationPlan): string {
     return describeRemediationPlan(input);
   }

@@ -13,6 +13,7 @@ import {
 } from './logic.js';
 import type { DiscordApprovalRequest, DiscordApprovalResult } from './codec.js';
 
+/** Discord interactive approval service service. */
 export class DiscordInteractiveApprovalService {
   public constructor(
     private readonly policy = new DecisionPolicyService(),
@@ -21,14 +22,17 @@ export class DiscordInteractiveApprovalService {
     private readonly store = new FileStoreService(),
   ) {}
 
+  /** Executes the service operation. */
   public execute(input: DiscordApprovalRequest): DiscordApprovalRequest {
     return createDiscordApprovalRequest(input);
   }
 
+  /** Describes the service result for operators. */
   public explain(input: DiscordApprovalRequest): string {
     return describeDiscordApprovalRequest(input);
   }
 
+  /** Handle approval. */
   public async handleApproval(
     input: DiscordApprovalRequest,
   ): Promise<DiscordApprovalResult> {
