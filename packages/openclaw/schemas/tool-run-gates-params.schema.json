@@ -13,6 +13,9 @@
         },
         "summary": {
           "type": "string"
+        },
+        "actorId": {
+          "type": "string"
         }
       },
       "required": ["gateNames", "summary"],

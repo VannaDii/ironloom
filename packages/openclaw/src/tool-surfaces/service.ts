@@ -20,10 +20,12 @@ import {
 import {
   decodeWithCodec,
   DEVPLAT_ACTION_EXECUTE_COMMAND,
+  DEVPLAT_ACTION_RUN_GATES,
 } from '@vannadii/devplat-core';
 import {
   CommandExecutionService,
   normalizeCommandExecutionCwd,
+  type CommandExecutionOptions,
 } from '@vannadii/devplat-execution';
 import { RuntimeConfigService } from '@vannadii/devplat-config';
 import {
@@ -33,10 +35,18 @@ import {
   DiscordLoopbackResponseTransport,
   DiscordThreadSessionService,
 } from '@vannadii/devplat-discord';
-import { RunGatesService } from '@vannadii/devplat-gates';
+import {
+  GATE_NEXT_ACTION_CONTINUE,
+  GATE_NEXT_ACTION_CREATE_REMEDIATION_PLAN,
+  RunGatesService,
+  type GateRunReport,
+} from '@vannadii/devplat-gates';
 import { GitHubWorkflowService } from '@vannadii/devplat-github';
 import { MemoryEntryService } from '@vannadii/devplat-memory';
-import { TelemetryEventService } from '@vannadii/devplat-observability';
+import {
+  TelemetryEventService,
+  type TelemetryEvent,
+} from '@vannadii/devplat-observability';
 import { DecisionPolicyService } from '@vannadii/devplat-policy';
 import { PullRequestService } from '@vannadii/devplat-prs';
 import { TaskQueueService, type TaskRecord } from '@vannadii/devplat-queue';
@@ -47,6 +57,7 @@ import { SlicePlanService } from '@vannadii/devplat-slicing';
 import {
   SonarBootstrapVerificationService,
   SonarQualityGateService,
+  type SonarQualityGateResult,
 } from '@vannadii/devplat-sonarcloud';
 import { SpecRecordService } from '@vannadii/devplat-specs';
 import { FileStoreService } from '@vannadii/devplat-storage';
@@ -110,8 +121,14 @@ import {
 import {
   LIST_STORED_INDEX_SCHEMA_FILE,
   LIST_STORED_INDEX_TOOL_NAME,
+  OPENCLAW_ACTION_EVALUATE_SONAR_QUALITY_GATE,
+  OPENCLAW_DEFAULT_ACTOR_ID,
   OPENCLAW_GITHUB_OWNER_ENVIRONMENT_VARIABLE,
   OPENCLAW_GITHUB_REPO_ENVIRONMENT_VARIABLE,
+  OPENCLAW_RUN_GATES_TELEMETRY_ID_PREFIX,
+  OPENCLAW_RUN_GATES_TRACE,
+  OPENCLAW_SONAR_QUALITY_GATE_TELEMETRY_ID_PREFIX,
+  OPENCLAW_SONAR_QUALITY_GATE_TRACE,
   OPENCLAW_STORAGE_ROOT_ENVIRONMENT_VARIABLE,
   OPENCLAW_TEST_MODE_ENVIRONMENT_VARIABLE,
   OPENCLAW_WORKTREE_ROOT_ENVIRONMENT_VARIABLE,
@@ -120,9 +137,72 @@ import {
   READ_STORED_INDEX_SCHEMA_FILE,
   READ_STORED_INDEX_TOOL_NAME,
 } from './constants.js';
-import type { OpenDiscordThreadToolInput } from './codec.js';
+import type {
+  ExecuteCommandToolInput,
+  OpenDiscordThreadToolInput,
+} from './codec.js';
 
 type ToolParameterSchema = AnyAgentTool['parameters'] & Record<string, unknown>;
+
+/**
+ * Gate runner behavior used by the OpenClaw gate tool.
+ */
+type OpenClawRunGatesService = Pick<RunGatesService, 'run'>;
+
+/**
+ * Telemetry behavior used by the OpenClaw gate tool.
+ */
+type OpenClawTelemetryRecordService = Pick<TelemetryEventService, 'record'>;
+
+/**
+ * Dependency object accepted by the OpenClaw gate tool.
+ */
+type OpenClawRunGatesToolDependencies = {
+  /**
+   * Gate runner implementation.
+   */
+  runGatesService?: OpenClawRunGatesService;
+
+  /**
+   * Telemetry recorder for persisted gate run evidence.
+   */
+  telemetryEventService?: OpenClawTelemetryRecordService;
+};
+
+/**
+ * Auditable request snapshot returned by the execute command tool.
+ */
+type ExecuteCommandRequestSnapshot = {
+  command: string;
+  args: string[];
+  cwd: string | null;
+  timeoutMs: number | null;
+  maxOutputBytes: number | null;
+  retry: { attempts: number; retryableExitCodes?: number[] } | null;
+};
+
+/**
+ * Sonar quality-gate behavior used by the OpenClaw quality-gate tool.
+ */
+type OpenClawSonarQualityGateService = Pick<
+  SonarQualityGateService,
+  'evaluate'
+>;
+
+/**
+ * Dependency object accepted by the OpenClaw Sonar quality-gate tool.
+ */
+type OpenClawSonarQualityGateToolDependencies = {
+  /**
+   * Sonar quality-gate evaluator.
+   */
+  sonarQualityGateService?: OpenClawSonarQualityGateService;
+
+  /**
+   * Telemetry recorder for persisted Sonar gate evidence.
+   */
+  telemetryEventService?: OpenClawTelemetryRecordService;
+};
 
 /**
  * Minimal task identity accepted by legacy task lifecycle tool calls.
@@ -132,6 +212,30 @@ type TaskRecordIdentity = {
   sliceId: string;
   threadId: string;
 };
+
+/**
+ * Worktree methods used by the OpenClaw allocation tool.
+ */
+type OpenClawWorktreeAllocateService = Pick<
+  WorktreeAllocationService,
+  'allocate' | 'allocateOnDisk'
+>;
+
+/**
+ * Worktree methods used by the OpenClaw sync tool.
+ */
+type OpenClawWorktreeSyncService = Pick<
+  WorktreeAllocationService,
+  'sync' | 'syncOnDisk'
+>;
+
+/**
+ * Worktree methods used by the OpenClaw release tool.
+ */
+type OpenClawWorktreeReleaseService = Pick<
+  WorktreeAllocationService,
+  'release' | 'releaseOnDisk'
+>;
 
 function isToolParameterSchema(value: unknown): value is ToolParameterSchema {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -186,6 +290,164 @@ function isDiscordOperatorInteraction(
 
 function createLoopbackDiscordResponseTransport(): DiscordControlResponseTransport {
   return new DiscordLoopbackResponseTransport();
+}
+
+/**
+ * Returns true when the gate tool argument is the legacy direct service input.
+ */
+function isRunGatesService(
+  input: OpenClawRunGatesService | OpenClawRunGatesToolDependencies,
+): input is OpenClawRunGatesService {
+  return 'run' in input;
+}
+
+/**
+ * Creates the execution option bag delegated to the execution package.
+ */
+function createExecuteCommandOptions(
+  request: ExecuteCommandToolInput,
+  normalizedCwd: string | undefined,
+): CommandExecutionOptions {
+  return {
+    ...(normalizedCwd ? { cwd: normalizedCwd } : {}),
+    ...(request.env ? { env: request.env } : {}),
+    ...(typeof request.timeoutMs === 'number'
+      ? { timeoutMs: request.timeoutMs }
+      : {}),
+    ...(typeof request.maxOutputBytes === 'number'
+      ? { maxOutputBytes: request.maxOutputBytes }
+      : {}),
+    ...(request.retry === undefined
+      ? {}
+      : {
+          retry: {
+            attempts: request.retry.attempts,
+            ...(request.retry.retryableExitCodes === undefined
+              ? {}
+              : { retryableExitCodes: request.retry.retryableExitCodes }),
+          },
+        }),
+  };
+}
+
+/**
+ * Creates the operator-facing request snapshot for execute command results.
+ */
+function createExecuteCommandRequestSnapshot(
+  request: ExecuteCommandToolInput,
+  cwd: string | null,
+): ExecuteCommandRequestSnapshot {
+  return {
+    command: request.command,
+    args: request.args,
+    cwd,
+    timeoutMs: request.timeoutMs ?? null,
+    maxOutputBytes: request.maxOutputBytes ?? null,
+    retry: request.retry ?? null,
+  };
+}
+
+/**
+ * Creates a stable telemetry id for one OpenClaw gate tool call.
+ */
+function createRunGatesTelemetryEventId(
+  toolCallId: string,
+  gateRunReportId: string,
+): string {
+  return `${OPENCLAW_RUN_GATES_TELEMETRY_ID_PREFIX}:${toolCallId}:${gateRunReportId}`;
+}
+
+/**
+ * Collects failed gate names from the report when no classification was attached.
+ */
+function collectFailedGateNames(report: GateRunReport): string[] {
+  return report.results
+    .filter((result) => !result.success)
+    .map((result) => result.name);
+}
+
+/**
+ * Resolves the gate run next-action hint for telemetry detail.
+ */
+function resolveRunGatesNextAction(report: GateRunReport): string {
+  return (
+    report.nextAction ??
+    report.classification?.nextAction ??
+    (report.passed
+      ? GATE_NEXT_ACTION_CONTINUE
+      : GATE_NEXT_ACTION_CREATE_REMEDIATION_PLAN)
+  );
+}
+
+/**
+ * Creates the telemetry event that audits one OpenClaw gate run.
+ */
+function createRunGatesTelemetryEvent(input: {
+  toolCallId: string;
+  actorId: string;
+  report: GateRunReport;
+}): TelemetryEvent {
+  const failedGateNames =
+    input.report.classification?.failedGateNames ??
+    collectFailedGateNames(input.report);
+
+  return {
+    id: createRunGatesTelemetryEventId(input.toolCallId, input.report.id),
+    summary: input.report.summary,
+    status: input.report.passed ? 'complete' : 'failed',
+    trace: [...input.report.trace, OPENCLAW_RUN_GATES_TRACE],
+    updatedAt: input.report.updatedAt,
+    actorId: input.actorId,
+    action: DEVPLAT_ACTION_RUN_GATES,
+    scope: 'supervisor',
+    details: {
+      gateRunReportId: input.report.id,
+      passed: input.report.passed,
+      failedGateNames,
+      nextAction: resolveRunGatesNextAction(input.report),
+    },
+  };
+}
+
+/**
+ * Creates a stable telemetry id for one OpenClaw Sonar quality-gate tool call.
+ */
+function createSonarQualityGateTelemetryEventId(
+  toolCallId: string,
+  projectKey: string,
+): string {
+  return `${OPENCLAW_SONAR_QUALITY_GATE_TELEMETRY_ID_PREFIX}:${toolCallId}:${projectKey}`;
+}
+
+/**
+ * Creates the telemetry event that audits one Sonar quality-gate evaluation.
+ */
+function createSonarQualityGateTelemetryEvent(input: {
+  toolCallId: string;
+  actorId: string;
+  result: SonarQualityGateResult;
+}): TelemetryEvent {
+  return {
+    id: createSonarQualityGateTelemetryEventId(
+      input.toolCallId,
+      input.result.projectKey,
+    ),
+    summary: `Sonar quality gate ${input.result.status} for ${input.result.projectKey}`,
+    status: input.result.status === 'passed' ? 'complete' : 'failed',
+    trace: [OPENCLAW_SONAR_QUALITY_GATE_TRACE],
+    updatedAt: input.result.evaluatedAt,
+    actorId: input.actorId,
+    action: OPENCLAW_ACTION_EVALUATE_SONAR_QUALITY_GATE,
+    scope: 'supervisor',
+    details: {
+      projectKey: input.result.projectKey,
+      qualityGateStatus: input.result.status,
+      overallCoverage: input.result.overallCoverage,
+      newCodeCoverage: input.result.newCodeCoverage,
+      blockingIssues: input.result.blockingIssues,
+      nextAction: input.result.nextAction ?? null,
+    },
+  };
 }
 
 /**
@@ -381,8 +643,17 @@ function resolveTaskRecord(
 }
 
 export function createRunGatesTool(
-  runGatesService: Pick<RunGatesService, 'run'> = new RunGatesService(),
+  dependencies:
+    | OpenClawRunGatesService
+    | OpenClawRunGatesToolDependencies = new RunGatesService(),
 ): AnyAgentTool {
+  const runGatesService = isRunGatesService(dependencies)
+    ? dependencies
+    : (dependencies.runGatesService ?? new RunGatesService());
+  const telemetryEventService = isRunGatesService(dependencies)
+    ? createDefaultTelemetryEventService()
+    : (dependencies.telemetryEventService ??
+      createDefaultTelemetryEventService());
   const tool: AnyAgentTool = {
     name: 'run_gates',
     label: 'Run Gates',
@@ -400,7 +671,17 @@ export function createRunGatesTool(
         decoded.value.gateNames,
         decoded.value.summary,
       );
-      return createTextResult(report);
+      const telemetryEvent = await telemetryEventService.record(
+        createRunGatesTelemetryEvent({
+          toolCallId: _toolCallId,
+          actorId: decoded.value.actorId ?? OPENCLAW_DEFAULT_ACTOR_ID,
+          report,
+        }),
+      );
+      return createTextResult({
+        ...report,
+        telemetryEventId: telemetryEvent.id,
+      });
     },
   };
 
@@ -787,7 +1068,7 @@ export function createExecuteCommandTool(
       );
 
       if (!policy.allowed) {
-        await telemetryEventService.record({
+        const telemetryEvent = await telemetryEventService.record({
           id: `telemetry:execute-command:${String(Date.now())}`,
           summary: `Blocked command execution for ${request.command}`,
           status: 'blocked',
@@ -805,12 +1086,11 @@ export function createExecuteCommandTool(
         return createTextResult({
           allowed: false,
           policyDecisionId: policy.id,
-          request: {
-            command: request.command,
-            args: request.args,
-            cwd: request.cwd ?? null,
-            timeoutMs: request.timeoutMs ?? null,
-          },
+          request: createExecuteCommandRequestSnapshot(
+            request,
+            request.cwd ?? null,
+          ),
+          telemetryEventId: telemetryEvent.id,
         });
       }
 
@@ -822,19 +1102,17 @@ export function createExecuteCommandTool(
         });
       }
 
+      const executionOptions = createExecuteCommandOptions(
+        request,
+        normalizedCwd.value,
+      );
       const result = await commandExecutionService.execute(
         request.command,
         request.args,
-        {
-          ...(normalizedCwd.value ? { cwd: normalizedCwd.value } : {}),
-          ...(request.env ? { env: request.env } : {}),
-          ...(typeof request.timeoutMs === 'number'
-            ? { timeoutMs: request.timeoutMs }
-            : {}),
-        },
+        executionOptions,
       );
 
-      await telemetryEventService.record({
+      const telemetryEvent = await telemetryEventService.record({
         id: `telemetry:execute-command:${String(Date.now())}`,
         summary: `Executed ${request.command}`,
         status:
@@ -848,21 +1126,25 @@ export function createExecuteCommandTool(
           command: request.command,
           args: request.args,
           cwd: normalizedCwd.value ?? null,
+          maxOutputBytes: request.maxOutputBytes ?? null,
+          retryAttempts: request.retry?.attempts ?? null,
+          retryableExitCodes: request.retry?.retryableExitCodes ?? null,
           exitCode: result.exitCode,
           timedOut: result.timedOut,
+          attempts: result.attempts ?? null,
+          truncated: result.truncated ?? false,
         },
       });
 
       return createTextResult({
         allowed: true,
         policyDecisionId: policy.id,
-        request: {
-          command: request.command,
-          args: request.args,
-          cwd: normalizedCwd.value ?? null,
-          timeoutMs: request.timeoutMs ?? null,
-        },
+        request: createExecuteCommandRequestSnapshot(
+          request,
+          normalizedCwd.value ?? null,
+        ),
         result,
+        telemetryEventId: telemetryEvent.id,
       });
     },
   };
@@ -870,82 +1152,118 @@ export function createExecuteCommandTool(
   return tool;
 }
 
-export function createAllocateWorktreeTool(): AnyAgentTool {
+export function createAllocateWorktreeTool(
+  dependencies: {
+    worktreeAllocationService?: OpenClawWorktreeAllocateService;
+  } = {},
+): AnyAgentTool {
+  const worktreeAllocationService =
+    dependencies.worktreeAllocationService ??
+    createDefaultWorktreeAllocationService();
   const tool: AnyAgentTool = {
     name: 'allocate_worktree',
     label: 'Allocate Worktree',
-    description: 'Allocate a deterministic worktree path for a task branch.',
+    description:
+      'Allocate a deterministic worktree path for a task branch, optionally materializing the git worktree on disk.',
     parameters: readSchema('tool-allocate-worktree-params.schema.json'),
-    execute(_toolCallId: string, params: unknown) {
+    async execute(_toolCallId: string, params: unknown) {
       const rawParams: unknown = params;
       const decoded = decodeWithCodec(
         AllocateWorktreeToolInputCodec,
         rawParams,
       );
       if (!decoded.ok) {
-        return Promise.resolve(
-          createTextResult({ status: 'failed', error: decoded.error }),
-        );
+        return createTextResult({ status: 'failed', error: decoded.error });
       }
 
-      const allocation = createDefaultWorktreeAllocationService().allocate(
-        decoded.value.taskId,
-        decoded.value.branchName,
-      );
-      return Promise.resolve(createTextResult(allocation));
+      const allocation =
+        decoded.value.applyToDisk === true
+          ? await worktreeAllocationService.allocateOnDisk(
+              decoded.value.taskId,
+              decoded.value.branchName,
+              decoded.value.baseBranch,
+            )
+          : worktreeAllocationService.allocate(
+              decoded.value.taskId,
+              decoded.value.branchName,
+            );
+      return createTextResult(allocation);
     },
   };
 
   return tool;
 }
 
-export function createSyncWorktreeTool(): AnyAgentTool {
+export function createSyncWorktreeTool(
+  dependencies: {
+    worktreeAllocationService?: OpenClawWorktreeSyncService;
+  } = {},
+): AnyAgentTool {
+  const worktreeAllocationService =
+    dependencies.worktreeAllocationService ??
+    createDefaultWorktreeAllocationService();
   const tool: AnyAgentTool = {
     name: 'sync_worktree',
     label: 'Sync Worktree',
     description:
-      'Synchronize an allocated worktree with its base branch using an explicit sync mode.',
+      'Synchronize an allocated worktree with its base branch using an explicit sync mode, optionally applying the git operation on disk.',
     parameters: readSchema('tool-sync-worktree-params.schema.json'),
-    execute(_toolCallId: string, params: unknown) {
+    async execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(SyncWorktreeToolInputCodec, params);
       if (!decoded.ok) {
-        return Promise.resolve(
-          createTextResult({ status: 'failed', error: decoded.error }),
-        );
+        return createTextResult({ status: 'failed', error: decoded.error });
       }
 
-      const result = createDefaultWorktreeAllocationService().sync(
-        decoded.value.allocation,
-        decoded.value.baseBranch,
-        decoded.value.syncMode,
-      );
-      return Promise.resolve(createTextResult(result));
+      const result =
+        decoded.value.applyToDisk === true
+          ? await worktreeAllocationService.syncOnDisk(
+              decoded.value.allocation,
+              decoded.value.baseBranch,
+              decoded.value.syncMode,
+            )
+          : worktreeAllocationService.sync(
+              decoded.value.allocation,
+              decoded.value.baseBranch,
+              decoded.value.syncMode,
+            );
+      return createTextResult(result);
     },
   };
 
   return tool;
 }
 
-export function createReleaseWorktreeTool(): AnyAgentTool {
+export function createReleaseWorktreeTool(
+  dependencies: {
+    worktreeAllocationService?: OpenClawWorktreeReleaseService;
+  } = {},
+): AnyAgentTool {
+  const worktreeAllocationService =
+    dependencies.worktreeAllocationService ??
+    createDefaultWorktreeAllocationService();
   const tool: AnyAgentTool = {
     name: 'release_worktree',
     label: 'Release Worktree',
     description:
-      'Release an allocated worktree using an explicit cleanup strategy.',
+      'Release an allocated worktree using an explicit cleanup strategy, optionally applying the cleanup on disk.',
     parameters: readSchema('tool-release-worktree-params.schema.json'),
-    execute(_toolCallId: string, params: unknown) {
+    async execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(ReleaseWorktreeToolInputCodec, params);
       if (!decoded.ok) {
-        return Promise.resolve(
-          createTextResult({ status: 'failed', error: decoded.error }),
-        );
+        return createTextResult({ status: 'failed', error: decoded.error });
       }
 
-      const result = createDefaultWorktreeAllocationService().release(
-        decoded.value.allocation,
-        decoded.value.releaseMode,
-      );
-      return Promise.resolve(createTextResult(result));
+      const result =
+        decoded.value.applyToDisk === true
+          ? await worktreeAllocationService.releaseOnDisk(
+              decoded.value.allocation,
+              decoded.value.releaseMode,
+            )
+          : worktreeAllocationService.release(
+              decoded.value.allocation,
+              decoded.value.releaseMode,
+            );
+      return createTextResult(result);
     },
   };
 
@@ -1105,7 +1423,13 @@ export function createVerifySonarBootstrapTool(): AnyAgentTool {
   return tool;
 }
 
-export function createEvaluateSonarQualityGateTool(): AnyAgentTool {
+export function createEvaluateSonarQualityGateTool(
+  dependencies: OpenClawSonarQualityGateToolDependencies = {},
+): AnyAgentTool {
+  const sonarQualityGateService =
+    dependencies.sonarQualityGateService ?? new SonarQualityGateService();
+  const telemetryEventService =
+    dependencies.telemetryEventService ?? createDefaultTelemetryEventService();
   const tool: AnyAgentTool = {
     name: 'evaluate_sonar_quality_gate',
     label: 'Evaluate Sonar Quality Gate',
@@ -1114,24 +1438,32 @@ export function createEvaluateSonarQualityGateTool(): AnyAgentTool {
     parameters: readSchema(
       'tool-evaluate-sonar-quality-gate-params.schema.json',
     ),
-    execute(_toolCallId: string, params: unknown) {
+    async execute(_toolCallId: string, params: unknown) {
       const decoded = decodeWithCodec(
         EvaluateSonarQualityGateToolInputCodec,
         params,
       );
       if (!decoded.ok) {
-        return Promise.resolve(
-          createTextResult({ status: 'failed', error: decoded.error }),
-        );
+        return createTextResult({ status: 'failed', error: decoded.error });
       }
 
-      const result = new SonarQualityGateService().evaluate(
+      const result = sonarQualityGateService.evaluate(
         decoded.value.projectKey,
         decoded.value.overallCoverage,
         decoded.value.newCodeCoverage,
         decoded.value.blockingIssues,
       );
-      return Promise.resolve(createTextResult(result));
+      const telemetryEvent = await telemetryEventService.record(
+        createSonarQualityGateTelemetryEvent({
+          toolCallId: _toolCallId,
+          actorId: decoded.value.actorId ?? OPENCLAW_DEFAULT_ACTOR_ID,
+          result,
+        }),
+      );
+      return createTextResult({
+        ...result,
+        telemetryEventId: telemetryEvent.id,
+      });
     },
   };
 

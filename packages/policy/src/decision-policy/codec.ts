@@ -1,6 +1,9 @@
 import * as t from 'io-ts';
 
-import { LifecycleStatusCodec } from '@vannadii/devplat-core';
+import {
+  IsoTimestampCodec,
+  LifecycleStatusCodec,
+} from '@vannadii/devplat-core';
 import {
   POLICY_ACTION_CATEGORY_AUTOFIX,
   POLICY_ACTION_CATEGORY_COMMAND_EXECUTION,
@@ -50,7 +53,7 @@ export const PolicyDecisionCodec = t.intersection([
     summary: t.string,
     status: LifecycleStatusCodec,
     trace: t.array(t.string),
-    updatedAt: t.string,
+    updatedAt: IsoTimestampCodec,
     action: t.string,
     allowed: t.boolean,
     requiresApproval: t.boolean,
@@ -83,7 +86,7 @@ export const PolicyActionEvaluationCodec = t.type({
   reason: t.string,
   auditReason: t.string,
   nextAction: t.string,
-  updatedAt: t.string,
+  updatedAt: IsoTimestampCodec,
 });
 
 /** Privilege required by a policy-controlled action. */

@@ -27,6 +27,7 @@ flowchart LR
 - Do not own remediation planning or GitHub status publication.
 - Emit remediation hooks only as deterministic handoffs for the remediation package.
 - Keep gate names and reports stable for OpenClaw and Discord callers.
+- Decode gate report `updatedAt` and remediation-hook `createdAt` values through the shared ISO timestamp codec.
 
 - Keep public TypeScript contracts derived from the exported codecs.
 

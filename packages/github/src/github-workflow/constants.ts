@@ -65,3 +65,13 @@ export const GITHUB_WORKFLOW_DEFAULT_ACTOR_ID = 'github-service';
  * Telemetry scope used for GitHub workflow actions.
  */
 export const GITHUB_WORKFLOW_TELEMETRY_SCOPE = 'github';
+
+/**
+ * Prefix used for GitHub workflow telemetry event identifiers.
+ */
+export const GITHUB_WORKFLOW_TELEMETRY_ID_PREFIX = 'telemetry';
+
+/**
+ * Trace segment applied to GitHub workflow telemetry events.
+ */
+export const GITHUB_WORKFLOW_TELEMETRY_TRACE = 'github:workflow';

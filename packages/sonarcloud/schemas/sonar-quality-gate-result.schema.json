@@ -21,7 +21,8 @@
           "type": "number"
         },
         "evaluatedAt": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "issues": {
           "type": "array",

@@ -7,6 +7,7 @@ import type {
 } from './codec.js';
 import {
   COMMAND_EXECUTION_CWD_ABSOLUTE_ERROR,
+  COMMAND_EXECUTION_DEFAULT_RETRYABLE_EXIT_CODES,
   COMMAND_EXECUTION_CWD_TRAVERSAL_ERROR,
 } from './constants.js';
 
@@ -94,6 +95,10 @@ export function createCommandExecutionPolicy(
   input: CommandExecutionOptions,
 ): CommandExecutionPolicy {
   const attempts = Math.max(1, Math.trunc(input.retry?.attempts ?? 1));
+  const retryableExitCodes =
+    input.retry?.retryableExitCodes === undefined
+      ? [...COMMAND_EXECUTION_DEFAULT_RETRYABLE_EXIT_CODES]
+      : input.retry.retryableExitCodes.map((exitCode) => Math.trunc(exitCode));
   const timeoutMs =
     typeof input.timeoutMs === 'number' && input.timeoutMs > 0
       ? Math.trunc(input.timeoutMs)
@@ -106,7 +111,7 @@ export function createCommandExecutionPolicy(
   return {
     retry: {
       attempts,
-      retryableExitCodes: [1, 124],
+      retryableExitCodes,
     },
     ...(maxOutputBytes === undefined
       ? {}

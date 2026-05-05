@@ -28,7 +28,7 @@ export class DomainService {
  * Decodes a value with an `io-ts` codec and returns a platform result.
  */
 export function decodeWithCodec<TValue>(
-  codec: t.Type<TValue, TValue>,
+  codec: t.Decoder<unknown, TValue>,
   value: unknown,
 ): DevplatResult<TValue> {
   const decoded = codec.decode(value);

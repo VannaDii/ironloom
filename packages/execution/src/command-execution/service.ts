@@ -42,7 +42,8 @@ export class CommandExecutionService {
           ? this.repositoryRoot
           : join(this.repositoryRoot, normalizedCwd.value),
     };
-    const attempts = Math.max(1, Math.trunc(options.retry?.attempts ?? 1));
+    const policy = createCommandExecutionPolicy(options);
+    const attempts = policy.retry.attempts;
     let attempt = 1;
     let result = await this.executeOnce(
       command,
@@ -51,12 +52,25 @@ export class CommandExecutionService {
       attempt,
     );
 
-    while (!isSuccessfulCommandResult(result) && attempt < attempts) {
+    while (this.shouldRetryResult(result, policy) && attempt < attempts) {
       attempt += 1;
       result = await this.executeOnce(command, args, executionOptions, attempt);
     }
 
     return result;
+  }
+
+  /**
+   * Returns true when a failed command result is covered by retry policy.
+   */
+  private shouldRetryResult(
+    result: CommandResult,
+    policy: ReturnType<typeof createCommandExecutionPolicy>,
+  ): boolean {
+    return (
+      !isSuccessfulCommandResult(result) &&
+      policy.retry.retryableExitCodes.includes(result.exitCode)
+    );
   }
 
   /**

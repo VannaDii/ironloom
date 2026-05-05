@@ -1,5 +1,6 @@
 import * as t from 'io-ts';
 
+import { GitBranchNameCodec } from '@vannadii/devplat-core';
 import {
   ApprovalRecordArtifactCodec,
   ArtifactEnvelopeCodec,
@@ -28,6 +29,7 @@ import { SpecRecordCodec } from '@vannadii/devplat-specs';
 import { SupervisorLifecycleSignalCodec } from '@vannadii/devplat-supervisor';
 import { PullRequestRecordCodec } from '@vannadii/devplat-prs';
 import { TaskRecordCodec } from '@vannadii/devplat-queue';
+import { CommandExecutionOptionsCodec } from '@vannadii/devplat-execution';
 import {
   StoredRecordCodec,
   StoreIndexNameCodec,
@@ -39,10 +41,15 @@ import {
   WorktreeSyncModeCodec,
 } from '@vannadii/devplat-worktrees';
 
-export const RunGatesToolInputCodec = t.type({
-  gateNames: t.array(t.string),
-  summary: t.string,
-});
+export const RunGatesToolInputCodec = t.intersection([
+  t.type({
+    gateNames: t.array(t.string),
+    summary: t.string,
+  }),
+  t.partial({
+    actorId: t.string,
+  }),
+]);
 
 export const CreateResearchBriefToolInputCodec = ResearchBriefCodec;
 
@@ -75,6 +82,7 @@ export const CreateMergeDecisionToolInputCodec = MergeDecisionArtifactCodec;
 
 export const CreateRebaseResultToolInputCodec = RebaseResultArtifactCodec;
 
+/** OpenClaw command execution input using execution-owned option codecs. */
 export const ExecuteCommandToolInputCodec = t.intersection([
   t.type({
     command: t.string,
@@ -82,25 +90,42 @@ export const ExecuteCommandToolInputCodec = t.intersection([
     actorId: t.string,
     privileged: t.boolean,
   }),
+  CommandExecutionOptionsCodec,
+]);
+
+/** Input for pure worktree allocation without disk materialization. */
+export const AllocateWorktreePlanInputCodec = t.intersection([
+  t.type({
+    taskId: t.string,
+    branchName: t.string,
+  }),
   t.partial({
-    cwd: t.string,
-    env: t.record(t.string, t.string),
-    timeoutMs: t.number,
+    baseBranch: GitBranchNameCodec,
+    applyToDisk: t.literal(false),
   }),
 ]);
 
-export const AllocateWorktreeToolInputCodec = t.type({
+/** Input for Git-backed worktree allocation that requires an explicit base ref. */
+export const AllocateWorktreeDiskInputCodec = t.type({
   taskId: t.string,
   branchName: t.string,
+  baseBranch: GitBranchNameCodec,
+  applyToDisk: t.literal(true),
 });
+
+export const AllocateWorktreeToolInputCodec = t.union([
+  AllocateWorktreeDiskInputCodec,
+  AllocateWorktreePlanInputCodec,
+]);
 
 export const SyncWorktreeToolInputCodec = t.intersection([
   t.type({
     allocation: WorktreeAllocationCodec,
-    baseBranch: t.string,
+    baseBranch: GitBranchNameCodec,
   }),
   t.partial({
     syncMode: WorktreeSyncModeCodec,
+    applyToDisk: t.boolean,
   }),
 ]);
 
@@ -110,6 +135,7 @@ export const ReleaseWorktreeToolInputCodec = t.intersection([
   }),
   t.partial({
     releaseMode: WorktreeReleaseModeCodec,
+    applyToDisk: t.boolean,
   }),
 ]);
 
@@ -139,12 +165,17 @@ export const HandleDiscordControlToolInputCodec = t.union([
 export const VerifySonarBootstrapToolInputCodec =
   SonarBootstrapVerificationInputCodec;
 
-export const EvaluateSonarQualityGateToolInputCodec = t.type({
-  projectKey: t.string,
-  overallCoverage: t.number,
-  newCodeCoverage: t.number,
-  blockingIssues: t.number,
-});
+export const EvaluateSonarQualityGateToolInputCodec = t.intersection([
+  t.type({
+    projectKey: t.string,
+    overallCoverage: t.number,
+    newCodeCoverage: t.number,
+    blockingIssues: t.number,
+  }),
+  t.partial({
+    actorId: t.string,
+  }),
+]);
 
 export const CreateReviewFindingToolInputCodec = ReviewFindingCodec;
 

@@ -1,22 +1,38 @@
 import * as t from 'io-ts';
 
-import { LifecycleStatusCodec } from '@vannadii/devplat-core';
+import {
+  GitBranchNameCodec,
+  IsoTimestampCodec,
+  LifecycleStatusCodec,
+} from '@vannadii/devplat-core';
 
+/**
+ * Codec for supported Git worktree synchronization strategies.
+ */
 export const WorktreeSyncModeCodec = t.union([
   t.literal('fast-forward'),
   t.literal('rebase'),
 ]);
 
+/**
+ * Codec for supported worktree release strategies.
+ */
 export const WorktreeReleaseModeCodec = t.union([
   t.literal('archive'),
   t.literal('delete'),
 ]);
 
+/**
+ * Codec for branch safety evaluation status.
+ */
 export const WorktreeBranchSafetyStatusCodec = t.union([
   t.literal('safe'),
   t.literal('blocked'),
 ]);
 
+/**
+ * Codec for branch safety details preserved on worktree records.
+ */
 export const WorktreeBranchSafetyCheckCodec = t.type({
   status: WorktreeBranchSafetyStatusCodec,
   branchName: t.string,
@@ -25,13 +41,16 @@ export const WorktreeBranchSafetyCheckCodec = t.type({
   nextAction: t.string,
 });
 
+/**
+ * Codec for allocated worktree lifecycle records.
+ */
 export const WorktreeAllocationCodec = t.intersection([
   t.type({
     id: t.string,
     summary: t.string,
     status: LifecycleStatusCodec,
     trace: t.array(t.string),
-    updatedAt: t.string,
+    updatedAt: IsoTimestampCodec,
     taskId: t.string,
     branchName: t.string,
     worktreePath: t.string,
@@ -41,17 +60,20 @@ export const WorktreeAllocationCodec = t.intersection([
   }),
 ]);
 
+/**
+ * Codec for worktree synchronization result records.
+ */
 export const WorktreeSyncResultCodec = t.intersection([
   t.type({
     id: t.string,
     summary: t.string,
     status: LifecycleStatusCodec,
     trace: t.array(t.string),
-    updatedAt: t.string,
+    updatedAt: IsoTimestampCodec,
     taskId: t.string,
     branchName: t.string,
     worktreePath: t.string,
-    baseBranch: t.string,
+    baseBranch: GitBranchNameCodec,
     syncMode: WorktreeSyncModeCodec,
     changed: t.boolean,
     conflictsDetected: t.boolean,
@@ -61,13 +83,16 @@ export const WorktreeSyncResultCodec = t.intersection([
   }),
 ]);
 
+/**
+ * Codec for worktree release result records.
+ */
 export const WorktreeReleaseResultCodec = t.intersection([
   t.type({
     id: t.string,
     summary: t.string,
     status: LifecycleStatusCodec,
     trace: t.array(t.string),
-    updatedAt: t.string,
+    updatedAt: IsoTimestampCodec,
     taskId: t.string,
     branchName: t.string,
     worktreePath: t.string,
@@ -79,6 +104,9 @@ export const WorktreeReleaseResultCodec = t.intersection([
   }),
 ]);
 
+/**
+ * Codec for captured Git command execution metadata.
+ */
 export const WorktreeGitCommandResultCodec = t.type({
   command: t.string,
   args: t.array(t.string),

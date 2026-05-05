@@ -27,7 +27,8 @@
           "enum": ["active", "superseded"]
         },
         "updatedAt": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "sourceArtifactId": {
           "type": "string"

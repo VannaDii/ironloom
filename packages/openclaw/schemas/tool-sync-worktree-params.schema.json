@@ -37,7 +37,8 @@
               }
             },
             "updatedAt": {
-              "type": "string"
+              "type": "string",
+              "format": "date-time"
             },
             "taskId": {
               "type": "string"
@@ -90,10 +91,14 @@
           "additionalProperties": false
         },
         "baseBranch": {
-          "type": "string"
+          "type": "string",
+          "pattern": "^(?!-)(?!/)(?!.*(?:\\.\\.|//|@\\{|\\\\|~|\\^|:|\\?|\\*|\\[|(?:^|/)[^/]*\\.lock(?:/|$)))(?!.*[\\x00-\\x20\\x7f])(?!.*/$)(?!.*\\.$)(?!@$).+$"
         },
         "syncMode": {
           "enum": ["fast-forward", "rebase"]
+        },
+        "applyToDisk": {
+          "type": "boolean"
         }
       },
       "required": ["allocation", "baseBranch"],

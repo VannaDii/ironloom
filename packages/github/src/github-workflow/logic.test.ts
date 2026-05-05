@@ -463,6 +463,81 @@ describe('GitHubActionRequest logic', () => {
     });
   });
 
+  describe('rejects unsafe repository and pull request branch refs', () => {
+    const cases = [
+      {
+        name: 'rejects unsafe repository default branches',
+        inputs: {
+          repository: {
+            repoFullName: 'VannaDii/devplat',
+            defaultBranch: '--upload-pack=sh',
+            protectedBranches: ['main'],
+            openPullRequestNumbers: [],
+            linkedIssueNumbers: [],
+            updatedAt: '2026-04-04T00:00:00.000Z',
+          } satisfies GitHubRepositoryState,
+        },
+        mock: () => undefined,
+        assert: (inputs: { repository: GitHubRepositoryState }) => {
+          expect(() => createGitHubRepositoryState(inputs.repository)).toThrow(
+            'Git branch name',
+          );
+        },
+      },
+      {
+        name: 'rejects unsafe repository protected branches',
+        inputs: {
+          repository: {
+            repoFullName: 'VannaDii/devplat',
+            defaultBranch: 'main',
+            protectedBranches: ['main', 'feature..bad'],
+            openPullRequestNumbers: [],
+            linkedIssueNumbers: [],
+            updatedAt: '2026-04-04T00:00:00.000Z',
+          } satisfies GitHubRepositoryState,
+        },
+        mock: () => undefined,
+        assert: (inputs: { repository: GitHubRepositoryState }) => {
+          expect(() => createGitHubRepositoryState(inputs.repository)).toThrow(
+            'Git branch name',
+          );
+        },
+      },
+      {
+        name: 'rejects unsafe pull request head and base branches',
+        inputs: {
+          pullRequest: {
+            repoFullName: 'VannaDii/devplat',
+            number: 55,
+            title: 'feat: complete runtime',
+            state: 'open',
+            headBranch: '--upload-pack=sh',
+            baseBranch: 'main',
+            headSha: 'abc123',
+            issueNumbers: [],
+            labels: [],
+            checkState: 'pending',
+            reviewDecision: 'review-required',
+            mergeable: false,
+            updatedAt: '2026-04-04T00:00:00.000Z',
+          } satisfies GitHubPullRequestState,
+        },
+        mock: () => undefined,
+        assert: (inputs: { pullRequest: GitHubPullRequestState }) => {
+          expect(() =>
+            createGitHubPullRequestState(inputs.pullRequest),
+          ).toThrow('Git branch name');
+        },
+      },
+    ];
+
+    it.each(cases)('$name', (testCase) => {
+      expect.hasAssertions();
+      testCase.mock();
+      testCase.assert(testCase.inputs);
+    });
+  });
+
   describe('normalizes issue/spec pull request links', () => {
     const cases = [
       {

@@ -29,6 +29,7 @@ flowchart LR
 - Preserve lifecycle signals, blockers, artifact IDs, and route audit reasons on supervisor decisions.
 - Do not own OpenClaw agent execution; OpenClaw remains the agent loop.
 - Keep outputs auditable and artifact-friendly.
+- Decode supervisor decision `updatedAt` values through the shared ISO timestamp codec.
 
 - Keep public TypeScript contracts derived from the exported codecs.
 

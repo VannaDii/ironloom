@@ -1,10 +1,14 @@
 import * as t from 'io-ts';
 
+import { IsoTimestampCodec } from '@vannadii/devplat-core';
+
+/** Codec for normalized Sonar quality gate status values. */
 export const QualityGateStatusCodec = t.union([
   t.literal('passed'),
   t.literal('failed'),
 ]);
 
+/** Codec for normalized Sonar issue severity values. */
 export const NormalizedSonarIssueSeverityCodec = t.union([
   t.literal('info'),
   t.literal('minor'),
@@ -13,6 +17,7 @@ export const NormalizedSonarIssueSeverityCodec = t.union([
   t.literal('blocker'),
 ]);
 
+/** Codec for a normalized Sonar issue used by reviews and gate summaries. */
 export const NormalizedSonarIssueCodec = t.type({
   issueKey: t.string,
   severity: NormalizedSonarIssueSeverityCodec,
@@ -22,6 +27,7 @@ export const NormalizedSonarIssueCodec = t.type({
   blocking: t.boolean,
 });
 
+/** Codec for a normalized Sonar quality gate result. */
 export const SonarQualityGateResultCodec = t.intersection([
   t.type({
     projectKey: t.string,
@@ -29,7 +35,7 @@ export const SonarQualityGateResultCodec = t.intersection([
     overallCoverage: t.number,
     newCodeCoverage: t.number,
     blockingIssues: t.number,
-    evaluatedAt: t.string,
+    evaluatedAt: IsoTimestampCodec,
   }),
   t.partial({
     issues: t.array(NormalizedSonarIssueCodec),

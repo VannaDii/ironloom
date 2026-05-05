@@ -1,5 +1,8 @@
 import * as t from 'io-ts';
 
+import { IsoTimestampCodec } from '@vannadii/devplat-core';
+
+/** Codec for durable memory entries captured for future planning context. */
 export const MemoryEntryCodec = t.intersection([
   t.type({
     memoryId: t.string,
@@ -13,13 +16,14 @@ export const MemoryEntryCodec = t.intersection([
     detail: t.string,
     tags: t.array(t.string),
     status: t.union([t.literal('active'), t.literal('superseded')]),
-    updatedAt: t.string,
+    updatedAt: IsoTimestampCodec,
   }),
   t.partial({
     sourceArtifactId: t.string,
   }),
 ]);
 
+/** Codec for a bundle of remembered decisions and known traps. */
 export const MemoryContextBundleCodec = t.type({
   bundleId: t.string,
   decisions: t.type({
@@ -32,7 +36,7 @@ export const MemoryContextBundleCodec = t.type({
   }),
   reusableContext: t.array(t.string),
   sourceMemoryIds: t.array(t.string),
-  updatedAt: t.string,
+  updatedAt: IsoTimestampCodec,
 });
 
 /** Durable memory entry captured for future planning context. */

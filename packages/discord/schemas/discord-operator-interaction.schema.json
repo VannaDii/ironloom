@@ -18,7 +18,8 @@
           "type": "string"
         },
         "updatedAt": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "commandName": {
           "type": "string"
@@ -69,7 +70,8 @@
                   }
                 },
                 "updatedAt": {
-                  "type": "string"
+                  "type": "string",
+                  "format": "date-time"
                 },
                 "guildId": {
                   "type": "string"
@@ -149,7 +151,8 @@
                   }
                 },
                 "updatedAt": {
-                  "type": "string"
+                  "type": "string",
+                  "format": "date-time"
                 },
                 "guildId": {
                   "type": "string"
@@ -236,7 +239,8 @@
                   }
                 },
                 "updatedAt": {
-                  "type": "string"
+                  "type": "string",
+                  "format": "date-time"
                 },
                 "guildId": {
                   "type": "string"

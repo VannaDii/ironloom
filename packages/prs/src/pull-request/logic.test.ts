@@ -275,4 +275,63 @@ describe('PullRequestRecord logic', () => {
 
     testCase.assert(createPullRequestRecord(testCase.inputs.record));
   });
+
+  describe('rejects unsafe branch refs before projection', () => {
+    const cases = [
+      {
+        name: 'rejects unsafe pull request branch refs',
+        inputs: {
+          record: {
+            prNumber: 48,
+            branchName: '--upload-pack=sh',
+            baseBranch: 'main',
+            title: 'feat: reject unsafe branch refs',
+            labels: [],
+            reviewState: 'review',
+            mergeReady: false,
+            updatedAt: '2026-04-10T00:00:00.000Z',
+          },
+        },
+        mock: () => undefined,
+        assert: (inputs: PullRequestLogicInputs) => {
+          expect(() => createPullRequestRecord(inputs.record)).toThrow(
+            'Git branch name',
+          );
+        },
+      },
+      {
+        name: 'rejects unsafe pull request base refs',
+        inputs: {
+          record: {
+            prNumber: 49,
+            branchName: 'feature/safe',
+            baseBranch: 'feature..bad',
+            title: 'feat: reject unsafe base refs',
+            labels: [],
+            reviewState: 'review',
+            mergeReady: false,
+            updatedAt: '2026-04-10T00:00:00.000Z',
+          },
+        },
+        mock: () => undefined,
+        assert: (inputs: PullRequestLogicInputs) => {
+          expect(() => createPullRequestRecord(inputs.record)).toThrow(
+            'Git branch name',
+          );
+        },
+      },
+    ] satisfies {
+      name: string;
+      inputs: PullRequestLogicInputs;
+      mock: () => void;
+      assert: (inputs: PullRequestLogicInputs) => void;
+    }[];
+
+    it.each(cases)('$name', (testCase) => {
+      expect.hasAssertions();
+      testCase.mock();
+
+      testCase.assert(testCase.inputs);
+    });
+  });
 });

@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process';
+import { resolve } from 'node:path';
 import { promisify } from 'node:util';
 
 import {
@@ -7,12 +8,16 @@ import {
   createWorktreeReleaseResult,
   createWorktreeSyncResult,
   describeWorktreeAllocation,
+  evaluateWorktreeBranchSafety,
   releaseWorktree,
   syncWorktree,
 } from './logic.js';
 import {
   WORKTREE_DEFAULT_ROOT,
   WORKTREE_GIT_RUNNER_GENERIC_FAILURE_EXIT_CODE,
+  WORKTREE_SYNC_BASE_BRANCH_BLOCKED_TRACE,
+  WORKTREE_RELEASE_PATH_MISMATCH_TRACE,
+  WORKTREE_SYNC_PATH_MISMATCH_TRACE,
 } from './constants.js';
 import type {
   WorktreeAllocation,
@@ -103,6 +108,30 @@ function readProcessStderr(error: unknown): string | undefined {
 function readProcessErrorText(error: unknown): string {
   const stderr = readProcessStderr(error);
   return stderr === undefined || stderr.length === 0 ? String(error) : stderr;
+}
+
+/**
+ * Resolves a configured or caller-provided worktree path for equivalence checks.
+ */
+function resolveWorktreePath(
+  repositoryRoot: string,
+  worktreePath: string,
+): string {
+  return resolve(repositoryRoot, worktreePath);
+}
+
+/**
+ * Returns whether a caller allocation still points at the configured path.
+ */
+function allocationPathMatchesConfiguredRoot(input: {
+  allocation: WorktreeAllocation;
+  expected: WorktreeAllocation;
+  repositoryRoot: string;
+}): boolean {
+  return (
+    resolveWorktreePath(input.repositoryRoot, input.allocation.worktreePath) ===
+    resolveWorktreePath(input.repositoryRoot, input.expected.worktreePath)
+  );
 }
 
 /**
@@ -254,6 +283,37 @@ export class WorktreeAllocationService {
     syncMode: WorktreeSyncMode = 'rebase',
   ): Promise<WorktreeSyncResult> {
     const normalized = createWorktreeAllocation(allocation);
+    const expected = allocateWorktree(
+      normalized.taskId,
+      normalized.branchName,
+      this.worktreeRoot,
+    );
+    const validatedBaseBranch = createWorktreeSyncResult({
+      id: `${normalized.id}:sync:${syncMode}`,
+      summary: `Validated worktree sync base for ${normalized.branchName}`,
+      status: 'queued',
+      trace: [],
+      updatedAt: new Date().toISOString(),
+      taskId: normalized.taskId,
+      branchName: normalized.branchName,
+      worktreePath: normalized.worktreePath,
+      baseBranch,
+      syncMode,
+      changed: false,
+      conflictsDetected: false,
+    });
+    if (
+      validatedBaseBranch.trace.includes(
+        WORKTREE_SYNC_BASE_BRANCH_BLOCKED_TRACE,
+      )
+    ) {
+      return createWorktreeSyncResult({
+        ...validatedBaseBranch,
+        summary: `Blocked worktree sync for ${normalized.branchName}`,
+        trace: [...normalized.trace, WORKTREE_SYNC_BASE_BRANCH_BLOCKED_TRACE],
+      });
+    }
+
     if (normalized.branchSafety?.status === 'blocked') {
       return createWorktreeSyncResult({
         id: `${normalized.id}:sync:${syncMode}`,
@@ -264,7 +324,7 @@ export class WorktreeAllocationService {
         taskId: normalized.taskId,
         branchName: normalized.branchName,
         worktreePath: normalized.worktreePath,
-        baseBranch,
+        baseBranch: validatedBaseBranch.baseBranch,
         syncMode,
         changed: false,
         conflictsDetected: false,
@@ -272,15 +332,39 @@ export class WorktreeAllocationService {
       });
     }
 
+    if (
+      !allocationPathMatchesConfiguredRoot({
+        allocation: normalized,
+        expected,
+        repositoryRoot: this.repositoryRoot,
+      })
+    ) {
+      return createWorktreeSyncResult({
+        id: `${normalized.id}:sync:${syncMode}`,
+        summary: `Blocked worktree sync for ${normalized.branchName}`,
+        status: 'blocked',
+        trace: [...normalized.trace, WORKTREE_SYNC_PATH_MISMATCH_TRACE],
+        updatedAt: new Date().toISOString(),
+        taskId: normalized.taskId,
+        branchName: normalized.branchName,
+        worktreePath: normalized.worktreePath,
+        baseBranch: validatedBaseBranch.baseBranch,
+        syncMode,
+        changed: false,
+        conflictsDetected: false,
+        branchSafety: evaluateWorktreeBranchSafety(normalized.branchName),
+      });
+    }
+
     const fetchResult = await this.runner.run(
       'git',
-      ['fetch', 'origin', baseBranch],
+      ['fetch', 'origin', validatedBaseBranch.baseBranch],
       this.repositoryRoot,
     );
     const syncArgs =
       syncMode === 'rebase'
-        ? ['rebase', `origin/${baseBranch}`]
-        : ['merge', '--ff-only', `origin/${baseBranch}`];
+        ? ['rebase', `origin/${validatedBaseBranch.baseBranch}`]
+        : ['merge', '--ff-only', `origin/${validatedBaseBranch.baseBranch}`];
     const syncResult = await this.runner.run(
       'git',
       syncArgs,
@@ -301,7 +385,7 @@ export class WorktreeAllocationService {
       taskId: normalized.taskId,
       branchName: normalized.branchName,
       worktreePath: normalized.worktreePath,
-      baseBranch,
+      baseBranch: validatedBaseBranch.baseBranch,
       syncMode,
       changed: succeeded,
       conflictsDetected: syncResult.exitCode !== 0,
@@ -326,6 +410,11 @@ export class WorktreeAllocationService {
     releaseMode: WorktreeReleaseMode = 'archive',
   ): Promise<WorktreeReleaseResult> {
     const normalized = createWorktreeAllocation(allocation);
+    const expected = allocateWorktree(
+      normalized.taskId,
+      normalized.branchName,
+      this.worktreeRoot,
+    );
     if (normalized.branchSafety?.status === 'blocked') {
       return createWorktreeReleaseResult({
         id: `${normalized.id}:release:${releaseMode}`,
@@ -339,6 +428,28 @@ export class WorktreeAllocationService {
         releaseMode,
         released: false,
         branchSafety: normalized.branchSafety,
+      });
+    }
+
+    if (
+      !allocationPathMatchesConfiguredRoot({
+        allocation: normalized,
+        expected,
+        repositoryRoot: this.repositoryRoot,
+      })
+    ) {
+      return createWorktreeReleaseResult({
+        id: `${normalized.id}:release:${releaseMode}`,
+        summary: `Blocked worktree release for ${normalized.branchName}`,
+        status: 'blocked',
+        trace: [...normalized.trace, WORKTREE_RELEASE_PATH_MISMATCH_TRACE],
+        updatedAt: new Date().toISOString(),
+        taskId: normalized.taskId,
+        branchName: normalized.branchName,
+        worktreePath: normalized.worktreePath,
+        releaseMode,
+        released: false,
+        branchSafety: evaluateWorktreeBranchSafety(normalized.branchName),
       });
     }
 

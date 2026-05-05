@@ -1,4 +1,4 @@
-import { appendTrace } from '@vannadii/devplat-core';
+import { appendTrace, decodeWithCodec } from '@vannadii/devplat-core';
 
 import {
   DISCORD_INSTALL_SCOPES,
@@ -9,8 +9,10 @@ import {
 import type {
   DeploymentTarget,
   DevplatConfig,
+  RepositoryRuntimeConfig,
   RuntimeConfigValidationIssue,
 } from './codec.js';
+import { RepositoryRuntimeConfigCodec } from './codec.js';
 
 /**
  * Reads an environment value with whitespace trimming and fallback support.
@@ -79,6 +81,29 @@ function readEnvNonNegativeInteger(
   }
 
   return parsed;
+}
+
+/**
+ * Decodes repository runtime config so branded repository keys remain codec-owned.
+ */
+function createRepositoryRuntimeConfig(input: {
+  owner: string;
+  repo: string;
+  defaultBranch: string;
+}): RepositoryRuntimeConfig {
+  const decoded = decodeWithCodec(RepositoryRuntimeConfigCodec, {
+    owner: input.owner,
+    repo: input.repo,
+    defaultBranch: input.defaultBranch,
+    repositoryKey: `${input.owner}/${input.repo}`,
+  });
+  if (!decoded.ok) {
+    throw new Error(
+      `Repository runtime configuration is invalid: ${decoded.error}`,
+    );
+  }
+
+  return decoded.value;
 }
 
 /**
@@ -258,6 +283,11 @@ export function createDefaultDevplatConfig(
     'DEVPLAT_STORAGE_ROOT',
     'devplat-state',
   );
+  const repository = createRepositoryRuntimeConfig({
+    owner: githubOwner,
+    repo: githubRepo,
+    defaultBranch,
+  });
 
   return createDevplatConfig({
     id: 'devplat-config',
@@ -267,12 +297,7 @@ export function createDefaultDevplatConfig(
     updatedAt: new Date().toISOString(),
     githubOwner,
     githubRepo,
-    repository: {
-      owner: githubOwner,
-      repo: githubRepo,
-      defaultBranch,
-      repositoryKey: `${githubOwner}/${githubRepo}`,
-    },
+    repository,
     github: {
       apiBaseUrl: readEnvUrl(
         env,

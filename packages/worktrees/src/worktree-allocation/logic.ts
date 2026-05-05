@@ -1,9 +1,15 @@
-import { appendTrace } from '@vannadii/devplat-core';
+import {
+  appendTrace,
+  decodeWithCodec,
+  GitBranchNameCodec,
+} from '@vannadii/devplat-core';
 
 import {
   WORKTREE_BLOCKED_PATH_MARKER,
   WORKTREE_BLOCKED_PATH_SEGMENT,
+  WORKTREE_BLOCKED_BASE_BRANCH_NAME,
   WORKTREE_DEFAULT_ROOT,
+  WORKTREE_SYNC_BASE_BRANCH_BLOCKED_TRACE,
   WORKTREE_UNSAFE_GIT_REF_CHARACTERS,
 } from './constants.js';
 import type {
@@ -33,6 +39,22 @@ function createSafetyCheck(input: {
     reason: input.reason,
     nextAction: input.nextAction,
   };
+}
+
+function normalizeWorktreeBaseBranch(baseBranch: string): {
+  blocked: boolean;
+  baseBranch: string;
+} {
+  const decoded = decodeWithCodec(GitBranchNameCodec, baseBranch);
+  return decoded.ok
+    ? {
+        blocked: false,
+        baseBranch: decoded.value,
+      }
+    : {
+        blocked: true,
+        baseBranch: WORKTREE_BLOCKED_BASE_BRANCH_NAME,
+      };
 }
 
 function hasUnsafeGitRefCharacter(branchName: string): boolean {
@@ -208,16 +230,24 @@ export function createWorktreeSyncResult(
 ): WorktreeSyncResult {
   const taskId = trimWorktreeValue(input.taskId);
   const branchName = trimWorktreeValue(input.branchName);
+  const baseBranch = normalizeWorktreeBaseBranch(input.baseBranch);
+  const trace = baseBranch.blocked
+    ? [...input.trace, WORKTREE_SYNC_BASE_BRANCH_BLOCKED_TRACE]
+    : input.trace;
 
   return appendTrace(
     {
       ...input,
       summary: input.summary.trim(),
-      baseBranch: input.baseBranch.trim(),
+      baseBranch: baseBranch.baseBranch,
+      status: baseBranch.blocked ? 'blocked' : input.status,
       updatedAt: new Date(input.updatedAt).toISOString(),
       taskId,
       branchName,
       worktreePath: trimWorktreeValue(input.worktreePath),
+      changed: baseBranch.blocked ? false : input.changed,
+      conflictsDetected: baseBranch.blocked ? false : input.conflictsDetected,
+      trace,
       ...(input.branchSafety === undefined
         ? {}
         : { branchSafety: input.branchSafety }),

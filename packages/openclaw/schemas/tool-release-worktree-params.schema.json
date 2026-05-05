@@ -37,7 +37,8 @@
               }
             },
             "updatedAt": {
-              "type": "string"
+              "type": "string",
+              "format": "date-time"
             },
             "taskId": {
               "type": "string"
@@ -91,6 +92,9 @@
         },
         "releaseMode": {
           "enum": ["archive", "delete"]
+        },
+        "applyToDisk": {
+          "type": "boolean"
         }
       },
       "required": ["allocation"],

@@ -3,17 +3,48 @@
   "$ref": "#/definitions/AllocateWorktreeToolInput",
   "definitions": {
     "AllocateWorktreeToolInput": {
-      "type": "object",
-      "properties": {
-        "taskId": {
-          "type": "string"
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "taskId": {
+              "type": "string"
+            },
+            "branchName": {
+              "type": "string"
+            },
+            "baseBranch": {
+              "type": "string",
+              "pattern": "^(?!-)(?!/)(?!.*(?:\\.\\.|//|@\\{|\\\\|~|\\^|:|\\?|\\*|\\[|(?:^|/)[^/]*\\.lock(?:/|$)))(?!.*[\\x00-\\x20\\x7f])(?!.*/$)(?!.*\\.$)(?!@$).+$"
+            },
+            "applyToDisk": {
+              "const": true
+            }
+          },
+          "required": ["taskId", "branchName", "baseBranch", "applyToDisk"],
+          "additionalProperties": false
         },
-        "branchName": {
-          "type": "string"
+        {
+          "type": "object",
+          "properties": {
+            "taskId": {
+              "type": "string"
+            },
+            "branchName": {
+              "type": "string"
+            },
+            "baseBranch": {
+              "type": "string",
+              "pattern": "^(?!-)(?!/)(?!.*(?:\\.\\.|//|@\\{|\\\\|~|\\^|:|\\?|\\*|\\[|(?:^|/)[^/]*\\.lock(?:/|$)))(?!.*[\\x00-\\x20\\x7f])(?!.*/$)(?!.*\\.$)(?!@$).+$"
+            },
+            "applyToDisk": {
+              "const": false
+            }
+          },
+          "required": ["taskId", "branchName"],
+          "additionalProperties": false
         }
-      },
-      "required": ["taskId", "branchName"],
-      "additionalProperties": false
+      ]
     }
   }
 }

@@ -581,6 +581,35 @@ describe('openclaw-deep-test helpers', () => {
               }),
             }),
             expect.objectContaining({
+              tool: 'run_gates',
+              phase: 'delivery',
+              params: expect.objectContaining({
+                actorId: 'operator-1',
+                gateNames: ['verify:node'],
+              }),
+              expected: expect.objectContaining({
+                passed: false,
+                classification: expect.objectContaining({
+                  failedGateNames: ['verify:node'],
+                  kind: 'requires-remediation',
+                  nextAction: 'create-remediation-plan',
+                }),
+                nextAction: 'create-remediation-plan',
+              }),
+            }),
+            expect.objectContaining({
+              tool: 'evaluate_sonar_quality_gate',
+              phase: 'delivery',
+              params: expect.objectContaining({
+                actorId: 'operator-1',
+                projectKey: 'vannadii_devplat-test-101-1',
+              }),
+              expected: expect.objectContaining({
+                nextAction: 'continue',
+                status: 'passed',
+              }),
+            }),
+            expect.objectContaining({
               tool: 'validate_artifact',
               phase: 'contracts',
             }),
@@ -599,6 +628,104 @@ describe('openclaw-deep-test helpers', () => {
             steps: [{ tool: 'resolve_runtime_config', ok: true }],
           }),
         ).not.toThrow();
+        expect(() =>
+          validateDeepTestReport({
+            mode: 'hermetic',
+            persisted: {
+              artifacts: ['artifact'],
+              memory: ['memory'],
+              state: ['state'],
+              telemetry: ['telemetry:run-gates:tool-call-1:gate-run-report'],
+            },
+            steps: [{ tool: 'run_gates', ok: true }],
+          }),
+        ).not.toThrow();
+        expect(() =>
+          validateDeepTestReport({
+            mode: 'hermetic',
+            persisted: {
+              artifacts: ['artifact'],
+              memory: ['memory'],
+              state: ['state'],
+              telemetry: [
+                'telemetry:sonar-quality-gate:tool-call-1:vannadii_devplat',
+              ],
+            },
+            steps: [{ tool: 'evaluate_sonar_quality_gate', ok: true }],
+          }),
+        ).not.toThrow();
+        expect(() =>
+          validateDeepTestReport({
+            mode: 'hermetic',
+            persisted: {
+              artifacts: ['artifact'],
+              memory: ['memory'],
+              state: ['state'],
+              telemetry: ['telemetry:update-pr:1700000000000'],
+            },
+            steps: [{ tool: 'submit_pull_request_update', ok: true }],
+          }),
+        ).not.toThrow();
+        expect(() =>
+          validateDeepTestReport({
+            mode: 'hermetic',
+            persisted: {
+              artifacts: ['artifact'],
+              memory: ['memory'],
+              state: ['state'],
+              telemetry: ['telemetry:merge-pr:1700000000000'],
+            },
+            steps: [{ tool: 'submit_pull_request_merge', ok: true }],
+          }),
+        ).not.toThrow();
+        expect(() =>
+          validateDeepTestReport({
+            mode: 'hermetic',
+            persisted: {
+              artifacts: ['artifact'],
+              memory: ['memory'],
+              state: ['state'],
+              telemetry: ['telemetry-openclaw-1'],
+            },
+            steps: [{ tool: 'run_gates', ok: true }],
+          }),
+        ).toThrow('Deep-test report is missing run_gates telemetry.');
+        expect(() =>
+          validateDeepTestReport({
+            mode: 'hermetic',
+            persisted: {
+              artifacts: ['artifact'],
+              memory: ['memory'],
+              state: ['state'],
+              telemetry: ['telemetry-openclaw-1'],
+            },
+            steps: [{ tool: 'evaluate_sonar_quality_gate', ok: true }],
+          }),
+        ).toThrow('Deep-test report is missing Sonar quality gate telemetry.');
+        expect(() =>
+          validateDeepTestReport({
+            mode: 'hermetic',
+            persisted: {
+              artifacts: ['artifact'],
+              memory: ['memory'],
+              state: ['state'],
+              telemetry: ['telemetry-openclaw-1'],
+            },
+            steps: [{ tool: 'submit_pull_request_update', ok: true }],
+          }),
+        ).toThrow('Deep-test report is missing pull request update telemetry.');
+        expect(() =>
+          validateDeepTestReport({
+            mode: 'hermetic',
+            persisted: {
+              artifacts: ['artifact'],
+              memory: ['memory'],
+              state: ['state'],
+              telemetry: ['telemetry-openclaw-1'],
+            },
+            steps: [{ tool: 'submit_pull_request_merge', ok: true }],
+          }),
+        ).toThrow('Deep-test report is missing pull request merge telemetry.');
       },
     },
     {

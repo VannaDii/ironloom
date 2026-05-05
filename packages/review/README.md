@@ -22,6 +22,7 @@ flowchart LR
 - Produce findings; do not apply fixes.
 - Keep review output compatible with remediation planning.
 - Keep finding, conformance, and summary types derived from the exported codecs.
+- Decode durable finding and summary `updatedAt` values through the shared ISO timestamp codec.
 - Do not call GitHub review APIs directly from this package.
 
 ## Development

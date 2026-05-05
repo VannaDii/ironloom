@@ -1,22 +1,27 @@
 import * as t from 'io-ts';
 
+import { GitBranchNameCodec, IsoTimestampCodec } from '@vannadii/devplat-core';
+
+/** Codec for a directed dependency edge between slices. */
 export const SliceDependencyEdgeCodec = t.type({
   fromSliceId: t.string,
   toSliceId: t.string,
 });
 
+/** Codec for a dependency graph generated for a slice plan. */
 export const SliceDependencyGraphCodec = t.type({
   sliceId: t.string,
   graphId: t.string,
-  generatedAt: t.string,
+  generatedAt: IsoTimestampCodec,
   edges: t.array(SliceDependencyEdgeCodec),
   blockedBy: t.array(t.string),
   dependencyCount: t.number,
 });
 
+/** Codec for a PR-sized work packet projected from a slice plan. */
 export const SliceWorkPacketCodec = t.type({
   packetId: t.string,
-  branchName: t.string,
+  branchName: GitBranchNameCodec,
   taskIds: t.array(t.string),
   estimatedTaskCount: t.number,
   estimatedPullRequestCount: t.number,
@@ -30,6 +35,7 @@ export const SliceSizeCodec = t.union([
   t.literal('large'),
 ]);
 
+/** Codec for a durable slice plan derived from a specification. */
 export const SlicePlanCodec = t.intersection([
   t.type({
     sliceId: t.string,
@@ -39,7 +45,7 @@ export const SlicePlanCodec = t.intersection([
     acceptanceCriteria: t.array(t.string),
     doneConditions: t.array(t.string),
     size: SliceSizeCodec,
-    updatedAt: t.string,
+    updatedAt: IsoTimestampCodec,
   }),
   t.partial({
     dependencyGraph: SliceDependencyGraphCodec,

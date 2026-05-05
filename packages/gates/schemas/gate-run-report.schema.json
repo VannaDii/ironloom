@@ -34,7 +34,8 @@
           }
         },
         "updatedAt": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "passed": {
           "type": "boolean"
@@ -126,7 +127,8 @@
               "type": "string"
             },
             "createdAt": {
-              "type": "string"
+              "type": "string",
+              "format": "date-time"
             }
           },
           "required": [

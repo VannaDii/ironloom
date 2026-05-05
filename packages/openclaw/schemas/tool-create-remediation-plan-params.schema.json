@@ -32,7 +32,8 @@
                 "type": "boolean"
               },
               "updatedAt": {
-                "type": "string"
+                "type": "string",
+                "format": "date-time"
               },
               "source": {
                 "enum": ["automated", "sonar", "human"]

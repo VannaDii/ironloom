@@ -30,7 +30,8 @@
           "type": "number"
         },
         "updatedAt": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "revisionHistory": {
           "type": "array",
@@ -44,7 +45,8 @@
                 "type": "string"
               },
               "updatedAt": {
-                "type": "string"
+                "type": "string",
+                "format": "date-time"
               },
               "revisionId": {
                 "type": "string"

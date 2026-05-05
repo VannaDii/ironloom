@@ -34,7 +34,8 @@
           }
         },
         "updatedAt": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "taskId": {
           "type": "string"
@@ -84,7 +85,8 @@
                 "type": "string"
               },
               "occurredAt": {
-                "type": "string"
+                "type": "string",
+                "format": "date-time"
               },
               "fromStatus": {
                 "enum": [

@@ -37,6 +37,13 @@ function uniqueTrimmed(values: readonly string[]): string[] {
 }
 
 /**
+ * Deduplicates, validates, and sorts Git branch names.
+ */
+function uniqueGitBranchNames(values: readonly string[]): string[] {
+  return uniqueTrimmed(values).map((value) => createGitBranchName(value));
+}
+
+/**
  * Deduplicates and sorts numeric identifiers.
  */
 function uniqueNumbers(values: readonly number[]): number[] {
@@ -123,8 +130,8 @@ export function createGitHubRepositoryState(
   return {
     ...input,
     repoFullName: input.repoFullName.trim(),
-    defaultBranch: input.defaultBranch.trim(),
-    protectedBranches: uniqueTrimmed(input.protectedBranches),
+    defaultBranch: createGitBranchName(input.defaultBranch),
+    protectedBranches: uniqueGitBranchNames(input.protectedBranches),
     openPullRequestNumbers: uniqueNumbers(input.openPullRequestNumbers),
     linkedIssueNumbers: uniqueNumbers(input.linkedIssueNumbers),
     updatedAt: new Date(input.updatedAt).toISOString(),
@@ -143,8 +150,8 @@ export function createGitHubPullRequestState(
     ...input,
     repoFullName: input.repoFullName.trim(),
     title: input.title.trim(),
-    headBranch: input.headBranch.trim(),
-    baseBranch: input.baseBranch.trim(),
+    headBranch: createGitBranchName(input.headBranch),
+    baseBranch: createGitBranchName(input.baseBranch),
     headSha: input.headSha.trim(),
     issueNumbers: uniqueNumbers(input.issueNumbers),
     labels: uniqueTrimmed(input.labels),

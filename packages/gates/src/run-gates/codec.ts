@@ -1,6 +1,9 @@
 import * as t from 'io-ts';
 
-import { LifecycleStatusCodec } from '@vannadii/devplat-core';
+import {
+  IsoTimestampCodec,
+  LifecycleStatusCodec,
+} from '@vannadii/devplat-core';
 
 export const GateFailureKindCodec = t.union([
   t.literal('command-failed'),
@@ -40,7 +43,7 @@ export const GateRemediationHookCodec = t.type({
   autofixEligible: t.boolean,
   approvalRequired: t.boolean,
   nextAction: t.string,
-  createdAt: t.string,
+  createdAt: IsoTimestampCodec,
 });
 
 export const GateRunReportCodec = t.intersection([
@@ -49,7 +52,7 @@ export const GateRunReportCodec = t.intersection([
     summary: t.string,
     status: LifecycleStatusCodec,
     trace: t.array(t.string),
-    updatedAt: t.string,
+    updatedAt: IsoTimestampCodec,
     passed: t.boolean,
     results: t.array(GateCheckResultCodec),
   }),

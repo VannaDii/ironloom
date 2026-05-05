@@ -85,6 +85,8 @@ flowchart LR
 - Keep Discord as an operator control plane, not a source of truth.
 - Delegate policy decisions to `@vannadii/devplat-policy`.
 - Do not place platform business logic in Discord handlers.
+- Decode durable Discord approval, binding, thread-session, control, interaction,
+  and callback-option `updatedAt` values through the shared ISO timestamp codec.
 
 - Keep public TypeScript contracts derived from the exported codecs.
 

@@ -117,7 +117,7 @@ describe('CommandExecutionService', () => {
       inputs: {
         args: [
           '-e',
-          'process.stdout.write("abcdef"); process.stderr.write("ghijkl"); process.exit(2)',
+          'process.stdout.write("abcdef"); process.stderr.write("ghijkl"); process.exit(1)',
         ],
         options: { maxOutputBytes: 3, retry: { attempts: 2 } },
       },
@@ -139,6 +139,56 @@ describe('CommandExecutionService', () => {
         expect(snapshot.stdout).toBe('abc');
         expect(snapshot.stderr).toBe('ghi');
         expect(snapshot.truncated).toBe(true);
+      },
+    },
+    {
+      name: 'does not retry non-retryable subprocess exit codes',
+      inputs: {
+        args: ['-e', 'process.stderr.write("bad"); process.exit(2)'],
+        options: { retry: { attempts: 3 } },
+      },
+      mock: () => new CommandExecutionService(),
+      assert: async (
+        service: CommandExecutionService,
+        inputs: {
+          args: string[];
+          options: Parameters<CommandExecutionService['execute']>[2];
+        },
+      ) => {
+        const snapshot = await service.execute(
+          process.execPath,
+          inputs.args,
+          inputs.options,
+        );
+
+        expect(snapshot.exitCode).toBe(2);
+        expect(snapshot.attempts).toBe(1);
+        expect(snapshot.stderr).toBe('bad');
+      },
+    },
+    {
+      name: 'retries caller-configured retryable subprocess exit codes',
+      inputs: {
+        args: ['-e', 'process.stderr.write("retry"); process.exit(2)'],
+        options: { retry: { attempts: 2, retryableExitCodes: [2] } },
+      },
+      mock: () => new CommandExecutionService(),
+      assert: async (
+        service: CommandExecutionService,
+        inputs: {
+          args: string[];
+          options: Parameters<CommandExecutionService['execute']>[2];
+        },
+      ) => {
+        const snapshot = await service.execute(
+          process.execPath,
+          inputs.args,
+          inputs.options,
+        );
+
+        expect(snapshot.exitCode).toBe(2);
+        expect(snapshot.attempts).toBe(2);
+        expect(snapshot.stderr).toBe('retry');
       },
     },
     {

@@ -46,7 +46,8 @@
           }
         },
         "evaluatedAt": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         }
       },
       "required": [

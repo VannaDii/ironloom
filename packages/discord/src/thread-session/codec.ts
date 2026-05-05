@@ -1,6 +1,9 @@
 import * as t from 'io-ts';
 
-import { LifecycleStatusCodec } from '@vannadii/devplat-core';
+import {
+  IsoTimestampCodec,
+  LifecycleStatusCodec,
+} from '@vannadii/devplat-core';
 
 export const PositivePullRequestNumberCodec = new t.Type<number, number>(
   'PositivePullRequestNumber',
@@ -22,7 +25,7 @@ const DiscordThreadSessionBaseCodec = t.type({
   summary: t.string,
   status: LifecycleStatusCodec,
   trace: t.array(t.string),
-  updatedAt: t.string,
+  updatedAt: IsoTimestampCodec,
   guildId: t.string,
   channelId: t.string,
   parentChannelId: t.string,

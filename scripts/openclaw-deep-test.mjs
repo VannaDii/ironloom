@@ -15,6 +15,38 @@ const defaultImageTagPrefix = 'devplat-openclaw-deep-test';
 const fixedTimestamp = '2026-04-04T00:00:00.000Z';
 const redactedValue = '[redacted]';
 /**
+ * OpenClaw tool name used by the deep scenario for direct gate execution.
+ */
+const runGatesToolName = 'run_gates';
+/**
+ * OpenClaw tool name used by the deep scenario for Sonar quality-gate evaluation.
+ */
+const sonarQualityGateToolName = 'evaluate_sonar_quality_gate';
+/**
+ * OpenClaw tool name used by the deep scenario for pull request updates.
+ */
+const submitPullRequestUpdateToolName = 'submit_pull_request_update';
+/**
+ * OpenClaw tool name used by the deep scenario for pull request merges.
+ */
+const submitPullRequestMergeToolName = 'submit_pull_request_merge';
+/**
+ * Telemetry key prefix emitted by the OpenClaw gate execution tool.
+ */
+const runGatesTelemetryPrefix = 'telemetry:run-gates';
+/**
+ * Telemetry key prefix emitted by the OpenClaw Sonar quality-gate tool.
+ */
+const sonarQualityGateTelemetryPrefix = 'telemetry:sonar-quality-gate';
+/**
+ * Telemetry key prefix emitted by the delegated GitHub pull request update flow.
+ */
+const pullRequestUpdateTelemetryPrefix = 'telemetry:update-pr';
+/**
+ * Telemetry key prefix emitted by the delegated GitHub pull request merge flow.
+ */
+const pullRequestMergeTelemetryPrefix = 'telemetry:merge-pr';
+/**
  * Characters ignored while classifying snapshot keys for secret redaction.
  */
 const snapshotKeyIgnoredCharacterPattern = /[^a-z0-9]/giu;
@@ -1291,6 +1323,24 @@ export function createDeepScenario(runtimeEnv) {
       'control',
     ),
     createStep(
+      runGatesToolName,
+      {
+        gateNames: ['verify:node'],
+        summary: ' Verify runtime node alignment ',
+        actorId: 'operator-1',
+      },
+      {
+        passed: false,
+        classification: {
+          kind: 'requires-remediation',
+          failedGateNames: ['verify:node'],
+          nextAction: 'create-remediation-plan',
+        },
+        nextAction: 'create-remediation-plan',
+      },
+      'delivery',
+    ),
+    createStep(
       'execute_command',
       {
         command: process.execPath,
@@ -1397,14 +1447,19 @@ export function createDeepScenario(runtimeEnv) {
       'delivery',
     ),
     createStep(
-      'evaluate_sonar_quality_gate',
+      sonarQualityGateToolName,
       {
         projectKey: runtimeEnv.SONAR_PROJECT_KEY,
         overallCoverage: 91,
         newCodeCoverage: 92,
         blockingIssues: 0,
+        actorId: 'operator-1',
       },
-      { projectKey: runtimeEnv.SONAR_PROJECT_KEY, status: 'passed' },
+      {
+        projectKey: runtimeEnv.SONAR_PROJECT_KEY,
+        status: 'passed',
+        nextAction: 'continue',
+      },
       'delivery',
     ),
     createStep(
@@ -1609,6 +1664,20 @@ export function createDeepScenario(runtimeEnv) {
   ];
 }
 
+/**
+ * Returns whether the deep-test report contains an executed tool step.
+ */
+function reportHasToolStep(report, toolName) {
+  return report.steps.some((step) => step.tool === toolName);
+}
+
+/**
+ * Returns whether persisted telemetry includes a key with the expected prefix.
+ */
+function reportHasTelemetryPrefix(report, prefix) {
+  return report.persisted.telemetry.some((key) => key.startsWith(prefix));
+}
+
 export function validateDeepTestReport(report) {
   if (report.mode !== 'hermetic' && report.mode !== 'live') {
     throw new Error('Deep-test report mode must be hermetic or live.');
@@ -1633,6 +1702,40 @@ export function validateDeepTestReport(report) {
   if (failingStep) {
     throw new Error(
       `Deep-test report contains a failing step for ${failingStep.tool}.`,
+    );
+  }
+
+  if (
+    reportHasToolStep(report, runGatesToolName) &&
+    !reportHasTelemetryPrefix(report, runGatesTelemetryPrefix)
+  ) {
+    throw new Error('Deep-test report is missing run_gates telemetry.');
+  }
+
+  if (
+    reportHasToolStep(report, sonarQualityGateToolName) &&
+    !reportHasTelemetryPrefix(report, sonarQualityGateTelemetryPrefix)
+  ) {
+    throw new Error(
+      'Deep-test report is missing Sonar quality gate telemetry.',
+    );
+  }
+
+  if (
+    reportHasToolStep(report, submitPullRequestUpdateToolName) &&
+    !reportHasTelemetryPrefix(report, pullRequestUpdateTelemetryPrefix)
+  ) {
+    throw new Error(
+      'Deep-test report is missing pull request update telemetry.',
+    );
+  }
+
+  if (
+    reportHasToolStep(report, submitPullRequestMergeToolName) &&
+    !reportHasTelemetryPrefix(report, pullRequestMergeTelemetryPrefix)
+  ) {
+    throw new Error(
+      'Deep-test report is missing pull request merge telemetry.',
     );
   }
 

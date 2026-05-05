@@ -78,6 +78,9 @@ describe('GitHubWorkflowService', () => {
           const result = await context.service.submit(inputs.request);
           expect(result.allowed).toBe(false);
           expect(result.submitted).toBe(false);
+          expect(
+            result.telemetryEventId.startsWith('telemetry:merge-pr:'),
+          ).toBe(true);
           expect(await context.store.list('telemetry')).toHaveLength(1);
           expect(context.service.explain(result.request)).toContain(
             'VannaDii/devplat',
@@ -135,6 +138,9 @@ describe('GitHubWorkflowService', () => {
           expect(prepared.repoFullName).toBe('VannaDii/devplat');
           expect(result.allowed).toBe(true);
           expect(result.submitted).toBe(true);
+          expect(
+            result.telemetryEventId.startsWith('telemetry:update-pr:'),
+          ).toBe(true);
           expect(result.receipt?.endpoint).toBe(
             '/repos/VannaDii/devplat/pulls/42',
           );

@@ -7,7 +7,13 @@ import {
   createArtifactRegistry,
   createDefaultArtifactRegistry,
 } from '@vannadii/devplat-artifacts';
+import type {
+  CommandExecutionOptions,
+  CommandResult,
+} from '@vannadii/devplat-execution';
+import type { TelemetryEvent } from '@vannadii/devplat-observability';
 import { FileStoreService } from '@vannadii/devplat-storage';
+import type { WorktreeAllocation } from '@vannadii/devplat-worktrees';
 
 import {
   createApproveSpecRecordTool,
@@ -91,6 +97,327 @@ describe('tool surface service', () => {
     expect(result.details).toMatchObject({
       passed: true,
       results: [{ name: 'lint', success: true }],
+    });
+  });
+
+  describe('run_gates operational telemetry', () => {
+    const dependencyCases = [
+      {
+        name: 'constructs with default gate runner dependency',
+        inputs: {
+          dependencies: {
+            telemetryEventService: {
+              async record(event: TelemetryEvent) {
+                return event;
+              },
+            },
+          },
+        },
+        mock: (inputs: {
+          dependencies: Parameters<typeof createRunGatesTool>[0];
+        }) => createRunGatesTool(inputs.dependencies),
+        assert: (tool: ReturnType<typeof createRunGatesTool>) => {
+          expect(tool.name).toBe('run_gates');
+        },
+      },
+      {
+        name: 'constructs with default telemetry dependency',
+        inputs: {
+          dependencies: {
+            runGatesService: {
+              async run() {
+                return {
+                  id: 'gate-run-report-default-telemetry',
+                  summary: 'default telemetry',
+                  status: 'complete',
+                  trace: [],
+                  updatedAt: '2026-04-04T00:00:00.000Z',
+                  passed: true,
+                  results: [],
+                };
+              },
+            },
+          },
+        },
+        mock: (inputs: {
+          dependencies: Parameters<typeof createRunGatesTool>[0];
+        }) => createRunGatesTool(inputs.dependencies),
+        assert: (tool: ReturnType<typeof createRunGatesTool>) => {
+          expect(tool.name).toBe('run_gates');
+        },
+      },
+    ];
+
+    it.each(dependencyCases)('$name', (testCase) => {
+      expect.hasAssertions();
+      const tool = testCase.mock(testCase.inputs);
+
+      testCase.assert(tool);
+    });
+
+    const cases = [
+      {
+        name: 'records passed gate runs through telemetry',
+        inputs: {
+          toolCallId: 'tool-call-gates-telemetry-1',
+          params: {
+            gateNames: ['lint'],
+            summary: 'run lint',
+            actorId: 'operator-1',
+          },
+        },
+        mock: () => {
+          const recorded: unknown[] = [];
+          const tool = createRunGatesTool({
+            runGatesService: {
+              async run(gateNames, summary) {
+                return {
+                  id: 'gate-run-report-1',
+                  summary,
+                  status: 'complete',
+                  trace: ['gates:passed'],
+                  updatedAt: '2026-04-04T00:00:00.000Z',
+                  passed: true,
+                  results: gateNames.map((gateName) => ({
+                    name: gateName,
+                    success: true,
+                    detail: `${gateName} -> exit 0`,
+                  })),
+                };
+              },
+            },
+            telemetryEventService: {
+              async record(event) {
+                recorded.push(event);
+                return event;
+              },
+            },
+          });
+
+          return { tool, recorded };
+        },
+        assert: async (
+          context: {
+            tool: ReturnType<typeof createRunGatesTool>;
+            recorded: unknown[];
+          },
+          inputs: {
+            toolCallId: string;
+            params: {
+              gateNames: string[];
+              summary: string;
+              actorId: string;
+            };
+          },
+        ) => {
+          const result = await context.tool.execute(
+            inputs.toolCallId,
+            inputs.params,
+          );
+
+          expect(result.details).toMatchObject({
+            id: 'gate-run-report-1',
+            passed: true,
+            telemetryEventId:
+              'telemetry:run-gates:tool-call-gates-telemetry-1:gate-run-report-1',
+          });
+          expect(context.recorded).toMatchObject([
+            {
+              id: 'telemetry:run-gates:tool-call-gates-telemetry-1:gate-run-report-1',
+              summary: 'run lint',
+              status: 'complete',
+              actorId: 'operator-1',
+              action: 'run-gates',
+              scope: 'supervisor',
+              details: {
+                gateRunReportId: 'gate-run-report-1',
+                passed: true,
+                failedGateNames: [],
+                nextAction: 'continue',
+              },
+            },
+          ]);
+        },
+      },
+      {
+        name: 'records failed gate runs through telemetry',
+        inputs: {
+          toolCallId: 'tool-call-gates-telemetry-2',
+          params: {
+            gateNames: ['test'],
+            summary: 'run tests',
+          },
+        },
+        mock: () => {
+          const recorded: unknown[] = [];
+          const tool = createRunGatesTool({
+            runGatesService: {
+              async run(gateNames, summary) {
+                return {
+                  id: 'gate-run-report-2',
+                  summary,
+                  status: 'complete',
+                  trace: ['gates:failed'],
+                  updatedAt: '2026-04-04T00:00:00.000Z',
+                  passed: false,
+                  results: gateNames.map((gateName) => ({
+                    name: gateName,
+                    success: false,
+                    detail: `${gateName} -> exit 1`,
+                    failureKind: 'command-failed',
+                    nextAction: 'remediate-failure',
+                  })),
+                  classification: {
+                    kind: 'requires-remediation',
+                    failedGateNames: ['test'],
+                    nextAction: 'create-remediation-plan',
+                  },
+                  nextAction: 'create-remediation-plan',
+                };
+              },
+            },
+            telemetryEventService: {
+              async record(event) {
+                recorded.push(event);
+                return event;
+              },
+            },
+          });
+
+          return { tool, recorded };
+        },
+        assert: async (
+          context: {
+            tool: ReturnType<typeof createRunGatesTool>;
+            recorded: unknown[];
+          },
+          inputs: {
+            toolCallId: string;
+            params: {
+              gateNames: string[];
+              summary: string;
+            };
+          },
+        ) => {
+          const result = await context.tool.execute(
+            inputs.toolCallId,
+            inputs.params,
+          );
+
+          expect(result.details).toMatchObject({
+            id: 'gate-run-report-2',
+            passed: false,
+            telemetryEventId:
+              'telemetry:run-gates:tool-call-gates-telemetry-2:gate-run-report-2',
+          });
+          expect(context.recorded).toMatchObject([
+            {
+              id: 'telemetry:run-gates:tool-call-gates-telemetry-2:gate-run-report-2',
+              summary: 'run tests',
+              status: 'failed',
+              actorId: 'openclaw',
+              action: 'run-gates',
+              scope: 'supervisor',
+              details: {
+                gateRunReportId: 'gate-run-report-2',
+                passed: false,
+                failedGateNames: ['test'],
+                nextAction: 'create-remediation-plan',
+              },
+            },
+          ]);
+        },
+      },
+      {
+        name: 'records unclassified failed gate runs through telemetry',
+        inputs: {
+          toolCallId: 'tool-call-gates-telemetry-3',
+          params: {
+            gateNames: ['coverage'],
+            summary: 'run coverage',
+          },
+        },
+        mock: () => {
+          const recorded: unknown[] = [];
+          const tool = createRunGatesTool({
+            runGatesService: {
+              async run(gateNames, summary) {
+                return {
+                  id: 'gate-run-report-3',
+                  summary,
+                  status: 'complete',
+                  trace: ['gates:failed'],
+                  updatedAt: '2026-04-04T00:00:00.000Z',
+                  passed: false,
+                  results: gateNames.map((gateName) => ({
+                    name: gateName,
+                    success: false,
+                    detail: `${gateName} -> exit 1`,
+                    failureKind: 'command-failed',
+                    nextAction: 'remediate-failure',
+                  })),
+                };
+              },
+            },
+            telemetryEventService: {
+              async record(event) {
+                recorded.push(event);
+                return event;
+              },
+            },
+          });
+
+          return { tool, recorded };
+        },
+        assert: async (
+          context: {
+            tool: ReturnType<typeof createRunGatesTool>;
+            recorded: unknown[];
+          },
+          inputs: {
+            toolCallId: string;
+            params: {
+              gateNames: string[];
+              summary: string;
+            };
+          },
+        ) => {
+          const result = await context.tool.execute(
+            inputs.toolCallId,
+            inputs.params,
+          );
+
+          expect(result.details).toMatchObject({
+            id: 'gate-run-report-3',
+            passed: false,
+            telemetryEventId:
+              'telemetry:run-gates:tool-call-gates-telemetry-3:gate-run-report-3',
+          });
+          expect(context.recorded).toMatchObject([
+            {
+              id: 'telemetry:run-gates:tool-call-gates-telemetry-3:gate-run-report-3',
+              summary: 'run coverage',
+              status: 'failed',
+              actorId: 'openclaw',
+              action: 'run-gates',
+              scope: 'supervisor',
+              details: {
+                gateRunReportId: 'gate-run-report-3',
+                passed: false,
+                failedGateNames: ['coverage'],
+                nextAction: 'create-remediation-plan',
+              },
+            },
+          ]);
+        },
+      },
+    ];
+
+    it.each(cases)('$name', async (testCase) => {
+      expect.hasAssertions();
+      const context = testCase.mock();
+
+      await testCase.assert(context, testCase.inputs);
     });
   });
 
@@ -806,6 +1133,320 @@ describe('tool surface service', () => {
     });
   });
 
+  describe('execute_command execution policy inputs', () => {
+    type ExecuteCommandPolicyCase = {
+      name: string;
+      inputs: {
+        params: {
+          command: string;
+          args: string[];
+          actorId: string;
+          privileged: boolean;
+          cwd: string;
+          timeoutMs: number;
+          maxOutputBytes: number;
+          retry: {
+            attempts: number;
+            retryableExitCodes?: number[];
+          };
+        };
+      };
+      mock: () => {
+        capturedOptions: CommandExecutionOptions[];
+        tool: ReturnType<typeof createExecuteCommandTool>;
+      };
+      assert: (
+        context: {
+          capturedOptions: CommandExecutionOptions[];
+          tool: ReturnType<typeof createExecuteCommandTool>;
+        },
+        inputs: ExecuteCommandPolicyCase['inputs'],
+      ) => Promise<void>;
+    };
+
+    const cases = [
+      {
+        name: 'passes retry and truncation policy options into command execution',
+        inputs: {
+          params: {
+            command: process.execPath,
+            args: ['-e', 'process.stdout.write("abcdef")'],
+            actorId: 'operator-1',
+            privileged: false,
+            cwd: 'packages',
+            timeoutMs: 25,
+            maxOutputBytes: 3,
+            retry: {
+              attempts: 2,
+              retryableExitCodes: [2],
+            },
+          },
+        },
+        mock: () => {
+          const capturedOptions: CommandExecutionOptions[] = [];
+          const commandExecutionService = {
+            async execute(
+              command: string,
+              args: readonly string[],
+              options: CommandExecutionOptions,
+            ): Promise<CommandResult> {
+              capturedOptions.push(options);
+              return {
+                command,
+                args: [...args],
+                exitCode: 0,
+                timedOut: false,
+                stdout: 'abc',
+                stderr: '',
+                durationMs: 5,
+                truncated: true,
+                ...(options.retry === undefined
+                  ? {}
+                  : { attempts: options.retry.attempts }),
+                policy: {
+                  retry: {
+                    attempts: options.retry?.attempts ?? 1,
+                    retryableExitCodes: options.retry?.retryableExitCodes ?? [
+                      1, 124,
+                    ],
+                  },
+                  truncation: {
+                    maxOutputBytes: options.maxOutputBytes ?? 1,
+                    mode: 'bytes',
+                  },
+                  ...(typeof options.timeoutMs === 'number'
+                    ? { timeoutMs: options.timeoutMs }
+                    : {}),
+                },
+              };
+            },
+          };
+
+          return {
+            capturedOptions,
+            tool: createExecuteCommandTool({
+              commandExecutionService,
+              telemetryEventService: {
+                async record(event: TelemetryEvent): Promise<TelemetryEvent> {
+                  return {
+                    ...event,
+                    id: 'telemetry-execute-command-1',
+                  };
+                },
+              },
+            }),
+          };
+        },
+        assert: async (context, inputs) => {
+          const result = await context.tool.execute(
+            'tool-call-ex8',
+            inputs.params,
+          );
+
+          expect(context.capturedOptions).toEqual([
+            {
+              cwd: 'packages',
+              timeoutMs: 25,
+              maxOutputBytes: 3,
+              retry: {
+                attempts: 2,
+                retryableExitCodes: [2],
+              },
+            },
+          ]);
+          expect(result.details).toMatchObject({
+            allowed: true,
+            request: {
+              cwd: 'packages',
+              timeoutMs: 25,
+              maxOutputBytes: 3,
+              retry: {
+                attempts: 2,
+                retryableExitCodes: [2],
+              },
+            },
+            result: {
+              attempts: 2,
+              truncated: true,
+              policy: {
+                retry: {
+                  retryableExitCodes: [2],
+                },
+                truncation: {
+                  maxOutputBytes: 3,
+                },
+              },
+            },
+            telemetryEventId: 'telemetry-execute-command-1',
+          });
+        },
+      },
+      {
+        name: 'passes retry attempts without custom retryable exit codes',
+        inputs: {
+          params: {
+            command: process.execPath,
+            args: ['-e', 'process.stdout.write("ok")'],
+            actorId: 'operator-1',
+            privileged: false,
+            cwd: 'packages',
+            timeoutMs: 25,
+            maxOutputBytes: 3,
+            retry: {
+              attempts: 2,
+            },
+          },
+        },
+        mock: () => {
+          const capturedOptions: CommandExecutionOptions[] = [];
+          const commandExecutionService = {
+            async execute(
+              command: string,
+              args: readonly string[],
+              options: CommandExecutionOptions,
+            ): Promise<CommandResult> {
+              capturedOptions.push(options);
+              return {
+                command,
+                args: [...args],
+                exitCode: 0,
+                timedOut: false,
+                stdout: 'ok',
+                stderr: '',
+                durationMs: 5,
+                attempts: options.retry?.attempts ?? 1,
+                policy: {
+                  retry: {
+                    attempts: options.retry?.attempts ?? 1,
+                    retryableExitCodes: [1, 124],
+                  },
+                },
+              };
+            },
+          };
+
+          return {
+            capturedOptions,
+            tool: createExecuteCommandTool({
+              commandExecutionService,
+              telemetryEventService: {
+                async record(event: TelemetryEvent): Promise<TelemetryEvent> {
+                  return {
+                    ...event,
+                    id: 'telemetry-execute-command-default-retry-codes',
+                  };
+                },
+              },
+            }),
+          };
+        },
+        assert: async (context, inputs) => {
+          const result = await context.tool.execute(
+            'tool-call-ex10',
+            inputs.params,
+          );
+
+          expect(context.capturedOptions).toEqual([
+            {
+              cwd: 'packages',
+              timeoutMs: 25,
+              maxOutputBytes: 3,
+              retry: {
+                attempts: 2,
+              },
+            },
+          ]);
+          expect(result.details).toMatchObject({
+            allowed: true,
+            request: {
+              retry: {
+                attempts: 2,
+              },
+            },
+            result: {
+              policy: {
+                retry: {
+                  retryableExitCodes: [1, 124],
+                },
+              },
+            },
+            telemetryEventId: 'telemetry-execute-command-default-retry-codes',
+          });
+        },
+      },
+      {
+        name: 'returns telemetry ids for policy-blocked command execution',
+        inputs: {
+          params: {
+            command: process.execPath,
+            args: ['-e', 'process.stdout.write("blocked")'],
+            actorId: 'operator-1',
+            privileged: true,
+            cwd: 'packages',
+            timeoutMs: 25,
+            maxOutputBytes: 3,
+            retry: {
+              attempts: 2,
+              retryableExitCodes: [2],
+            },
+          },
+        },
+        mock: () => {
+          const capturedOptions: CommandExecutionOptions[] = [];
+          const commandExecutionService = {
+            async execute(): Promise<CommandResult> {
+              throw new Error('policy-blocked command should not execute');
+            },
+          };
+
+          return {
+            capturedOptions,
+            tool: createExecuteCommandTool({
+              commandExecutionService,
+              telemetryEventService: {
+                async record(event: TelemetryEvent): Promise<TelemetryEvent> {
+                  return {
+                    ...event,
+                    id: 'telemetry-execute-command-blocked',
+                  };
+                },
+              },
+            }),
+          };
+        },
+        assert: async (context, inputs) => {
+          const result = await context.tool.execute(
+            'tool-call-ex9',
+            inputs.params,
+          );
+
+          expect(context.capturedOptions).toEqual([]);
+          expect(result.details).toMatchObject({
+            allowed: false,
+            policyDecisionId: 'policy-execute-command',
+            request: {
+              cwd: 'packages',
+              timeoutMs: 25,
+              maxOutputBytes: 3,
+              retry: {
+                attempts: 2,
+                retryableExitCodes: [2],
+              },
+            },
+            telemetryEventId: 'telemetry-execute-command-blocked',
+          });
+        },
+      },
+    ] satisfies ExecuteCommandPolicyCase[];
+
+    it.each(cases)('$name', async (testCase) => {
+      expect.hasAssertions();
+      const context = testCase.mock();
+
+      await testCase.assert(context, testCase.inputs);
+    });
+  });
+
   it('returns decode failures for invalid command execution input', async () => {
     const result = await createExecuteCommandTool().execute('tool-call-ex4', {
       command: process.execPath,
@@ -887,6 +1528,191 @@ describe('tool surface service', () => {
     });
 
     expect(result.details).toMatchObject({ status: 'failed' });
+  });
+
+  describe('Git-backed worktree tool execution', () => {
+    const allocation: WorktreeAllocation = {
+      id: 'worktree-task-1',
+      summary: 'allocated worktree',
+      status: 'approved',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      taskId: 'task-1',
+      branchName: 'feature/task-1',
+      worktreePath: '.worktrees/feature/task-1',
+    };
+
+    const cases = [
+      {
+        name: 'allocates worktrees on disk when requested',
+        inputs: {
+          toolCallId: 'tool-call-worktree-disk-1',
+          params: {
+            taskId: 'task-1',
+            branchName: 'feature/task-1',
+            baseBranch: 'main',
+            applyToDisk: true,
+          },
+        },
+        mock: () =>
+          createAllocateWorktreeTool({
+            worktreeAllocationService: {
+              allocate() {
+                return allocation;
+              },
+              async allocateOnDisk() {
+                return {
+                  ...allocation,
+                  status: 'approved',
+                  trace: ['git:worktree:add:ok'],
+                };
+              },
+            },
+          }),
+        assert: async (
+          tool: ReturnType<typeof createAllocateWorktreeTool>,
+          inputs: {
+            toolCallId: string;
+            params: {
+              taskId: string;
+              branchName: string;
+              baseBranch: string;
+              applyToDisk: boolean;
+            };
+          },
+        ) => {
+          const result = await tool.execute(inputs.toolCallId, inputs.params);
+
+          expect(result.details).toMatchObject({
+            taskId: 'task-1',
+            trace: ['git:worktree:add:ok'],
+          });
+        },
+      },
+      {
+        name: 'syncs worktrees on disk when requested',
+        inputs: {
+          toolCallId: 'tool-call-worktree-disk-2',
+          params: {
+            allocation,
+            baseBranch: 'main',
+            syncMode: 'rebase',
+            applyToDisk: true,
+          },
+        },
+        mock: () =>
+          createSyncWorktreeTool({
+            worktreeAllocationService: {
+              sync() {
+                return {
+                  ...allocation,
+                  id: 'worktree-task-1:sync:rebase',
+                  summary: 'Synced worktree for feature/task-1',
+                  baseBranch: 'main',
+                  syncMode: 'rebase',
+                  changed: true,
+                  conflictsDetected: false,
+                };
+              },
+              async syncOnDisk() {
+                return {
+                  ...allocation,
+                  id: 'worktree-task-1:sync:rebase',
+                  summary: 'Synced worktree for feature/task-1',
+                  status: 'complete',
+                  trace: ['git:fetch:ok', 'git:rebase:ok'],
+                  baseBranch: 'main',
+                  syncMode: 'rebase',
+                  changed: true,
+                  conflictsDetected: false,
+                };
+              },
+            },
+          }),
+        assert: async (
+          tool: ReturnType<typeof createSyncWorktreeTool>,
+          inputs: {
+            toolCallId: string;
+            params: {
+              allocation: WorktreeAllocation;
+              baseBranch: string;
+              syncMode: 'rebase';
+              applyToDisk: boolean;
+            };
+          },
+        ) => {
+          const result = await tool.execute(inputs.toolCallId, inputs.params);
+
+          expect(result.details).toMatchObject({
+            taskId: 'task-1',
+            trace: ['git:fetch:ok', 'git:rebase:ok'],
+            changed: true,
+          });
+        },
+      },
+      {
+        name: 'releases worktrees on disk when requested',
+        inputs: {
+          toolCallId: 'tool-call-worktree-disk-3',
+          params: {
+            allocation,
+            releaseMode: 'delete',
+            applyToDisk: true,
+          },
+        },
+        mock: () =>
+          createReleaseWorktreeTool({
+            worktreeAllocationService: {
+              release() {
+                return {
+                  ...allocation,
+                  id: 'worktree-task-1:release:delete',
+                  summary: 'Released worktree for feature/task-1',
+                  releaseMode: 'delete',
+                  released: true,
+                };
+              },
+              async releaseOnDisk() {
+                return {
+                  ...allocation,
+                  id: 'worktree-task-1:release:delete',
+                  summary: 'Released worktree for feature/task-1',
+                  status: 'complete',
+                  trace: ['git:worktree:remove:ok'],
+                  releaseMode: 'delete',
+                  released: true,
+                };
+              },
+            },
+          }),
+        assert: async (
+          tool: ReturnType<typeof createReleaseWorktreeTool>,
+          inputs: {
+            toolCallId: string;
+            params: {
+              allocation: WorktreeAllocation;
+              releaseMode: 'delete';
+              applyToDisk: boolean;
+            };
+          },
+        ) => {
+          const result = await tool.execute(inputs.toolCallId, inputs.params);
+
+          expect(result.details).toMatchObject({
+            taskId: 'task-1',
+            trace: ['git:worktree:remove:ok'],
+            released: true,
+          });
+        },
+      },
+    ];
+
+    it.each(cases)('$name', async (testCase) => {
+      expect.hasAssertions();
+      const tool = testCase.mock();
+
+      await testCase.assert(tool, testCase.inputs);
+    });
   });
 
   it('binds Discord threads from valid tool input', async () => {
@@ -1511,32 +2337,309 @@ describe('tool surface service', () => {
     expect(result.details).toMatchObject({ status: 'failed' });
   });
 
-  it('evaluates Sonar quality gates from valid tool input', async () => {
-    const result = await createEvaluateSonarQualityGateTool().execute(
-      'tool-call-sq1',
+  describe('evaluate_sonar_quality_gate operational telemetry', () => {
+    const cases = [
       {
-        projectKey: 'vannadii_devplat',
-        overallCoverage: 91,
-        newCodeCoverage: 92,
-        blockingIssues: 0,
-      },
-    );
+        name: 'records passed Sonar quality gates through telemetry',
+        inputs: {
+          toolCallId: 'tool-call-sq1',
+          params: {
+            projectKey: 'vannadii_devplat',
+            overallCoverage: 91,
+            newCodeCoverage: 92,
+            blockingIssues: 0,
+            actorId: 'operator-1',
+          },
+        },
+        mock: () => {
+          const recorded: unknown[] = [];
+          const tool = createEvaluateSonarQualityGateTool({
+            sonarQualityGateService: {
+              evaluate(
+                projectKey,
+                overallCoverage,
+                newCodeCoverage,
+                blockingIssues,
+              ) {
+                return {
+                  projectKey,
+                  status: 'passed',
+                  overallCoverage,
+                  newCodeCoverage,
+                  blockingIssues,
+                  evaluatedAt: '2026-04-04T00:00:00.000Z',
+                  nextAction: 'continue',
+                };
+              },
+            },
+            telemetryEventService: {
+              async record(event) {
+                recorded.push(event);
+                return event;
+              },
+            },
+          });
 
-    expect(result.details).toMatchObject({
-      projectKey: 'vannadii_devplat',
-      status: 'passed',
+          return { recorded, tool };
+        },
+        assert: async (
+          context: {
+            recorded: unknown[];
+            tool: ReturnType<typeof createEvaluateSonarQualityGateTool>;
+          },
+          inputs: {
+            toolCallId: string;
+            params: {
+              projectKey: string;
+              overallCoverage: number;
+              newCodeCoverage: number;
+              blockingIssues: number;
+              actorId: string;
+            };
+          },
+        ) => {
+          const result = await context.tool.execute(
+            inputs.toolCallId,
+            inputs.params,
+          );
+
+          expect(result.details).toMatchObject({
+            projectKey: 'vannadii_devplat',
+            status: 'passed',
+            telemetryEventId:
+              'telemetry:sonar-quality-gate:tool-call-sq1:vannadii_devplat',
+          });
+          expect(context.recorded).toMatchObject([
+            {
+              id: 'telemetry:sonar-quality-gate:tool-call-sq1:vannadii_devplat',
+              summary: 'Sonar quality gate passed for vannadii_devplat',
+              status: 'complete',
+              actorId: 'operator-1',
+              action: 'evaluate-sonar-quality-gate',
+              scope: 'supervisor',
+              details: {
+                projectKey: 'vannadii_devplat',
+                qualityGateStatus: 'passed',
+                overallCoverage: 91,
+                newCodeCoverage: 92,
+                blockingIssues: 0,
+                nextAction: 'continue',
+              },
+            },
+          ]);
+        },
+      },
+      {
+        name: 'records failed Sonar quality gates through telemetry',
+        inputs: {
+          toolCallId: 'tool-call-sq2',
+          params: {
+            projectKey: 'vannadii_devplat',
+            overallCoverage: 82,
+            newCodeCoverage: 88,
+            blockingIssues: 1,
+          },
+        },
+        mock: () => {
+          const recorded: unknown[] = [];
+          const tool = createEvaluateSonarQualityGateTool({
+            sonarQualityGateService: {
+              evaluate(
+                projectKey,
+                overallCoverage,
+                newCodeCoverage,
+                blockingIssues,
+              ) {
+                return {
+                  projectKey,
+                  status: 'failed',
+                  overallCoverage,
+                  newCodeCoverage,
+                  blockingIssues,
+                  evaluatedAt: '2026-04-04T00:00:00.000Z',
+                  nextAction: 'review-sonar',
+                };
+              },
+            },
+            telemetryEventService: {
+              async record(event) {
+                recorded.push(event);
+                return event;
+              },
+            },
+          });
+
+          return { recorded, tool };
+        },
+        assert: async (
+          context: {
+            recorded: unknown[];
+            tool: ReturnType<typeof createEvaluateSonarQualityGateTool>;
+          },
+          inputs: {
+            toolCallId: string;
+            params: {
+              projectKey: string;
+              overallCoverage: number;
+              newCodeCoverage: number;
+              blockingIssues: number;
+            };
+          },
+        ) => {
+          const result = await context.tool.execute(
+            inputs.toolCallId,
+            inputs.params,
+          );
+
+          expect(result.details).toMatchObject({
+            projectKey: 'vannadii_devplat',
+            status: 'failed',
+            telemetryEventId:
+              'telemetry:sonar-quality-gate:tool-call-sq2:vannadii_devplat',
+          });
+          expect(context.recorded).toMatchObject([
+            {
+              id: 'telemetry:sonar-quality-gate:tool-call-sq2:vannadii_devplat',
+              summary: 'Sonar quality gate failed for vannadii_devplat',
+              status: 'failed',
+              actorId: 'openclaw',
+              action: 'evaluate-sonar-quality-gate',
+              scope: 'supervisor',
+              details: {
+                projectKey: 'vannadii_devplat',
+                qualityGateStatus: 'failed',
+                overallCoverage: 82,
+                newCodeCoverage: 88,
+                blockingIssues: 1,
+                nextAction: 'review-sonar',
+              },
+            },
+          ]);
+        },
+      },
+      {
+        name: 'records absent Sonar next action as null telemetry detail',
+        inputs: {
+          toolCallId: 'tool-call-sq3',
+          params: {
+            projectKey: 'vannadii_devplat',
+            overallCoverage: 95,
+            newCodeCoverage: 95,
+            blockingIssues: 0,
+          },
+        },
+        mock: () => {
+          const recorded: unknown[] = [];
+          const tool = createEvaluateSonarQualityGateTool({
+            sonarQualityGateService: {
+              evaluate(
+                projectKey,
+                overallCoverage,
+                newCodeCoverage,
+                blockingIssues,
+              ) {
+                return {
+                  projectKey,
+                  status: 'passed',
+                  overallCoverage,
+                  newCodeCoverage,
+                  blockingIssues,
+                  evaluatedAt: '2026-04-04T00:00:00.000Z',
+                };
+              },
+            },
+            telemetryEventService: {
+              async record(event) {
+                recorded.push(event);
+                return event;
+              },
+            },
+          });
+
+          return { recorded, tool };
+        },
+        assert: async (
+          context: {
+            recorded: unknown[];
+            tool: ReturnType<typeof createEvaluateSonarQualityGateTool>;
+          },
+          inputs: {
+            toolCallId: string;
+            params: {
+              projectKey: string;
+              overallCoverage: number;
+              newCodeCoverage: number;
+              blockingIssues: number;
+            };
+          },
+        ) => {
+          const result = await context.tool.execute(
+            inputs.toolCallId,
+            inputs.params,
+          );
+
+          expect(result.details).toMatchObject({
+            projectKey: 'vannadii_devplat',
+            status: 'passed',
+          });
+          expect(context.recorded).toMatchObject([
+            {
+              id: 'telemetry:sonar-quality-gate:tool-call-sq3:vannadii_devplat',
+              details: {
+                nextAction: null,
+              },
+            },
+          ]);
+        },
+      },
+      {
+        name: 'returns decode failures for invalid Sonar quality gate input',
+        inputs: {
+          toolCallId: 'tool-call-sq4',
+          params: {
+            projectKey: 'vannadii_devplat',
+          },
+        },
+        mock: () => {
+          const recorded: unknown[] = [];
+          const tool = createEvaluateSonarQualityGateTool({
+            telemetryEventService: {
+              async record(event) {
+                recorded.push(event);
+                return event;
+              },
+            },
+          });
+
+          return { recorded, tool };
+        },
+        assert: async (
+          context: {
+            recorded: unknown[];
+            tool: ReturnType<typeof createEvaluateSonarQualityGateTool>;
+          },
+          inputs: {
+            toolCallId: string;
+            params: {
+              projectKey: string;
+            };
+          },
+        ) => {
+          const result = await context.tool.execute(
+            inputs.toolCallId,
+            inputs.params,
+          );
+
+          expect(result.details).toMatchObject({ status: 'failed' });
+          expect(context.recorded).toEqual([]);
+        },
+      },
+    ];
+
+    it.each(cases)('$name', async (testCase) => {
+      const context = testCase.mock(testCase.inputs);
+      await testCase.assert(context, testCase.inputs);
     });
-  });
-
-  it('returns decode failures for invalid Sonar quality gate input', async () => {
-    const result = await createEvaluateSonarQualityGateTool().execute(
-      'tool-call-sq2',
-      {
-        projectKey: 'vannadii_devplat',
-      },
-    );
-
-    expect(result.details).toMatchObject({ status: 'failed' });
   });
 
   it('creates review finding artifacts from valid tool input', async () => {

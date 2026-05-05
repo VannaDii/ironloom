@@ -36,7 +36,8 @@
           "enum": ["small", "medium", "large"]
         },
         "updatedAt": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "dependencyGraph": {
           "type": "object",
@@ -48,7 +49,8 @@
               "type": "string"
             },
             "generatedAt": {
-              "type": "string"
+              "type": "string",
+              "format": "date-time"
             },
             "edges": {
               "type": "array",
@@ -93,7 +95,8 @@
               "type": "string"
             },
             "branchName": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^(?!-)(?!/)(?!.*(?:\\.\\.|//|@\\{|\\\\|~|\\^|:|\\?|\\*|\\[|(?:^|/)[^/]*\\.lock(?:/|$)))(?!.*[\\x00-\\x20\\x7f])(?!.*/$)(?!.*\\.$)(?!@$).+$"
             },
             "taskIds": {
               "type": "array",

@@ -42,6 +42,7 @@ Add the first full-autonomy contract slices:
 - GitHub REST submission, GitHub repository/PR/spec-link state contracts, Git-backed worktree operations, and fail-closed worktree branch safety metadata
 - GitHub workflow submission decisions now keep non-2xx REST receipts attached while marking the action unsubmitted, so failed GitHub API writes cannot be mistaken for successful lifecycle changes
 - Git-backed worktree command failures now preserve the child-process exit code and captured stdout/stderr for more accurate gate and operator diagnostics
+- Git-backed worktree sync now blocks unsafe base branches before Git commands run, and OpenClaw Git-backed allocation now requires an explicit validated base branch whenever `applyToDisk` is true
 - Active artifact-registry validation now includes the applicable migration id in required-migration failures when the registry contains a direct migration record, giving operators an exact upgrade target
 - Artifact registries now expose ordered migration-path lookup, and active artifact validation reports chained migration ids in both the operator-facing error and structured diagnostic when a stale artifact requires multiple recorded migrations before validation
 - OpenClaw `validate_artifact` failures now preserve structured validation diagnostics, including migration path metadata, instead of returning only the failure string
@@ -50,5 +51,13 @@ Add the first full-autonomy contract slices:
 - Live-lab workspace package entrypoint resolution now distinguishes missing build output from other filesystem access failures, preserving permission and IO diagnostics instead of reporting them as build-required errors
 - Deep-test cleanup now skips bind-mount ownership normalization with an audit warning on non-POSIX Node runtimes instead of throwing during module load, and CI artifact instruction validation now checks upload-artifact steps by step metadata so key order or retention-day changes do not create false failures
 - Command execution now enforces repository-relative working-directory safety at the service boundary, returns a structured refusal result instead of spawning subprocesses from absolute or repository-escaping paths, and includes package-runner regression coverage for repository-relative cwd execution
+- Command execution retry handling now honors the configured retryable exit-code policy instead of retrying every failed subprocess exit
+- OpenClaw command execution now reuses the execution-owned option codec so tool callers can pass `maxOutputBytes` and `retry.attempts`, with the delegated request snapshot and telemetry preserving truncation and retry policy evidence
+- OpenClaw command execution now exposes and delegates `retry.retryableExitCodes`, letting callers retry non-default subprocess exit codes while preserving the normalized retry policy in telemetry and results
+- OpenClaw command execution results now return the persisted telemetry event id for policy-allowed and policy-blocked execution paths so callers can audit the stored command lifecycle evidence directly
+- Memory, research, review, and remediation lifecycle codecs now reject non-ISO durable timestamps and expose the stricter contracts through regenerated package and OpenClaw schemas
+- Policy, gates, supervisor, slicing, and OpenClaw plugin-config lifecycle codecs now reject non-ISO durable timestamps, and slice work-packet plus pull-request lifecycle branch refs now use the shared Git branch codec
+- Discord approval, binding, thread-session, control-request, operator-interaction, and callback-option codecs now reject non-ISO durable timestamps without changing the deferred live human-click acceptance boundary
+- Sonar bootstrap verification and quality-gate codecs now reject non-ISO evidence timestamps, and GitHub repository and pull-request snapshots now validate default, protected, head, and base branch refs with the shared Git branch codec
 
 Repository validation now requires package-local README coverage with real-world Mermaid flow diagrams, and generated schemas/manifests are emitted in Prettier-stable JSON so generation, repo validation, and formatting checks agree.

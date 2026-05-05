@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  WORKTREE_BLOCKED_BASE_BRANCH_NAME,
+  WORKTREE_SYNC_BASE_BRANCH_BLOCKED_TRACE,
+} from './constants.js';
+import {
   allocateWorktree,
   createWorktreeAllocation,
   evaluateWorktreeBranchSafety,
@@ -73,6 +77,31 @@ describe('WorktreeAllocation logic', () => {
         });
         expect(syncResult.status).toBe('blocked');
         expect(syncResult.changed).toBe(false);
+      },
+    },
+    {
+      name: 'blocks unsafe base branches before producing sync results',
+      inputs: {
+        taskId: 'task-base-branch',
+        branchName: 'feature/task-base-branch',
+        baseBranch: '--upload-pack=sh',
+      },
+      mock: () => undefined,
+      assert: (inputs: {
+        taskId: string;
+        branchName: string;
+        baseBranch: string;
+      }) => {
+        const allocation = allocateWorktree(inputs.taskId, inputs.branchName);
+        const syncResult = syncWorktree(allocation, inputs.baseBranch);
+
+        expect(syncResult.status).toBe('blocked');
+        expect(syncResult.changed).toBe(false);
+        expect(syncResult.conflictsDetected).toBe(false);
+        expect(syncResult.baseBranch).toBe(WORKTREE_BLOCKED_BASE_BRANCH_NAME);
+        expect(syncResult.trace).toContain(
+          WORKTREE_SYNC_BASE_BRANCH_BLOCKED_TRACE,
+        );
       },
     },
     {

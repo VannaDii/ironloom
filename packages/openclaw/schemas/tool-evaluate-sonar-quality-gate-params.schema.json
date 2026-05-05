@@ -16,6 +16,9 @@
         },
         "blockingIssues": {
           "type": "number"
+        },
+        "actorId": {
+          "type": "string"
         }
       },
       "required": [

@@ -17,6 +17,7 @@ import {
   DEVPLAT_ACTION_SHOW_STATUS,
   DEVPLAT_ACTION_SYNC_WORKTREE,
   DEVPLAT_ACTION_UPDATE_SPEC,
+  IsoTimestampCodec,
   LifecycleStatusCodec,
 } from '@vannadii/devplat-core';
 
@@ -64,7 +65,7 @@ export const DiscordControlRequestCodec = t.intersection([
     summary: t.string,
     status: LifecycleStatusCodec,
     trace: t.array(t.string),
-    updatedAt: t.string,
+    updatedAt: IsoTimestampCodec,
     actorId: t.string,
     threadId: t.string,
     channelId: t.string,
@@ -82,7 +83,7 @@ export const DiscordOperatorInteractionCodec = t.intersection([
     token: t.string,
     actorId: t.string,
     channelId: t.string,
-    updatedAt: t.string,
+    updatedAt: IsoTimestampCodec,
   }),
   t.partial({
     commandName: t.string,
@@ -133,7 +134,7 @@ export const DiscordInteractionCallbackOptionsCodec = t.partial({
   boundSession: DiscordThreadSessionCodec,
   summary: t.string,
   privileged: t.boolean,
-  updatedAt: t.string,
+  updatedAt: IsoTimestampCodec,
 });
 
 export const DiscordResponseReceiptCodec = t.type({

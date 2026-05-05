@@ -34,7 +34,8 @@
           }
         },
         "updatedAt": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "githubOwner": {
           "type": "string"
@@ -52,10 +53,12 @@
               "type": "string"
             },
             "defaultBranch": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^(?!-)(?!/)(?!.*(?:\\.\\.|//|@\\{|\\\\|~|\\^|:|\\?|\\*|\\[|(?:^|/)[^/]*\\.lock(?:/|$)))(?!.*[\\x00-\\x20\\x7f])(?!.*/$)(?!.*\\.$)(?!@$).+$"
             },
             "repositoryKey": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^(?!.*(?:^|/)\\s)(?!.*\\s(?:/|$))[^/]+/[^/]+$"
             }
           },
           "required": ["owner", "repo", "defaultBranch", "repositoryKey"],
@@ -112,7 +115,8 @@
               "type": "string"
             },
             "baseBranch": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^(?!-)(?!/)(?!.*(?:\\.\\.|//|@\\{|\\\\|~|\\^|:|\\?|\\*|\\[|(?:^|/)[^/]*\\.lock(?:/|$)))(?!.*[\\x00-\\x20\\x7f])(?!.*/$)(?!.*\\.$)(?!@$).+$"
             },
             "syncStrategy": {
               "const": "rebase-or-fast-forward"

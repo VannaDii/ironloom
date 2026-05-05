@@ -31,6 +31,25 @@
         },
         "timeoutMs": {
           "type": "number"
+        },
+        "maxOutputBytes": {
+          "type": "number"
+        },
+        "retry": {
+          "type": "object",
+          "properties": {
+            "attempts": {
+              "type": "number"
+            },
+            "retryableExitCodes": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          },
+          "required": ["attempts"],
+          "additionalProperties": false
         }
       },
       "required": ["command", "args", "actorId", "privileged"],
