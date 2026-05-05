@@ -50,7 +50,11 @@ for audit review while the private Gateway runtime is still alive. The live-lab
 `operator_hold_ms` input can keep that runtime open briefly for manual click
 acceptance. The probe persists its bound thread session into the same runtime
 state directory used by the private Gateway before posting controls, so manual
-clicks can revalidate the stored binding during the hold window.
+clicks can revalidate the stored binding during the hold window. Gateway button
+callbacks resolve persisted sessions from the callback thread id, or from a
+component-encoded thread id only when the callback channel matches the persisted
+thread or parent channel, so parent-channel callback payloads still route while
+unrelated channels fail closed.
 Bootstrap/progress status posts remain noninteractive so they do not
 leave stale buttons after the ephemeral runner exits. Discord does not provide a
 supported bot API for clicking buttons as a human user, so live human clicks in
@@ -68,6 +72,8 @@ flowchart LR
   Gateway --> Command[INTERACTION_CREATE dispatch]
   Command --> Normalize[Normalize callback payload]
   Normalize --> Binding[Resolve bound thread session]
+  Components --> ComponentThread[Encoded thread id]
+  ComponentThread --> Binding
   Binding --> WorkItem[Project bound work item]
   WorkItem -->|unambiguous| Policy[Policy evaluation]
   Binding -->|ambiguous| Deny[Fail closed response and audit]

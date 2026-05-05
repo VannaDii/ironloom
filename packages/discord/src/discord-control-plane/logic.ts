@@ -130,6 +130,15 @@ function parseDiscordComponentCustomId(
   };
 }
 
+/**
+ * Extracts the encoded thread id from a DevPlat Discord component custom id.
+ */
+export function resolveDiscordComponentThreadId(
+  value: string | undefined,
+): string | undefined {
+  return parseDiscordComponentCustomId(value)?.threadId;
+}
+
 function normalizeActionToken(value: string | undefined): string | undefined {
   const trimmed = value?.trim().toLowerCase();
   if (trimmed === undefined || trimmed.length === 0) {

@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import type { AnyAgentTool } from 'openclaw/plugin-sdk/plugin-entry';
+import type * as t from 'io-ts';
 import type {
   DiscordControlResponseTransport,
   DiscordOperatorInteraction,
@@ -12,12 +13,24 @@ import { RebaseDependentsService } from '@vannadii/devplat-branching';
 import {
   ApprovalRecordArtifactService,
   ArtifactEnvelopeService,
+  type ArtifactPayloadValidator,
   ArtifactValidationService,
   AuditLogArtifactService,
   MergeDecisionArtifactService,
   RebaseResultArtifactService,
 } from '@vannadii/devplat-artifacts';
 import {
+  ARTIFACT_TYPE_DISCORD_THREAD_SESSION,
+  ARTIFACT_TYPE_GATE_RUN_REPORT,
+  ARTIFACT_TYPE_PULL_REQUEST_RECORD,
+  ARTIFACT_TYPE_REMEDIATION_PLAN,
+  ARTIFACT_TYPE_RESEARCH_BRIEF,
+  ARTIFACT_TYPE_REVIEW_FINDING,
+  ARTIFACT_TYPE_SLICE_PLAN,
+  ARTIFACT_TYPE_SPEC_RECORD,
+  ARTIFACT_TYPE_TASK_RECORD,
+  ARTIFACT_TYPE_TELEMETRY_EVENT,
+  ARTIFACT_TYPE_WORKTREE_ALLOCATION,
   decodeWithCodec,
   DEVPLAT_ACTION_EXECUTE_COMMAND,
   DEVPLAT_ACTION_RUN_GATES,
@@ -32,10 +45,12 @@ import {
   DiscordChannelBindingService,
   DiscordControlPlaneService,
   DiscordInteractiveApprovalService,
+  DiscordThreadSessionCodec,
   DiscordLoopbackResponseTransport,
   DiscordThreadSessionService,
 } from '@vannadii/devplat-discord';
 import {
+  GateRunReportCodec,
   GATE_NEXT_ACTION_CONTINUE,
   GATE_NEXT_ACTION_CREATE_REMEDIATION_PLAN,
   RunGatesService,
@@ -45,24 +60,44 @@ import { GitHubWorkflowService } from '@vannadii/devplat-github';
 import { MemoryEntryService } from '@vannadii/devplat-memory';
 import {
   TelemetryEventService,
+  TelemetryEventCodec,
   type TelemetryEvent,
 } from '@vannadii/devplat-observability';
 import { DecisionPolicyService } from '@vannadii/devplat-policy';
-import { PullRequestService } from '@vannadii/devplat-prs';
-import { TaskQueueService, type TaskRecord } from '@vannadii/devplat-queue';
-import { ResearchBriefService } from '@vannadii/devplat-research';
-import { RemediationPlanService } from '@vannadii/devplat-remediation';
-import { ReviewFindingsService } from '@vannadii/devplat-review';
-import { SlicePlanService } from '@vannadii/devplat-slicing';
+import {
+  PullRequestRecordCodec,
+  PullRequestService,
+} from '@vannadii/devplat-prs';
+import {
+  TaskQueueService,
+  TaskRecordCodec,
+  type TaskRecord,
+} from '@vannadii/devplat-queue';
+import {
+  ResearchBriefCodec,
+  ResearchBriefService,
+} from '@vannadii/devplat-research';
+import {
+  RemediationPlanCodec,
+  RemediationPlanService,
+} from '@vannadii/devplat-remediation';
+import {
+  ReviewFindingCodec,
+  ReviewFindingsService,
+} from '@vannadii/devplat-review';
+import { SlicePlanCodec, SlicePlanService } from '@vannadii/devplat-slicing';
 import {
   SonarBootstrapVerificationService,
   SonarQualityGateService,
   type SonarQualityGateResult,
 } from '@vannadii/devplat-sonarcloud';
-import { SpecRecordService } from '@vannadii/devplat-specs';
+import { SpecRecordCodec, SpecRecordService } from '@vannadii/devplat-specs';
 import { FileStoreService } from '@vannadii/devplat-storage';
 import { SupervisorCycleService } from '@vannadii/devplat-supervisor';
-import { WorktreeAllocationService } from '@vannadii/devplat-worktrees';
+import {
+  WorktreeAllocationCodec,
+  WorktreeAllocationService,
+} from '@vannadii/devplat-worktrees';
 
 import { PluginConfigService } from '../plugin-config/index.js';
 import {
@@ -143,6 +178,72 @@ import type {
 } from './codec.js';
 
 type ToolParameterSchema = AnyAgentTool['parameters'] & Record<string, unknown>;
+
+/**
+ * Creates a payload validator from an owning package codec.
+ */
+function createOpenClawArtifactPayloadValidator<TValue>(
+  codec: t.Decoder<unknown, TValue>,
+): ArtifactPayloadValidator {
+  return (payload: unknown): ReturnType<ArtifactPayloadValidator> =>
+    decodeWithCodec(codec, payload);
+}
+
+/**
+ * Creates delegated validators for artifact-envelope payloads owned outside
+ * `@vannadii/devplat-artifacts`.
+ */
+function createOpenClawArtifactPayloadValidators(): ReadonlyMap<
+  string,
+  ArtifactPayloadValidator
+> {
+  return new Map<string, ArtifactPayloadValidator>([
+    [
+      ARTIFACT_TYPE_DISCORD_THREAD_SESSION,
+      createOpenClawArtifactPayloadValidator(DiscordThreadSessionCodec),
+    ],
+    [
+      ARTIFACT_TYPE_GATE_RUN_REPORT,
+      createOpenClawArtifactPayloadValidator(GateRunReportCodec),
+    ],
+    [
+      ARTIFACT_TYPE_PULL_REQUEST_RECORD,
+      createOpenClawArtifactPayloadValidator(PullRequestRecordCodec),
+    ],
+    [
+      ARTIFACT_TYPE_REMEDIATION_PLAN,
+      createOpenClawArtifactPayloadValidator(RemediationPlanCodec),
+    ],
+    [
+      ARTIFACT_TYPE_RESEARCH_BRIEF,
+      createOpenClawArtifactPayloadValidator(ResearchBriefCodec),
+    ],
+    [
+      ARTIFACT_TYPE_REVIEW_FINDING,
+      createOpenClawArtifactPayloadValidator(ReviewFindingCodec),
+    ],
+    [
+      ARTIFACT_TYPE_SLICE_PLAN,
+      createOpenClawArtifactPayloadValidator(SlicePlanCodec),
+    ],
+    [
+      ARTIFACT_TYPE_SPEC_RECORD,
+      createOpenClawArtifactPayloadValidator(SpecRecordCodec),
+    ],
+    [
+      ARTIFACT_TYPE_TASK_RECORD,
+      createOpenClawArtifactPayloadValidator(TaskRecordCodec),
+    ],
+    [
+      ARTIFACT_TYPE_TELEMETRY_EVENT,
+      createOpenClawArtifactPayloadValidator(TelemetryEventCodec),
+    ],
+    [
+      ARTIFACT_TYPE_WORKTREE_ALLOCATION,
+      createOpenClawArtifactPayloadValidator(WorktreeAllocationCodec),
+    ],
+  ]);
+}
 
 /**
  * Gate runner behavior used by the OpenClaw gate tool.
@@ -2145,9 +2246,12 @@ export function createValidateArtifactTool(): AnyAgentTool {
 
       const validationOptions =
         decoded.value.registry === undefined
-          ? {}
+          ? {
+              payloadValidators: createOpenClawArtifactPayloadValidators(),
+            }
           : {
               registry: decoded.value.registry,
+              payloadValidators: createOpenClawArtifactPayloadValidators(),
             };
       const artifact = new ArtifactValidationService().execute(
         decoded.value.artifact,

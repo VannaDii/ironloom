@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import {
+  ARTIFACT_VALIDATION_PAYLOAD_INVALID_ERROR_CODE,
   createArtifactRegistry,
   createDefaultArtifactRegistry,
 } from '@vannadii/devplat-artifacts';
@@ -4490,6 +4491,13 @@ describe('tool surface service', () => {
               updatedAt: '2026-04-04T00:00:00.000Z',
               payload: {
                 findingId: 'finding-1',
+                severity: 'medium',
+                path: 'packages/review/src/review-findings/logic.ts',
+                message: 'Review payload is valid.',
+                rationale: 'The delegated codec accepts complete findings.',
+                fixRecommendation: 'Keep the finding shape complete.',
+                blocking: false,
+                updatedAt: '2026-04-04T00:00:00.000Z',
               },
             },
           },
@@ -4505,6 +4513,49 @@ describe('tool surface service', () => {
 
           expect(result.details).toMatchObject({
             artifactType: 'review-finding',
+            trace: [
+              'artifact-payload:review-finding',
+              'artifact:review-finding',
+            ],
+          });
+        },
+      },
+      {
+        name: 'rejects malformed delegated artifact payloads',
+        inputs: {
+          toolCallId: 'tool-call-11a',
+          params: {
+            artifact: {
+              id: 'artifact-1a',
+              artifactType: 'review-finding',
+              version: 1,
+              summary: 'artifact',
+              status: 'approved',
+              trace: [],
+              updatedAt: '2026-04-04T00:00:00.000Z',
+              payload: {
+                findingId: 'finding-1a',
+              },
+            },
+          },
+        },
+        mock: () => ({
+          tool: createValidateArtifactTool(),
+        }),
+        assert: async (context, inputs) => {
+          const result = await context.tool.execute(
+            inputs.toolCallId,
+            inputs.params,
+          );
+
+          expect(result.details).toMatchObject({
+            status: 'failed',
+            diagnostic: {
+              code: ARTIFACT_VALIDATION_PAYLOAD_INVALID_ERROR_CODE,
+              details: {
+                artifactType: 'review-finding',
+              },
+            },
           });
         },
       },
