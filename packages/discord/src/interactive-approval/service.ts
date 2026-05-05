@@ -13,7 +13,7 @@ import {
 } from './logic.js';
 import type { DiscordApprovalRequest, DiscordApprovalResult } from './codec.js';
 
-/** Discord interactive approval service service. */
+/** Discord interactive approval service. */
 export class DiscordInteractiveApprovalService {
   public constructor(
     private readonly policy = new DecisionPolicyService(),

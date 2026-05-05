@@ -6,12 +6,12 @@ import {
 import { createResearchBrief, describeResearchBrief } from './logic.js';
 import type { ResearchBrief } from './codec.js';
 
-/** Research brief service service. */
+/** Research brief service. */
 export class ResearchBriefService {
   /** Artifacts. */
   private readonly artifacts = new ArtifactEnvelopeService();
 
-  /** Creates create. */
+  /** Creates a research brief. */
   public create(input: ResearchBrief): ResearchBrief {
     return createResearchBrief(input);
   }

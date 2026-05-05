@@ -57,13 +57,13 @@ function validatePluginConfig(value: unknown):
   };
 }
 
-/** Codec for config schema. */
+/** OpenClaw plugin configuration schema. */
 const configSchema: OpenClawPluginConfigSchema = {
   validate: validatePluginConfig,
   jsonSchema: readSchema('plugin-config.schema.json'),
 };
 
-/** Codec for devplat open claw plugin. */
+/** OpenClaw plugin entry for DevPlat. */
 const devplatOpenClawPlugin = definePluginEntry({
   id: '@vannadii/devplat-openclaw',
   name: 'DevPlat OpenClaw Adapter',

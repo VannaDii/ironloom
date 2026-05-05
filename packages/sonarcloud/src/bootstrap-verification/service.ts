@@ -8,7 +8,7 @@ import type {
   SonarBootstrapVerificationResult,
 } from './codec.js';
 
-/** Sonar bootstrap verification service service. */
+/** Sonar bootstrap verification service. */
 export class SonarBootstrapVerificationService {
   /** Executes the service operation. */
   public execute(

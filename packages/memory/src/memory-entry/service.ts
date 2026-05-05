@@ -3,7 +3,7 @@ import { FileStoreService } from '@vannadii/devplat-storage';
 import { createMemoryEntry, describeMemoryEntry } from './logic.js';
 import type { MemoryEntry } from './codec.js';
 
-/** Memory entry service service. */
+/** Memory entry service. */
 export class MemoryEntryService {
   public constructor(private readonly store = new FileStoreService()) {}
 

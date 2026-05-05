@@ -7,7 +7,7 @@ import {
 import type { ReviewFinding } from '@vannadii/devplat-review';
 import type { SonarQualityGateResult } from './codec.js';
 
-/** Sonar quality gate service service. */
+/** Sonar quality gate service. */
 export class SonarQualityGateService {
   /** Evaluate. */
   public evaluate(

@@ -203,7 +203,7 @@ function sendGatewayPayload(
   connection.send(JSON.stringify(payload));
 }
 
-/** Discord interaction gateway client service service. */
+/** Discord interaction gateway client service. */
 export class DiscordInteractionGatewayClientService {
   public constructor(
     private readonly connections: DiscordGatewayConnectionFactory = new WebSocketDiscordGatewayConnectionFactory(),

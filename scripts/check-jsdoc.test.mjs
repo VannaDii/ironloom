@@ -105,6 +105,58 @@ describe('check-jsdoc', () => {
         );
       },
     },
+    {
+      name: 'reports low-quality generated JSDoc wording',
+      inputs: {
+        files: [
+          {
+            path: 'packages/example/src/unit/service.ts',
+            contents: [
+              '/** Example service service. */',
+              'export class ExampleService {',
+              '  /** Creates create. */',
+              '  public create(): number {',
+              '    return 1;',
+              '  }',
+              '}',
+            ].join('\n'),
+          },
+          {
+            path: 'packages/example/src/unit/logic.ts',
+            contents: [
+              '/** Codec for exec file async. */',
+              'export const execFileAsync = () => undefined;',
+            ].join('\n'),
+          },
+        ],
+      },
+      mock: async (inputs) => {
+        const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-jsdoc-'));
+
+        for (const file of inputs.files) {
+          const filePath = resolve(rootDirectory, file.path);
+          await mkdir(resolve(filePath, '..'), { recursive: true });
+          await writeFile(filePath, file.contents, 'utf8');
+        }
+
+        return { rootDirectory };
+      },
+      assert: async (context) => {
+        const failures = await collectJSDocGovernanceFailures({
+          rootDirectory: context.rootDirectory,
+        });
+
+        expect(failures).toContain(
+          "packages/example/src/unit/service.ts:1:1 ExampleService has low-quality JSDoc 'service service'; remove duplicated service wording.",
+        );
+        expect(failures).toContain(
+          "packages/example/src/unit/service.ts:3:3 create has low-quality JSDoc 'Creates create.'; replace placeholder create wording with a concrete summary.",
+        );
+        expect(failures).toContain(
+          "packages/example/src/unit/logic.ts:1:1 execFileAsync has low-quality JSDoc 'Codec for exec file async.'; describe the helper instead of calling it a codec.",
+        );
+      },
+    },
   ];
 
   it.each(cases)('$name', async (testCase) => {

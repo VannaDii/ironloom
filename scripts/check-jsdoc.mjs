@@ -16,6 +16,30 @@ const ignoredDirectories = new Set([
   'node_modules',
 ]);
 
+/** JSDoc snippets that indicate generated placeholder wording leaked through. */
+const forbiddenJSDocSnippets = [
+  {
+    text: 'service service',
+    reason: 'remove duplicated service wording',
+  },
+  {
+    text: 'Creates create.',
+    reason: 'replace placeholder create wording with a concrete summary',
+  },
+  {
+    text: 'Codec for exec file async.',
+    reason: 'describe the helper instead of calling it a codec',
+  },
+  {
+    text: 'Codec for devplat open claw plugin.',
+    reason: 'describe the plugin entry instead of calling it a codec',
+  },
+  {
+    text: 'Codec for config schema.',
+    reason: 'describe the schema instead of calling it a codec',
+  },
+];
+
 /**
  * Returns true when a file is authored TypeScript source checked for JSDoc.
  */
@@ -69,12 +93,15 @@ async function parseSourceFile(filePath) {
 }
 
 /**
- * Returns true when a node has a leading JSDoc comment.
+ * Returns the leading JSDoc comment attached to a declaration node.
  */
-function hasLeadingJSDoc(sourceFile, node) {
-  return (ts.getLeadingCommentRanges(sourceFile.text, node.pos) ?? []).some(
-    (range) => sourceFile.text.slice(range.pos, range.end).startsWith('/**'),
-  );
+function getLeadingJSDocComment(sourceFile, node) {
+  return (ts.getLeadingCommentRanges(sourceFile.text, node.pos) ?? [])
+    .map((range) => ({
+      range,
+      text: sourceFile.text.slice(range.pos, range.end),
+    }))
+    .find((comment) => comment.text.startsWith('/**'));
 }
 
 /**
@@ -86,6 +113,21 @@ function formatFailure({ name, node, rootDirectory, sourceFile }) {
   );
 
   return `${relative(rootDirectory, sourceFile.fileName)}:${location.line + 1}:${location.character + 1} ${name} is missing JSDoc.`;
+}
+
+/**
+ * Formats one low-quality JSDoc finding for a declaration node.
+ */
+function formatQualityFailure({
+  comment,
+  forbiddenSnippet,
+  rootDirectory,
+  sourceFile,
+  target,
+}) {
+  const location = sourceFile.getLineAndCharacterOfPosition(comment.range.pos);
+
+  return `${relative(rootDirectory, sourceFile.fileName)}:${location.line + 1}:${location.character + 1} ${target.name} has low-quality JSDoc '${forbiddenSnippet.text}'; ${forbiddenSnippet.reason}.`;
 }
 
 /**
@@ -182,7 +224,8 @@ export async function collectJSDocGovernanceFailures({
     ];
 
     for (const target of targets) {
-      if (!hasLeadingJSDoc(sourceFile, target.node)) {
+      const comment = getLeadingJSDocComment(sourceFile, target.node);
+      if (comment === undefined) {
         failures.push(
           formatFailure({
             name: target.name,
@@ -191,6 +234,21 @@ export async function collectJSDocGovernanceFailures({
             sourceFile,
           }),
         );
+        continue;
+      }
+
+      for (const forbiddenSnippet of forbiddenJSDocSnippets) {
+        if (comment.text.includes(forbiddenSnippet.text)) {
+          failures.push(
+            formatQualityFailure({
+              comment,
+              forbiddenSnippet,
+              rootDirectory,
+              sourceFile,
+              target,
+            }),
+          );
+        }
       }
     }
   }

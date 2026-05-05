@@ -4,7 +4,7 @@ import {
 } from './logic.js';
 import type { ApprovalRecordArtifact } from './codec.js';
 
-/** Approval record artifact service service. */
+/** Approval record artifact service. */
 export class ApprovalRecordArtifactService {
   /** Executes the service operation. */
   public execute(input: ApprovalRecordArtifact): ApprovalRecordArtifact {

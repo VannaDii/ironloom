@@ -12,14 +12,14 @@ import {
 } from './logic.js';
 import type { PullRequestRecord } from './codec.js';
 
-/** Pull request service service. */
+/** Pull request service. */
 export class PullRequestService {
   public constructor(
     private readonly github = new GitHubWorkflowService(),
     private readonly repoFullName = 'VannaDii/devplat',
   ) {}
 
-  /** Creates create. */
+  /** Creates a pull request record. */
   public create(input: PullRequestRecord): PullRequestRecord {
     return createPullRequestRecord(input);
   }

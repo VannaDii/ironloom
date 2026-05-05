@@ -6,7 +6,7 @@ import {
 } from './logic.js';
 import type { TaskRecord } from './codec.js';
 
-/** Task queue service service. */
+/** Task queue service. */
 export class TaskQueueService {
   /** Executes the service operation. */
   public execute(input: TaskRecord): TaskRecord {

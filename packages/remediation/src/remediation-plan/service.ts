@@ -4,9 +4,9 @@ import type { ReviewFinding } from '@vannadii/devplat-review';
 import { createRemediationPlan, describeRemediationPlan } from './logic.js';
 import type { RemediationPlan } from './codec.js';
 
-/** Remediation plan service service. */
+/** Remediation plan service. */
 export class RemediationPlanService {
-  /** Creates create. */
+  /** Creates a remediation plan. */
   public create(input: RemediationPlan): RemediationPlan {
     return createRemediationPlan(input);
   }

@@ -34,7 +34,7 @@ function createDefaultControlPlane(): DiscordControlPlaneService {
   );
 }
 
-/** Discord interaction gateway service service. */
+/** Discord interaction gateway service. */
 export class DiscordInteractionGatewayService {
   public constructor(
     private readonly controlPlane = createDefaultControlPlane(),

@@ -43,7 +43,7 @@ function statusForRunSummary(
   return 'complete';
 }
 
-/** Telemetry event service service. */
+/** Telemetry event service. */
 export class TelemetryEventService {
   public constructor(private readonly store = new FileStoreService()) {}
 

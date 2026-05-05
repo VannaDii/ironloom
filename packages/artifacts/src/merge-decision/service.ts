@@ -4,7 +4,7 @@ import {
 } from './logic.js';
 import type { MergeDecisionArtifact } from './codec.js';
 
-/** Merge decision artifact service service. */
+/** Merge decision artifact service. */
 export class MergeDecisionArtifactService {
   /** Executes the service operation. */
   public execute(input: MergeDecisionArtifact): MergeDecisionArtifact {

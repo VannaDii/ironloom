@@ -11,7 +11,7 @@ import {
 } from './logic.js';
 import type { SpecRecord } from './codec.js';
 
-/** Spec record service service. */
+/** Spec record service. */
 export class SpecRecordService {
   /** Artifacts. */
   private readonly artifacts = new ArtifactEnvelopeService();

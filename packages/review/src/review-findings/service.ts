@@ -10,7 +10,7 @@ import {
 } from './logic.js';
 import type { ReviewFinding } from './codec.js';
 
-/** Review findings service service. */
+/** Review findings service. */
 export class ReviewFindingsService {
   /** Artifacts. */
   private readonly artifacts = new ArtifactEnvelopeService();

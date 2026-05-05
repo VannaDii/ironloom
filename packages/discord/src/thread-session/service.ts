@@ -55,7 +55,7 @@ function createThreadSessionArtifactPayload(
   };
 }
 
-/** Discord thread session service service. */
+/** Discord thread session service. */
 export class DiscordThreadSessionService {
   public constructor(
     private readonly artifacts = new ArtifactEnvelopeService(),

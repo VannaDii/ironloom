@@ -11,7 +11,7 @@ import {
 } from './logic.js';
 import type { GateRunReport } from './codec.js';
 
-/** Run gates service service. */
+/** Run gates service. */
 export class RunGatesService {
   public constructor(
     private readonly executeCommand: GateExecutor = (

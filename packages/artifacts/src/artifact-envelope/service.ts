@@ -3,7 +3,7 @@ import type { SupportedArtifactType } from '@vannadii/devplat-core';
 import { createArtifactEnvelope, describeArtifactEnvelope } from './logic.js';
 import type { ArtifactEnvelope } from './codec.js';
 
-/** Artifact envelope service service. */
+/** Artifact envelope service. */
 export class ArtifactEnvelopeService {
   /** Executes the service operation. */
   public execute<

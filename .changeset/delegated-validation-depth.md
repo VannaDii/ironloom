@@ -39,4 +39,7 @@ before review. `check:repo` now includes a package-source JSDoc gate, the unit
 test checker rejects non-canonical `it.each(<name>)` case-table variables, and
 the instruction checker requires the code-change Changesets rule, canonical
 test-table wording, and JSDoc governance documentation to stay aligned across
-the agent, contributor, GitHub, and developer-guide surfaces.
+the agent, contributor, GitHub, and developer-guide surfaces. The JSDoc gate
+also rejects low-quality placeholder wording such as duplicated service labels,
+`Creates create.`, and codec labels on non-codec helpers so generated comments
+must be made intentional before review.

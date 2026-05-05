@@ -7,7 +7,7 @@ import {
 } from './logic.js';
 import type { OpenClawPluginConfig } from './codec.js';
 
-/** Plugin config service service. */
+/** Plugin config service. */
 export class PluginConfigService {
   /** Executes the service operation. */
   public execute(input: OpenClawPluginConfig): OpenClawPluginConfig {

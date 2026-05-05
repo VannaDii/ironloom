@@ -1,7 +1,7 @@
 import { createDefaultDevplatConfig, describeDevplatConfig } from './logic.js';
 import type { DevplatConfig } from './codec.js';
 
-/** Runtime config service service. */
+/** Runtime config service. */
 export class RuntimeConfigService {
   /** From environment. */
   public fromEnvironment(

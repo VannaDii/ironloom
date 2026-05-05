@@ -11,7 +11,7 @@ import type {
   DiscordThreadBindingResult,
 } from './codec.js';
 
-/** Discord channel binding service service. */
+/** Discord channel binding service. */
 export class DiscordChannelBindingService {
   public constructor(
     private readonly telemetry = new TelemetryEventService(),

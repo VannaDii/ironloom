@@ -8,7 +8,7 @@ import {
 } from './logic.js';
 import type { SupervisorDecision } from './codec.js';
 
-/** Supervisor cycle service service. */
+/** Supervisor cycle service. */
 export class SupervisorCycleService {
   public constructor(
     private readonly policy = new DecisionPolicyService(),

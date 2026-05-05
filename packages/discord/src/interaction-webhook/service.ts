@@ -78,7 +78,7 @@ function resolveControlResultResponsePayload(
   );
 }
 
-/** Discord interaction webhook service service. */
+/** Discord interaction webhook service. */
 export class DiscordInteractionWebhookService {
   public constructor(
     private readonly controlPlane = createDefaultControlPlane(),

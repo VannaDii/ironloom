@@ -400,7 +400,7 @@ export class DiscordLoopbackResponseTransport implements DiscordControlResponseT
   }
 }
 
-/** Discord control plane service service. */
+/** Discord control plane service. */
 export class DiscordControlPlaneService {
   public constructor(
     private readonly policy = new DecisionPolicyService(),

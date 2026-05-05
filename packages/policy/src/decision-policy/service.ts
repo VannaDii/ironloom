@@ -6,7 +6,7 @@ import {
 } from './logic.js';
 import type { PolicyActionEvaluation, PolicyDecision } from './codec.js';
 
-/** Decision policy service service. */
+/** Decision policy service. */
 export class DecisionPolicyService {
   /** Executes the service operation. */
   public execute(input: PolicyDecision): PolicyDecision {
