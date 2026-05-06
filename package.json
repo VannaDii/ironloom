@@ -68,7 +68,7 @@
     "version-packages": "changeset version && npm run prepare:generated"
   },
   "devDependencies": {
-    "@changesets/changelog-github": "0.6.0",
+    "@changesets/changelog-github": "0.7.0",
     "@changesets/cli": "2.31.0",
     "@commitlint/cli": "20.5.3",
     "@commitlint/config-conventional": "20.5.3",
@@ -79,7 +79,7 @@
     "eslint": "10.3.0",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-sonarjs": "4.0.3",
-    "globals": "17.5.0",
+    "globals": "17.6.0",
     "husky": "9.1.7",
     "lint-staged": "16.4.0",
     "node-domexception": "file:tools/npm-overrides/node-domexception",
@@ -87,7 +87,7 @@
     "semver": "7.7.4",
     "ts-json-schema-generator": "2.9.0",
     "tsx": "4.21.0",
-    "turbo": "2.9.7",
+    "turbo": "2.9.9",
     "typescript": "6.0.3",
     "typescript-eslint": "8.59.2",
     "vite": "8.0.10",
