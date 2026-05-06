@@ -64,6 +64,37 @@ describe('eslint-devplat-rules', () => {
       },
     },
     {
+      name: 'rejects case tables with fields supplied by unrelated objects',
+      inputs: {
+        code: [
+          'const unrelated = { inputs: {}, mock: () => ({}), assert: () => undefined };',
+          'const cases = [',
+          '  { name: "case one", inputs: {} },',
+          '  { name: "case two", mock: () => ({}) },',
+          '];',
+          "it.each(cases)('$name', () => undefined);",
+        ].join('\n'),
+        filename: 'packages/example/src/unit/logic.test.ts',
+        rules: {
+          'devplat/require-structured-cases': 'error',
+        },
+      },
+      mock: () => createLinter(),
+      assert: (linter, inputs) => {
+        const messages = lintWithDevplatRules(linter, inputs);
+
+        expect(messages.map((message) => message.message)).toContain(
+          'Every cases entry must include `inputs`.',
+        );
+        expect(messages.map((message) => message.message)).toContain(
+          'Every cases entry must include `mock`.',
+        );
+        expect(messages.map((message) => message.message)).toContain(
+          'Every cases entry must include `assert`.',
+        );
+      },
+    },
+    {
       name: 'rejects regex placement and names outside the source constants contract',
       inputs: {
         code: [
@@ -81,6 +112,31 @@ describe('eslint-devplat-rules', () => {
 
         expect(messages.map((message) => message.message)).toContain(
           'Regular expressions must be defined in the owning constants.ts module.',
+        );
+        expect(messages).toHaveLength(2);
+      },
+    },
+    {
+      name: 'rejects inline regex expressions inside constants files',
+      inputs: {
+        code: [
+          'export const VALID_PATTERN = /feature\\/.+/u;',
+          'export function createPattern(): RegExp {',
+          '  return /inline/u;',
+          '}',
+          "export const createRegExp = () => new RegExp('inline');",
+        ].join('\n'),
+        filename: 'packages/example/src/unit/constants.ts',
+        rules: {
+          'devplat/regex-governance': 'error',
+        },
+      },
+      mock: () => createLinter(),
+      assert: (linter, inputs) => {
+        const messages = lintWithDevplatRules(linter, inputs);
+
+        expect(messages.map((message) => message.message)).toContain(
+          'Regular expressions in constants.ts must be assigned to const *_PATTERN declarations.',
         );
         expect(messages).toHaveLength(2);
       },

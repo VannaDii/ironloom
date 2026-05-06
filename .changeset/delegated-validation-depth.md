@@ -51,3 +51,9 @@ static policy boundaries, while the remaining scripts only perform cross-file
 or generated-artifact checks that lint rules cannot express cleanly. The local
 toolchain also bumps to the latest compatible `eslint` and `typescript-eslint`
 versions available for the repository's ESLint 10 and TypeScript 6 baseline.
+The structured case-table lint rule now validates required `inputs`, `mock`,
+and `assert` fields on each element of the canonical `cases` array, including
+tables wrapped in TypeScript `satisfies` expressions, so unrelated object
+literals cannot satisfy the rule. Regex linting also rejects inline regex
+literals and `RegExp` constructors inside `constants.ts` unless they are direct
+`const *_PATTERN` declarations.

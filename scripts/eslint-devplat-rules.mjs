@@ -17,6 +17,12 @@ const REGEX_PLACEMENT_MESSAGE =
   'Regular expressions must be defined in the owning constants.ts module.';
 
 /**
+ * Message emitted when a constants module has an unnamed regex expression.
+ */
+const REGEX_CONSTANT_ASSIGNMENT_MESSAGE =
+  'Regular expressions in constants.ts must be assigned to const *_PATTERN declarations.';
+
+/**
  * Required suffix for named regular-expression constants.
  */
 const REGEX_PATTERN_SUFFIX = 'PATTERN';
@@ -254,11 +260,9 @@ function createRequireStructuredCasesRule() {
     },
     create(context) {
       const state = {
-        hasAssertKey: false,
         hasCasesDeclaration: false,
         hasCanonicalRunner: false,
-        hasInputsKey: false,
-        hasMockKey: false,
+        missingCaseProperties: new Set(),
       };
 
       return {
@@ -270,12 +274,10 @@ function createRequireStructuredCasesRule() {
             });
           }
         },
-        Property(node) {
-          trackCaseProperty(state, node.key);
-        },
         VariableDeclarator(node) {
           if (getPropertyName(node.id) === CANONICAL_CASE_TABLE_NAME) {
             state.hasCasesDeclaration = true;
+            trackCaseTableProperties(state, node.init);
           }
         },
         CallExpression(node) {
@@ -316,12 +318,12 @@ function createRegexGovernanceRule() {
       return {
         Literal(node) {
           if (node.regex !== undefined) {
-            reportRegexPlacement({ context, node });
+            reportRegexDefinition({ context, node });
           }
         },
         NewExpression(node) {
           if (getNamedNodeName(node.callee) === 'RegExp') {
-            reportRegexPlacement({ context, node });
+            reportRegexDefinition({ context, node });
           }
         },
         VariableDeclarator(node) {
@@ -453,20 +455,18 @@ function reportStructuredCaseProgramFailures({ context, node, state }) {
     return;
   }
 
-  const requiredProperties = [
-    [state.hasCasesDeclaration, 'const cases = ['],
-    [state.hasInputsKey, 'inputs:'],
-    [state.hasMockKey, 'mock:'],
-    [state.hasAssertKey, 'assert:'],
-  ];
+  if (!state.hasCasesDeclaration) {
+    context.report({
+      message: 'Test files must include `const cases = [...]`.',
+      node,
+    });
+  }
 
-  for (const [isPresent, display] of requiredProperties) {
-    if (!isPresent) {
-      context.report({
-        message: `Test files must include ${display}.`,
-        node,
-      });
-    }
+  for (const display of state.missingCaseProperties) {
+    context.report({
+      message: `Every cases entry must include \`${display}\`.`,
+      node,
+    });
   }
 
   if (!state.hasCanonicalRunner) {
@@ -478,32 +478,65 @@ function reportStructuredCaseProgramFailures({ context, node, state }) {
 }
 
 /**
- * Tracks required property keys found in case-table objects.
+ * Tracks required property keys found on each canonical case-table entry.
  */
-function trackCaseProperty(state, key) {
-  switch (getPropertyName(key)) {
-    case 'assert':
-      state.hasAssertKey = true;
-      break;
-    case 'inputs':
-      state.hasInputsKey = true;
-      break;
-    case 'mock':
-      state.hasMockKey = true;
-      break;
-    default:
-      break;
+function trackCaseTableProperties(state, init) {
+  const requiredProperties = ['inputs', 'mock', 'assert'];
+  const caseTable = unwrapExpression(init);
+  if (
+    caseTable?.type !== 'ArrayExpression' ||
+    caseTable.elements.length === 0
+  ) {
+    addMissingCaseProperties(state, requiredProperties);
+    return;
+  }
+
+  for (const element of caseTable.elements) {
+    if (element?.type !== 'ObjectExpression') {
+      addMissingCaseProperties(state, requiredProperties);
+      continue;
+    }
+
+    const propertyNames = new Set(
+      element.properties
+        .filter((property) => property.type === 'Property')
+        .map((property) => getPropertyName(property.key))
+        .filter((propertyName) => propertyName !== undefined),
+    );
+
+    for (const propertyName of requiredProperties) {
+      if (!propertyNames.has(propertyName)) {
+        state.missingCaseProperties.add(propertyName);
+      }
+    }
   }
 }
 
 /**
- * Reports a regular expression when it is outside a constants module.
+ * Adds missing case property displays to rule state.
  */
-function reportRegexPlacement({ context, node }) {
-  if (
-    !isAuthoredPackageSource(context.filename) ||
-    isConstantsFile(context.filename)
-  ) {
+function addMissingCaseProperties(state, propertyNames) {
+  for (const propertyName of propertyNames) {
+    state.missingCaseProperties.add(propertyName);
+  }
+}
+
+/**
+ * Reports a regular expression when it violates source placement rules.
+ */
+function reportRegexDefinition({ context, node }) {
+  if (!isAuthoredPackageSource(context.filename)) {
+    return;
+  }
+
+  if (isConstantsFile(context.filename)) {
+    if (!isNamedConstPatternDefinition(node)) {
+      context.report({
+        message: REGEX_CONSTANT_ASSIGNMENT_MESSAGE,
+        node,
+      });
+    }
+
     return;
   }
 
@@ -612,18 +645,56 @@ function isDecoratorAllowed(filename) {
  * Returns true when a node expression defines a regular expression.
  */
 function isRegexExpression(node) {
-  if (node === null) {
+  const expression = unwrapExpression(node);
+  if (expression === null) {
     return false;
   }
 
-  switch (node.type) {
+  switch (expression.type) {
     case 'Literal':
-      return node.regex !== undefined;
+      return expression.regex !== undefined;
     case 'NewExpression':
-      return getNamedNodeName(node.callee) === 'RegExp';
+      return getNamedNodeName(expression.callee) === 'RegExp';
     default:
       return false;
   }
+}
+
+/**
+ * Unwraps transparent TypeScript expression wrappers.
+ */
+function unwrapExpression(node) {
+  if (node === null || node === undefined) {
+    return null;
+  }
+
+  switch (node.type) {
+    case 'TSAsExpression':
+    case 'TSSatisfiesExpression':
+    case 'TSTypeAssertion':
+      return unwrapExpression(node.expression);
+    default:
+      return node;
+  }
+}
+
+/**
+ * Returns true when a regex is a const declaration with the PATTERN suffix.
+ */
+function isNamedConstPatternDefinition(node) {
+  const declaration = node.parent;
+  if (declaration?.type !== 'VariableDeclarator') {
+    return false;
+  }
+
+  const variableDeclaration = declaration.parent;
+  const constantName = getPropertyName(declaration.id);
+  return (
+    variableDeclaration?.type === 'VariableDeclaration' &&
+    variableDeclaration.kind === 'const' &&
+    constantName !== undefined &&
+    constantName.endsWith(REGEX_PATTERN_SUFFIX)
+  );
 }
 
 /**
