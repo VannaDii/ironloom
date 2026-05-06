@@ -15,6 +15,7 @@ import {
   POLICY_ACTION_CATEGORY_WORKTREE_RELEASE,
 } from './constants.js';
 
+/** Codec for policy privilege level. */
 export const PolicyPrivilegeLevelCodec = t.union([
   t.literal('automatic'),
   t.literal('human-approval'),
@@ -22,6 +23,7 @@ export const PolicyPrivilegeLevelCodec = t.union([
   t.literal('external-publish'),
 ]);
 
+/** Codec for policy action category. */
 export const PolicyActionCategoryCodec = t.union([
   t.literal(POLICY_ACTION_CATEGORY_MERGE),
   t.literal(POLICY_ACTION_CATEGORY_COMMAND_EXECUTION),
@@ -33,6 +35,7 @@ export const PolicyActionCategoryCodec = t.union([
   t.literal(POLICY_ACTION_CATEGORY_ROUTINE),
 ]);
 
+/** Codec for policy risk level. */
 export const PolicyRiskLevelCodec = t.union([
   t.literal('low'),
   t.literal('medium'),
@@ -40,6 +43,7 @@ export const PolicyRiskLevelCodec = t.union([
   t.literal('critical'),
 ]);
 
+/** Codec for policy escalation target. */
 export const PolicyEscalationTargetCodec = t.union([
   t.literal('none'),
   t.literal('operator'),
@@ -47,6 +51,7 @@ export const PolicyEscalationTargetCodec = t.union([
   t.literal('release-manager'),
 ]);
 
+/** Codec for policy decision. */
 export const PolicyDecisionCodec = t.intersection([
   t.type({
     id: t.string,
@@ -71,6 +76,7 @@ export const PolicyDecisionCodec = t.intersection([
   }),
 ]);
 
+/** Codec for policy action evaluation. */
 export const PolicyActionEvaluationCodec = t.type({
   id: t.string,
   action: t.string,

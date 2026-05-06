@@ -11,6 +11,7 @@ import {
   DiscordRestResponseTransport,
 } from '../discord-control-plane/service.js';
 import type { DiscordInteractionCallback } from '../discord-control-plane/codec.js';
+import { resolveDiscordComponentThreadId } from '../discord-control-plane/logic.js';
 import {
   DiscordInteractionGatewayClientService,
   type DiscordGatewayConnectionFactory,
@@ -20,6 +21,7 @@ import {
 import { DiscordInteractionGatewayService } from './service.js';
 import type { DiscordInteractionGatewayBindingResolver } from './service.js';
 
+/** Contract for discord interaction gateway runtime dependencies. */
 export interface DiscordInteractionGatewayRuntimeDependencies {
   /** Optional preconfigured client used by tests or custom launchers. */
   client?: DiscordInteractionGatewayClientService;
@@ -55,6 +57,52 @@ async function listStoredDiscordThreadSessions(
 }
 
 /**
+ * Reads the thread id encoded into a Discord component callback, when present.
+ */
+function resolveCallbackComponentThreadId(
+  input: DiscordInteractionCallback,
+): string | undefined {
+  return resolveDiscordComponentThreadId(input.data?.custom_id);
+}
+
+/**
+ * Returns true when the Discord callback channel can carry a component
+ * interaction for the persisted thread session.
+ */
+function callbackChannelMatchesSession(
+  callbackChannelId: string,
+  session: DiscordThreadSession,
+): boolean {
+  return (
+    callbackChannelId === session.threadId ||
+    callbackChannelId === session.parentChannelId
+  );
+}
+
+/** Precomputed Discord callback identifiers used while scanning sessions. */
+type DiscordGatewayCallbackContext = {
+  callbackChannelId: string;
+  componentThreadId: string | undefined;
+};
+
+/**
+ * Returns true when a stored session matches the live callback context.
+ */
+function sessionMatchesGatewayCallback(
+  context: DiscordGatewayCallbackContext,
+  session: DiscordThreadSession,
+): boolean {
+  const channelMatchesThread = session.threadId === context.callbackChannelId;
+  const componentMatchesThread = session.threadId === context.componentThreadId;
+
+  return (
+    channelMatchesThread ||
+    (componentMatchesThread &&
+      callbackChannelMatchesSession(context.callbackChannelId, session))
+  );
+}
+
+/**
  * Resolves Gateway callbacks against persisted bound thread sessions.
  */
 export function createStorageBackedDiscordGatewayBindingResolver(
@@ -63,22 +111,25 @@ export function createStorageBackedDiscordGatewayBindingResolver(
   return async (
     input: DiscordInteractionCallback,
   ): ReturnType<DiscordInteractionGatewayBindingResolver> => {
-    const threadId = input.channel_id.trim();
+    const callbackContext: DiscordGatewayCallbackContext = {
+      callbackChannelId: input.channel_id.trim(),
+      componentThreadId: resolveCallbackComponentThreadId(input),
+    };
     const sessions = (await listStoredDiscordThreadSessions(store)).filter(
-      (session) => session.threadId === threadId,
+      (session) => sessionMatchesGatewayCallback(callbackContext, session),
     );
     const [session] = sessions;
 
     if (sessions.length === 1 && session !== undefined) {
       return {
-        threadId,
-        boundThreadId: threadId,
+        threadId: session.threadId,
+        boundThreadId: session.threadId,
         boundSession: session,
       };
     }
 
     return {
-      threadId,
+      threadId: callbackContext.callbackChannelId,
       boundThreadId: sessions.length === 0 ? 'unresolved' : 'ambiguous',
       summary:
         sessions.length === 0

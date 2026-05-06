@@ -8,20 +8,24 @@ import {
 } from './logic.js';
 import type { SupervisorDecision } from './codec.js';
 
+/** Supervisor cycle service. */
 export class SupervisorCycleService {
   public constructor(
     private readonly policy = new DecisionPolicyService(),
     private readonly telemetry = new TelemetryEventService(),
   ) {}
 
+  /** Executes the service operation. */
   public execute(input: SupervisorDecision): SupervisorDecision {
     return createSupervisorDecision(input);
   }
 
+  /** Describes the service result for operators. */
   public explain(input: SupervisorDecision): string {
     return describeSupervisorDecision(input);
   }
 
+  /** Run step. */
   public async runStep(params: {
     action: string;
     actorId: string;

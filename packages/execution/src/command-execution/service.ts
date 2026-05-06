@@ -11,6 +11,7 @@ import {
 } from './logic.js';
 import type { CommandExecutionOptions, CommandResult } from './codec.js';
 
+/** Command execution service. */
 export class CommandExecutionService {
   /**
    * Creates the command execution service with the repository root boundary.

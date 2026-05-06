@@ -4,10 +4,12 @@ import type {
   SonarQualityGateConditionSnapshot,
 } from './codec.js';
 
+/** Returns whether the comparator requires a lesser value. */
 function isLessThanComparator(comparator: string): boolean {
   return comparator === 'LESS_THAN' || comparator === 'LT';
 }
 
+/** Resolves coverage threshold. */
 function resolveCoverageThreshold(
   conditions: SonarQualityGateConditionSnapshot[],
   metricKey: 'coverage' | 'new_coverage',
@@ -24,6 +26,7 @@ function resolveCoverageThreshold(
   return Number.isFinite(parsedThreshold) ? parsedThreshold : 0;
 }
 
+/** Creates sonar bootstrap verification result. */
 export function createSonarBootstrapVerificationResult(
   input: SonarBootstrapVerificationInput,
 ): SonarBootstrapVerificationResult {
@@ -75,12 +78,14 @@ export function createSonarBootstrapVerificationResult(
   };
 }
 
+/** Returns whether Sonar bootstrap verification is passing. */
 export function isSonarBootstrapVerificationPassing(
   input: SonarBootstrapVerificationResult,
 ): boolean {
   return input.status === 'passed';
 }
 
+/** Describes sonar bootstrap verification result. */
 export function describeSonarBootstrapVerificationResult(
   input: SonarBootstrapVerificationResult,
 ): string {

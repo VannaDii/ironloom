@@ -52,7 +52,7 @@ That gate covers:
 
 - Use conventional commits. The repo enforces them through Husky and Commitlint.
 - Pull request titles must also use conventional commit format.
-- Add a changeset for any publishable package change or release-facing behavior change.
+- Every pull request containing any code change must include a detailed Changesets entry before it is opened or updated; keep that changeset accurate as the branch evolves.
 - Pull requests must describe behavior change, risk, schema and artifact impact, operator impact, performance impact, release impact, rollback notes, and exact validation performed.
 - Pull request bodies must use `.github/pull_request_template.md` and populate every section rather than replacing it with an ad hoc summary.
 - Pull request titles must describe the change outcome and must not repeat any registered tool name.

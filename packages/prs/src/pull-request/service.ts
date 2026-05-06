@@ -12,20 +12,24 @@ import {
 } from './logic.js';
 import type { PullRequestRecord } from './codec.js';
 
+/** Pull request service. */
 export class PullRequestService {
   public constructor(
     private readonly github = new GitHubWorkflowService(),
     private readonly repoFullName = 'VannaDii/devplat',
   ) {}
 
+  /** Creates a pull request record. */
   public create(input: PullRequestRecord): PullRequestRecord {
     return createPullRequestRecord(input);
   }
 
+  /** Executes the service operation. */
   public execute(input: PullRequestRecord): PullRequestRecord {
     return this.create(input);
   }
 
+  /** Submit update. */
   public async submitUpdate(
     input: PullRequestRecord,
     actorId = 'prs-service',
@@ -48,6 +52,7 @@ export class PullRequestService {
     );
   }
 
+  /** Submit merge. */
   public async submitMerge(
     input: PullRequestRecord,
     actorId = 'prs-service',
@@ -70,6 +75,7 @@ export class PullRequestService {
     );
   }
 
+  /** Describes the service result for operators. */
   public explain(input: PullRequestRecord): string {
     return describePullRequestRecord(input);
   }

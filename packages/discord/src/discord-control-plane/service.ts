@@ -79,6 +79,7 @@ type DiscordInteractionCompletionResult =
       readonly completionReceipt?: DiscordResponseReceipt;
     };
 
+/** Contract for discord control response transport. */
 export interface DiscordControlResponseTransport {
   postInteractionResponse(
     input: DiscordOperatorInteraction,
@@ -214,6 +215,7 @@ function createDiscordControlResultWithOptionalWorkItem(
       };
 }
 
+/** Discord rest response transport service. */
 export class DiscordRestResponseTransport implements DiscordControlResponseTransport {
   public constructor(
     private readonly botToken = process.env['DISCORD_BOT_TOKEN'] ?? '',
@@ -225,6 +227,7 @@ export class DiscordRestResponseTransport implements DiscordControlResponseTrans
     ] ?? '',
   ) {}
 
+  /** Post interaction response. */
   public async postInteractionResponse(
     input: DiscordOperatorInteraction,
     payload: DiscordMessagePayload,
@@ -249,6 +252,7 @@ export class DiscordRestResponseTransport implements DiscordControlResponseTrans
     };
   }
 
+  /** Post interaction deferred. */
   public async postInteractionDeferred(
     input: DiscordOperatorInteraction,
   ): Promise<DiscordResponseReceipt> {
@@ -271,6 +275,7 @@ export class DiscordRestResponseTransport implements DiscordControlResponseTrans
     };
   }
 
+  /** Post interaction completion. */
   public async postInteractionCompletion(
     input: DiscordOperatorInteraction,
     payload: DiscordMessagePayload,
@@ -298,6 +303,7 @@ export class DiscordRestResponseTransport implements DiscordControlResponseTrans
     };
   }
 
+  /** Post thread message. */
   public async postThreadMessage(
     threadId: string,
     payload: DiscordMessagePayload,
@@ -325,7 +331,9 @@ export class DiscordRestResponseTransport implements DiscordControlResponseTrans
   }
 }
 
+/** Discord loopback response transport service. */
 export class DiscordLoopbackResponseTransport implements DiscordControlResponseTransport {
+  /** Post interaction response. */
   public postInteractionResponse(
     input: DiscordOperatorInteraction,
     payload: DiscordMessagePayload,
@@ -342,6 +350,7 @@ export class DiscordLoopbackResponseTransport implements DiscordControlResponseT
     });
   }
 
+  /** Post interaction deferred. */
   public postInteractionDeferred(
     input: DiscordOperatorInteraction,
   ): Promise<DiscordResponseReceipt> {
@@ -356,6 +365,7 @@ export class DiscordLoopbackResponseTransport implements DiscordControlResponseT
     });
   }
 
+  /** Post interaction completion. */
   public postInteractionCompletion(
     input: DiscordOperatorInteraction,
     payload: DiscordMessagePayload,
@@ -372,6 +382,7 @@ export class DiscordLoopbackResponseTransport implements DiscordControlResponseT
     });
   }
 
+  /** Post thread message. */
   public postThreadMessage(
     threadId: string,
     payload: DiscordMessagePayload,
@@ -389,6 +400,7 @@ export class DiscordLoopbackResponseTransport implements DiscordControlResponseT
   }
 }
 
+/** Discord control plane service. */
 export class DiscordControlPlaneService {
   public constructor(
     private readonly policy = new DecisionPolicyService(),
@@ -397,14 +409,17 @@ export class DiscordControlPlaneService {
     private readonly responses: DiscordControlResponseTransport = new DiscordRestResponseTransport(),
   ) {}
 
+  /** Executes the service operation. */
   public execute(input: DiscordControlRequest): DiscordControlRequest {
     return createDiscordControlRequest(input);
   }
 
+  /** Describes the service result for operators. */
   public explain(input: DiscordControlRequest): string {
     return describeDiscordControlRequest(input);
   }
 
+  /** Handle action. */
   public async handleAction(
     input: DiscordControlRequest,
   ): Promise<DiscordControlResult> {
@@ -833,6 +848,7 @@ export class DiscordControlPlaneService {
     };
   }
 
+  /** Handle interaction. */
   public async handleInteraction(
     input: DiscordOperatorInteraction,
   ): Promise<DiscordControlResult> {

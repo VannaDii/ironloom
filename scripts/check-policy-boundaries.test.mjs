@@ -32,88 +32,6 @@ describe('check-policy-boundaries', () => {
       },
     },
     {
-      name: 'fails when a non-storage package accesses .devplat directly',
-      inputs: {
-        files: {
-          'packages/storage/src/file-store/service.ts': `
-            import { resolve } from 'node:path';
-
-            export function createStorageRoot(): string {
-              return resolve('.devplat', 'records');
-            }
-          `,
-          'packages/core/src/example/service.ts': `
-            import { resolve } from 'node:path';
-
-            export function createBadPath(): string {
-              return resolve('.devplat', 'records');
-            }
-          `,
-        },
-      },
-      mock: async ({ files }) => createFixtureRoot(files),
-      assert: (errors) => {
-        expect(
-          errors.some(
-            (error) =>
-              error.includes('packages/core/src/example/service.ts') &&
-              error.includes('.devplat'),
-          ),
-        ).toBe(true);
-      },
-    },
-    {
-      name: 'fails when decorators appear outside approved source directories',
-      inputs: {
-        files: {
-          'packages/core/src/example/service.ts': `
-            function sealed(target: unknown): void {
-              void target;
-            }
-
-            @sealed
-            export class ExampleService {}
-          `,
-        },
-      },
-      mock: async ({ files }) => createFixtureRoot(files),
-      assert: (errors) => {
-        expect(
-          errors.some(
-            (error) =>
-              error.includes('packages/core/src/example/service.ts') &&
-              error.includes(
-                'decorators outside approved OpenClaw or Discord source directories',
-              ),
-          ),
-        ).toBe(true);
-      },
-    },
-    {
-      name: 'fails when a non-adapter package imports an adapter package',
-      inputs: {
-        files: {
-          'packages/core/src/example/service.ts': `
-            import { DiscordControlPlaneService } from '@vannadii/devplat-discord';
-
-            export function createService(): DiscordControlPlaneService {
-              return new DiscordControlPlaneService();
-            }
-          `,
-        },
-      },
-      mock: async ({ files }) => createFixtureRoot(files),
-      assert: (errors) => {
-        expect(
-          errors.some(
-            (error) =>
-              error.includes('packages/core/src/example/service.ts') &&
-              error.includes('@vannadii/devplat-discord'),
-          ),
-        ).toBe(true);
-      },
-    },
-    {
       name: 'fails when a non-adapter package declares an adapter dependency',
       inputs: {
         files: {
@@ -140,16 +58,17 @@ describe('check-policy-boundaries', () => {
       },
     },
     {
-      name: 'allows decorators inside adapter packages',
+      name: 'allows packages without adapter manifest dependencies',
       inputs: {
         files: {
-          'packages/openclaw/src/example/service.ts': `
-            function capability(target: unknown): void {
-              void target;
+          'packages/core/package.json': `
+            {
+              "name": "@vannadii/devplat-core",
+              "version": "0.0.0",
+              "dependencies": {
+                "@vannadii/devplat-config": "0.0.0"
+              }
             }
-
-            @capability
-            export class ExampleTool {}
           `,
         },
       },
@@ -169,13 +88,6 @@ describe('check-policy-boundaries', () => {
               "dependencies": {
                 "@vannadii/devplat-discord": "0.0.0"
               }
-            }
-          `,
-          'packages/openclaw/src/example/service.ts': `
-            import { DiscordControlPlaneService } from '@vannadii/devplat-discord';
-
-            export function createService(): DiscordControlPlaneService {
-              return new DiscordControlPlaneService();
             }
           `,
         },

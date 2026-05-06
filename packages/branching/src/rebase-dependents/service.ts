@@ -27,6 +27,7 @@ function findConflictedBranches(
     .map((result) => result.branchName);
 }
 
+/** Rebase dependents service. */
 export class RebaseDependentsService {
   /**
    * Creates the rebase service with the worktree allocator used for dependents.

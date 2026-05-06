@@ -156,10 +156,12 @@ function createValidationIssue(input: {
   };
 }
 
+/** Returns whether the value is blank. */
 function hasBlankValue(value: string): boolean {
   return value.trim().length === 0;
 }
 
+/** Returns whether the value is a valid URL. */
 function isValidUrl(value: string): boolean {
   try {
     new URL(value);
@@ -169,6 +171,7 @@ function isValidUrl(value: string): boolean {
   }
 }
 
+/** Append non empty issue. */
 function appendNonEmptyIssue(
   issues: RuntimeConfigValidationIssue[],
   field: string,
@@ -188,6 +191,7 @@ function appendNonEmptyIssue(
   ];
 }
 
+/** Validate devplat config. */
 export function validateDevplatConfig(
   config: DevplatConfig,
 ): readonly RuntimeConfigValidationIssue[] {
@@ -252,6 +256,7 @@ export function validateDevplatConfig(
   return [...nonEmptyIssues, ...urlIssues];
 }
 
+/** Creates devplat config. */
 export function createDevplatConfig(input: DevplatConfig): DevplatConfig {
   const issues = validateDevplatConfig(input);
   if (issues.length > 0) {
@@ -272,6 +277,7 @@ export function createDevplatConfig(input: DevplatConfig): DevplatConfig {
   );
 }
 
+/** Creates default devplat config. */
 export function createDefaultDevplatConfig(
   env: Record<string, string | undefined>,
 ): DevplatConfig {
@@ -418,6 +424,7 @@ export function createDefaultDevplatConfig(
   });
 }
 
+/** Describes devplat config. */
 export function describeDevplatConfig(config: DevplatConfig): string {
   return `${config.githubOwner}/${config.githubRepo} -> ${config.summary}`;
 }

@@ -6,6 +6,7 @@ import type {
   TaskTransitionEvent,
 } from './codec.js';
 
+/** Creates task transition event. */
 export function createTaskTransitionEvent(
   input: TaskTransitionEvent,
 ): TaskTransitionEvent {
@@ -16,6 +17,7 @@ export function createTaskTransitionEvent(
   };
 }
 
+/** Infer task transition action. */
 function inferTaskTransitionAction(
   status: LifecycleStatus,
 ): TaskTransitionAction {
@@ -28,12 +30,14 @@ function inferTaskTransitionAction(
   return 'status-update';
 }
 
+/** Normalizes task transitions. */
 function normalizeTaskTransitions(
   transitions: readonly TaskTransitionEvent[] | undefined,
 ): TaskTransitionEvent[] {
   return transitions?.map(createTaskTransitionEvent) ?? [];
 }
 
+/** Creates task record. */
 export function createTaskRecord(input: TaskRecord): TaskRecord {
   const transitions = normalizeTaskTransitions(input.transitions);
   const created =
@@ -58,6 +62,7 @@ export function createTaskRecord(input: TaskRecord): TaskRecord {
   );
 }
 
+/** Claim task. */
 export function claimTask(record: TaskRecord, assigneeId: string): TaskRecord {
   return createTaskRecord({
     ...record,
@@ -77,6 +82,7 @@ export function claimTask(record: TaskRecord, assigneeId: string): TaskRecord {
   });
 }
 
+/** Release task. */
 export function releaseTask(record: TaskRecord, reason: string): TaskRecord {
   const recordWithoutAssignee = { ...record };
   delete recordWithoutAssignee.assigneeId;
@@ -97,6 +103,7 @@ export function releaseTask(record: TaskRecord, reason: string): TaskRecord {
   });
 }
 
+/** Resume task. */
 export function resumeTask(record: TaskRecord, actorId: string): TaskRecord {
   return createTaskRecord({
     ...record,
@@ -115,6 +122,7 @@ export function resumeTask(record: TaskRecord, actorId: string): TaskRecord {
   });
 }
 
+/** Update task status. */
 export function updateTaskStatus(
   record: TaskRecord,
   status: LifecycleStatus,
@@ -135,6 +143,7 @@ export function updateTaskStatus(
   });
 }
 
+/** Describes task record. */
 export function describeTaskRecord(input: TaskRecord): string {
   return `${input.taskId}:${input.status} -> ${input.summary}`;
 }

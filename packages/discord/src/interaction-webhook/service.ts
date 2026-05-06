@@ -25,10 +25,12 @@ import type {
   DiscordInteractionWebhookResult,
 } from './codec.js';
 
+/** Contract for discord interaction webhook binding resolver. */
 export type DiscordInteractionWebhookBindingResolver = (
   input: Parameters<typeof createDiscordOperatorInteractionFromCallback>[0],
 ) => Promise<DiscordInteractionCallbackOptions>;
 
+/** Creates default control plane. */
 function createDefaultControlPlane(): DiscordControlPlaneService {
   return new DiscordControlPlaneService(
     new DecisionPolicyService(),
@@ -76,6 +78,7 @@ function resolveControlResultResponsePayload(
   );
 }
 
+/** Discord interaction webhook service. */
 export class DiscordInteractionWebhookService {
   public constructor(
     private readonly controlPlane = createDefaultControlPlane(),
@@ -83,6 +86,7 @@ export class DiscordInteractionWebhookService {
       Promise.resolve({}),
   ) {}
 
+  /** Handle. */
   public async handle(
     input: DiscordInteractionWebhookRequest,
   ): Promise<DiscordInteractionWebhookResult> {

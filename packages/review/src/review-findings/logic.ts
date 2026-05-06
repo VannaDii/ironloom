@@ -4,10 +4,12 @@ import type {
   SpecConformanceSummary,
 } from './codec.js';
 
+/** Unique trimmed. */
 function uniqueTrimmed(values: readonly string[]): string[] {
   return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
 }
 
+/** Normalizes spec conformance. */
 function normalizeSpecConformance(
   input: SpecConformanceSummary,
 ): SpecConformanceSummary {
@@ -18,6 +20,7 @@ function normalizeSpecConformance(
   };
 }
 
+/** Creates review finding. */
 export function createReviewFinding(input: ReviewFinding): ReviewFinding {
   const specConformance =
     input.specConformance === undefined
@@ -39,10 +42,12 @@ export function createReviewFinding(input: ReviewFinding): ReviewFinding {
   };
 }
 
+/** Returns whether the review finding is blocking. */
 export function isBlockingReviewFinding(input: ReviewFinding): boolean {
   return input.blocking;
 }
 
+/** Creates review summary. */
 export function createReviewSummary(input: {
   summaryId: string;
   specId: string;
@@ -77,6 +82,7 @@ export function createReviewSummary(input: {
   };
 }
 
+/** Describes review finding. */
 export function describeReviewFinding(input: ReviewFinding): string {
   return `${input.severity} finding -> ${input.path}`;
 }

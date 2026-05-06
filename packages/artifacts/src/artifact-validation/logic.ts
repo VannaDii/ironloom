@@ -3,6 +3,7 @@ import {
   ARTIFACT_TYPE_AUDIT_LOG,
   ARTIFACT_TYPE_MERGE_DECISION,
   ARTIFACT_TYPE_REBASE_RESULT,
+  appendTrace,
   createDevplatError,
   createDevplatFailure,
   decodeWithCodec,
@@ -42,6 +43,8 @@ import { findArtifactMigrationPath } from '../artifact-registry/index.js';
 import {
   ARTIFACT_VALIDATION_MIGRATION_PATH_SEPARATOR,
   ARTIFACT_VALIDATION_MIGRATION_REQUIRED_ERROR_CODE,
+  ARTIFACT_VALIDATION_PAYLOAD_INVALID_ERROR_CODE,
+  ARTIFACT_VALIDATION_PAYLOAD_TRACE_PREFIX,
 } from './constants.js';
 
 /** Artifact type accepted by the validation dispatcher. */
@@ -52,9 +55,15 @@ export type KnownArtifact =
   | RebaseResultArtifact
   | ArtifactEnvelope;
 
+/** Delegated payload validator for registry-supported artifact envelopes. */
+export type ArtifactPayloadValidator = (
+  payload: unknown,
+) => DevplatResult<unknown>;
+
 /** Registry constraints that can harden artifact validation. */
 export type ArtifactValidationOptions = {
   registry?: ArtifactRegistry;
+  payloadValidators?: ReadonlyMap<string, ArtifactPayloadValidator>;
 };
 
 /**
@@ -133,6 +142,49 @@ function createMigrationRequiredFailure(
 }
 
 /**
+ * Validates a registry-supported envelope payload with a delegated package codec.
+ */
+function validateEnvelopePayload(
+  envelope: ArtifactEnvelope,
+  validators: ReadonlyMap<string, ArtifactPayloadValidator> | undefined,
+): DevplatResult<ArtifactEnvelope> {
+  const validator = validators?.get(envelope.artifactType);
+  if (validator === undefined) {
+    return {
+      ok: true,
+      value: envelope,
+    };
+  }
+
+  const result = validator(envelope.payload);
+  if (!result.ok) {
+    const error = `Artifact ${envelope.artifactType}@v${String(envelope.version)} payload failed delegated validation: ${result.error}`;
+
+    return createDevplatFailure({
+      error,
+      diagnostic: createDevplatError({
+        kind: 'validation',
+        message: error,
+        code: ARTIFACT_VALIDATION_PAYLOAD_INVALID_ERROR_CODE,
+        details: {
+          artifactType: envelope.artifactType,
+          artifactVersion: envelope.version,
+          delegatedError: result.error,
+        },
+      }),
+    });
+  }
+
+  return {
+    ok: true,
+    value: appendTrace(
+      envelope,
+      `${ARTIFACT_VALIDATION_PAYLOAD_TRACE_PREFIX}${envelope.artifactType}`,
+    ),
+  };
+}
+
+/**
  * Validates the decoded envelope against the active repository registry.
  */
 function validateEnvelopeRegistry(
@@ -195,7 +247,15 @@ export function validateArtifact(
     return registryResult;
   }
 
-  switch (envelope.value.artifactType) {
+  const payloadResult = validateEnvelopePayload(
+    registryResult.value,
+    options.payloadValidators,
+  );
+  if (!payloadResult.ok) {
+    return payloadResult;
+  }
+
+  switch (payloadResult.value.artifactType) {
     case ARTIFACT_TYPE_APPROVAL_RECORD: {
       const artifact = decodeWithCodec(ApprovalRecordArtifactCodec, input);
       if (!artifact.ok) {
@@ -243,7 +303,7 @@ export function validateArtifact(
     default:
       return {
         ok: true,
-        value: new ArtifactEnvelopeService().execute(envelope.value),
+        value: new ArtifactEnvelopeService().execute(payloadResult.value),
       };
   }
 }

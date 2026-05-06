@@ -27,6 +27,7 @@ import {
   PositivePullRequestNumberCodec,
 } from '../thread-session/codec.js';
 
+/** Codec for discord control action. */
 export const DiscordControlActionCodec = t.union([
   t.literal(DEVPLAT_ACTION_RUN_THIS),
   t.literal(DEVPLAT_ACTION_CLAIM_THIS),
@@ -46,6 +47,7 @@ export const DiscordControlActionCodec = t.union([
   t.literal(DEVPLAT_ACTION_UPDATE_SPEC),
 ]);
 
+/** Codec for discord work item binding. */
 export const DiscordWorkItemBindingCodec = t.intersection([
   t.type({
     threadKind: DiscordThreadKindCodec,
@@ -59,6 +61,7 @@ export const DiscordWorkItemBindingCodec = t.intersection([
   }),
 ]);
 
+/** Codec for discord control request. */
 export const DiscordControlRequestCodec = t.intersection([
   t.type({
     id: t.string,
@@ -77,6 +80,7 @@ export const DiscordControlRequestCodec = t.intersection([
   }),
 ]);
 
+/** Codec for discord operator interaction. */
 export const DiscordOperatorInteractionCodec = t.intersection([
   t.type({
     id: t.string,
@@ -96,14 +100,17 @@ export const DiscordOperatorInteractionCodec = t.intersection([
   }),
 ]);
 
+/** Codec for discord interaction callback user. */
 export const DiscordInteractionCallbackUserCodec = t.type({
   id: t.string,
 });
 
+/** Codec for discord interaction callback member. */
 export const DiscordInteractionCallbackMemberCodec = t.type({
   user: DiscordInteractionCallbackUserCodec,
 });
 
+/** Codec for discord interaction callback data. */
 export const DiscordInteractionCallbackDataCodec = t.partial({
   name: t.string,
   /**
@@ -112,6 +119,7 @@ export const DiscordInteractionCallbackDataCodec = t.partial({
   custom_id: t.string,
 });
 
+/** Codec for discord interaction callback. */
 export const DiscordInteractionCallbackCodec = t.intersection([
   t.type({
     id: t.string,
@@ -128,6 +136,7 @@ export const DiscordInteractionCallbackCodec = t.intersection([
   }),
 ]);
 
+/** Codec for discord interaction callback options. */
 export const DiscordInteractionCallbackOptionsCodec = t.partial({
   threadId: t.string,
   boundThreadId: t.string,
@@ -137,16 +146,19 @@ export const DiscordInteractionCallbackOptionsCodec = t.partial({
   updatedAt: IsoTimestampCodec,
 });
 
+/** Codec for discord response receipt. */
 export const DiscordResponseReceiptCodec = t.type({
   endpoint: t.string,
   statusCode: t.number,
   responseBody: t.unknown,
 });
 
+/** Codec for discord allowed mentions. */
 export const DiscordAllowedMentionsCodec = t.type({
   parse: t.readonlyArray(t.string),
 });
 
+/** Codec for discord button style. */
 export const DiscordButtonStyleCodec = t.union([
   t.literal(1),
   t.literal(2),
@@ -155,6 +167,7 @@ export const DiscordButtonStyleCodec = t.union([
   t.literal(5),
 ]);
 
+/** Codec for discord button component. */
 export const DiscordButtonComponentCodec = t.intersection([
   t.type({
     type: t.literal(2),
@@ -171,11 +184,13 @@ export const DiscordButtonComponentCodec = t.intersection([
   }),
 ]);
 
+/** Codec for discord action row component. */
 export const DiscordActionRowComponentCodec = t.type({
   type: t.literal(1),
   components: t.readonlyArray(DiscordButtonComponentCodec),
 });
 
+/** Codec for discord message payload. */
 export const DiscordMessagePayloadCodec = t.intersection([
   t.type({
     content: t.string,
@@ -190,6 +205,7 @@ export const DiscordMessagePayloadCodec = t.intersection([
   }),
 ]);
 
+/** Codec for discord control result. */
 export const DiscordControlResultCodec = t.intersection([
   t.type({
     request: DiscordControlRequestCodec,
@@ -211,17 +227,20 @@ export const DiscordControlResultCodec = t.intersection([
   }),
 ]);
 
+/** Codec for discord interaction route success. */
 export const DiscordInteractionRouteSuccessCodec = t.type({
   ok: t.literal(true),
   request: DiscordControlRequestCodec,
 });
 
+/** Codec for discord interaction route failure. */
 export const DiscordInteractionRouteFailureCodec = t.type({
   ok: t.literal(false),
   interactionId: t.string,
   reason: t.string,
 });
 
+/** Codec for discord interaction route. */
 export const DiscordInteractionRouteCodec = t.union([
   DiscordInteractionRouteSuccessCodec,
   DiscordInteractionRouteFailureCodec,

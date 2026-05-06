@@ -18,6 +18,7 @@ import {
 } from './constants.js';
 import { DiscordInteractionGatewayService } from './service.js';
 
+/** Contract for discord gateway connection. */
 export interface DiscordGatewayConnection {
   /** Sends a serialized Gateway payload. */
   send(message: string): void;
@@ -29,16 +30,19 @@ export interface DiscordGatewayConnection {
   onClose(listener: () => void): void;
 }
 
+/** Contract for discord gateway connection factory. */
 export interface DiscordGatewayConnectionFactory {
   /** Opens a Gateway connection to the provided URL. */
   connect(gatewayUrl: string): DiscordGatewayConnection;
 }
 
+/** Contract for discord gateway heartbeat scheduler. */
 export interface DiscordGatewayHeartbeatScheduler {
   /** Schedules Gateway heartbeat execution and returns its cancellation hook. */
   schedule(heartbeat: () => void, intervalMs: number): () => void;
 }
 
+/** Contract for discord gateway dispatch handler. */
 export interface DiscordGatewayDispatchHandler {
   /** Routes decoded Gateway dispatch events into the Discord control plane. */
   handleDispatch(
@@ -46,6 +50,7 @@ export interface DiscordGatewayDispatchHandler {
   ): Promise<DiscordInteractionGatewayResult>;
 }
 
+/** Contract for discord interaction gateway client start input. */
 export interface DiscordInteractionGatewayClientStartInput {
   /** Bot token used in the Discord Gateway identify payload. */
   botToken: string;
@@ -61,6 +66,7 @@ export interface DiscordInteractionGatewayClientStartInput {
   onError?: (error: Error) => void;
 }
 
+/** Contract for discord interaction gateway client session. */
 export interface DiscordInteractionGatewayClientSession {
   /** Gateway URL used by the active session. */
   gatewayUrl: string;
@@ -72,6 +78,7 @@ export interface DiscordInteractionGatewayClientSession {
  * Interval-backed heartbeat scheduler for live Gateway sessions.
  */
 export class IntervalDiscordGatewayHeartbeatScheduler implements DiscordGatewayHeartbeatScheduler {
+  /** Schedule. */
   public schedule(heartbeat: () => void, intervalMs: number): () => void {
     const timer = setInterval(heartbeat, intervalMs);
     return () => {
@@ -84,20 +91,24 @@ export class IntervalDiscordGatewayHeartbeatScheduler implements DiscordGatewayH
  * WebSocket-backed Discord Gateway connection for private outbound runtimes.
  */
 class WebSocketDiscordGatewayConnection implements DiscordGatewayConnection {
+  /** Socket. */
   private readonly socket: WebSocket;
 
   public constructor(gatewayUrl: string) {
     this.socket = new WebSocket(gatewayUrl);
   }
 
+  /** Send. */
   public send(message: string): void {
     this.socket.send(message);
   }
 
+  /** Close. */
   public close(): void {
     this.socket.close();
   }
 
+  /** On message. */
   public onMessage(listener: (message: string) => void): void {
     this.socket.addEventListener('message', (event) => {
       if (typeof event.data === 'string') {
@@ -109,6 +120,7 @@ class WebSocketDiscordGatewayConnection implements DiscordGatewayConnection {
     });
   }
 
+  /** On close. */
   public onClose(listener: () => void): void {
     this.socket.addEventListener('close', () => {
       listener();
@@ -120,6 +132,7 @@ class WebSocketDiscordGatewayConnection implements DiscordGatewayConnection {
  * Default WebSocket connection factory for Discord Gateway sessions.
  */
 export class WebSocketDiscordGatewayConnectionFactory implements DiscordGatewayConnectionFactory {
+  /** Connect. */
   public connect(gatewayUrl: string): DiscordGatewayConnection {
     return new WebSocketDiscordGatewayConnection(gatewayUrl);
   }
@@ -190,6 +203,7 @@ function sendGatewayPayload(
   connection.send(JSON.stringify(payload));
 }
 
+/** Discord interaction gateway client service. */
 export class DiscordInteractionGatewayClientService {
   public constructor(
     private readonly connections: DiscordGatewayConnectionFactory = new WebSocketDiscordGatewayConnectionFactory(),

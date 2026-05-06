@@ -5,6 +5,7 @@ import {
 
 import type { ArtifactEnvelope } from './codec.js';
 
+/** Creates artifact envelope. */
 export function createArtifactEnvelope<
   TPayload extends object,
   TArtifactType extends SupportedArtifactType,
@@ -21,6 +22,7 @@ export function createArtifactEnvelope<
   );
 }
 
+/** Describes artifact envelope. */
 export function describeArtifactEnvelope<
   TPayload extends object,
   TArtifactType extends SupportedArtifactType,

@@ -1,9 +1,11 @@
 import type { MemoryContextBundle, MemoryEntry } from './codec.js';
 
+/** Unique trimmed. */
 function uniqueTrimmed(values: readonly string[]): string[] {
   return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
 }
 
+/** Creates memory entry. */
 export function createMemoryEntry(input: MemoryEntry): MemoryEntry {
   const sourceArtifactId = input.sourceArtifactId?.trim();
 
@@ -17,6 +19,7 @@ export function createMemoryEntry(input: MemoryEntry): MemoryEntry {
   };
 }
 
+/** Creates memory context bundle. */
 export function createMemoryContextBundle(
   input: MemoryContextBundle,
 ): MemoryContextBundle {
@@ -36,6 +39,7 @@ export function createMemoryContextBundle(
   };
 }
 
+/** Bundle memory context. */
 export function bundleMemoryContext(
   bundleId: string,
   entries: readonly MemoryEntry[],
@@ -64,6 +68,7 @@ export function bundleMemoryContext(
   });
 }
 
+/** Describes memory entry. */
 export function describeMemoryEntry(input: MemoryEntry): string {
   return `${input.kind} memory -> ${input.subject}`;
 }

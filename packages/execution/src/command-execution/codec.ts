@@ -1,5 +1,6 @@
 import * as t from 'io-ts';
 
+/** Codec for command execution policy. */
 export const CommandExecutionPolicyCodec = t.intersection([
   t.type({
     retry: t.type({
@@ -16,6 +17,7 @@ export const CommandExecutionPolicyCodec = t.intersection([
   }),
 ]);
 
+/** Codec for command result. */
 export const CommandResultCodec = t.intersection([
   t.type({
     command: t.string,
@@ -33,6 +35,7 @@ export const CommandResultCodec = t.intersection([
   }),
 ]);
 
+/** Codec for command execution options. */
 export const CommandExecutionOptionsCodec = t.partial({
   cwd: t.string,
   env: t.record(t.string, t.string),

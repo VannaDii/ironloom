@@ -83,6 +83,75 @@ describe('check-instructions', () => {
       },
     },
     {
+      name: 'fails when the code-change changeset rule drifts',
+      inputs: {
+        useFixtureRoot: true,
+      },
+      mock: async ({ rootDirectory }) => {
+        await replaceInFile(
+          rootDirectory,
+          'CONTRIBUTING.md',
+          'Every pull request containing any code change must include a detailed Changesets entry before it is opened or updated; keep that changeset accurate as the branch evolves.',
+          'Add a changeset for release-facing behavior changes.',
+        );
+      },
+      assert: (errors) => {
+        expect(
+          errors.some(
+            (error) =>
+              error.includes('CONTRIBUTING.md') &&
+              error.includes('Every pull request containing any code change'),
+          ),
+        ).toBe(true);
+      },
+    },
+    {
+      name: 'fails when the canonical case table variable rule drifts',
+      inputs: {
+        useFixtureRoot: true,
+      },
+      mock: async ({ rootDirectory }) => {
+        await replaceInFile(
+          rootDirectory,
+          '.github/instructions/testing.instructions.md',
+          'The table variable must be named `cases`; alternate table names in `it.each(<name>)` calls are not allowed.',
+          'Prefer obvious table names.',
+        );
+      },
+      assert: (errors) => {
+        expect(
+          errors.some(
+            (error) =>
+              error.includes('.github/instructions/testing.instructions.md') &&
+              error.includes('The table variable must be named `cases`'),
+          ),
+        ).toBe(true);
+      },
+    },
+    {
+      name: 'fails when the JSDoc lint governance text drifts from developer docs',
+      inputs: {
+        useFixtureRoot: true,
+      },
+      mock: async ({ rootDirectory }) => {
+        await replaceInFile(
+          rootDirectory,
+          'site/guide-docs/guides/developer-guide.md',
+          '; `npm run lint` enforces this for authored package source',
+          '',
+        );
+      },
+      assert: (errors) => {
+        expect(
+          errors.some(
+            (error) =>
+              error.includes('site/guide-docs/guides/developer-guide.md') &&
+              error.includes('`npm run lint`'),
+          ),
+        ).toBe(true);
+      },
+    },
+    {
       name: 'fails when docs navigation omits a first-class guide',
       inputs: {
         useFixtureRoot: true,

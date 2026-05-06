@@ -7,7 +7,9 @@ import {
 import type { ReviewFinding } from '@vannadii/devplat-review';
 import type { SonarQualityGateResult } from './codec.js';
 
+/** Sonar quality gate service. */
 export class SonarQualityGateService {
+  /** Evaluate. */
   public evaluate(
     projectKey: string,
     overallCoverage: number,
@@ -24,18 +26,22 @@ export class SonarQualityGateService {
     });
   }
 
+  /** Executes the service operation. */
   public execute(input: SonarQualityGateResult): SonarQualityGateResult {
     return createSonarQualityGateResult(input);
   }
 
+  /** Passes. */
   public passes(input: SonarQualityGateResult): boolean {
     return isQualityGatePassing(createSonarQualityGateResult(input));
   }
 
+  /** Converts the result to review findings. */
   public toReviewFindings(input: SonarQualityGateResult): ReviewFinding[] {
     return createReviewFindingsFromSonarQualityGate(input);
   }
 
+  /** Describes the service result for operators. */
   public explain(input: SonarQualityGateResult): string {
     return describeSonarQualityGateResult(input);
   }

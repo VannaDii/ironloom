@@ -5,8 +5,15 @@ import {
   createDefaultArtifactRegistry,
   type ArtifactRegistry,
 } from '../artifact-registry/index.js';
-import { ARTIFACT_VALIDATION_MIGRATION_REQUIRED_ERROR_CODE } from './constants.js';
-import { describeValidatedArtifact, validateArtifact } from './logic.js';
+import {
+  ARTIFACT_VALIDATION_MIGRATION_REQUIRED_ERROR_CODE,
+  ARTIFACT_VALIDATION_PAYLOAD_INVALID_ERROR_CODE,
+} from './constants.js';
+import {
+  type ArtifactPayloadValidator,
+  describeValidatedArtifact,
+  validateArtifact,
+} from './logic.js';
 
 type ArtifactValidationLogicCase = {
   name: string;
@@ -15,9 +22,13 @@ type ArtifactValidationLogicCase = {
   };
   mock: () => {
     registry?: ArtifactRegistry;
+    payloadValidators?: ReadonlyMap<string, ArtifactPayloadValidator>;
   };
   assert: (
-    context: { registry?: ArtifactRegistry },
+    context: {
+      registry?: ArtifactRegistry;
+      payloadValidators?: ReadonlyMap<string, ArtifactPayloadValidator>;
+    },
     inputs: { artifact: unknown },
   ) => void;
 };
@@ -300,6 +311,93 @@ describe('ArtifactValidation logic', () => {
           expect(result.value.summary).toBe('Generic artifact');
           expect(result.value.trace).toContain('artifact:review-finding');
         }
+      },
+    },
+    {
+      name: 'appends delegated payload validation trace for registry-supported artifact envelopes',
+      inputs: {
+        artifact: {
+          id: 'artifact-generic-1b',
+          artifactType: 'review-finding',
+          version: 1,
+          summary: ' Generic artifact ',
+          status: 'approved',
+          trace: [],
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          payload: {
+            findingId: 'finding-1b',
+          },
+        },
+      },
+      mock: () => ({
+        payloadValidators: new Map([
+          [
+            'review-finding',
+            (payload: unknown) => ({
+              ok: true,
+              value: payload,
+            }),
+          ],
+        ]),
+      }),
+      assert: (context, inputs) => {
+        const result = validateArtifact(inputs.artifact, {
+          payloadValidators: context.payloadValidators,
+        });
+
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+          expect(result.value.trace).toEqual([
+            'artifact-payload:review-finding',
+            'artifact:review-finding',
+          ]);
+        }
+      },
+    },
+    {
+      name: 'fails closed when delegated payload validation rejects a registry-supported artifact envelope',
+      inputs: {
+        artifact: {
+          id: 'artifact-generic-1c',
+          artifactType: 'review-finding',
+          version: 1,
+          summary: ' Generic artifact ',
+          status: 'approved',
+          trace: [],
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          payload: {
+            findingId: 'finding-1c',
+          },
+        },
+      },
+      mock: () => ({
+        payloadValidators: new Map([
+          [
+            'review-finding',
+            () => ({
+              ok: false,
+              error: 'review finding missing severity',
+            }),
+          ],
+        ]),
+      }),
+      assert: (context, inputs) => {
+        const result = validateArtifact(inputs.artifact, {
+          payloadValidators: context.payloadValidators,
+        });
+
+        expect(result).toMatchObject({
+          ok: false,
+          error:
+            'Artifact review-finding@v1 payload failed delegated validation: review finding missing severity',
+          diagnostic: {
+            code: ARTIFACT_VALIDATION_PAYLOAD_INVALID_ERROR_CODE,
+            details: {
+              artifactType: 'review-finding',
+              delegatedError: 'review finding missing severity',
+            },
+          },
+        });
       },
     },
     {

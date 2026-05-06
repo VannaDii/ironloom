@@ -96,6 +96,7 @@ function findLifecycleSignal(
   return signals.find((signal) => signal.phase === phase);
 }
 
+/** Creates supervisor route plan. */
 export function createSupervisorRoutePlan(input: {
   action: string;
   approved: boolean;
@@ -151,6 +152,7 @@ export function createSupervisorRoutePlan(input: {
   };
 }
 
+/** Creates supervisor decision. */
 export function createSupervisorDecision(
   input: SupervisorDecision,
 ): SupervisorDecision {
@@ -181,6 +183,7 @@ export function createSupervisorDecision(
   );
 }
 
+/** Decide next state. */
 export function decideNextState(
   policyDecision: PolicyDecision,
 ): SupervisorDecision {
@@ -197,6 +200,7 @@ export function decideNextState(
   });
 }
 
+/** Describes supervisor decision. */
 export function describeSupervisorDecision(input: SupervisorDecision): string {
   return `${input.action} -> ${input.nextState}`;
 }

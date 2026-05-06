@@ -28,6 +28,7 @@ import type {
   WorktreeSyncResult,
 } from './codec.js';
 
+/** Promisified Node execFile helper. */
 const execFileAsync = promisify(execFile);
 
 /**

@@ -12,6 +12,7 @@ import type {
   TelemetryRunSummary,
 } from './codec.js';
 
+/** Status for audit record. */
 function statusForAuditRecord(
   input: TelemetryAuditRecord,
 ): TelemetryEvent['status'] {
@@ -29,6 +30,7 @@ function statusForAuditRecord(
   }
 }
 
+/** Status for run summary. */
 function statusForRunSummary(
   input: TelemetryRunSummary,
 ): TelemetryEvent['status'] {
@@ -41,9 +43,11 @@ function statusForRunSummary(
   return 'complete';
 }
 
+/** Telemetry event service. */
 export class TelemetryEventService {
   public constructor(private readonly store = new FileStoreService()) {}
 
+  /** Records the service result. */
   public async record(input: TelemetryEvent): Promise<TelemetryEvent> {
     const event = createTelemetryEvent(input);
     await this.store.store({
@@ -59,10 +63,12 @@ export class TelemetryEventService {
     return event;
   }
 
+  /** Executes the service operation. */
   public execute(input: TelemetryEvent): Promise<TelemetryEvent> {
     return this.record(input);
   }
 
+  /** Record audit. */
   public async recordAudit(
     input: TelemetryAuditRecord,
   ): Promise<TelemetryAuditRecord> {
@@ -81,6 +87,7 @@ export class TelemetryEventService {
     return auditRecord;
   }
 
+  /** Summarize run. */
   public async summarizeRun(input: {
     runId: string;
     events: readonly TelemetryEvent[];
@@ -102,6 +109,7 @@ export class TelemetryEventService {
     return summary;
   }
 
+  /** Describes the service result for operators. */
   public explain(input: TelemetryEvent): string {
     return describeTelemetryEvent(input);
   }

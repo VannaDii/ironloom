@@ -130,6 +130,16 @@ function parseDiscordComponentCustomId(
   };
 }
 
+/**
+ * Extracts the encoded thread id from a DevPlat Discord component custom id.
+ */
+export function resolveDiscordComponentThreadId(
+  value: string | undefined,
+): string | undefined {
+  return parseDiscordComponentCustomId(value)?.threadId;
+}
+
+/** Normalizes action token. */
 function normalizeActionToken(value: string | undefined): string | undefined {
   const trimmed = value?.trim().toLowerCase();
   if (trimmed === undefined || trimmed.length === 0) {
@@ -141,6 +151,7 @@ function normalizeActionToken(value: string | undefined): string | undefined {
     : trimmed;
 }
 
+/** Resolves action. */
 function resolveAction(
   input: DiscordOperatorInteraction,
 ): DiscordControlAction | undefined {
@@ -158,6 +169,7 @@ function resolveAction(
   return commandAction ?? customAction;
 }
 
+/** Collects thread candidates. */
 function collectThreadCandidates(
   input: DiscordOperatorInteraction,
 ): readonly string[] {
@@ -173,6 +185,7 @@ function collectThreadCandidates(
   ].filter((value) => value.length > 0);
 }
 
+/** Trims an optional string value. */
 function trimOptional(value: string | undefined): string | undefined {
   const trimmed = value?.trim();
   if (trimmed === undefined || trimmed.length === 0) {
@@ -182,6 +195,7 @@ function trimOptional(value: string | undefined): string | undefined {
   return trimmed;
 }
 
+/** Resolves callback actor id. */
 function resolveCallbackActorId(input: DiscordInteractionCallback): string {
   const memberUserId = trimOptional(input.member?.user.id);
   if (memberUserId !== undefined) {
@@ -198,6 +212,7 @@ function resolveCallbackActorId(input: DiscordInteractionCallback): string {
   );
 }
 
+/** Resolves callback channel id. */
 function resolveCallbackChannelId(input: DiscordInteractionCallback): string {
   const channelId = input.channel_id.trim();
   if (channelId.length === 0) {
@@ -207,6 +222,7 @@ function resolveCallbackChannelId(input: DiscordInteractionCallback): string {
   return channelId;
 }
 
+/** Creates discord work item binding. */
 export function createDiscordWorkItemBinding(
   session: DiscordThreadSession,
 ): DiscordWorkItemBinding {
@@ -243,6 +259,7 @@ export function createDiscordWorkItemBinding(
   }
 }
 
+/** Describes discord work item binding. */
 export function describeDiscordWorkItemBinding(
   input: DiscordWorkItemBinding,
 ): string {
@@ -263,6 +280,7 @@ export function describeDiscordWorkItemBinding(
     : `spec ${input.specId} in ${input.threadId}`;
 }
 
+/** Creates discord control request. */
 export function createDiscordControlRequest(
   input: DiscordControlRequest,
 ): DiscordControlRequest {
@@ -280,12 +298,14 @@ export function createDiscordControlRequest(
   );
 }
 
+/** Describes discord control request. */
 export function describeDiscordControlRequest(
   input: DiscordControlRequest,
 ): string {
   return `${input.threadId}:${input.action} -> ${input.summary}`;
 }
 
+/** Creates discord operator interaction from callback. */
 export function createDiscordOperatorInteractionFromCallback(
   input: DiscordInteractionCallback,
   options: DiscordInteractionCallbackOptions = {},
@@ -317,6 +337,7 @@ export function createDiscordOperatorInteractionFromCallback(
   };
 }
 
+/** Creates interaction control request input. */
 function createInteractionControlRequestInput(
   input: DiscordOperatorInteraction,
   action: DiscordControlAction,
@@ -352,6 +373,7 @@ function createInteractionControlRequestInput(
   };
 }
 
+/** Creates discord control request from interaction. */
 export function createDiscordControlRequestFromInteraction(
   input: DiscordOperatorInteraction,
 ): DiscordInteractionRoute {

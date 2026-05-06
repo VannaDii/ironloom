@@ -41,6 +41,7 @@ import {
   WorktreeSyncModeCodec,
 } from '@vannadii/devplat-worktrees';
 
+/** Codec for run gates tool input. */
 export const RunGatesToolInputCodec = t.intersection([
   t.type({
     gateNames: t.array(t.string),
@@ -51,35 +52,48 @@ export const RunGatesToolInputCodec = t.intersection([
   }),
 ]);
 
+/** Codec for create research brief tool input. */
 export const CreateResearchBriefToolInputCodec = ResearchBriefCodec;
 
+/** Codec for create spec record tool input. */
 export const CreateSpecRecordToolInputCodec = SpecRecordCodec;
 
+/** Codec for approve spec record tool input. */
 export const ApproveSpecRecordToolInputCodec = SpecRecordCodec;
 
+/** Codec for update spec record tool input. */
 export const UpdateSpecRecordToolInputCodec = SpecRecordCodec;
 
+/** Codec for create slice plan tool input. */
 export const CreateSlicePlanToolInputCodec = SlicePlanCodec;
 
+/** Codec for evaluate slice plan readiness tool input. */
 export const EvaluateSlicePlanReadinessToolInputCodec = t.type({
   plan: SlicePlanCodec,
   completedSliceIds: t.array(t.string),
 });
 
+/** Codec for resolve runtime config tool input. */
 export const ResolveRuntimeConfigToolInputCodec = t.type({
   env: t.record(t.string, t.string),
 });
 
+/** Codec for create open claw plugin config tool input. */
 export const CreateOpenClawPluginConfigToolInputCodec = DevplatConfigCodec;
 
+/** Codec for create artifact envelope tool input. */
 export const CreateArtifactEnvelopeToolInputCodec = ArtifactEnvelopeCodec;
 
+/** Codec for create approval record tool input. */
 export const CreateApprovalRecordToolInputCodec = ApprovalRecordArtifactCodec;
 
+/** Codec for create audit log tool input. */
 export const CreateAuditLogToolInputCodec = AuditLogArtifactCodec;
 
+/** Codec for create merge decision tool input. */
 export const CreateMergeDecisionToolInputCodec = MergeDecisionArtifactCodec;
 
+/** Codec for create rebase result tool input. */
 export const CreateRebaseResultToolInputCodec = RebaseResultArtifactCodec;
 
 /** OpenClaw command execution input using execution-owned option codecs. */
@@ -113,11 +127,13 @@ export const AllocateWorktreeDiskInputCodec = t.type({
   applyToDisk: t.literal(true),
 });
 
+/** Codec for allocate worktree tool input. */
 export const AllocateWorktreeToolInputCodec = t.union([
   AllocateWorktreeDiskInputCodec,
   AllocateWorktreePlanInputCodec,
 ]);
 
+/** Codec for sync worktree tool input. */
 export const SyncWorktreeToolInputCodec = t.intersection([
   t.type({
     allocation: WorktreeAllocationCodec,
@@ -129,6 +145,7 @@ export const SyncWorktreeToolInputCodec = t.intersection([
   }),
 ]);
 
+/** Codec for release worktree tool input. */
 export const ReleaseWorktreeToolInputCodec = t.intersection([
   t.type({
     allocation: WorktreeAllocationCodec,
@@ -139,6 +156,7 @@ export const ReleaseWorktreeToolInputCodec = t.intersection([
   }),
 ]);
 
+/** Codec for bind discord thread tool input. */
 export const BindDiscordThreadToolInputCodec = t.intersection([
   DiscordChannelBindingCodec,
   t.type({
@@ -148,6 +166,7 @@ export const BindDiscordThreadToolInputCodec = t.intersection([
   }),
 ]);
 
+/** Codec for open discord thread tool input. */
 export const OpenDiscordThreadToolInputCodec = t.intersection([
   DiscordThreadSessionCodec,
   t.type({
@@ -155,16 +174,20 @@ export const OpenDiscordThreadToolInputCodec = t.intersection([
   }),
 ]);
 
+/** Codec for handle discord approval tool input. */
 export const HandleDiscordApprovalToolInputCodec = DiscordApprovalRequestCodec;
 
+/** Codec for handle discord control tool input. */
 export const HandleDiscordControlToolInputCodec = t.union([
   DiscordControlRequestCodec,
   DiscordOperatorInteractionCodec,
 ]);
 
+/** Codec for verify sonar bootstrap tool input. */
 export const VerifySonarBootstrapToolInputCodec =
   SonarBootstrapVerificationInputCodec;
 
+/** Codec for evaluate sonar quality gate tool input. */
 export const EvaluateSonarQualityGateToolInputCodec = t.intersection([
   t.type({
     projectKey: t.string,
@@ -177,29 +200,37 @@ export const EvaluateSonarQualityGateToolInputCodec = t.intersection([
   }),
 ]);
 
+/** Codec for create review finding tool input. */
 export const CreateReviewFindingToolInputCodec = ReviewFindingCodec;
 
+/** Codec for create remediation plan tool input. */
 export const CreateRemediationPlanToolInputCodec = t.type({
   findings: t.array(ReviewFindingCodec),
   autofix: t.boolean,
 });
 
+/** Codec for remember memory entry tool input. */
 export const RememberMemoryEntryToolInputCodec = MemoryEntryCodec;
 
+/** Codec for evaluate policy action tool input. */
 export const EvaluatePolicyActionToolInputCodec = t.type({
   action: t.string,
   privileged: t.boolean,
 });
 
+/** Codec for record telemetry event tool input. */
 export const RecordTelemetryEventToolInputCodec = TelemetryEventCodec;
 
+/** Codec for create task record tool input. */
 export const CreateTaskRecordToolInputCodec = TaskRecordCodec;
 
+/** Codec for read stored record tool input. */
 export const ReadStoredRecordToolInputCodec = t.type({
   scope: StoreScopeCodec,
   key: t.string,
 });
 
+/** Codec for list stored records tool input. */
 export const ListStoredRecordsToolInputCodec = t.type({
   scope: StoreScopeCodec,
 });
@@ -221,41 +252,51 @@ export const ListStoredIndexToolInputCodec = t.type({
   indexName: StoreIndexNameCodec,
 });
 
+/** Codec for store record tool record. */
 export const StoreRecordToolRecordCodec = StoredRecordCodec;
 
+/** Codec for store record tool input. */
 export const StoreRecordToolInputCodec = t.type({
   record: StoreRecordToolRecordCodec,
   actorId: t.string,
   privileged: t.boolean,
 });
 
+/** Codec for create pull request record tool input. */
 export const CreatePullRequestRecordToolInputCodec = PullRequestRecordCodec;
 
+/** Codec for submit pull request update tool input. */
 export const SubmitPullRequestUpdateToolInputCodec = t.type({
   record: PullRequestRecordCodec,
   actorId: t.string,
 });
 
+/** Codec for submit pull request merge tool input. */
 export const SubmitPullRequestMergeToolInputCodec = t.type({
   record: PullRequestRecordCodec,
   actorId: t.string,
 });
 
+/** Codec for plan rebase dependents tool input. */
 export const PlanRebaseDependentsToolInputCodec = t.type({
   record: PullRequestRecordCodec,
   dependentBranches: t.array(t.string),
 });
 
+/** Codec for execute rebase dependents tool input. */
 export const ExecuteRebaseDependentsToolInputCodec =
   ExecuteRebaseDependentsInputCodec;
 
+/** Codec for submit git hub action tool input. */
 export const SubmitGitHubActionToolInputCodec = t.type({
   request: GitHubActionRequestCodec,
   actorId: t.string,
 });
 
+/** Codec for create git hub action request tool input. */
 export const CreateGitHubActionRequestToolInputCodec = GitHubActionRequestCodec;
 
+/** Codec for claim task tool input. */
 export const ClaimTaskToolInputCodec = t.intersection([
   t.type({
     taskId: t.string,
@@ -268,6 +309,7 @@ export const ClaimTaskToolInputCodec = t.intersection([
   }),
 ]);
 
+/** Codec for update task status. */
 export const UpdateTaskStatusCodec = t.union([
   t.literal('review'),
   t.literal('blocked'),
@@ -279,6 +321,7 @@ export const UpdateTaskStatusCodec = t.union([
   t.literal('complete'),
 ]);
 
+/** Codec for update task tool input. */
 export const UpdateTaskToolInputCodec = t.intersection([
   t.type({
     taskId: t.string,
@@ -301,6 +344,7 @@ export const ValidateArtifactToolInputCodec = t.intersection([
   }),
 ]);
 
+/** Codec for run supervisor step tool input. */
 export const RunSupervisorStepToolInputCodec = t.intersection([
   t.type({
     action: t.string,

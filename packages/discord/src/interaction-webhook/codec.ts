@@ -5,36 +5,43 @@ import {
   DiscordMessagePayloadCodec,
 } from '../discord-control-plane/codec.js';
 
+/** Codec for discord interaction webhook headers. */
 export const DiscordInteractionWebhookHeadersCodec = t.type({
   'x-signature-ed25519': t.string,
   'x-signature-timestamp': t.string,
 });
 
+/** Codec for discord interaction webhook request. */
 export const DiscordInteractionWebhookRequestCodec = t.type({
   body: t.string,
   publicKey: t.string,
   headers: DiscordInteractionWebhookHeadersCodec,
 });
 
+/** Codec for discord interaction webhook pong response body. */
 export const DiscordInteractionWebhookPongResponseBodyCodec = t.type({
   type: t.literal(1),
 });
 
+/** Codec for discord interaction webhook message response body. */
 export const DiscordInteractionWebhookMessageResponseBodyCodec = t.type({
   type: t.literal(4),
   data: DiscordMessagePayloadCodec,
 });
 
+/** Codec for discord interaction webhook deferred response body. */
 export const DiscordInteractionWebhookDeferredResponseBodyCodec = t.type({
   type: t.literal(5),
 });
 
+/** Codec for discord interaction webhook response body. */
 export const DiscordInteractionWebhookResponseBodyCodec = t.union([
   DiscordInteractionWebhookPongResponseBodyCodec,
   DiscordInteractionWebhookMessageResponseBodyCodec,
   DiscordInteractionWebhookDeferredResponseBodyCodec,
 ]);
 
+/** Codec for discord interaction webhook parse result. */
 export const DiscordInteractionWebhookParseResultCodec = t.union([
   t.type({
     ok: t.literal(true),
@@ -51,6 +58,7 @@ export const DiscordInteractionWebhookParseResultCodec = t.union([
   }),
 ]);
 
+/** Codec for discord interaction webhook result. */
 export const DiscordInteractionWebhookResultCodec = t.intersection([
   t.type({
     statusCode: t.number,

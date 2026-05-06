@@ -52,6 +52,12 @@ Sonar quality-gate evaluation follows the same audit path: it delegates
 threshold evaluation to `@vannadii/devplat-sonarcloud`, accepts optional
 `actorId`, persists a telemetry event, and returns the telemetry event id with
 the quality-gate result.
+Artifact validation delegates envelope and registry mechanics to
+`@vannadii/devplat-artifacts` and supplies package-owned payload codecs for
+downstream lifecycle records. That means generic envelopes for research, specs,
+slices, tasks, gates, review findings, remediation plans, pull requests,
+telemetry events, worktrees, and Discord thread sessions fail closed when their
+embedded payload does not satisfy the owning package contract.
 
 ## Exposed Tools
 
@@ -118,7 +124,7 @@ surface, and tests stay aligned.
   delegated branching package
 - `create_github_action_request`: create a GitHub action request
 - `submit_github_action`: submit a GitHub action request result
-- `validate_artifact`: validate artifact payloads against platform contracts and optional active repository registry constraints; required-migration failures preserve structured diagnostics, including ordered migration ids when the registry can bridge the stale artifact version to the current version
+- `validate_artifact`: validate artifact envelopes against platform contracts, delegated package payload codecs, and optional active repository registry constraints; required-migration failures preserve structured diagnostics, including ordered migration ids when the registry can bridge the stale artifact version to the current version
 - `run_supervisor_step`: run a supervisor orchestration step
 
 ## Deterministic Generation

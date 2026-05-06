@@ -21,10 +21,12 @@ import type {
   WorktreeSyncResult,
 } from './codec.js';
 
+/** Trim worktree value. */
 function trimWorktreeValue(value: string): string {
   return value.trim();
 }
 
+/** Creates safety check. */
 function createSafetyCheck(input: {
   branchName: string;
   normalizedBranchName: string;
@@ -41,6 +43,7 @@ function createSafetyCheck(input: {
   };
 }
 
+/** Normalizes worktree base branch. */
 function normalizeWorktreeBaseBranch(baseBranch: string): {
   blocked: boolean;
   baseBranch: string;
@@ -57,6 +60,7 @@ function normalizeWorktreeBaseBranch(baseBranch: string): {
       };
 }
 
+/** Returns whether the character is unsafe in a Git ref. */
 function hasUnsafeGitRefCharacter(branchName: string): boolean {
   for (const character of branchName) {
     const codePoint = character.codePointAt(0);
@@ -74,6 +78,7 @@ function hasUnsafeGitRefCharacter(branchName: string): boolean {
   return false;
 }
 
+/** Find unsafe git ref reason. */
 function findUnsafeGitRefReason(branchName: string): string {
   if (branchName.length === 0) {
     return 'Branch name must not be empty.';
@@ -123,6 +128,7 @@ function findUnsafeGitRefReason(branchName: string): string {
   return '';
 }
 
+/** Evaluate worktree branch safety. */
 export function evaluateWorktreeBranchSafety(
   branchName: string,
 ): WorktreeBranchSafetyCheck {
@@ -141,6 +147,7 @@ export function evaluateWorktreeBranchSafety(
   });
 }
 
+/** Creates blocked worktree path. */
 function createBlockedWorktreePath(
   worktreeRoot: string,
   taskId: string,
@@ -148,6 +155,7 @@ function createBlockedWorktreePath(
   return `${worktreeRoot}/${WORKTREE_BLOCKED_PATH_SEGMENT}/${taskId}`;
 }
 
+/** Infer worktree root. */
 function inferWorktreeRoot(worktreePath: string, branchName: string): string {
   const normalizedWorktreePath = trimWorktreeValue(worktreePath);
   const blockedMarkerIndex = normalizedWorktreePath.indexOf(
@@ -165,6 +173,7 @@ function inferWorktreeRoot(worktreePath: string, branchName: string): string {
   return normalizedWorktreePath;
 }
 
+/** Creates worktree allocation. */
 export function createWorktreeAllocation(
   input: WorktreeAllocation,
 ): WorktreeAllocation {
@@ -194,6 +203,7 @@ export function createWorktreeAllocation(
   );
 }
 
+/** Allocate worktree. */
 export function allocateWorktree(
   taskId: string,
   branchName: string,
@@ -221,10 +231,12 @@ export function allocateWorktree(
   });
 }
 
+/** Describes worktree allocation. */
 export function describeWorktreeAllocation(input: WorktreeAllocation): string {
   return `${input.branchName} -> ${input.worktreePath}`;
 }
 
+/** Creates worktree sync result. */
 export function createWorktreeSyncResult(
   input: WorktreeSyncResult,
 ): WorktreeSyncResult {
@@ -256,6 +268,7 @@ export function createWorktreeSyncResult(
   );
 }
 
+/** Sync worktree. */
 export function syncWorktree(
   allocation: WorktreeAllocation,
   baseBranch: string,
@@ -285,6 +298,7 @@ export function syncWorktree(
   });
 }
 
+/** Creates worktree release result. */
 export function createWorktreeReleaseResult(
   input: WorktreeReleaseResult,
 ): WorktreeReleaseResult {
@@ -307,6 +321,7 @@ export function createWorktreeReleaseResult(
   );
 }
 
+/** Release worktree. */
 export function releaseWorktree(
   allocation: WorktreeAllocation,
   releaseMode: WorktreeReleaseMode = 'archive',

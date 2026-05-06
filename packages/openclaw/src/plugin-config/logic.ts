@@ -3,6 +3,7 @@ import { appendTrace } from '@vannadii/devplat-core';
 
 import type { OpenClawPluginConfig } from './codec.js';
 
+/** Creates open claw plugin config. */
 export function createOpenClawPluginConfig(
   input: OpenClawPluginConfig,
 ): OpenClawPluginConfig {
@@ -16,12 +17,14 @@ export function createOpenClawPluginConfig(
   );
 }
 
+/** Describes open claw plugin config. */
 export function describeOpenClawPluginConfig(
   input: OpenClawPluginConfig,
 ): string {
   return `${input.defaultGuildId}:${input.specChannelId} -> ${input.summary}`;
 }
 
+/** Creates open claw plugin config from runtime config. */
 export function createOpenClawPluginConfigFromRuntimeConfig(
   input: DevplatConfig,
 ): OpenClawPluginConfig {

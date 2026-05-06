@@ -7,10 +7,12 @@ import type {
   PullRequestReviewProjection,
 } from './codec.js';
 
+/** Unique trimmed. */
 function uniqueTrimmed(values: readonly string[]): string[] {
   return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
 }
 
+/** Normalizes pull request projection. */
 function normalizePullRequestProjection(
   input: PullRequestProjection,
 ): PullRequestProjection {
@@ -23,6 +25,7 @@ function normalizePullRequestProjection(
   };
 }
 
+/** Normalizes review projection. */
 function normalizeReviewProjection(
   input: PullRequestReviewProjection,
 ): PullRequestReviewProjection {
@@ -35,6 +38,7 @@ function normalizeReviewProjection(
   };
 }
 
+/** Normalizes remediation projection. */
 function normalizeRemediationProjection(
   input: PullRequestRemediationProjection,
 ): PullRequestRemediationProjection {
@@ -52,6 +56,7 @@ function normalizeRemediationProjection(
   };
 }
 
+/** Describes review projection. */
 function describeReviewProjection(
   reviewProjection: PullRequestReviewProjection | undefined,
 ): string {
@@ -69,6 +74,7 @@ function describeReviewProjection(
   return `Review blocked: ${String(reviewProjection.blockingFindingIds.length)} blocking findings, ${String(reviewProjection.missingCriteria.length)} missing criteria`;
 }
 
+/** Describes remediation projection. */
 function describeRemediationProjection(
   remediationProjection: PullRequestRemediationProjection | undefined,
 ): string {
@@ -86,6 +92,7 @@ function describeRemediationProjection(
   return `Remediation pending: ${String(remediationProjection.unresolvedFindingIds.length)} unresolved findings`;
 }
 
+/** Creates review checklist. */
 function createReviewChecklist(
   reviewProjection: PullRequestReviewProjection | undefined,
 ): string[] {
@@ -105,6 +112,7 @@ function createReviewChecklist(
   ];
 }
 
+/** Creates remediation checklist. */
 function createRemediationChecklist(
   remediationProjection: PullRequestRemediationProjection | undefined,
 ): string[] {
@@ -119,6 +127,7 @@ function createRemediationChecklist(
       );
 }
 
+/** Collects projection artifact ids. */
 function collectProjectionArtifactIds(record: PullRequestRecord): string[] {
   return uniqueTrimmed([
     ...(record.sourceArtifactIds ?? []),
@@ -128,18 +137,21 @@ function collectProjectionArtifactIds(record: PullRequestRecord): string[] {
   ]);
 }
 
+/** Renders list. */
 function renderList(items: readonly string[]): string {
   return items.length === 0
     ? '- None'
     : items.map((item) => `- ${item}`).join('\n');
 }
 
+/** Renders checklist. */
 function renderChecklist(items: readonly string[]): string {
   return items.length === 0
     ? '- [x] No open checklist items'
     : items.map((item) => `- [ ] ${item}`).join('\n');
 }
 
+/** Renders pull request body. */
 function renderPullRequestBody(
   record: PullRequestRecord,
   projection: PullRequestProjection,
@@ -169,14 +181,17 @@ function renderPullRequestBody(
   ].join('\n');
 }
 
+/** Returns whether the review state is blocking. */
 function hasBlockingReview(record: PullRequestRecord): boolean {
   return (record.reviewProjection?.blockingFindingIds.length ?? 0) > 0;
 }
 
+/** Returns whether remediation is unresolved. */
 function hasUnresolvedRemediation(record: PullRequestRecord): boolean {
   return (record.remediationProjection?.unresolvedFindingIds.length ?? 0) > 0;
 }
 
+/** Creates risk summary. */
 function createRiskSummary(record: PullRequestRecord): string {
   const blockingReviewCount =
     record.reviewProjection?.blockingFindingIds.length ?? 0;
@@ -198,6 +213,7 @@ function createRiskSummary(record: PullRequestRecord): string {
   return 'Ready for merge';
 }
 
+/** Creates validation summary. */
 function createValidationSummary(record: PullRequestRecord): string {
   const review = describeReviewProjection(record.reviewProjection);
   const remediation = describeRemediationProjection(
@@ -216,6 +232,7 @@ function createValidationSummary(record: PullRequestRecord): string {
   return `${review}; ${remediation}`;
 }
 
+/** Creates pull request projection. */
 export function createPullRequestProjection(
   record: PullRequestRecord,
 ): PullRequestProjection {
@@ -238,6 +255,7 @@ export function createPullRequestProjection(
   };
 }
 
+/** Creates pull request record. */
 export function createPullRequestRecord(
   input: PullRequestRecord,
 ): PullRequestRecord {
@@ -273,6 +291,7 @@ export function createPullRequestRecord(
   };
 }
 
+/** Returns whether the pull request can merge. */
 export function canMergePullRequest(input: PullRequestRecord): boolean {
   const record = createPullRequestRecord(input);
   return (
@@ -283,6 +302,7 @@ export function canMergePullRequest(input: PullRequestRecord): boolean {
   );
 }
 
+/** Describes pull request record. */
 export function describePullRequestRecord(input: PullRequestRecord): string {
   return `PR #${String(input.prNumber)} -> ${input.title}`;
 }

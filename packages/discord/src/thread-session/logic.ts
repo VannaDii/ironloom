@@ -5,12 +5,14 @@ import type {
   DiscordThreadSessionInput,
 } from './codec.js';
 
+/** Assert identifier. */
 function assertIdentifier(name: string, value: string): void {
   if (value.trim().length === 0) {
     throw new Error(`Discord thread session ${name} must not be empty.`);
   }
 }
 
+/** Assert positive integer. */
 function assertPositiveInteger(name: string, value: number): void {
   if (!Number.isInteger(value) || value < 1) {
     throw new Error(
@@ -19,6 +21,7 @@ function assertPositiveInteger(name: string, value: number): void {
   }
 }
 
+/** Creates discord thread session. */
 export function createDiscordThreadSession(
   input: DiscordThreadSessionInput,
 ): DiscordThreadSession {
@@ -111,6 +114,7 @@ export function createDiscordThreadSession(
   }
 }
 
+/** Describes discord thread session. */
 export function describeDiscordThreadSession(
   input: DiscordThreadSession,
 ): string {

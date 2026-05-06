@@ -58,6 +58,27 @@ function createCallback(threadId: string): DiscordInteractionCallback {
   };
 }
 
+/**
+ * Creates a button callback whose channel is the parent channel while the
+ * component id carries the bound thread id.
+ */
+function createParentChannelButtonCallback(input: {
+  parentChannelId: string;
+  threadId: string;
+}): DiscordInteractionCallback {
+  return {
+    id: 'interaction-parent-channel',
+    token: 'token-parent-channel',
+    channel_id: input.parentChannelId,
+    data: {
+      custom_id: `devplat:v1:show-status:${input.threadId}`,
+    },
+    user: {
+      id: 'operator-1',
+    },
+  };
+}
+
 describe('Discord interaction Gateway runtime', () => {
   const cases = [
     {
@@ -113,6 +134,125 @@ describe('Discord interaction Gateway runtime', () => {
             kind: 'implementation',
             sliceId: 'slice-1',
           },
+        });
+      },
+    },
+    {
+      name: 'resolves stored thread sessions from parent-channel button callbacks',
+      inputs: {
+        parentChannelId: 'implementation-channel',
+        threadId: 'thread-from-component',
+      },
+      mock: async (inputs: { parentChannelId: string; threadId: string }) => {
+        const rootDirectory = await mkdtemp(
+          join(tmpdir(), 'devplat-discord-gateway-runtime-'),
+        );
+        const store = new FileStoreService(rootDirectory);
+        await store.store({
+          id: 'session-parent-channel',
+          key: 'session-parent-channel',
+          scope: 'state',
+          summary: 'Implementation thread',
+          status: 'approved',
+          trace: [],
+          updatedAt: '2026-05-01T00:00:00.000Z',
+          payload: {
+            id: 'session-parent-channel',
+            summary: 'Implementation thread',
+            status: 'approved',
+            trace: [],
+            updatedAt: '2026-05-01T00:00:00.000Z',
+            guildId: 'guild-1',
+            channelId: inputs.threadId,
+            parentChannelId: inputs.parentChannelId,
+            threadId: inputs.threadId,
+            artifactId: 'artifact-parent-channel',
+            kind: 'implementation',
+            specId: 'spec-1',
+            sliceId: 'slice-parent-channel',
+            pullRequestNumber: null,
+          },
+        });
+
+        const resolver =
+          createStorageBackedDiscordGatewayBindingResolver(store);
+        return resolver(createParentChannelButtonCallback(inputs));
+      },
+      assert: async (
+        result: Awaited<
+          ReturnType<
+            ReturnType<typeof createStorageBackedDiscordGatewayBindingResolver>
+          >
+        >,
+      ) => {
+        expect(result).toMatchObject({
+          threadId: 'thread-from-component',
+          boundThreadId: 'thread-from-component',
+          boundSession: {
+            kind: 'implementation',
+            sliceId: 'slice-parent-channel',
+          },
+        });
+      },
+    },
+    {
+      name: 'rejects component-thread callbacks from unrelated channels',
+      inputs: {
+        parentChannelId: 'implementation-channel',
+        threadId: 'thread-from-component',
+      },
+      mock: async (inputs: { parentChannelId: string; threadId: string }) => {
+        const rootDirectory = await mkdtemp(
+          join(tmpdir(), 'devplat-discord-gateway-runtime-'),
+        );
+        const store = new FileStoreService(rootDirectory);
+        await store.store({
+          id: 'session-unrelated-channel',
+          key: 'session-unrelated-channel',
+          scope: 'state',
+          summary: 'Implementation thread',
+          status: 'approved',
+          trace: [],
+          updatedAt: '2026-05-01T00:00:00.000Z',
+          payload: {
+            id: 'session-unrelated-channel',
+            summary: 'Implementation thread',
+            status: 'approved',
+            trace: [],
+            updatedAt: '2026-05-01T00:00:00.000Z',
+            guildId: 'guild-1',
+            channelId: inputs.threadId,
+            parentChannelId: inputs.parentChannelId,
+            threadId: inputs.threadId,
+            artifactId: 'artifact-unrelated-channel',
+            kind: 'implementation',
+            specId: 'spec-1',
+            sliceId: 'slice-unrelated-channel',
+            pullRequestNumber: null,
+          },
+        });
+
+        const resolver =
+          createStorageBackedDiscordGatewayBindingResolver(store);
+        return resolver(
+          createParentChannelButtonCallback({
+            parentChannelId: 'unrelated-channel',
+            threadId: inputs.threadId,
+          }),
+        );
+      },
+      assert: async (
+        result: Awaited<
+          ReturnType<
+            ReturnType<typeof createStorageBackedDiscordGatewayBindingResolver>
+          >
+        >,
+      ) => {
+        expect(result).toEqual({
+          threadId: 'unrelated-channel',
+          boundThreadId: 'unresolved',
+          summary:
+            'Discord Gateway interaction did not resolve a bound thread.',
         });
       },
     },

@@ -1,9 +1,11 @@
 import type { SpecRecord, SpecRevision } from './codec.js';
 
+/** Unique trimmed. */
 function uniqueTrimmed(values: readonly string[]): string[] {
   return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
 }
 
+/** Normalizes revision. */
 function normalizeRevision(input: SpecRevision): SpecRevision {
   return {
     ...input,
@@ -25,6 +27,7 @@ function normalizeRevision(input: SpecRevision): SpecRevision {
   };
 }
 
+/** Renders spec pull request body. */
 export function renderSpecPullRequestBody(input: SpecRecord): string {
   const criteria = uniqueTrimmed(input.acceptanceCriteria)
     .map((criterion) => `- [ ] ${criterion}`)
@@ -71,6 +74,7 @@ export function renderSpecPullRequestBody(input: SpecRecord): string {
   ].join('\n');
 }
 
+/** Creates spec record. */
 export function createSpecRecord(input: SpecRecord): SpecRecord {
   return {
     ...input,
@@ -91,6 +95,7 @@ export function createSpecRecord(input: SpecRecord): SpecRecord {
   };
 }
 
+/** Approve spec record. */
 export function approveSpecRecord(input: SpecRecord): SpecRecord {
   const record = createSpecRecord(input);
   return {
@@ -99,6 +104,7 @@ export function approveSpecRecord(input: SpecRecord): SpecRecord {
   };
 }
 
+/** Update spec record. */
 export function updateSpecRecord(input: SpecRecord): SpecRecord {
   const record = createSpecRecord(input);
   const version = record.version + 1;
@@ -127,6 +133,7 @@ export function updateSpecRecord(input: SpecRecord): SpecRecord {
   };
 }
 
+/** Describes spec record. */
 export function describeSpecRecord(input: SpecRecord): string {
   return `Spec record -> ${input.title}`;
 }

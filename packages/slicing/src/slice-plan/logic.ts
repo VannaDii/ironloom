@@ -4,10 +4,12 @@ import type {
   SliceWorkPacket,
 } from './codec.js';
 
+/** Unique trimmed. */
 function uniqueTrimmed(values: readonly string[]): string[] {
   return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
 }
 
+/** Builds slice dependency graph. */
 export function buildSliceDependencyGraph(
   input: SlicePlan,
 ): SliceDependencyGraph {
@@ -26,6 +28,7 @@ export function buildSliceDependencyGraph(
   };
 }
 
+/** Builds slice work packet. */
 export function buildSliceWorkPacket(input: SlicePlan): SliceWorkPacket {
   const sliceId = input.sliceId.trim();
   const taskIds = uniqueTrimmed(input.doneConditions).map(
@@ -43,6 +46,7 @@ export function buildSliceWorkPacket(input: SlicePlan): SliceWorkPacket {
   };
 }
 
+/** Creates slice plan. */
 export function createSlicePlan(input: SlicePlan): SlicePlan {
   const dependsOn = uniqueTrimmed(input.dependsOn);
   const doneConditions = uniqueTrimmed(input.doneConditions);
@@ -58,6 +62,7 @@ export function createSlicePlan(input: SlicePlan): SlicePlan {
   };
 }
 
+/** Returns whether the slice is ready. */
 export function isSliceReady(
   input: SlicePlan,
   completedSliceIds: readonly string[],
@@ -67,6 +72,7 @@ export function isSliceReady(
   );
 }
 
+/** Describes slice plan. */
 export function describeSlicePlan(input: SlicePlan): string {
   return `Slice plan -> ${input.title}`;
 }

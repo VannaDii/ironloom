@@ -5,6 +5,7 @@ import {
   LifecycleStatusCodec,
 } from '@vannadii/devplat-core';
 
+/** Codec for supervisor phase. */
 export const SupervisorPhaseCodec = t.union([
   t.literal('research'),
   t.literal('spec'),
@@ -17,12 +18,14 @@ export const SupervisorPhaseCodec = t.union([
   t.literal('continuation'),
 ]);
 
+/** Codec for supervisor route status. */
 export const SupervisorRouteStatusCodec = t.union([
   t.literal('ready'),
   t.literal('waiting'),
   t.literal('blocked'),
 ]);
 
+/** Codec for supervisor lifecycle signal. */
 export const SupervisorLifecycleSignalCodec = t.type({
   phase: SupervisorPhaseCodec,
   ready: t.boolean,
@@ -31,6 +34,7 @@ export const SupervisorLifecycleSignalCodec = t.type({
   nextAction: t.string,
 });
 
+/** Codec for supervisor route plan. */
 export const SupervisorRoutePlanCodec = t.type({
   currentPhase: SupervisorPhaseCodec,
   nextPhase: SupervisorPhaseCodec,
@@ -42,6 +46,7 @@ export const SupervisorRoutePlanCodec = t.type({
   auditReason: t.string,
 });
 
+/** Codec for supervisor decision. */
 export const SupervisorDecisionCodec = t.intersection([
   t.type({
     id: t.string,

@@ -4,6 +4,8 @@ import sonarjs from 'eslint-plugin-sonarjs';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
+import devplatPlugin from './scripts/eslint-devplat-rules.mjs';
+
 const typedFiles = [
   'packages/*/src/**/*.ts',
   'packages/*/src/**/*.mts',
@@ -15,6 +17,7 @@ const testFiles = [
   '**/*.test.ts',
   '**/*.test.mts',
   '**/*.test.cts',
+  '**/*.test.mjs',
   'vitest.config.mts',
 ];
 const noTypeAssertionSyntaxRules = {
@@ -140,6 +143,15 @@ export default [
   ...testConfigs,
   ...scriptConfigs,
   {
+    files: testFiles,
+    plugins: {
+      devplat: devplatPlugin,
+    },
+    rules: {
+      'devplat/require-structured-cases': 'error',
+    },
+  },
+  {
     files: typeScriptFiles,
     ignores: testFiles,
     languageOptions: {
@@ -150,6 +162,9 @@ export default [
   {
     files: typedFiles,
     ignores: testFiles,
+    plugins: {
+      devplat: devplatPlugin,
+    },
     rules: {
       ...noTypeAssertionRules,
       '@typescript-eslint/explicit-function-return-type': [
@@ -178,6 +193,9 @@ export default [
           patterns: restrictedImportPatterns,
         },
       ],
+      'devplat/package-policy-boundaries': 'error',
+      'devplat/regex-governance': 'error',
+      'devplat/require-authored-jsdoc': 'error',
     },
   },
   {
