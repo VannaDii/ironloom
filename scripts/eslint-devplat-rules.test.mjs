@@ -1,3 +1,6 @@
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { relative, resolve } from 'node:path';
+
 import { Linter } from 'eslint';
 import tseslint from 'typescript-eslint';
 import { describe, expect, it } from 'vitest';
@@ -170,20 +173,112 @@ describe('eslint-devplat-rules', () => {
         );
       },
     },
+    {
+      name: 'requires sibling tests for non-trivial package units',
+      inputs: {
+        code: 'export function runUnit(): string { return "ready"; }\n',
+        filename: 'packages/example/src/unit/service.ts',
+        files: [],
+        rules: {
+          'devplat/require-sibling-unit-tests': 'error',
+        },
+      },
+      mock: (inputs) => createUnitTestFixture(inputs),
+      assert: (context, inputs) => {
+        try {
+          const messages = lintWithDevplatRules(context.linter, {
+            ...inputs,
+            filename: context.filename,
+          });
+
+          expect(messages.map((message) => message.message)).toContain(
+            'service.ts is missing required sibling test service.test.ts.',
+          );
+        } finally {
+          rmSync(context.rootDirectory, {
+            force: true,
+            recursive: true,
+          });
+        }
+      },
+    },
+    {
+      name: 'accepts sibling tests for non-trivial package units',
+      inputs: {
+        code: 'export function runUnit(): string { return "ready"; }\n',
+        filename: 'packages/example/src/unit/logic.ts',
+        files: [
+          {
+            contents: "it.each(cases)('$name', () => undefined);\n",
+            path: 'packages/example/src/unit/logic.test.ts',
+          },
+        ],
+        rules: {
+          'devplat/require-sibling-unit-tests': 'error',
+        },
+      },
+      mock: (inputs) => createUnitTestFixture(inputs),
+      assert: (context, inputs) => {
+        try {
+          const messages = lintWithDevplatRules(context.linter, {
+            ...inputs,
+            filename: context.filename,
+          });
+
+          expect(messages).toEqual([]);
+        } finally {
+          rmSync(context.rootDirectory, {
+            force: true,
+            recursive: true,
+          });
+        }
+      },
+    },
   ];
 
   it.each(cases)('$name', ({ inputs, mock, assert }) => {
     expect.hasAssertions();
-    const linter = mock(inputs);
+    const context = mock(inputs);
 
-    assert(linter, inputs);
+    assert(context, inputs);
   });
 });
 
+/**
+ * Creates a flat-config ESLint instance for local rule tests.
+ */
 function createLinter() {
   return new Linter({ configType: 'flat' });
 }
 
+/**
+ * Creates a temporary package unit fixture for filesystem-aware rule tests.
+ */
+function createUnitTestFixture(inputs) {
+  const rootDirectory = mkdtempSync(
+    resolve(process.cwd(), '.tmp-eslint-unit-tests-'),
+  );
+  const absoluteFilename = resolve(rootDirectory, inputs.filename);
+  const filename = relative(process.cwd(), absoluteFilename);
+  mkdirSync(resolve(absoluteFilename, '..'), { recursive: true });
+  writeFileSync(absoluteFilename, inputs.code, 'utf8');
+
+  for (const file of inputs.files) {
+    const filePath = resolve(rootDirectory, file.path);
+    mkdirSync(resolve(filePath, '..'), { recursive: true });
+    writeFileSync(filePath, file.contents, 'utf8');
+  }
+
+  return {
+    linter: createLinter(),
+    rootDirectory,
+    filename,
+  };
+}
+
+/**
+ * Runs the DevPlat ESLint plugin against one in-memory source file.
+ */
 function lintWithDevplatRules(linter, inputs) {
   return linter.verify(
     inputs.code,

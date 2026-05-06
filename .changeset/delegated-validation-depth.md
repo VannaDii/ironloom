@@ -63,3 +63,7 @@ tables wrapped in TypeScript `satisfies` expressions, so unrelated object
 literals cannot satisfy the rule. Regex linting also rejects inline regex
 literals and `RegExp` constructors inside `constants.ts` unless they are direct
 `const *_PATTERN` declarations.
+The sibling-test layout rule for non-trivial `logic.ts` and `service.ts` units
+now runs inside the DevPlat ESLint plugin too, so `check:repo` no longer needs a
+separate `check:unit-tests` script for behavior that can be enforced per source
+file.

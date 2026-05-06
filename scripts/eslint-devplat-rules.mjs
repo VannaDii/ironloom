@@ -1,3 +1,6 @@
+import { existsSync } from 'node:fs';
+import { basename, dirname, join } from 'node:path';
+
 /**
  * Message emitted when a package reaches into `.devplat` outside storage.
  */
@@ -46,6 +49,11 @@ const CANONICAL_CASE_RUNNER_DISPLAY = "it.each(cases)('$name', ...)";
  * Source filename suffixes that represent repository unit tests.
  */
 const TEST_FILE_SUFFIXES = ['.test.ts', '.test.mts', '.test.cts', '.test.mjs'];
+
+/**
+ * Non-trivial package source files that must have direct sibling unit tests.
+ */
+const TESTED_PACKAGE_UNIT_FILENAMES = ['logic.ts', 'service.ts'];
 
 /**
  * Source filename suffixes that should not be checked as authored package code.
@@ -113,6 +121,7 @@ const devplatPlugin = {
     'package-policy-boundaries': createPackagePolicyBoundariesRule(),
     'regex-governance': createRegexGovernanceRule(),
     'require-authored-jsdoc': createRequireAuthoredJSDocRule(),
+    'require-sibling-unit-tests': createRequireSiblingUnitTestsRule(),
     'require-structured-cases': createRequireStructuredCasesRule(),
   },
 };
@@ -302,6 +311,47 @@ function createRequireStructuredCasesRule() {
 }
 
 /**
+ * Creates the sibling unit-test layout rule.
+ */
+function createRequireSiblingUnitTestsRule() {
+  return {
+    meta: {
+      docs: {
+        description:
+          'Require non-trivial package units to keep direct sibling test files.',
+      },
+      schema: [],
+      type: 'problem',
+    },
+    create(context) {
+      return {
+        Program(node) {
+          const expectedTestFilename = getExpectedSiblingTestFilename(
+            context.filename,
+          );
+          if (expectedTestFilename === undefined) {
+            return;
+          }
+
+          const expectedTestPath = join(
+            dirname(context.filename),
+            expectedTestFilename,
+          );
+          if (existsSync(expectedTestPath)) {
+            return;
+          }
+
+          context.report({
+            message: `${basename(context.filename)} is missing required sibling test ${expectedTestFilename}.`,
+            node,
+          });
+        },
+      };
+    },
+  };
+}
+
+/**
  * Creates the regular-expression governance rule.
  */
 function createRegexGovernanceRule() {
@@ -475,6 +525,20 @@ function reportStructuredCaseProgramFailures({ context, node, state }) {
       node,
     });
   }
+}
+
+/**
+ * Gets the expected sibling test filename for a non-trivial package unit.
+ */
+function getExpectedSiblingTestFilename(filename) {
+  if (!isAuthoredPackageSource(filename)) {
+    return undefined;
+  }
+
+  const sourceFilename = basename(filename);
+  return TESTED_PACKAGE_UNIT_FILENAMES.includes(sourceFilename)
+    ? sourceFilename.replace('.ts', '.test.ts')
+    : undefined;
 }
 
 /**

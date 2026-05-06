@@ -196,6 +196,7 @@ export default [
       'devplat/package-policy-boundaries': 'error',
       'devplat/regex-governance': 'error',
       'devplat/require-authored-jsdoc': 'error',
+      'devplat/require-sibling-unit-tests': 'error',
     },
   },
   {

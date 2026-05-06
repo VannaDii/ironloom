@@ -77,10 +77,9 @@ npm run sonar:analyze:changed
 
 `npm run lint`, included in `check:repo`, verifies authored package JSDoc,
 structured `const cases = [...]` test tables, banned TypeScript assertions,
-regular-expression placement and naming, and static policy boundaries through
-ESLint rules.
-`npm run check:unit-tests`, included in `check:repo`, verifies that every
-non-trivial `logic.ts` and `service.ts` has a sibling test.
+regular-expression placement and naming, sibling tests for non-trivial
+`logic.ts` and `service.ts` units, and static policy boundaries through ESLint
+rules.
 `npm run check:regex-governance`, also included in `check:repo`, verifies that
 package regular-expression patterns defined in `constants.ts` are referenced
 by package tests.
