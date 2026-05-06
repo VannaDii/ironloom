@@ -257,10 +257,7 @@ function createOpenClawOperationalResult(
 export function createOpenClawOperationalToolPayload(
   payload: unknown,
 ): unknown {
-  if (
-    !isUnknownRecord(payload) ||
-    isUnknownRecord(payload[OPENCLAW_OPERATIONAL_RESULT_KEY])
-  ) {
+  if (!isUnknownRecord(payload) || OPENCLAW_OPERATIONAL_RESULT_KEY in payload) {
     return payload;
   }
 

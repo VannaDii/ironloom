@@ -177,6 +177,23 @@ describe('tool surface logic', () => {
       },
     },
     {
+      name: 'preserves package-owned operational result fields',
+      inputs: {
+        payload: {
+          status: 'complete',
+          operationalResult: 'package-owned-summary',
+        },
+      },
+      mock: ({ payload }: { payload: unknown }) =>
+        createOpenClawOperationalToolPayload(payload),
+      assert: (payload: unknown) => {
+        expect(payload).toEqual({
+          status: 'complete',
+          operationalResult: 'package-owned-summary',
+        });
+      },
+    },
+    {
       name: 'formats pre-sanitized payloads without re-sanitizing',
       inputs: {
         payload: {
