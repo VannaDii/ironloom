@@ -23,6 +23,12 @@ findings, remediation plans, pull request records, telemetry events, worktree
 allocations, and Discord thread sessions. Generic lifecycle envelopes therefore
 no longer pass OpenClaw validation solely because the outer envelope is shaped
 correctly; their embedded payload must also satisfy the owning package codec.
+OpenClaw tool responses now also project object-shaped delegated results into
+an `operationalResult` summary when lifecycle evidence is present. The summary
+surfaces normalized status, artifact id, persisted record key, policy decision
+id, telemetry event id, and next-action hints without replacing the
+package-owned payload, giving agent loops a consistent handoff shape across
+artifact, storage, policy, telemetry, and gate tools.
 
 Discord Gateway button routing now resolves persisted thread sessions from the
 component-encoded thread id when Discord reports the interaction channel as the

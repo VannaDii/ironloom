@@ -175,6 +175,11 @@ tool-driven artifacts, telemetry, worktrees, and Discord interaction state stay
 in the same repository-scoped store. Gate runs and Sonar quality-gate
 evaluations record passed/failed classification, actor, coverage, blocking
 issue, and next-action telemetry through that same store.
+OpenClaw tool responses include an `operationalResult` summary whenever the
+delegated package result exposes lifecycle evidence. That summary carries the
+normalized status, artifact id, persisted record key, policy decision id,
+telemetry event id, and next-action hint for fast agent and operator handoff
+without replacing the package-owned payload.
 Valid operator
 interactions are deferred before state, telemetry, and audit persistence
 begins, then the bound thread receives the structured status payload after the

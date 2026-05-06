@@ -457,6 +457,61 @@ describe('tool surface service', () => {
     });
   });
 
+  describe('OpenClaw operational result projection', () => {
+    const cases = [
+      {
+        name: 'adds operational result evidence to delegated artifact output',
+        inputs: {
+          toolCallId: 'tool-call-operational-r1',
+          params: {
+            researchId: 'research-operational-1',
+            topic: ' Discord-first workflows ',
+            question: 'What should Phase 0 expose?',
+            constraints: ['auditability'],
+            findings: ['thread isolation'],
+            recommendation: 'Expose thread-aware tools.',
+            sourceUrls: ['https://example.com/openclaw'],
+            updatedAt: '2026-04-04T00:00:00.000Z',
+          },
+        },
+        mock: () => createResearchBriefTool(),
+        assert: async (
+          tool: ReturnType<typeof createResearchBriefTool>,
+          inputs: {
+            toolCallId: string;
+            params: {
+              researchId: string;
+              topic: string;
+              question: string;
+              constraints: string[];
+              findings: string[];
+              recommendation: string;
+              sourceUrls: string[];
+              updatedAt: string;
+            };
+          },
+        ) => {
+          const result = await tool.execute(inputs.toolCallId, inputs.params);
+
+          expect(result.details).toMatchObject({
+            artifactType: 'research-brief',
+            operationalResult: {
+              status: 'complete',
+              artifactId: 'artifact:research-operational-1',
+            },
+          });
+        },
+      },
+    ];
+
+    it.each(cases)('$name', async ({ inputs, mock, assert }) => {
+      expect.hasAssertions();
+      const tool = mock();
+
+      await assert(tool, inputs);
+    });
+  });
+
   it('returns decode failures for invalid research brief input', async () => {
     const result = await createResearchBriefTool().execute('tool-call-r2', {
       researchId: 'research-1',

@@ -58,6 +58,12 @@ downstream lifecycle records. That means generic envelopes for research, specs,
 slices, tasks, gates, review findings, remediation plans, pull requests,
 telemetry events, worktrees, and Discord thread sessions fail closed when their
 embedded payload does not satisfy the owning package contract.
+Every object-shaped tool response also includes an `operationalResult` summary
+when the delegated package result exposes lifecycle evidence. The summary
+normalizes status, artifact id, persisted record key, policy decision id,
+telemetry event id, and next-action hints without changing the package-owned
+payload, so agents and operators can read a consistent handoff shape while the
+adapter remains delegation-only.
 
 ## Exposed Tools
 
