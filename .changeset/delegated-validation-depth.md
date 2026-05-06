@@ -43,3 +43,11 @@ the agent, contributor, GitHub, and developer-guide surfaces. The JSDoc gate
 also rejects low-quality placeholder wording such as duplicated service labels,
 `Creates create.`, and codec labels on non-codec helpers so generated comments
 must be made intentional before review.
+
+The source-local governance checks now run through ESLint instead of duplicate
+repository scripts. A local DevPlat ESLint plugin enforces authored JSDoc,
+structured case tables, regular-expression placement and `PATTERN` naming, and
+static policy boundaries, while the remaining scripts only perform cross-file
+or generated-artifact checks that lint rules cannot express cleanly. The local
+toolchain also bumps to the latest compatible `eslint` and `typescript-eslint`
+versions available for the repository's ESLint 10 and TypeScript 6 baseline.

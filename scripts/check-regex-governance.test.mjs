@@ -70,7 +70,7 @@ describe('check-regex-governance', () => {
       },
     },
     {
-      name: 'fails regex literals outside constants files',
+      name: 'defers regex placement and naming to ESLint',
       inputs: {
         files: {
           'packages/core/src/domain/logic.ts': `
@@ -78,37 +78,6 @@ describe('check-regex-governance', () => {
               return /^[a-z0-9-]+$/u.test(value);
             }
           `,
-        },
-      },
-      mock: async ({ files }) => createFixtureRoot(files),
-      assert: (failures) => {
-        expect(failures).toEqual([
-          'packages/core/src/domain/logic.ts:2:22 defines a regular expression outside constants.ts; move it to the owning constants module and test it directly.',
-        ]);
-      },
-    },
-    {
-      name: 'fails RegExp constructors outside constants files',
-      inputs: {
-        files: {
-          'packages/core/src/domain/logic.ts': `
-            export function createPattern(): RegExp {
-              return new RegExp('[a-z]+', 'u');
-            }
-          `,
-        },
-      },
-      mock: async ({ files }) => createFixtureRoot(files),
-      assert: (failures) => {
-        expect(failures).toEqual([
-          'packages/core/src/domain/logic.ts:2:22 defines a regular expression outside constants.ts; move it to the owning constants module and test it directly.',
-        ]);
-      },
-    },
-    {
-      name: 'fails unnamed regex constants',
-      inputs: {
-        files: {
           'packages/core/src/domain/constants.ts': `
             export const branchRegex = /^[a-z0-9-]+$/u;
           `,
@@ -133,9 +102,7 @@ describe('check-regex-governance', () => {
       },
       mock: async ({ files }) => createFixtureRoot(files),
       assert: (failures) => {
-        expect(failures).toEqual([
-          'packages/core/src/domain/constants.ts:1:14 defines regex constant branchRegex without a PATTERN suffix.',
-        ]);
+        expect(failures).toEqual([]);
       },
     },
     {

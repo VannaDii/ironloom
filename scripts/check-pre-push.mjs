@@ -123,12 +123,6 @@ export function createPrePushPlan() {
     },
     {
       mode: 'serial',
-      label: 'lint',
-      command: 'npm',
-      args: ['run', 'lint'],
-    },
-    {
-      mode: 'serial',
       label: 'sonar:analyze:changed',
       command: 'npm',
       args: ['run', 'sonar:analyze:changed'],

@@ -649,7 +649,7 @@ function buildRequiredTextRules({
         `TypeScript \`${expectedTypeScriptVersion}\` as the authoring baseline`,
         LINUX_COMPATIBILITY_SENTENCE,
         '[`PLATFORM.md`](./PLATFORM.md)',
-        '`npm run check:jsdoc`, also included in `check:repo`, verifies that authored',
+        '`npm run lint`, included in `check:repo`, verifies authored package JSDoc',
       ],
     },
     {
@@ -810,7 +810,7 @@ function buildRequiredTextRules({
         'keep a detailed Changesets entry on every pull request containing code changes, and update it whenever later commits change runtime, operator, package, workflow, or validation impact',
         "keep tests in structured `const cases = [...]` tables where each case provides `inputs`, `mock`, and `assert`, then exercises a single `it.each(cases)('$name', ...)` implementation per suite",
         'alternate `it.each(<name>)` table variables',
-        '`npm run check:jsdoc` enforces this for authored package source',
+        '`npm run lint` enforces this for authored package source',
       ],
     },
     {

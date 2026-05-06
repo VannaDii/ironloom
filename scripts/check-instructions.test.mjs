@@ -129,7 +129,7 @@ describe('check-instructions', () => {
       },
     },
     {
-      name: 'fails when the JSDoc governance command drifts from developer docs',
+      name: 'fails when the JSDoc lint governance text drifts from developer docs',
       inputs: {
         useFixtureRoot: true,
       },
@@ -137,7 +137,7 @@ describe('check-instructions', () => {
         await replaceInFile(
           rootDirectory,
           'site/guide-docs/guides/developer-guide.md',
-          '; `npm run check:jsdoc` enforces this for authored package source',
+          '; `npm run lint` enforces this for authored package source',
           '',
         );
       },
@@ -146,7 +146,7 @@ describe('check-instructions', () => {
           errors.some(
             (error) =>
               error.includes('site/guide-docs/guides/developer-guide.md') &&
-              error.includes('`npm run check:jsdoc`'),
+              error.includes('`npm run lint`'),
           ),
         ).toBe(true);
       },

@@ -5,7 +5,7 @@ import { createPrePushPlan } from './check-pre-push.mjs';
 describe('check-pre-push', () => {
   const cases = [
     {
-      name: 'requires lint and changed-file SonarQube analysis before build and docs',
+      name: 'requires repo checks and changed-file SonarQube analysis before build and docs',
       inputs: {},
       mock: async () => undefined,
       assert: async () => {
@@ -18,22 +18,21 @@ describe('check-pre-push', () => {
           'serial',
           'serial',
           'serial',
-          'serial',
           'concurrent',
         ]);
-        expect(plan[5]).toEqual({
+        expect(plan[2]).toEqual({
           mode: 'serial',
-          label: 'lint',
+          label: 'check:repo',
           command: 'npm',
-          args: ['run', 'lint'],
+          args: ['run', 'check:repo'],
         });
-        expect(plan[6]).toEqual({
+        expect(plan[5]).toEqual({
           mode: 'serial',
           label: 'sonar:analyze:changed',
           command: 'npm',
           args: ['run', 'sonar:analyze:changed'],
         });
-        expect(plan[7].commands.map((command) => command.label)).toEqual([
+        expect(plan[6].commands.map((command) => command.label)).toEqual([
           'build:workspace',
           'docs:build',
         ]);
@@ -42,6 +41,7 @@ describe('check-pre-push', () => {
   ];
 
   it.each(cases)('$name', async (testCase) => {
+    expect.hasAssertions();
     const context = await testCase.mock(testCase.inputs);
 
     await testCase.assert(context, testCase.inputs);

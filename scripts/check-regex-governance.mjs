@@ -10,11 +10,6 @@ import ts from 'typescript';
 const defaultRootDirectory = resolve(import.meta.dirname, '..');
 
 /**
- * Required suffix for named regular-expression constants.
- */
-const regexPatternConstantSuffix = 'PATTERN';
-
-/**
  * Directories ignored while scanning package source.
  */
 const ignoredDirectories = new Set([
@@ -179,7 +174,7 @@ async function collectPackageTestIdentifiers(rootDirectory, files) {
 }
 
 /**
- * Adds failures for regex governance rules in one source file.
+ * Adds cross-file test-reference failures for one constants source file.
  */
 function collectSourceFileFailures({
   identifiersByPackageName,
@@ -191,13 +186,7 @@ function collectSourceFileFailures({
   const packageName = getPackageName(relativePath);
 
   walkSourceFile(sourceFile, (node) => {
-    if (
-      isRegularExpressionNode(node) &&
-      !isPackageConstantsFile(relativePath)
-    ) {
-      failures.push(
-        `${formatFailureLocation(rootDirectory, sourceFile, node)} defines a regular expression outside constants.ts; move it to the owning constants module and test it directly.`,
-      );
+    if (!isPackageConstantsFile(relativePath)) {
       return;
     }
 
@@ -208,13 +197,6 @@ function collectSourceFileFailures({
 
     const declarationName = getVariableDeclarationIdentifier(declaration);
     if (declarationName === undefined) {
-      return;
-    }
-
-    if (!declarationName.endsWith(regexPatternConstantSuffix)) {
-      failures.push(
-        `${formatFailureLocation(rootDirectory, sourceFile, declaration.name)} defines regex constant ${declarationName} without a PATTERN suffix.`,
-      );
       return;
     }
 

@@ -75,17 +75,15 @@ npm run sonar:install-cli
 npm run sonar:analyze:changed
 ```
 
+`npm run lint`, included in `check:repo`, verifies authored package JSDoc,
+structured `const cases = [...]` test tables, banned TypeScript assertions,
+regular-expression placement and naming, and static policy boundaries through
+ESLint rules.
 `npm run check:unit-tests`, included in `check:repo`, verifies that every
-non-trivial `logic.ts` and `service.ts` has a sibling test and that every
-`.test.ts`, `.test.mts`, and `.test.mjs` file uses the structured
-`const cases = [...]` table with `inputs`, `mock`, and `assert` fields plus a
-single `it.each(cases)('$name', ...)` runner instead of ad hoc loops.
-`npm run check:jsdoc`, also included in `check:repo`, verifies that authored
-package source keeps JSDoc on constants, helpers, codecs, functions, classes,
-and public types so the intent stays visible at the symbol boundary.
+non-trivial `logic.ts` and `service.ts` has a sibling test.
 `npm run check:regex-governance`, also included in `check:repo`, verifies that
-package regular-expression patterns are named constants in `constants.ts`, use
-the `PATTERN` suffix, and are referenced by package tests.
+package regular-expression patterns defined in `constants.ts` are referenced
+by package tests.
 
 `npm run act:pr` runs the pull-request CI and TypeScript matrix workflows
 locally through Docker using `act`, `.actrc`, and
