@@ -675,6 +675,42 @@ describe('DiscordControlRequest logic', () => {
           ).toThrow('channel id');
         },
       },
+      {
+        name: 'keeps received event diagnostics bounded without interaction data',
+        inputs: {
+          callback: {
+            id: 'callback-006',
+            token: 'token-006',
+            channel_id: 'thread-006',
+            user: {
+              id: 'operator-006',
+            },
+          },
+        },
+        mock: () => ({}),
+        assert: (context, inputs) => {
+          const interaction = createDiscordOperatorInteractionFromCallback(
+            inputs.callback,
+          );
+
+          expect(interaction).toMatchObject({
+            id: 'callback-006',
+            actorId: 'operator-006',
+            channelId: 'thread-006',
+            threadId: 'thread-006',
+          });
+          expect(interaction.commandName).toBeUndefined();
+          expect(interaction.customId).toBeUndefined();
+          expect(interaction.receivedEvent).toEqual({
+            id: 'callback-006',
+            token: 'token-006',
+            channel_id: 'thread-006',
+            user: {
+              id: 'operator-006',
+            },
+          });
+        },
+      },
     ] satisfies CallbackCase[];
 
     it.each(cases)('$name', (testCase) => {

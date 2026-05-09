@@ -96,6 +96,7 @@ export const DiscordOperatorInteractionCodec = t.intersection([
     threadId: t.string,
     boundThreadId: t.string,
     boundSession: DiscordThreadSessionCodec,
+    receivedEvent: t.unknown,
     privileged: t.boolean,
   }),
 ]);

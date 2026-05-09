@@ -195,6 +195,22 @@ function trimOptional(value: string | undefined): string | undefined {
   return trimmed;
 }
 
+/**
+ * Creates the bounded received-event diagnostic used by route failures.
+ */
+function createDiscordReceivedEventSnapshot(
+  input: DiscordInteractionCallback,
+): unknown {
+  return {
+    id: input.id,
+    token: input.token,
+    channel_id: input.channel_id,
+    ...(input.data === undefined ? {} : { data: input.data }),
+    ...(input.member === undefined ? {} : { member: input.member }),
+    ...(input.user === undefined ? {} : { user: input.user }),
+  };
+}
+
 /** Resolves callback actor id. */
 function resolveCallbackActorId(input: DiscordInteractionCallback): string {
   const memberUserId = trimOptional(input.member?.user.id);
@@ -324,6 +340,7 @@ export function createDiscordOperatorInteractionFromCallback(
     threadId: options.threadId ?? channelId,
     ...(commandName === undefined ? {} : { commandName }),
     ...(customId === undefined ? {} : { customId }),
+    receivedEvent: createDiscordReceivedEventSnapshot(input),
     ...(options.boundThreadId === undefined
       ? {}
       : { boundThreadId: options.boundThreadId }),

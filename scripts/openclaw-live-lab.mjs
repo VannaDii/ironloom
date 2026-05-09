@@ -30,6 +30,9 @@ const defaultWorkflowFileName = 'live-dispatch-canary.yml';
 const defaultSonarProjectTimeoutMs = 180_000;
 const defaultWorkflowTimeoutMs = 180_000;
 const defaultPollMs = 5_000;
+const workflowDispatchRetryAttempts = 6;
+const workflowDispatchTriggerUnavailableText =
+  "Workflow does not have 'workflow_dispatch' trigger";
 /**
  * Compiled workspace package entrypoint used by normal live-lab execution.
  */
@@ -1109,20 +1112,48 @@ async function dispatchFixtureWorkflow({
   githubRequest,
   repoName,
   runLabel,
+  sleepFn = sleep,
 }) {
-  return githubRequest(
-    `/repos/${encodeURIComponent(githubOrganization)}/${encodeURIComponent(repoName)}/actions/workflows/${encodeURIComponent(defaultWorkflowFileName)}/dispatches`,
-    {
-      body: {
-        inputs: {
-          branch_name: branchName,
-          orchestration_run_id: runLabel,
+  const dispatchPath = `/repos/${encodeURIComponent(githubOrganization)}/${encodeURIComponent(repoName)}/actions/workflows/${encodeURIComponent(defaultWorkflowFileName)}/dispatches`;
+
+  for (
+    let attempt = 1;
+    attempt <= workflowDispatchRetryAttempts;
+    attempt += 1
+  ) {
+    try {
+      return await githubRequest(dispatchPath, {
+        body: {
+          inputs: {
+            branch_name: branchName,
+            orchestration_run_id: runLabel,
+          },
+          ref: branchName,
         },
-        ref: branchName,
-      },
-      expectedStatuses: [200, 204],
-      method: 'POST',
-    },
+        expectedStatuses: [200, 204],
+        method: 'POST',
+      });
+    } catch (error) {
+      if (
+        attempt === workflowDispatchRetryAttempts ||
+        !isWorkflowDispatchTriggerUnavailableError(error)
+      ) {
+        throw error;
+      }
+
+      await sleepFn(defaultPollMs);
+    }
+  }
+
+  throw new Error(`Unable to dispatch ${defaultWorkflowFileName}.`);
+}
+
+function isWorkflowDispatchTriggerUnavailableError(error) {
+  return (
+    error instanceof Error &&
+    error.status === 422 &&
+    typeof error.responseText === 'string' &&
+    error.responseText.includes(workflowDispatchTriggerUnavailableText)
   );
 }
 
@@ -1472,13 +1503,18 @@ class LiveLabDiscordInteractionTransport {
 
   async postInteractionDeferred(input) {
     const endpoint = `/interactions/${encodeURIComponent(input.id)}/${encodeURIComponent(input.token)}/callback`;
+    const content =
+      input.customId === undefined
+        ? `simulated interaction deferred: ${input.id}`
+        : `simulated component interaction acknowledged: ${input.id}`;
 
     return {
       body: {
-        content: `simulated interaction deferred: ${input.id}`,
+        content,
       },
       endpoint,
       responseBody: {
+        content,
         deferred: true,
         interactionId: input.id,
         mode: 'simulated',
@@ -1797,8 +1833,7 @@ export async function runDiscordInteractionProbe(
 
   if (
     buttonResult.responseReceipt?.endpoint === undefined ||
-    buttonResult.threadReceipt?.endpoint === undefined ||
-    buttonResult.completionReceipt?.endpoint === undefined
+    buttonResult.threadReceipt?.endpoint === undefined
   ) {
     throw new Error(
       'Discord button interaction probe did not record receipts.',
@@ -1810,13 +1845,15 @@ export async function runDiscordInteractionProbe(
     allowed: result.allowed,
     buttonAction: buttonResult.request.action,
     buttonCustomId,
-    buttonCompletionEndpoint: buttonResult.completionReceipt.endpoint,
-    buttonCompletionMessageId: readDiscordReceiptMessageId(
-      buttonResult.completionReceipt,
-    ),
-    buttonCompletionContent: readDiscordReceiptContent(
-      buttonResult.completionReceipt,
-    ),
+    buttonCompletionEndpoint: buttonResult.completionReceipt?.endpoint ?? null,
+    buttonCompletionMessageId:
+      buttonResult.completionReceipt === undefined
+        ? null
+        : readDiscordReceiptMessageId(buttonResult.completionReceipt),
+    buttonCompletionContent:
+      buttonResult.completionReceipt === undefined
+        ? null
+        : readDiscordReceiptContent(buttonResult.completionReceipt),
     buttonInteractionEndpoint: buttonResult.responseReceipt.endpoint,
     buttonInteractionMessageId: readDiscordReceiptMessageId(
       buttonResult.responseReceipt,
@@ -2293,6 +2330,7 @@ export async function runLiveLab(options, dependencies = {}) {
       githubRequest,
       repoName: identifiers.repoName,
       runLabel: identifiers.runLabel,
+      sleepFn,
     });
 
     const workflowRun = await waitForWorkflowRun({

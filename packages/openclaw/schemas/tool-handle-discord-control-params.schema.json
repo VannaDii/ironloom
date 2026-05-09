@@ -415,6 +415,7 @@
                 }
               ]
             },
+            "receivedEvent": {},
             "privileged": {
               "type": "boolean"
             }

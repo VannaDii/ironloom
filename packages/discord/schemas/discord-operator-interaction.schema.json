@@ -305,6 +305,7 @@
             }
           ]
         },
+        "receivedEvent": {},
         "privileged": {
           "type": "boolean"
         }

@@ -28,6 +28,8 @@ import {
   DISCORD_COMPONENT_CUSTOM_ID_PREFIX,
   DISCORD_CUSTOM_ID_MAX_LENGTH,
   DISCORD_EPHEMERAL_MESSAGE_FLAG,
+  DISCORD_ROUTE_FAILURE_EVENT_LABEL,
+  DISCORD_ROUTE_FAILURE_REDACTED_VALUE,
 } from './constants.js';
 import { describeDiscordWorkItemBinding } from './logic.js';
 import type {
@@ -300,6 +302,67 @@ function renderDiscordMessageContent(
     ),
     `→ ${input.result}`,
   ].join('\n');
+}
+
+/**
+ * Returns true when a Discord event field should not be echoed to operators.
+ */
+function isSensitiveDiscordEventField(fieldName: string): boolean {
+  const normalized = fieldName.toLowerCase();
+  return (
+    normalized === 'token' ||
+    normalized === 'authorization' ||
+    normalized === 'signature'
+  );
+}
+
+/**
+ * Redacts sensitive fields from the received Discord event diagnostic.
+ */
+function redactDiscordEventDiagnostic(input: unknown): unknown {
+  if (Array.isArray(input)) {
+    return input.map((item) => redactDiscordEventDiagnostic(item));
+  }
+
+  if (input !== null && typeof input === 'object') {
+    const redacted: Record<string, unknown> = {};
+    for (const [fieldName, fieldValue] of Object.entries(input)) {
+      redacted[fieldName] = isSensitiveDiscordEventField(fieldName)
+        ? DISCORD_ROUTE_FAILURE_REDACTED_VALUE
+        : redactDiscordEventDiagnostic(fieldValue);
+    }
+
+    return redacted;
+  }
+
+  return input;
+}
+
+/**
+ * Renders the received Discord event as a fenced JSON diagnostic.
+ */
+function renderDiscordReceivedEventDiagnostic(
+  input: DiscordOperatorInteraction,
+): string {
+  const receivedEvent =
+    input.receivedEvent === undefined ? input : input.receivedEvent;
+  try {
+    return [
+      DISCORD_ROUTE_FAILURE_EVENT_LABEL,
+      '```json',
+      JSON.stringify(redactDiscordEventDiagnostic(receivedEvent), null, 2),
+      '```',
+    ].join('\n');
+  } catch (error) {
+    return [
+      DISCORD_ROUTE_FAILURE_EVENT_LABEL,
+      '```json',
+      JSON.stringify({
+        error: error instanceof Error ? error.message : String(error),
+      }),
+      '```',
+    ].join('\n');
+  }
 }
 
 /**
@@ -620,7 +683,11 @@ export function renderDiscordRouteFailureMessage(
     result: 'Run this from the correct spec, implementation, or PR thread.',
   });
 
-  return createDiscordPayload(content, request, failureControls);
+  return createDiscordPayload(
+    [content, renderDiscordReceivedEventDiagnostic(input)].join('\n\n'),
+    request,
+    failureControls,
+  );
 }
 
 /**
