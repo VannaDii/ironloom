@@ -65,6 +65,11 @@ export const DISCORD_BUTTON_LABEL_MAX_LENGTH = 80;
 export const DISCORD_CUSTOM_ID_MAX_LENGTH = 100;
 
 /**
+ * Maximum Discord message content length.
+ */
+export const DISCORD_MESSAGE_CONTENT_MAX_LENGTH = 2000;
+
+/**
  * Label used before Discord route-failure event diagnostics.
  */
 export const DISCORD_ROUTE_FAILURE_EVENT_LABEL = 'Received event:';
@@ -73,6 +78,11 @@ export const DISCORD_ROUTE_FAILURE_EVENT_LABEL = 'Received event:';
  * Placeholder used when rendering sensitive Discord event fields.
  */
 export const DISCORD_ROUTE_FAILURE_REDACTED_VALUE = '[redacted]';
+
+/**
+ * Marker appended when a Discord route-failure diagnostic is shortened.
+ */
+export const DISCORD_ROUTE_FAILURE_TRUNCATED_MARKER = '(truncated)';
 
 /**
  * Versioned prefix for DevPlat component custom ids.

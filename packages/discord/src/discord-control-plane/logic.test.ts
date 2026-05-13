@@ -711,6 +711,69 @@ describe('DiscordControlRequest logic', () => {
           });
         },
       },
+      {
+        name: 'projects only safe received event fields from permissive callbacks',
+        inputs: {
+          callback: JSON.parse(`{
+            "id": "callback-007",
+            "token": "token-007",
+            "channel_id": "thread-007",
+            "data": {
+              "name": "show-status",
+              "custom_id": "devplat:v1:show-status:thread-007",
+              "options": [
+                {
+                  "name": "operator-input",
+                  "value": "do not echo"
+                }
+              ],
+              "resolved": {
+                "users": {
+                  "operator-007": {
+                    "username": "operator"
+                  }
+                }
+              }
+            },
+            "member": {
+              "user": {
+                "id": "member-operator-007",
+                "username": "member operator"
+              },
+              "roles": ["role-1"],
+              "nick": "member nickname"
+            },
+            "user": {
+              "id": "operator-007",
+              "username": "operator direct"
+            }
+          }`),
+        },
+        mock: () => ({}),
+        assert: (context, inputs) => {
+          const interaction = createDiscordOperatorInteractionFromCallback(
+            inputs.callback,
+          );
+
+          expect(interaction.receivedEvent).toEqual({
+            id: 'callback-007',
+            token: 'token-007',
+            channel_id: 'thread-007',
+            data: {
+              name: 'show-status',
+              custom_id: 'devplat:v1:show-status:thread-007',
+            },
+            member: {
+              user: {
+                id: 'member-operator-007',
+              },
+            },
+            user: {
+              id: 'operator-007',
+            },
+          });
+        },
+      },
     ] satisfies CallbackCase[];
 
     it.each(cases)('$name', (testCase) => {

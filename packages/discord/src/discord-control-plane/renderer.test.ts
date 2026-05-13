@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { DISCORD_MESSAGE_CONTENT_MAX_LENGTH } from './constants.js';
 import {
   assertDiscordButtonLabelFits,
   renderDiscordActionComponentRows,
@@ -233,7 +234,7 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
-      name: 'redacts nested route-failure arrays in the received event diagnostic',
+      name: 'redacts nested sensitive route-failure diagnostic keys',
       inputs: {
         interaction: {
           ...interaction,
@@ -241,6 +242,14 @@ describe('Discord control-plane renderer', () => {
           receivedEvent: [
             {
               token: 'token-array',
+              authorization: 'authorization-array',
+              signature: 'signature-array',
+              publicKey: 'public-key-array',
+              private_key: 'private-key-array',
+              authToken: 'auth-token-array',
+              db_secret: 'db-secret-array',
+              password: 'password-array',
+              apiKey: 'api-key-array',
             },
             'literal-event-value',
           ],
@@ -255,7 +264,47 @@ describe('Discord control-plane renderer', () => {
         payload: ReturnType<typeof renderDiscordRouteFailureMessage>,
       ) => {
         expect(payload.content).toContain('"token": "[redacted]"');
+        expect(payload.content).toContain('"authorization": "[redacted]"');
+        expect(payload.content).toContain('"signature": "[redacted]"');
+        expect(payload.content).toContain('"publicKey": "[redacted]"');
+        expect(payload.content).toContain('"private_key": "[redacted]"');
+        expect(payload.content).toContain('"authToken": "[redacted]"');
+        expect(payload.content).toContain('"db_secret": "[redacted]"');
+        expect(payload.content).toContain('"password": "[redacted]"');
+        expect(payload.content).toContain('"apiKey": "[redacted]"');
         expect(payload.content).toContain('"literal-event-value"');
+      },
+    },
+    {
+      name: 'truncates oversized route-failure diagnostics before Discord content limits',
+      inputs: {
+        interaction: {
+          ...interaction,
+          id: 'interaction-large',
+          receivedEvent: {
+            id: 'interaction-large',
+            token: 'token-large',
+            channel_id: 'thread-large',
+            data: {
+              name: 'run this',
+              detail: 'x'.repeat(DISCORD_MESSAGE_CONTENT_MAX_LENGTH),
+            },
+          },
+        } satisfies DiscordOperatorInteraction,
+      },
+      mock: ({
+        interaction: inputInteraction,
+      }: {
+        interaction: DiscordOperatorInteraction;
+      }) => renderDiscordRouteFailureMessage(inputInteraction),
+      assert: (
+        payload: ReturnType<typeof renderDiscordRouteFailureMessage>,
+      ) => {
+        expect(payload.content.length).toBeLessThanOrEqual(
+          DISCORD_MESSAGE_CONTENT_MAX_LENGTH,
+        );
+        expect(payload.content).toContain('(truncated)');
+        expect(payload.content).toContain('```');
       },
     },
     {

@@ -41,6 +41,40 @@ type DiscordComponentCustomIdContext = {
 };
 
 /**
+ * Minimal interaction data retained for route-failure diagnostics.
+ */
+type DiscordReceivedEventDataSnapshot = {
+  readonly name?: string;
+  readonly custom_id?: string;
+};
+
+/**
+ * Minimal Discord user identity retained for route-failure diagnostics.
+ */
+type DiscordReceivedEventUserSnapshot = {
+  readonly id: string;
+};
+
+/**
+ * Minimal Discord member identity retained for route-failure diagnostics.
+ */
+type DiscordReceivedEventMemberSnapshot = {
+  readonly user: DiscordReceivedEventUserSnapshot;
+};
+
+/**
+ * Bounded Discord callback snapshot retained for route-failure diagnostics.
+ */
+type DiscordReceivedEventSnapshot = {
+  readonly id: string;
+  readonly token: string;
+  readonly channel_id: string;
+  readonly data?: DiscordReceivedEventDataSnapshot;
+  readonly member?: DiscordReceivedEventMemberSnapshot;
+  readonly user?: DiscordReceivedEventUserSnapshot;
+};
+
+/**
  * Human and component action tokens accepted by the operator router.
  */
 const commandActionMap = new Map<string, DiscordControlAction>([
@@ -196,18 +230,61 @@ function trimOptional(value: string | undefined): string | undefined {
 }
 
 /**
+ * Creates the minimal command data snapshot used by route-failure diagnostics.
+ */
+function createDiscordReceivedEventDataSnapshot(
+  input: DiscordInteractionCallback['data'],
+): DiscordReceivedEventDataSnapshot | undefined {
+  const name = trimOptional(input?.name);
+  const customId = trimOptional(input?.custom_id);
+
+  if (name === undefined && customId === undefined) {
+    return undefined;
+  }
+
+  return {
+    ...(name === undefined ? {} : { name }),
+    ...(customId === undefined ? {} : { custom_id: customId }),
+  };
+}
+
+/**
+ * Creates the minimal user identity snapshot used by route-failure diagnostics.
+ */
+function createDiscordReceivedEventUserSnapshot(
+  input: DiscordInteractionCallback['user'],
+): DiscordReceivedEventUserSnapshot | undefined {
+  const id = trimOptional(input?.id);
+  return id === undefined ? undefined : { id };
+}
+
+/**
+ * Creates the minimal member identity snapshot used by route-failure diagnostics.
+ */
+function createDiscordReceivedEventMemberSnapshot(
+  input: DiscordInteractionCallback['member'],
+): DiscordReceivedEventMemberSnapshot | undefined {
+  const user = createDiscordReceivedEventUserSnapshot(input?.user);
+  return user === undefined ? undefined : { user };
+}
+
+/**
  * Creates the bounded received-event diagnostic used by route failures.
  */
 function createDiscordReceivedEventSnapshot(
   input: DiscordInteractionCallback,
-): unknown {
+): DiscordReceivedEventSnapshot {
+  const data = createDiscordReceivedEventDataSnapshot(input.data);
+  const member = createDiscordReceivedEventMemberSnapshot(input.member);
+  const user = createDiscordReceivedEventUserSnapshot(input.user);
+
   return {
     id: input.id,
     token: input.token,
     channel_id: input.channel_id,
-    ...(input.data === undefined ? {} : { data: input.data }),
-    ...(input.member === undefined ? {} : { member: input.member }),
-    ...(input.user === undefined ? {} : { user: input.user }),
+    ...(data === undefined ? {} : { data }),
+    ...(member === undefined ? {} : { member }),
+    ...(user === undefined ? {} : { user }),
   };
 }
 

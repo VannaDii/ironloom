@@ -355,12 +355,17 @@ export function buildDockerRunArgs({
   devplatStateDirectory,
   imageTag,
   mode,
+  portBindings = [],
   runtimeEnv = {},
   runtimeDirectory,
 }) {
   const runtimeEnvArgs = Object.keys(runtimeEnv)
     .sort()
     .flatMap((key) => ['-e', key]);
+  const portBindingArgs = portBindings.flatMap((binding) => [
+    '-p',
+    `${String(binding.hostPort)}:${String(binding.containerPort)}`,
+  ]);
   const args = [
     'run',
     '-d',
@@ -383,6 +388,7 @@ export function buildDockerRunArgs({
     '-e',
     `DEVPLAT_TEST_MODE=${mode}`,
     ...runtimeEnvArgs,
+    ...portBindingArgs,
     '-v',
     `${runtimeDirectory}:/state`,
     '-v',
@@ -1948,6 +1954,7 @@ export async function runDeepTest(options, dependencies = {}) {
         devplatStateDirectory,
         imageTag,
         mode: options.mode,
+        portBindings: options.portBindings,
         runtimeEnv,
         runtimeDirectory,
       }),
