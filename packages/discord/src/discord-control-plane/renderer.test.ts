@@ -77,13 +77,55 @@ describe('Discord control-plane renderer', () => {
       },
     },
   } satisfies DiscordOperatorInteraction;
-  const circularReceivedEvent: Record<string, unknown> = {
+  const sensitiveReceivedEvent = {
+    id: 'interaction-sensitive',
+    token: 'token-sensitive',
+    channel_id: 'thread-sensitive',
+    authorization: 'authorization-sensitive',
+    signature: 'signature-sensitive',
+    publicKey: 'public-key-sensitive',
+    private_key: 'private-key-sensitive',
+    authToken: 'auth-token-sensitive',
+    db_secret: 'db-secret-sensitive',
+    password: 'password-sensitive',
+    apiKey: 'api-key-sensitive',
+    items: [{ token: 'token-array-sensitive' }, 'literal-event-value'],
+    data: {
+      name: 'run this',
+      custom_id: 'devplat:v1:thread-sensitive:run-this',
+      nestedApiKey: 'nested-api-key-sensitive',
+    },
+  };
+  const largeReceivedEvent = {
+    id: 'interaction-large',
+    token: 'token-large',
+    channel_id: 'thread-large',
+    data: {
+      name: 'run this',
+      detail: 'x'.repeat(DISCORD_MESSAGE_CONTENT_MAX_LENGTH),
+    },
+  };
+  const circularReceivedEvent: {
+    id: string;
+    token: string;
+    channel_id: string;
+    self?: unknown;
+  } = {
     id: 'interaction-circular',
     token: 'token-circular',
+    channel_id: 'thread-circular',
   };
-  circularReceivedEvent['self'] = circularReceivedEvent;
+  circularReceivedEvent.self = circularReceivedEvent;
   const nonErrorSerializationFailure = {
     toString: () => 'non-error-serialization-failure',
+  };
+  const nonErrorSerializableEvent = {
+    id: 'interaction-non-error-serialization',
+    token: 'token-non-error-serialization',
+    channel_id: 'thread-non-error-serialization',
+    toJSON: () => {
+      throw nonErrorSerializationFailure;
+    },
   };
 
   const cases = [
@@ -238,21 +280,8 @@ describe('Discord control-plane renderer', () => {
       inputs: {
         interaction: {
           ...interaction,
-          id: 'interaction-array',
-          receivedEvent: [
-            {
-              token: 'token-array',
-              authorization: 'authorization-array',
-              signature: 'signature-array',
-              publicKey: 'public-key-array',
-              private_key: 'private-key-array',
-              authToken: 'auth-token-array',
-              db_secret: 'db-secret-array',
-              password: 'password-array',
-              apiKey: 'api-key-array',
-            },
-            'literal-event-value',
-          ],
+          id: 'interaction-sensitive',
+          receivedEvent: sensitiveReceivedEvent,
         } satisfies DiscordOperatorInteraction,
       },
       mock: ({
@@ -272,6 +301,7 @@ describe('Discord control-plane renderer', () => {
         expect(payload.content).toContain('"db_secret": "[redacted]"');
         expect(payload.content).toContain('"password": "[redacted]"');
         expect(payload.content).toContain('"apiKey": "[redacted]"');
+        expect(payload.content).toContain('"nestedApiKey": "[redacted]"');
         expect(payload.content).toContain('"literal-event-value"');
       },
     },
@@ -281,15 +311,7 @@ describe('Discord control-plane renderer', () => {
         interaction: {
           ...interaction,
           id: 'interaction-large',
-          receivedEvent: {
-            id: 'interaction-large',
-            token: 'token-large',
-            channel_id: 'thread-large',
-            data: {
-              name: 'run this',
-              detail: 'x'.repeat(DISCORD_MESSAGE_CONTENT_MAX_LENGTH),
-            },
-          },
+          receivedEvent: largeReceivedEvent,
         } satisfies DiscordOperatorInteraction,
       },
       mock: ({
@@ -334,11 +356,7 @@ describe('Discord control-plane renderer', () => {
         interaction: {
           ...interaction,
           id: 'interaction-non-error-serialization',
-          receivedEvent: {
-            toJSON: () => {
-              throw nonErrorSerializationFailure;
-            },
-          },
+          receivedEvent: nonErrorSerializableEvent,
         } satisfies DiscordOperatorInteraction,
       },
       mock: ({

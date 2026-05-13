@@ -8,12 +8,7 @@ const workspaceSourceCondition = 'source';
 /**
  * Node-side package conditions used by Vitest before workspace dist exists.
  */
-const workspaceResolveConditions = [
-  workspaceSourceCondition,
-  'module',
-  'node',
-  'development|production',
-];
+const workspaceResolveConditions = [workspaceSourceCondition, 'module', 'node'];
 
 /**
  * External package conditions used when Vitest decides a dependency can stay external.

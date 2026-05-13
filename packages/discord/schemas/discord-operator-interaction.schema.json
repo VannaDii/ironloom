@@ -305,7 +305,62 @@
             }
           ]
         },
-        "receivedEvent": {},
+        "receivedEvent": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "token": {
+              "type": "string"
+            },
+            "channel_id": {
+              "type": "string"
+            },
+            "data": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "custom_id": {
+                  "type": "string"
+                }
+              },
+              "required": [],
+              "additionalProperties": false
+            },
+            "member": {
+              "type": "object",
+              "properties": {
+                "user": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["id"],
+                  "additionalProperties": false
+                }
+              },
+              "required": ["user"],
+              "additionalProperties": false
+            },
+            "user": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                }
+              },
+              "required": ["id"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["id", "token", "channel_id"],
+          "additionalProperties": false
+        },
         "privileged": {
           "type": "boolean"
         }

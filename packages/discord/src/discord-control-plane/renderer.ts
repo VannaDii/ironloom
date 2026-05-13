@@ -372,13 +372,17 @@ function truncateDiscordDiagnosticJson(
   value: string,
   maximumLength: number,
 ): string {
-  if (value.length <= maximumLength) {
+  const boundedMaximumLength = Math.max(0, maximumLength);
+  if (value.length <= boundedMaximumLength) {
     return value;
   }
 
   const marker = `\n${DISCORD_ROUTE_FAILURE_TRUNCATED_MARKER}`;
-  const retainedLength = Math.max(0, maximumLength - marker.length);
-  return `${value.slice(0, retainedLength)}${marker}`;
+  const retainedLength = Math.max(0, boundedMaximumLength - marker.length);
+  return `${value.slice(0, retainedLength)}${marker}`.slice(
+    0,
+    boundedMaximumLength,
+  );
 }
 
 /**
@@ -390,12 +394,16 @@ function createDiscordReceivedEventDiagnostic(
 ): string {
   const prefix = `${DISCORD_ROUTE_FAILURE_EVENT_LABEL}\n\`\`\`json\n`;
   const suffix = '\n```';
-  const availableJsonLength = maximumLength - prefix.length - suffix.length;
+  const boundedMaximumLength = Math.max(0, maximumLength);
+  const availableJsonLength = Math.max(
+    0,
+    boundedMaximumLength - prefix.length - suffix.length,
+  );
 
   return `${prefix}${truncateDiscordDiagnosticJson(
     jsonText,
     availableJsonLength,
-  )}${suffix}`;
+  )}${suffix}`.slice(0, boundedMaximumLength);
 }
 
 /**

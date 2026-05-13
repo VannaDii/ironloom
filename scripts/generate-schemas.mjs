@@ -139,6 +139,8 @@ function codecToJsonSchema(codec) {
         type: 'object',
         additionalProperties: codecToJsonSchema(codec.codomain),
       };
+    case 'ExactType':
+      return codecToJsonSchema(codec.type);
     case 'InterfaceType':
       return objectSchema(codec, Object.keys(codec.props));
     case 'IntersectionType':

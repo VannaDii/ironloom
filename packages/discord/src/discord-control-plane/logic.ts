@@ -28,6 +28,10 @@ import type {
   DiscordInteractionCallbackOptions,
   DiscordInteractionRoute,
   DiscordOperatorInteraction,
+  DiscordReceivedEventDataSnapshot,
+  DiscordReceivedEventMemberSnapshot,
+  DiscordReceivedEventSnapshot,
+  DiscordReceivedEventUserSnapshot,
   DiscordWorkItemBinding,
 } from './codec.js';
 import type { DiscordThreadSession } from '../thread-session/codec.js';
@@ -38,40 +42,6 @@ import type { DiscordThreadSession } from '../thread-session/codec.js';
 type DiscordComponentCustomIdContext = {
   readonly action: DiscordControlAction;
   readonly threadId: string;
-};
-
-/**
- * Minimal interaction data retained for route-failure diagnostics.
- */
-type DiscordReceivedEventDataSnapshot = {
-  readonly name?: string;
-  readonly custom_id?: string;
-};
-
-/**
- * Minimal Discord user identity retained for route-failure diagnostics.
- */
-type DiscordReceivedEventUserSnapshot = {
-  readonly id: string;
-};
-
-/**
- * Minimal Discord member identity retained for route-failure diagnostics.
- */
-type DiscordReceivedEventMemberSnapshot = {
-  readonly user: DiscordReceivedEventUserSnapshot;
-};
-
-/**
- * Bounded Discord callback snapshot retained for route-failure diagnostics.
- */
-type DiscordReceivedEventSnapshot = {
-  readonly id: string;
-  readonly token: string;
-  readonly channel_id: string;
-  readonly data?: DiscordReceivedEventDataSnapshot;
-  readonly member?: DiscordReceivedEventMemberSnapshot;
-  readonly user?: DiscordReceivedEventUserSnapshot;
 };
 
 /**

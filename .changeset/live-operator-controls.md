@@ -19,6 +19,8 @@ Route-refusal messages now include a fenced JSON diagnostic of the received Disc
 
 The received-event diagnostic now persists only the callback id, token, channel id, command name, component custom id, and user ids needed for troubleshooting. Rendered route-refusal diagnostics are also truncated before Discord's message content limit with an explicit marker, so malformed or unexpectedly large callback payloads cannot make the failure response fail to post.
 
+The generated Discord and OpenClaw schemas now model that bounded received-event snapshot explicitly instead of accepting arbitrary diagnostic data from callers.
+
 Gateway-backed Discord button callbacks now accept a self-consistent thread binding when the Discord callback `channel_id` exactly matches the versioned component `custom_id` thread id, even if the state scan cannot decode a persisted thread-session record. Parent-channel or side-panel callbacks still require a matching stored session, preserving fail-closed behavior for ambiguous delivery surfaces while allowing in-thread controls to return the real action response.
 
 Deferred Discord interactions now set the ephemeral flag during the initial loading acknowledgement and complete through Discord's follow-up webhook endpoint. Discord treats the first follow-up after a deferred channel-message response as the original interaction response edit, so the client clears the "thinking" state after the bound-thread status post instead of leaving a stuck ephemeral loader.
