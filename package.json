@@ -52,7 +52,7 @@
     "release:tag-lines": "node scripts/tag-release-lines.mjs",
     "sonar:analyze:changed": "node scripts/sonarqube-cli-analyze-changed.mjs analyze",
     "sonar:install-cli": "node scripts/sonarqube-cli-analyze-changed.mjs install",
-    "test:coverage:workspace": "vitest run --coverage",
+    "test:coverage:workspace": "node --conditions=source ./node_modules/vitest/vitest.mjs run --coverage",
     "test:coverage": "npm run prepare:generated && npm run test:coverage:workspace",
     "test:openclaw:deep": "node scripts/openclaw-deep-test.mjs --mode hermetic",
     "test:openclaw:live-lab": "node scripts/openclaw-live-lab.mjs",
