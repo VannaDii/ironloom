@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { DISCORD_MESSAGE_CONTENT_MAX_LENGTH } from './constants.js';
 import {
   assertDiscordButtonLabelFits,
   renderDiscordActionComponentRows,
@@ -64,7 +65,68 @@ describe('Discord control-plane renderer', () => {
     updatedAt: '2026-05-01T00:00:00.000Z',
     commandName: 'run this',
     threadId: 'thread-1',
+    receivedEvent: {
+      id: 'interaction-1',
+      token: 'token-1',
+      channel_id: 'thread-1',
+      data: {
+        name: 'run this',
+      },
+      user: {
+        id: 'operator-1',
+      },
+    },
   } satisfies DiscordOperatorInteraction;
+  const sensitiveReceivedEvent = {
+    id: 'interaction-sensitive',
+    token: 'token-sensitive',
+    channel_id: 'thread-sensitive',
+    authorization: 'authorization-sensitive',
+    signature: 'signature-sensitive',
+    publicKey: 'public-key-sensitive',
+    private_key: 'private-key-sensitive',
+    authToken: 'auth-token-sensitive',
+    db_secret: 'db-secret-sensitive',
+    password: 'password-sensitive',
+    apiKey: 'api-key-sensitive',
+    items: [{ token: 'token-array-sensitive' }, 'literal-event-value'],
+    data: {
+      name: 'run this',
+      custom_id: 'devplat:v1:thread-sensitive:run-this',
+      nestedApiKey: 'nested-api-key-sensitive',
+    },
+  };
+  const largeReceivedEvent = {
+    id: 'interaction-large',
+    token: 'token-large',
+    channel_id: 'thread-large',
+    data: {
+      name: 'run this',
+      detail: 'x'.repeat(DISCORD_MESSAGE_CONTENT_MAX_LENGTH),
+    },
+  };
+  const circularReceivedEvent: {
+    id: string;
+    token: string;
+    channel_id: string;
+    self?: unknown;
+  } = {
+    id: 'interaction-circular',
+    token: 'token-circular',
+    channel_id: 'thread-circular',
+  };
+  circularReceivedEvent.self = circularReceivedEvent;
+  const nonErrorSerializationFailure = {
+    toString: () => 'non-error-serialization-failure',
+  };
+  const nonErrorSerializableEvent = {
+    id: 'interaction-non-error-serialization',
+    token: 'token-non-error-serialization',
+    channel_id: 'thread-non-error-serialization',
+    toJSON: () => {
+      throw nonErrorSerializationFailure;
+    },
+  };
 
   const cases = [
     {
@@ -191,11 +253,123 @@ describe('Discord control-plane renderer', () => {
             'Scope: unresolved',
             'Reason: interaction must resolve to exactly one bound thread',
             '→ Run this from the correct spec, implementation, or PR thread.',
+            '',
+            'Received event:',
+            '```json',
+            '{',
+            '  "id": "interaction-1",',
+            '  "token": "[redacted]",',
+            '  "channel_id": "thread-1",',
+            '  "data": {',
+            '    "name": "run this"',
+            '  },',
+            '  "user": {',
+            '    "id": "operator-1"',
+            '  }',
+            '}',
+            '```',
           ].join('\n'),
         );
         expect(
           payload.components?.[0]?.components.map((button) => button.label),
         ).toEqual(['Details', 'Show Status']);
+      },
+    },
+    {
+      name: 'redacts nested sensitive route-failure diagnostic keys',
+      inputs: {
+        interaction: {
+          ...interaction,
+          id: 'interaction-sensitive',
+          receivedEvent: sensitiveReceivedEvent,
+        } satisfies DiscordOperatorInteraction,
+      },
+      mock: ({
+        interaction: inputInteraction,
+      }: {
+        interaction: DiscordOperatorInteraction;
+      }) => renderDiscordRouteFailureMessage(inputInteraction),
+      assert: (
+        payload: ReturnType<typeof renderDiscordRouteFailureMessage>,
+      ) => {
+        expect(payload.content).toContain('"token": "[redacted]"');
+        expect(payload.content).toContain('"authorization": "[redacted]"');
+        expect(payload.content).toContain('"signature": "[redacted]"');
+        expect(payload.content).toContain('"publicKey": "[redacted]"');
+        expect(payload.content).toContain('"private_key": "[redacted]"');
+        expect(payload.content).toContain('"authToken": "[redacted]"');
+        expect(payload.content).toContain('"db_secret": "[redacted]"');
+        expect(payload.content).toContain('"password": "[redacted]"');
+        expect(payload.content).toContain('"apiKey": "[redacted]"');
+        expect(payload.content).toContain('"nestedApiKey": "[redacted]"');
+        expect(payload.content).toContain('"literal-event-value"');
+      },
+    },
+    {
+      name: 'truncates oversized route-failure diagnostics before Discord content limits',
+      inputs: {
+        interaction: {
+          ...interaction,
+          id: 'interaction-large',
+          receivedEvent: largeReceivedEvent,
+        } satisfies DiscordOperatorInteraction,
+      },
+      mock: ({
+        interaction: inputInteraction,
+      }: {
+        interaction: DiscordOperatorInteraction;
+      }) => renderDiscordRouteFailureMessage(inputInteraction),
+      assert: (
+        payload: ReturnType<typeof renderDiscordRouteFailureMessage>,
+      ) => {
+        expect(payload.content.length).toBeLessThanOrEqual(
+          DISCORD_MESSAGE_CONTENT_MAX_LENGTH,
+        );
+        expect(payload.content).toContain('(truncated)');
+        expect(payload.content).toContain('```');
+      },
+    },
+    {
+      name: 'renders route-failure diagnostics when event serialization fails',
+      inputs: {
+        interaction: {
+          ...interaction,
+          id: 'interaction-circular',
+          receivedEvent: circularReceivedEvent,
+        } satisfies DiscordOperatorInteraction,
+      },
+      mock: ({
+        interaction: inputInteraction,
+      }: {
+        interaction: DiscordOperatorInteraction;
+      }) => renderDiscordRouteFailureMessage(inputInteraction),
+      assert: (
+        payload: ReturnType<typeof renderDiscordRouteFailureMessage>,
+      ) => {
+        expect(payload.content).toContain('Received event:\n```json');
+        expect(payload.content).toContain('{"error":');
+      },
+    },
+    {
+      name: 'renders route-failure diagnostics when event serialization throws a non-error value',
+      inputs: {
+        interaction: {
+          ...interaction,
+          id: 'interaction-non-error-serialization',
+          receivedEvent: nonErrorSerializableEvent,
+        } satisfies DiscordOperatorInteraction,
+      },
+      mock: ({
+        interaction: inputInteraction,
+      }: {
+        interaction: DiscordOperatorInteraction;
+      }) => renderDiscordRouteFailureMessage(inputInteraction),
+      assert: (
+        payload: ReturnType<typeof renderDiscordRouteFailureMessage>,
+      ) => {
+        expect(payload.content).toContain(
+          '{"error":"non-error-serialization-failure"}',
+        );
       },
     },
     {

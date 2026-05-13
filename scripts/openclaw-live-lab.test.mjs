@@ -262,10 +262,13 @@ describe('openclaw-live-lab helpers', () => {
               input.boundThreadId,
               acceptedPayload,
             );
-            const completionReceipt = await transport.postInteractionCompletion(
-              input,
-              acceptedPayload,
-            );
+            const completionReceipt =
+              input.customId === undefined
+                ? await transport.postInteractionCompletion(
+                    input,
+                    acceptedPayload,
+                  )
+                : undefined;
 
             return {
               allowed: true,
@@ -368,7 +371,10 @@ describe('openclaw-live-lab helpers', () => {
             '/interactions/live-lab-200-1-button/simulated-button-token-200-1/callback',
           buttonInteractionMessageId: null,
           buttonResponseContent:
-            'simulated interaction deferred: live-lab-200-1-button',
+            'simulated component interaction acknowledged: live-lab-200-1-button',
+          buttonCompletionEndpoint: null,
+          buttonCompletionContent: null,
+          buttonCompletionMessageId: null,
           buttonThreadContent: 'DevPlat accepted show-status.',
           buttonThreadEndpoint: '/channels/implementation-thread-1/messages',
           buttonThreadMessageId: 'message-2',
@@ -2000,6 +2006,8 @@ describe('runLiveLab', () => {
         const discordCalls = [];
         const discordMessages = [];
         const sonarCalls = [];
+        const workflowDispatchRetryDelays = [];
+        let workflowDispatchAttempts = 0;
         const sharedDiscordChannels = [
           { id: 'test-category', name: 'test', type: 4 },
           {
@@ -2083,12 +2091,25 @@ describe('runLiveLab', () => {
           ['POST /repos/sandbox-org/devplat-test-200-1/pulls', { number: 42 }],
           [
             'POST /repos/sandbox-org/devplat-test-200-1/actions/workflows/live-dispatch-canary.yml/dispatches',
-            {
-              html_url:
-                'https://github.com/sandbox-org/devplat-test-200-1/actions/runs/1',
-              run_url:
-                'https://api.github.com/repos/sandbox-org/devplat-test-200-1/actions/runs/1',
-              workflow_run_id: 1,
+            () => {
+              workflowDispatchAttempts += 1;
+              if (workflowDispatchAttempts === 1) {
+                const error = new Error(
+                  'Request to https://api.github.com/repos/sandbox-org/devplat-test-200-1/actions/workflows/live-dispatch-canary.yml/dispatches failed (HTTP 422): {"message":"Workflow does not have \'workflow_dispatch\' trigger","status":"422"}',
+                );
+                error.status = 422;
+                error.responseText =
+                  '{"message":"Workflow does not have \'workflow_dispatch\' trigger","status":"422"}';
+                throw error;
+              }
+
+              return {
+                html_url:
+                  'https://github.com/sandbox-org/devplat-test-200-1/actions/runs/1',
+                run_url:
+                  'https://api.github.com/repos/sandbox-org/devplat-test-200-1/actions/runs/1',
+                workflow_run_id: 1,
+              };
             },
           ],
           [
@@ -2255,6 +2276,7 @@ describe('runLiveLab', () => {
           sonarCalls,
           sonarRequest,
           summaryEntries,
+          workflowDispatchRetryDelays,
         };
       },
       assert: async (context, inputs) => {
@@ -2278,6 +2300,9 @@ describe('runLiveLab', () => {
               context.registerDiscordApplicationCommandsMock,
             runDeepTest: context.runDeepTestMock,
             runDiscordInteractionProbe: context.runDiscordInteractionProbeMock,
+            sleep: async (delayMs) => {
+              context.workflowDispatchRetryDelays.push(delayMs);
+            },
             sonarRequest: context.sonarRequest,
           },
         );
@@ -2327,6 +2352,7 @@ describe('runLiveLab', () => {
             ['/repos/sandbox-org/devplat-test-200-1', 'DELETE'],
           ]),
         );
+        expect(context.workflowDispatchRetryDelays).toEqual([5_000]);
         expect(context.sonarCalls).toEqual(
           expect.arrayContaining([
             [

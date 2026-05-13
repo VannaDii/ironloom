@@ -255,6 +255,83 @@ describe('discord control request codec', () => {
       },
     },
     {
+      name: 'decode operator interactions with bounded received-event snapshots',
+      inputs: {
+        values: [
+          {
+            id: 'interaction-received-event',
+            token: 'token-received-event',
+            actorId: 'operator-1',
+            channelId: 'thread-1',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            receivedEvent: {
+              id: 'callback-received-event',
+              token: 'callback-token',
+              channel_id: 'thread-1',
+              data: {
+                name: 'run this',
+                custom_id: 'devplat:v1:thread-1:run-this',
+                options: [{ name: 'unbounded', value: 'ignored' }],
+              },
+              member: {
+                user: {
+                  id: 'operator-1',
+                  username: 'ignored',
+                },
+                roles: ['ignored'],
+              },
+              user: {
+                id: 'operator-2',
+                global_name: 'ignored',
+              },
+              resolved: {
+                users: {
+                  operator: {
+                    token: 'ignored',
+                  },
+                },
+              },
+            },
+          },
+        ],
+      },
+      mock: async ({ values }) =>
+        values.map((value) =>
+          decodeWithCodec(DiscordOperatorInteractionCodec, value),
+        ),
+      assert: (decodedValues) => {
+        expect(decodedValues).toEqual([
+          {
+            ok: true,
+            value: {
+              id: 'interaction-received-event',
+              token: 'token-received-event',
+              actorId: 'operator-1',
+              channelId: 'thread-1',
+              updatedAt: '2026-04-04T00:00:00.000Z',
+              receivedEvent: {
+                id: 'callback-received-event',
+                token: 'callback-token',
+                channel_id: 'thread-1',
+                data: {
+                  name: 'run this',
+                  custom_id: 'devplat:v1:thread-1:run-this',
+                },
+                member: {
+                  user: {
+                    id: 'operator-1',
+                  },
+                },
+                user: {
+                  id: 'operator-2',
+                },
+              },
+            },
+          },
+        ]);
+      },
+    },
+    {
       name: 'decode raw Discord callback payloads and binding options',
       inputs: {
         values: [

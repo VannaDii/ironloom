@@ -103,6 +103,17 @@ function sessionMatchesGatewayCallback(
 }
 
 /**
+ * Resolves callbacks whose Discord channel and component thread id agree.
+ */
+function resolveSelfConsistentComponentThread(
+  context: DiscordGatewayCallbackContext,
+): string | undefined {
+  return context.callbackChannelId === context.componentThreadId
+    ? context.callbackChannelId
+    : undefined;
+}
+
+/**
  * Resolves Gateway callbacks against persisted bound thread sessions.
  */
 export function createStorageBackedDiscordGatewayBindingResolver(
@@ -125,6 +136,15 @@ export function createStorageBackedDiscordGatewayBindingResolver(
         threadId: session.threadId,
         boundThreadId: session.threadId,
         boundSession: session,
+      };
+    }
+
+    const selfConsistentComponentThread =
+      resolveSelfConsistentComponentThread(callbackContext);
+    if (sessions.length === 0 && selfConsistentComponentThread !== undefined) {
+      return {
+        threadId: selfConsistentComponentThread,
+        boundThreadId: selfConsistentComponentThread,
       };
     }
 

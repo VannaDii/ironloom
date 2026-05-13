@@ -21,6 +21,8 @@ import type {
   DiscordResponseReceipt,
 } from './codec.js';
 
+type DiscordFetchUrl = string | URL | Request;
+
 function createReceipt(endpoint: string): DiscordResponseReceipt {
   return {
     endpoint,
@@ -687,6 +689,64 @@ describe('DiscordControlPlaneService', () => {
           );
           expect(context.events).toContain('store:state:interaction-ack-001');
           expect(context.events).toContain('thread-message:thread-ack-1');
+        },
+      },
+      {
+        name: 'acknowledges component interactions without creating loaders',
+        inputs: {
+          interaction: {
+            id: 'interaction-ack-component-001',
+            token: 'token-ack-component-1',
+            actorId: 'user-ack-component-1',
+            channelId: 'channel-ack-component-1',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            customId: 'devplat:v1:show-status:thread-ack-component-1',
+            threadId: 'thread-ack-component-1',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: async () => {
+          const rootDirectory = await mkdtemp(
+            join(tmpdir(), 'devplat-discord-'),
+          );
+          const events: string[] = [];
+          const store = new ObservedFileStoreService(rootDirectory, events);
+          return {
+            events,
+            service: new DiscordControlPlaneService(
+              new DecisionPolicyService(),
+              new TelemetryEventService(store),
+              store,
+              createObservedResponseTransport(events),
+            ),
+          };
+        },
+        assert: async (
+          context: {
+            events: string[];
+            service: DiscordControlPlaneService;
+          },
+          inputs: {
+            interaction: DiscordOperatorInteraction;
+          },
+        ) => {
+          const result = await context.service.handleInteraction(
+            inputs.interaction,
+          );
+
+          expect(result.allowed).toBe(true);
+          expect(context.events[0]).toBe(
+            'interaction-deferred:interaction-ack-component-001',
+          );
+          expect(context.events).toContain(
+            'store:state:interaction-ack-component-001',
+          );
+          expect(context.events).toContain(
+            'thread-message:thread-ack-component-1',
+          );
+          expect(context.events).not.toContain(
+            'interaction-completion:interaction-ack-component-001',
+          );
+          expect(result.completionReceipt).toBeUndefined();
         },
       },
       {
@@ -1613,17 +1673,20 @@ describe('DiscordControlPlaneService', () => {
         mock: () => {
           const calls: string[] = [];
           const bodies: string[] = [];
+          const methods: string[] = [];
           const fetchImpl = async (
             url: string,
             init?: RequestInit,
           ): Promise<Response> => {
             calls.push(url);
             bodies.push(String(init?.body ?? ''));
+            methods.push(String(init?.method ?? ''));
             return new Response(JSON.stringify({ ok: true }), { status: 200 });
           };
           return {
             bodies,
             calls,
+            methods,
             transport: new DiscordRestResponseTransport(
               'bot-token',
               'https://discord.test/api/v10',
@@ -1636,6 +1699,7 @@ describe('DiscordControlPlaneService', () => {
           context: {
             bodies: string[];
             calls: string[];
+            methods: string[];
             transport: DiscordRestResponseTransport;
           },
           inputs: { interaction: DiscordOperatorInteraction },
@@ -1668,11 +1732,26 @@ describe('DiscordControlPlaneService', () => {
               content: 'accepted',
             },
           );
+          const deferredReceipt =
+            await context.transport.postInteractionDeferred(inputs.interaction);
           const completionReceipt =
             await context.transport.postInteractionCompletion(
               inputs.interaction,
               {
                 allowed_mentions: { parse: [] },
+                components: [
+                  {
+                    components: [
+                      {
+                        custom_id: 'devplat:v1:show-status:thread-7',
+                        label: 'Show Status',
+                        style: 2,
+                        type: 2,
+                      },
+                    ],
+                    type: 1,
+                  },
+                ],
                 content: 'completed',
                 flags: 64,
               },
@@ -1682,14 +1761,19 @@ describe('DiscordControlPlaneService', () => {
             '/interactions/interaction-003/token-3/callback',
           );
           expect(threadReceipt.endpoint).toBe('/channels/thread-7/messages');
+          expect(deferredReceipt.endpoint).toBe(
+            '/interactions/interaction-003/token-3/callback',
+          );
           expect(completionReceipt.endpoint).toBe(
             '/webhooks/application-7/token-3',
           );
           expect(context.calls).toEqual([
             'https://discord.test/api/v10/interactions/interaction-003/token-3/callback',
             'https://discord.test/api/v10/channels/thread-7/messages',
+            'https://discord.test/api/v10/interactions/interaction-003/token-3/callback',
             'https://discord.test/api/v10/webhooks/application-7/token-3',
           ]);
+          expect(context.methods).toEqual(['POST', 'POST', 'POST', 'POST']);
           expect(context.bodies).toEqual([
             JSON.stringify({
               type: 4,
@@ -1716,8 +1800,27 @@ describe('DiscordControlPlaneService', () => {
               ],
             }),
             JSON.stringify({
+              type: 5,
+              data: {
+                flags: 64,
+              },
+            }),
+            JSON.stringify({
               content: 'completed',
               allowed_mentions: { parse: [] },
+              components: [
+                {
+                  components: [
+                    {
+                      custom_id: 'devplat:v1:show-status:thread-7',
+                      label: 'Show Status',
+                      style: 2,
+                      type: 2,
+                    },
+                  ],
+                  type: 1,
+                },
+              ],
               flags: 64,
             }),
           ]);
@@ -1987,14 +2090,18 @@ describe('DiscordControlPlaneService', () => {
         },
         mock: () => {
           const calls: string[] = [];
+          const methods: string[] = [];
           const fetchImpl = async (
-            url: string | URL | Request,
+            url: DiscordFetchUrl,
+            init?: RequestInit,
           ): Promise<Response> => {
             calls.push(String(url));
+            methods.push(String(init?.method ?? ''));
             return new Response('not-json', { status: 202 });
           };
           return {
             calls,
+            methods,
             transport: new DiscordRestResponseTransport(
               '',
               'https://discord.test',
@@ -2006,6 +2113,7 @@ describe('DiscordControlPlaneService', () => {
         assert: async (
           context: {
             calls: string[];
+            methods: string[];
             transport: DiscordRestResponseTransport;
           },
           inputs: { interaction: DiscordOperatorInteraction },
@@ -2037,6 +2145,7 @@ describe('DiscordControlPlaneService', () => {
             'https://discord.test/interactions/interaction%2Frest%201/token%2Frest%201/callback',
             'https://discord.test/webhooks/application-rest/token%2Frest%201',
           ]);
+          expect(context.methods).toEqual(['POST', 'POST', 'POST']);
           await expect(
             context.transport.postThreadMessage(
               'thread-rest',
@@ -2046,15 +2155,63 @@ describe('DiscordControlPlaneService', () => {
         },
       },
       {
+        name: 'uses deferred update acknowledgements for component callbacks',
+        inputs: {
+          interaction: {
+            id: 'interaction/rest component',
+            token: 'token/rest component',
+            actorId: 'user-rest-component',
+            channelId: 'channel-rest-component',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            customId: 'devplat:v1:show-status:thread-rest-component',
+            threadId: 'thread-rest-component',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => {
+          const bodies: string[] = [];
+          const fetchImpl = async (
+            _url: DiscordFetchUrl,
+            init?: RequestInit,
+          ): Promise<Response> => {
+            bodies.push(String(init?.body ?? ''));
+            return new Response('not-json', { status: 202 });
+          };
+          return {
+            bodies,
+            transport: new DiscordRestResponseTransport(
+              'bot-token',
+              'https://discord.test',
+              fetchImpl,
+              'application-rest',
+            ),
+          };
+        },
+        assert: async (
+          context: {
+            bodies: string[];
+            transport: DiscordRestResponseTransport;
+          },
+          inputs: { interaction: DiscordOperatorInteraction },
+        ) => {
+          const deferredReceipt =
+            await context.transport.postInteractionDeferred(inputs.interaction);
+
+          expect(deferredReceipt.statusCode).toBe(202);
+          expect(context.bodies).toEqual([
+            JSON.stringify({
+              type: 6,
+            }),
+          ]);
+        },
+      },
+      {
         name: 'posts encoded thread messages with bot tokens',
         inputs: {
           threadId: 'thread/rest 2',
         },
         mock: () => {
           const calls: string[] = [];
-          const fetchImpl = async (
-            url: string | URL | Request,
-          ): Promise<Response> => {
+          const fetchImpl = async (url: DiscordFetchUrl): Promise<Response> => {
             calls.push(String(url));
             return new Response('not-json', { status: 200 });
           };

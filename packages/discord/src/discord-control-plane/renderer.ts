@@ -28,6 +28,10 @@ import {
   DISCORD_COMPONENT_CUSTOM_ID_PREFIX,
   DISCORD_CUSTOM_ID_MAX_LENGTH,
   DISCORD_EPHEMERAL_MESSAGE_FLAG,
+  DISCORD_MESSAGE_CONTENT_MAX_LENGTH,
+  DISCORD_ROUTE_FAILURE_EVENT_LABEL,
+  DISCORD_ROUTE_FAILURE_REDACTED_VALUE,
+  DISCORD_ROUTE_FAILURE_TRUNCATED_MARKER,
 } from './constants.js';
 import { describeDiscordWorkItemBinding } from './logic.js';
 import type {
@@ -300,6 +304,130 @@ function renderDiscordMessageContent(
     ),
     `→ ${input.result}`,
   ].join('\n');
+}
+
+/**
+ * Returns true when a normalized sensitive-key character should be retained.
+ */
+function isDiscordEventFieldNameCharacter(character: string): boolean {
+  return (
+    (character >= 'a' && character <= 'z') ||
+    (character >= '0' && character <= '9')
+  );
+}
+
+/**
+ * Normalizes a Discord event field name for sensitive-key detection.
+ */
+function normalizeDiscordEventFieldName(fieldName: string): string {
+  return Array.from(fieldName.toLowerCase())
+    .filter((character) => isDiscordEventFieldNameCharacter(character))
+    .join('');
+}
+
+/**
+ * Returns true when a Discord event field should not be echoed to operators.
+ */
+function isSensitiveDiscordEventField(fieldName: string): boolean {
+  const normalized = normalizeDiscordEventFieldName(fieldName);
+  return (
+    normalized === 'token' ||
+    normalized === 'authorization' ||
+    normalized === 'signature' ||
+    normalized === 'publickey' ||
+    normalized === 'privatekey' ||
+    normalized.endsWith('token') ||
+    normalized.endsWith('secret') ||
+    normalized.endsWith('password') ||
+    normalized.endsWith('apikey')
+  );
+}
+
+/**
+ * Redacts sensitive fields from the received Discord event diagnostic.
+ */
+function redactDiscordEventDiagnostic(input: unknown): unknown {
+  if (Array.isArray(input)) {
+    return input.map((item) => redactDiscordEventDiagnostic(item));
+  }
+
+  if (input !== null && typeof input === 'object') {
+    const redacted: Record<string, unknown> = {};
+    for (const [fieldName, fieldValue] of Object.entries(input)) {
+      redacted[fieldName] = isSensitiveDiscordEventField(fieldName)
+        ? DISCORD_ROUTE_FAILURE_REDACTED_VALUE
+        : redactDiscordEventDiagnostic(fieldValue);
+    }
+
+    return redacted;
+  }
+
+  return input;
+}
+
+/**
+ * Truncates a JSON diagnostic while preserving an explicit operator marker.
+ */
+function truncateDiscordDiagnosticJson(
+  value: string,
+  maximumLength: number,
+): string {
+  const boundedMaximumLength = Math.max(0, maximumLength);
+  if (value.length <= boundedMaximumLength) {
+    return value;
+  }
+
+  const marker = `\n${DISCORD_ROUTE_FAILURE_TRUNCATED_MARKER}`;
+  const retainedLength = Math.max(0, boundedMaximumLength - marker.length);
+  return `${value.slice(0, retainedLength)}${marker}`.slice(
+    0,
+    boundedMaximumLength,
+  );
+}
+
+/**
+ * Wraps a JSON diagnostic in a fenced block that fits the available content.
+ */
+function createDiscordReceivedEventDiagnostic(
+  jsonText: string,
+  maximumLength: number,
+): string {
+  const prefix = `${DISCORD_ROUTE_FAILURE_EVENT_LABEL}\n\`\`\`json\n`;
+  const suffix = '\n```';
+  const boundedMaximumLength = Math.max(0, maximumLength);
+  const availableJsonLength = Math.max(
+    0,
+    boundedMaximumLength - prefix.length - suffix.length,
+  );
+
+  return `${prefix}${truncateDiscordDiagnosticJson(
+    jsonText,
+    availableJsonLength,
+  )}${suffix}`.slice(0, boundedMaximumLength);
+}
+
+/**
+ * Renders the received Discord event as a fenced JSON diagnostic.
+ */
+function renderDiscordReceivedEventDiagnostic(
+  input: DiscordOperatorInteraction,
+  maximumLength: number,
+): string {
+  const receivedEvent =
+    input.receivedEvent === undefined ? input : input.receivedEvent;
+  try {
+    return createDiscordReceivedEventDiagnostic(
+      JSON.stringify(redactDiscordEventDiagnostic(receivedEvent), null, 2),
+      maximumLength,
+    );
+  } catch (error) {
+    return createDiscordReceivedEventDiagnostic(
+      JSON.stringify({
+        error: error instanceof Error ? error.message : String(error),
+      }),
+      maximumLength,
+    );
+  }
 }
 
 /**
@@ -619,8 +747,19 @@ export function renderDiscordRouteFailureMessage(
     indicator: '🔴',
     result: 'Run this from the correct spec, implementation, or PR thread.',
   });
+  const diagnosticSeparator = '\n\n';
+  const diagnostic = renderDiscordReceivedEventDiagnostic(
+    input,
+    DISCORD_MESSAGE_CONTENT_MAX_LENGTH -
+      content.length -
+      diagnosticSeparator.length,
+  );
 
-  return createDiscordPayload(content, request, failureControls);
+  return createDiscordPayload(
+    [content, diagnostic].join(diagnosticSeparator),
+    request,
+    failureControls,
+  );
 }
 
 /**

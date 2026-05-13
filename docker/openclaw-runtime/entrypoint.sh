@@ -4,13 +4,13 @@ set -eu
 cd /app
 
 if [ "${DISCORD_GATEWAY_ENABLED:-false}" != "true" ]; then
-  exec node ./node_modules/openclaw/openclaw.mjs gateway run "$@"
+  exec node ${OPENCLAW_GATEWAY_NODE_OPTIONS:-} ./node_modules/openclaw/openclaw.mjs gateway run "$@"
 fi
 
-node --input-type=module -e "import('./packages/discord/dist/interaction-gateway/runtime.js').then(({ startDiscordInteractionGatewayRuntimeFromEnvironment }) => startDiscordInteractionGatewayRuntimeFromEnvironment())" &
+node ${DISCORD_GATEWAY_NODE_OPTIONS:-} --input-type=module -e "import('./packages/discord/dist/interaction-gateway/runtime.js').then(({ startDiscordInteractionGatewayRuntimeFromEnvironment }) => startDiscordInteractionGatewayRuntimeFromEnvironment())" &
 discord_gateway_pid="$!"
 
-node ./node_modules/openclaw/openclaw.mjs gateway run "$@" &
+node ${OPENCLAW_GATEWAY_NODE_OPTIONS:-} ./node_modules/openclaw/openclaw.mjs gateway run "$@" &
 openclaw_gateway_pid="$!"
 
 cleanup() {

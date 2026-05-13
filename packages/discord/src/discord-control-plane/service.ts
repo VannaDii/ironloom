@@ -4,11 +4,13 @@ import { DecisionPolicyService } from '@vannadii/devplat-policy';
 import { FileStoreService } from '@vannadii/devplat-storage';
 
 import {
+  DISCORD_EPHEMERAL_MESSAGE_FLAG,
   DISCORD_APPLICATION_ID_ENVIRONMENT_VARIABLE,
   DISCORD_REST_SUCCESS_MAX_EXCLUSIVE_STATUS,
   DISCORD_REST_SUCCESS_MIN_STATUS,
   DISCORD_INTERACTION_CHANNEL_MESSAGE_RESPONSE_TYPE,
   DISCORD_INTERACTION_DEFERRED_RESPONSE_TYPE,
+  DISCORD_INTERACTION_DEFERRED_UPDATE_RESPONSE_TYPE,
 } from './constants.js';
 import {
   createDiscordControlRequest,
@@ -165,6 +167,15 @@ function isDiscordRestSuccessStatus(statusCode: number): boolean {
 }
 
 /**
+ * Returns true when the callback came from a Discord message component.
+ */
+function isDiscordComponentInteraction(
+  input: DiscordOperatorInteraction,
+): boolean {
+  return input.customId !== undefined;
+}
+
+/**
  * Builds a stable diagnostic for rejected Discord interaction acknowledgements.
  */
 function describeDiscordInteractionResponseRejection(
@@ -257,14 +268,22 @@ export class DiscordRestResponseTransport implements DiscordControlResponseTrans
     input: DiscordOperatorInteraction,
   ): Promise<DiscordResponseReceipt> {
     const endpoint = `/interactions/${encodeURIComponent(input.id)}/${encodeURIComponent(input.token)}/callback`;
+    const body = isDiscordComponentInteraction(input)
+      ? {
+          type: DISCORD_INTERACTION_DEFERRED_UPDATE_RESPONSE_TYPE,
+        }
+      : {
+          type: DISCORD_INTERACTION_DEFERRED_RESPONSE_TYPE,
+          data: {
+            flags: DISCORD_EPHEMERAL_MESSAGE_FLAG,
+          },
+        };
     const response = await this.fetchImpl(`${this.baseUrl}${endpoint}`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
       },
-      body: JSON.stringify({
-        type: DISCORD_INTERACTION_DEFERRED_RESPONSE_TYPE,
-      }),
+      body: JSON.stringify(body),
     });
     const responseBody: unknown = await response.json().catch(() => null);
 
@@ -818,18 +837,23 @@ export class DiscordControlPlaneService {
       request.threadId,
       threadPayload,
     );
-    const completionPayload = threadPostResult.ok
-      ? renderDiscordInteractionCompletionMessage(request)
-      : renderDiscordInteractionThreadPostFailureCompletionMessage(
-          request,
-          threadPostResult.threadPostError,
-        );
-    const completionResult = await this.postInteractionCompletion(
-      input,
-      completionPayload,
-    );
-    const completionProjection =
-      createDiscordCompletionResultProjection(completionResult);
+    let completionProjection: Partial<
+      Pick<DiscordControlResult, 'completionPostError' | 'completionReceipt'>
+    > = {};
+    if (!isDiscordComponentInteraction(input)) {
+      const completionPayload = threadPostResult.ok
+        ? renderDiscordInteractionCompletionMessage(request)
+        : renderDiscordInteractionThreadPostFailureCompletionMessage(
+            request,
+            threadPostResult.threadPostError,
+          );
+      const completionResult = await this.postInteractionCompletion(
+        input,
+        completionPayload,
+      );
+      completionProjection =
+        createDiscordCompletionResultProjection(completionResult);
+    }
 
     return {
       ...result,

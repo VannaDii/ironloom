@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { TOOL_PAYLOAD_KEY_IGNORED_CHARACTER_PATTERN } from './constants.js';
 import {
+  createOpenClawOperationalToolPayload,
   createToolPayloadText,
   formatToolPayloadText,
   sanitizeToolPayloadForDisplay,
@@ -18,6 +19,178 @@ describe('tool surface logic', () => {
         createToolPayloadText(payload),
       assert: (text: string) => {
         expect(text).toContain('"ok": true');
+      },
+    },
+    {
+      name: 'adds lifecycle evidence to artifact payloads',
+      inputs: {
+        payload: {
+          id: 'research-artifact-1',
+          artifactType: 'research-brief',
+          status: 'complete',
+          nextAction: 'create-spec',
+        },
+      },
+      mock: ({ payload }: { payload: unknown }) =>
+        createOpenClawOperationalToolPayload(payload),
+      assert: (payload: unknown) => {
+        expect(payload).toMatchObject({
+          operationalResult: {
+            status: 'complete',
+            artifactId: 'research-artifact-1',
+            nextAction: 'create-spec',
+          },
+        });
+      },
+    },
+    {
+      name: 'adds persisted storage evidence to record payloads',
+      inputs: {
+        payload: {
+          status: 'ok',
+          scope: 'state',
+          key: 'task-1',
+          record: {
+            key: 'task-1',
+          },
+        },
+      },
+      mock: ({ payload }: { payload: unknown }) =>
+        createOpenClawOperationalToolPayload(payload),
+      assert: (payload: unknown) => {
+        expect(payload).toMatchObject({
+          operationalResult: {
+            status: 'ok',
+            persistedRecordKey: 'task-1',
+          },
+        });
+      },
+    },
+    {
+      name: 'adds policy and telemetry evidence to action payloads',
+      inputs: {
+        payload: {
+          allowed: false,
+          policyDecisionId: 'policy-1',
+          telemetryEventId: 'telemetry-1',
+          nextAction: 'request-approval',
+        },
+      },
+      mock: ({ payload }: { payload: unknown }) =>
+        createOpenClawOperationalToolPayload(payload),
+      assert: (payload: unknown) => {
+        expect(payload).toMatchObject({
+          operationalResult: {
+            status: 'blocked',
+            policyDecisionId: 'policy-1',
+            telemetryEventId: 'telemetry-1',
+            nextAction: 'request-approval',
+          },
+        });
+      },
+    },
+    {
+      name: 'maps passed gate evidence to succeeded status',
+      inputs: {
+        payload: {
+          passed: true,
+          classification: {
+            nextAction: 'continue',
+          },
+        },
+      },
+      mock: ({ payload }: { payload: unknown }) =>
+        createOpenClawOperationalToolPayload(payload),
+      assert: (payload: unknown) => {
+        expect(payload).toMatchObject({
+          operationalResult: {
+            status: 'succeeded',
+            nextAction: 'continue',
+          },
+        });
+      },
+    },
+    {
+      name: 'maps failed gate evidence to failed status',
+      inputs: {
+        payload: {
+          passed: false,
+          classification: {
+            nextAction: 'create-remediation-plan',
+          },
+        },
+      },
+      mock: ({ payload }: { payload: unknown }) =>
+        createOpenClawOperationalToolPayload(payload),
+      assert: (payload: unknown) => {
+        expect(payload).toMatchObject({
+          operationalResult: {
+            status: 'failed',
+            nextAction: 'create-remediation-plan',
+          },
+        });
+      },
+    },
+    {
+      name: 'maps success evidence to succeeded status',
+      inputs: {
+        payload: {
+          success: true,
+        },
+      },
+      mock: ({ payload }: { payload: unknown }) =>
+        createOpenClawOperationalToolPayload(payload),
+      assert: (payload: unknown) => {
+        expect(payload).toMatchObject({
+          operationalResult: {
+            status: 'succeeded',
+          },
+        });
+      },
+    },
+    {
+      name: 'maps unsuccessful evidence to failed status',
+      inputs: {
+        payload: {
+          success: false,
+        },
+      },
+      mock: ({ payload }: { payload: unknown }) =>
+        createOpenClawOperationalToolPayload(payload),
+      assert: (payload: unknown) => {
+        expect(payload).toMatchObject({
+          operationalResult: {
+            status: 'failed',
+          },
+        });
+      },
+    },
+    {
+      name: 'keeps primitive payloads unchanged',
+      inputs: {
+        payload: 'plain text',
+      },
+      mock: ({ payload }: { payload: unknown }) =>
+        createOpenClawOperationalToolPayload(payload),
+      assert: (payload: unknown) => {
+        expect(payload).toBe('plain text');
+      },
+    },
+    {
+      name: 'preserves package-owned operational result fields',
+      inputs: {
+        payload: {
+          status: 'complete',
+          operationalResult: 'package-owned-summary',
+        },
+      },
+      mock: ({ payload }: { payload: unknown }) =>
+        createOpenClawOperationalToolPayload(payload),
+      assert: (payload: unknown) => {
+        expect(payload).toEqual({
+          status: 'complete',
+          operationalResult: 'package-owned-summary',
+        });
       },
     },
     {

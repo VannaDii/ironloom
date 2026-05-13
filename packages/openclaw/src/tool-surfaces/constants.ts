@@ -100,3 +100,109 @@ export const OPENCLAW_SONAR_QUALITY_GATE_TELEMETRY_ID_PREFIX =
  * Trace marker for telemetry emitted by the OpenClaw Sonar quality-gate tool.
  */
 export const OPENCLAW_SONAR_QUALITY_GATE_TRACE = 'openclaw:sonar-quality-gate';
+
+/**
+ * Result key used by OpenClaw tool responses for adapter-level lifecycle
+ * evidence.
+ */
+export const OPENCLAW_OPERATIONAL_RESULT_KEY = 'operationalResult';
+
+/**
+ * Payload field that carries an artifact identifier.
+ */
+export const OPENCLAW_TOOL_FIELD_ARTIFACT_ID = 'artifactId';
+
+/**
+ * Payload field that marks a payload as an artifact envelope.
+ */
+export const OPENCLAW_TOOL_FIELD_ARTIFACT_TYPE = 'artifactType';
+
+/**
+ * Payload field that carries a stable object identifier.
+ */
+export const OPENCLAW_TOOL_FIELD_ID = 'id';
+
+/**
+ * Payload field that carries a storage key.
+ */
+export const OPENCLAW_TOOL_FIELD_KEY = 'key';
+
+/**
+ * Payload field that carries persisted storage evidence.
+ */
+export const OPENCLAW_TOOL_FIELD_PERSISTED_KEY = 'persistedKey';
+
+/**
+ * Operational result field that carries normalized persisted storage evidence.
+ */
+export const OPENCLAW_TOOL_FIELD_PERSISTED_RECORD_KEY = 'persistedRecordKey';
+
+/**
+ * Payload field that carries policy decision evidence.
+ */
+export const OPENCLAW_TOOL_FIELD_POLICY_DECISION_ID = 'policyDecisionId';
+
+/**
+ * Payload field that carries the next lifecycle hint.
+ */
+export const OPENCLAW_TOOL_FIELD_NEXT_ACTION = 'nextAction';
+
+/**
+ * Payload field that carries a package result record.
+ */
+export const OPENCLAW_TOOL_FIELD_RECORD = 'record';
+
+/**
+ * Payload field that carries delegated branch-safety detail.
+ */
+export const OPENCLAW_TOOL_FIELD_BRANCH_SAFETY = 'branchSafety';
+
+/**
+ * Payload field that carries delegated gate classification detail.
+ */
+export const OPENCLAW_TOOL_FIELD_CLASSIFICATION = 'classification';
+
+/**
+ * Payload field that carries telemetry persistence evidence.
+ */
+export const OPENCLAW_TOOL_FIELD_TELEMETRY_EVENT_ID = 'telemetryEventId';
+
+/**
+ * Payload field that carries lifecycle status.
+ */
+export const OPENCLAW_TOOL_FIELD_STATUS = 'status';
+
+/**
+ * Payload field that carries policy allowance.
+ */
+export const OPENCLAW_TOOL_FIELD_ALLOWED = 'allowed';
+
+/**
+ * Payload field that carries result success.
+ */
+export const OPENCLAW_TOOL_FIELD_SUCCESS = 'success';
+
+/**
+ * Payload field that carries gate pass/fail status.
+ */
+export const OPENCLAW_TOOL_FIELD_PASSED = 'passed';
+
+/**
+ * Operational status emitted for allowed policy outcomes.
+ */
+export const OPENCLAW_OPERATIONAL_STATUS_ALLOWED = 'allowed';
+
+/**
+ * Operational status emitted for blocked policy outcomes.
+ */
+export const OPENCLAW_OPERATIONAL_STATUS_BLOCKED = 'blocked';
+
+/**
+ * Operational status emitted for successful boolean outcomes.
+ */
+export const OPENCLAW_OPERATIONAL_STATUS_SUCCEEDED = 'succeeded';
+
+/**
+ * Operational status emitted for failed boolean outcomes.
+ */
+export const OPENCLAW_OPERATIONAL_STATUS_FAILED = 'failed';

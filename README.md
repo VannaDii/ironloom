@@ -77,10 +77,9 @@ npm run sonar:analyze:changed
 
 `npm run lint`, included in `check:repo`, verifies authored package JSDoc,
 structured `const cases = [...]` test tables, banned TypeScript assertions,
-regular-expression placement and naming, and static policy boundaries through
-ESLint rules.
-`npm run check:unit-tests`, included in `check:repo`, verifies that every
-non-trivial `logic.ts` and `service.ts` has a sibling test.
+regular-expression placement and naming, sibling tests for non-trivial
+`logic.ts` and `service.ts` units, and static policy boundaries through ESLint
+rules.
 `npm run check:regex-governance`, also included in `check:repo`, verifies that
 package regular-expression patterns defined in `constants.ts` are referenced
 by package tests.
@@ -175,6 +174,11 @@ tool-driven artifacts, telemetry, worktrees, and Discord interaction state stay
 in the same repository-scoped store. Gate runs and Sonar quality-gate
 evaluations record passed/failed classification, actor, coverage, blocking
 issue, and next-action telemetry through that same store.
+OpenClaw tool responses include an `operationalResult` summary whenever the
+delegated package result exposes lifecycle evidence. That summary carries the
+normalized status, artifact id, persisted record key, policy decision id,
+telemetry event id, and next-action hint for fast agent and operator handoff
+without replacing the package-owned payload.
 Valid operator
 interactions are deferred before state, telemetry, and audit persistence
 begins, then the bound thread receives the structured status payload after the

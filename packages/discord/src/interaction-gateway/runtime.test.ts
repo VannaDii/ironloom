@@ -313,7 +313,7 @@ describe('Discord interaction Gateway runtime', () => {
       },
     },
     {
-      name: 'skips unreadable stored records while resolving sessions',
+      name: 'skips unreadable stored records while resolving self-consistent component threads',
       inputs: {
         threadId: 'thread-1',
       },
@@ -340,11 +340,11 @@ describe('Discord interaction Gateway runtime', () => {
           >
         >,
       ) => {
-        expect(result.boundThreadId).toBe('unresolved');
+        expect(result.boundThreadId).toBe('thread-1');
       },
     },
     {
-      name: 'skips readable non-session records while resolving sessions',
+      name: 'skips readable non-session records while resolving self-consistent component threads',
       inputs: {
         threadId: 'thread-1',
       },
@@ -377,7 +377,7 @@ describe('Discord interaction Gateway runtime', () => {
           >
         >,
       ) => {
-        expect(result.boundThreadId).toBe('unresolved');
+        expect(result.boundThreadId).toBe('thread-1');
       },
     },
     {
@@ -417,7 +417,7 @@ describe('Discord interaction Gateway runtime', () => {
       },
     },
     {
-      name: 'returns a fail-closed binding when no stored session matches',
+      name: 'resolves a self-consistent component thread when no stored session matches',
       inputs: {
         threadId: 'thread-missing',
       },
@@ -440,6 +440,35 @@ describe('Discord interaction Gateway runtime', () => {
       ) => {
         expect(result).toEqual({
           threadId: 'thread-missing',
+          boundThreadId: 'thread-missing',
+        });
+      },
+    },
+    {
+      name: 'returns a fail-closed binding when no stored session or self-consistent component thread matches',
+      inputs: {
+        parentChannelId: 'implementation-channel',
+        threadId: 'thread-missing',
+      },
+      mock: async (inputs: { parentChannelId: string; threadId: string }) => {
+        const rootDirectory = await mkdtemp(
+          join(tmpdir(), 'devplat-discord-gateway-runtime-'),
+        );
+        const resolver = createStorageBackedDiscordGatewayBindingResolver(
+          new FileStoreService(rootDirectory),
+        );
+
+        return resolver(createParentChannelButtonCallback(inputs));
+      },
+      assert: async (
+        result: Awaited<
+          ReturnType<
+            ReturnType<typeof createStorageBackedDiscordGatewayBindingResolver>
+          >
+        >,
+      ) => {
+        expect(result).toEqual({
+          threadId: 'implementation-channel',
           boundThreadId: 'unresolved',
           summary:
             'Discord Gateway interaction did not resolve a bound thread.',

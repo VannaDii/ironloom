@@ -9,6 +9,11 @@ export const DISCORD_INTERACTION_CHANNEL_MESSAGE_RESPONSE_TYPE = 4;
 export const DISCORD_INTERACTION_DEFERRED_RESPONSE_TYPE = 5;
 
 /**
+ * Discord component callback response type for deferred message updates.
+ */
+export const DISCORD_INTERACTION_DEFERRED_UPDATE_RESPONSE_TYPE = 6;
+
+/**
  * Environment variable that provides the Discord application id for follow-up webhooks.
  */
 export const DISCORD_APPLICATION_ID_ENVIRONMENT_VARIABLE =
@@ -58,6 +63,26 @@ export const DISCORD_BUTTON_LABEL_MAX_LENGTH = 80;
  * Maximum Discord component custom_id length.
  */
 export const DISCORD_CUSTOM_ID_MAX_LENGTH = 100;
+
+/**
+ * Maximum Discord message content length.
+ */
+export const DISCORD_MESSAGE_CONTENT_MAX_LENGTH = 2000;
+
+/**
+ * Label used before Discord route-failure event diagnostics.
+ */
+export const DISCORD_ROUTE_FAILURE_EVENT_LABEL = 'Received event:';
+
+/**
+ * Placeholder used when rendering sensitive Discord event fields.
+ */
+export const DISCORD_ROUTE_FAILURE_REDACTED_VALUE = '[redacted]';
+
+/**
+ * Marker appended when a Discord route-failure diagnostic is shortened.
+ */
+export const DISCORD_ROUTE_FAILURE_TRUNCATED_MARKER = '(truncated)';
 
 /**
  * Versioned prefix for DevPlat component custom ids.

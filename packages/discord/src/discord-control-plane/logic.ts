@@ -28,6 +28,10 @@ import type {
   DiscordInteractionCallbackOptions,
   DiscordInteractionRoute,
   DiscordOperatorInteraction,
+  DiscordReceivedEventDataSnapshot,
+  DiscordReceivedEventMemberSnapshot,
+  DiscordReceivedEventSnapshot,
+  DiscordReceivedEventUserSnapshot,
   DiscordWorkItemBinding,
 } from './codec.js';
 import type { DiscordThreadSession } from '../thread-session/codec.js';
@@ -195,6 +199,65 @@ function trimOptional(value: string | undefined): string | undefined {
   return trimmed;
 }
 
+/**
+ * Creates the minimal command data snapshot used by route-failure diagnostics.
+ */
+function createDiscordReceivedEventDataSnapshot(
+  input: DiscordInteractionCallback['data'],
+): DiscordReceivedEventDataSnapshot | undefined {
+  const name = trimOptional(input?.name);
+  const customId = trimOptional(input?.custom_id);
+
+  if (name === undefined && customId === undefined) {
+    return undefined;
+  }
+
+  return {
+    ...(name === undefined ? {} : { name }),
+    ...(customId === undefined ? {} : { custom_id: customId }),
+  };
+}
+
+/**
+ * Creates the minimal user identity snapshot used by route-failure diagnostics.
+ */
+function createDiscordReceivedEventUserSnapshot(
+  input: DiscordInteractionCallback['user'],
+): DiscordReceivedEventUserSnapshot | undefined {
+  const id = trimOptional(input?.id);
+  return id === undefined ? undefined : { id };
+}
+
+/**
+ * Creates the minimal member identity snapshot used by route-failure diagnostics.
+ */
+function createDiscordReceivedEventMemberSnapshot(
+  input: DiscordInteractionCallback['member'],
+): DiscordReceivedEventMemberSnapshot | undefined {
+  const user = createDiscordReceivedEventUserSnapshot(input?.user);
+  return user === undefined ? undefined : { user };
+}
+
+/**
+ * Creates the bounded received-event diagnostic used by route failures.
+ */
+function createDiscordReceivedEventSnapshot(
+  input: DiscordInteractionCallback,
+): DiscordReceivedEventSnapshot {
+  const data = createDiscordReceivedEventDataSnapshot(input.data);
+  const member = createDiscordReceivedEventMemberSnapshot(input.member);
+  const user = createDiscordReceivedEventUserSnapshot(input.user);
+
+  return {
+    id: input.id,
+    token: input.token,
+    channel_id: input.channel_id,
+    ...(data === undefined ? {} : { data }),
+    ...(member === undefined ? {} : { member }),
+    ...(user === undefined ? {} : { user }),
+  };
+}
+
 /** Resolves callback actor id. */
 function resolveCallbackActorId(input: DiscordInteractionCallback): string {
   const memberUserId = trimOptional(input.member?.user.id);
@@ -324,6 +387,7 @@ export function createDiscordOperatorInteractionFromCallback(
     threadId: options.threadId ?? channelId,
     ...(commandName === undefined ? {} : { commandName }),
     ...(customId === undefined ? {} : { customId }),
+    receivedEvent: createDiscordReceivedEventSnapshot(input),
     ...(options.boundThreadId === undefined
       ? {}
       : { boundThreadId: options.boundThreadId }),

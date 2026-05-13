@@ -151,6 +151,7 @@ import {
   VerifySonarBootstrapToolInputCodec,
 } from './codec.js';
 import {
+  createOpenClawOperationalToolPayload,
   formatToolPayloadText,
   sanitizeToolPayloadForDisplay,
 } from './logic.js';
@@ -367,7 +368,9 @@ function createTextResult(payload: unknown): {
   content: Array<{ type: 'text'; text: string }>;
   details: unknown;
 } {
-  const safePayload = sanitizeToolPayloadForDisplay(payload);
+  const safePayload = sanitizeToolPayloadForDisplay(
+    createOpenClawOperationalToolPayload(payload),
+  );
 
   return {
     content: [

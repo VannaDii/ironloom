@@ -80,6 +80,50 @@ export const DiscordControlRequestCodec = t.intersection([
   }),
 ]);
 
+/** Codec for minimal received Discord callback data retained for diagnostics. */
+export const DiscordReceivedEventDataSnapshotCodec = t.exact(
+  t.partial({
+    name: t.string,
+    /**
+     * Discord interaction callback wire key; internally normalized to `customId`.
+     */
+    custom_id: t.string,
+  }),
+);
+
+/** Codec for minimal received Discord user identity retained for diagnostics. */
+export const DiscordReceivedEventUserSnapshotCodec = t.exact(
+  t.type({
+    id: t.string,
+  }),
+);
+
+/** Codec for minimal received Discord member identity retained for diagnostics. */
+export const DiscordReceivedEventMemberSnapshotCodec = t.exact(
+  t.type({
+    user: DiscordReceivedEventUserSnapshotCodec,
+  }),
+);
+
+/** Codec for bounded received Discord callback diagnostics. */
+export const DiscordReceivedEventSnapshotCodec = t.exact(
+  t.intersection([
+    t.type({
+      id: t.string,
+      token: t.string,
+      /**
+       * Discord interaction callback wire key; internally normalized to `channelId`.
+       */
+      channel_id: t.string,
+    }),
+    t.partial({
+      data: DiscordReceivedEventDataSnapshotCodec,
+      member: DiscordReceivedEventMemberSnapshotCodec,
+      user: DiscordReceivedEventUserSnapshotCodec,
+    }),
+  ]),
+);
+
 /** Codec for discord operator interaction. */
 export const DiscordOperatorInteractionCodec = t.intersection([
   t.type({
@@ -96,6 +140,7 @@ export const DiscordOperatorInteractionCodec = t.intersection([
     threadId: t.string,
     boundThreadId: t.string,
     boundSession: DiscordThreadSessionCodec,
+    receivedEvent: DiscordReceivedEventSnapshotCodec,
     privileged: t.boolean,
   }),
 ]);
@@ -263,6 +308,26 @@ export type DiscordControlResult = t.TypeOf<typeof DiscordControlResultCodec>;
 /** Operator interaction submitted through Discord. */
 export type DiscordOperatorInteraction = t.TypeOf<
   typeof DiscordOperatorInteractionCodec
+>;
+
+/** Minimal received Discord callback data retained for diagnostics. */
+export type DiscordReceivedEventDataSnapshot = t.TypeOf<
+  typeof DiscordReceivedEventDataSnapshotCodec
+>;
+
+/** Minimal received Discord user identity retained for diagnostics. */
+export type DiscordReceivedEventUserSnapshot = t.TypeOf<
+  typeof DiscordReceivedEventUserSnapshotCodec
+>;
+
+/** Minimal received Discord member identity retained for diagnostics. */
+export type DiscordReceivedEventMemberSnapshot = t.TypeOf<
+  typeof DiscordReceivedEventMemberSnapshotCodec
+>;
+
+/** Bounded received Discord callback diagnostic. */
+export type DiscordReceivedEventSnapshot = t.TypeOf<
+  typeof DiscordReceivedEventSnapshotCodec
 >;
 
 /** Discord interaction callback payload. */

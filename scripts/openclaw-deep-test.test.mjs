@@ -508,6 +508,30 @@ describe('openclaw-deep-test helpers', () => {
       },
     },
     {
+      name: 'exposes requested debug ports for local live stack runs',
+      inputs: {},
+      mock: async () => undefined,
+      assert: async () => {
+        const runArgs = buildDockerRunArgs({
+          bundledExtensionsDirectory:
+            '/sandbox/openclaw-runtime/bundled-extensions',
+          containerName: 'devplat-local-container',
+          devplatStateDirectory: '/sandbox/devplat-state',
+          imageTag: 'devplat:local',
+          mode: 'live',
+          portBindings: [
+            { containerPort: 9229, hostPort: 9229 },
+            { containerPort: 9230, hostPort: 9230 },
+          ],
+          runtimeDirectory: '/sandbox/devplat-runtime',
+        });
+
+        expect(runArgs).toEqual(
+          expect.arrayContaining(['-p', '9229:9229', '-p', '9230:9230']),
+        );
+      },
+    },
+    {
       name: 'defines a deep scenario and validates persisted scope coverage',
       inputs: {},
       mock: async () => undefined,
