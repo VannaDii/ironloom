@@ -54,6 +54,8 @@
     "sonar:install-cli": "node scripts/sonarqube-cli-analyze-changed.mjs install",
     "test:coverage:workspace": "node --conditions=source ./node_modules/vitest/vitest.mjs run --coverage",
     "test:coverage": "npm run prepare:generated && npm run test:coverage:workspace",
+    "test:discord:ux:live-lab": "node scripts/discord-ux-live-lab.mjs",
+    "test:discord:ux:live-lab:preflight": "vitest run scripts/discord-ux-live-lab.test.mjs",
     "test:openclaw:deep": "node scripts/openclaw-deep-test.mjs --mode hermetic",
     "test:openclaw:live-lab": "node scripts/openclaw-live-lab.mjs",
     "test:openclaw:live-lab:janitor:local": "node --env-file=.env scripts/openclaw-live-lab-janitor.mjs",

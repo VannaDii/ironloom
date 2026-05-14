@@ -6,12 +6,16 @@ import { resolve } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
-  collectFixtureFiles,
-  createGitHubRepositoryCreatePath,
-  createGitHubRepositoryListPath,
   createDiscordChannelPlan,
   createDiscordRequest,
+  registerDiscordApplicationCommands,
+  resolveWorkspacePackageEntrypoint,
+} from './discord-live-lab-harness.mjs';
+import {
+  collectFixtureFiles,
   createEvictionPlan,
+  createGitHubRepositoryCreatePath,
+  createGitHubRepositoryListPath,
   createLiveLabEnvironment,
   createLiveRuntimeEnv,
   createRunIdentifiers,
@@ -22,8 +26,6 @@ import {
   createStatusMessage,
   mapProgressToChannel,
   parseLiveLabArgs,
-  registerDiscordApplicationCommands,
-  resolveWorkspacePackageEntrypoint,
   resolveGitHubOwnerKind,
   runDiscordInteractionProbe,
   runLiveLab,
