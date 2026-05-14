@@ -2009,6 +2009,7 @@ describe('runLiveLab', () => {
         const discordMessages = [];
         const sonarCalls = [];
         const workflowDispatchRetryDelays = [];
+        const workflowDispatchUnavailableAttempts = 10;
         let workflowDispatchAttempts = 0;
         const sharedDiscordChannels = [
           { id: 'test-category', name: 'test', type: 4 },
@@ -2095,7 +2096,9 @@ describe('runLiveLab', () => {
             'POST /repos/sandbox-org/devplat-test-200-1/actions/workflows/live-dispatch-canary.yml/dispatches',
             () => {
               workflowDispatchAttempts += 1;
-              if (workflowDispatchAttempts === 1) {
+              if (
+                workflowDispatchAttempts <= workflowDispatchUnavailableAttempts
+              ) {
                 const error = new Error(
                   'Request to https://api.github.com/repos/sandbox-org/devplat-test-200-1/actions/workflows/live-dispatch-canary.yml/dispatches failed (HTTP 422): {"message":"Workflow does not have \'workflow_dispatch\' trigger","status":"422"}',
                 );
@@ -2279,6 +2282,7 @@ describe('runLiveLab', () => {
           sonarRequest,
           summaryEntries,
           workflowDispatchRetryDelays,
+          workflowDispatchUnavailableAttempts,
         };
       },
       assert: async (context, inputs) => {
@@ -2354,7 +2358,12 @@ describe('runLiveLab', () => {
             ['/repos/sandbox-org/devplat-test-200-1', 'DELETE'],
           ]),
         );
-        expect(context.workflowDispatchRetryDelays).toEqual([5_000]);
+        expect(context.workflowDispatchRetryDelays).toEqual(
+          Array.from(
+            { length: context.workflowDispatchUnavailableAttempts },
+            () => 5_000,
+          ),
+        );
         expect(context.sonarCalls).toEqual(
           expect.arrayContaining([
             [

@@ -17,8 +17,11 @@ const installScriptUrl =
   'https://raw.githubusercontent.com/SonarSource/sonarqube-cli/refs/heads/master/user-scripts/install.sh';
 const windowsInstallScriptUrl =
   'https://raw.githubusercontent.com/SonarSource/sonarqube-cli/refs/heads/master/user-scripts/install.ps1';
-const a3sInactiveMessage =
-  'A3S analysis is not activated for this organization';
+const a3sInactiveReason = 'A3S analysis is not activated for this organization';
+const a3sInactiveSignals = [
+  a3sInactiveReason,
+  'Agentic Analysis is not activated for this organization',
+];
 const sqaaDisabledReason =
   'SQAA/A3S analysis is not enabled for this run. Set SONAR_A3S_ENABLED=true or pass --sqaa enabled to run it.';
 const sonarUnauthenticatedMessage =
@@ -341,9 +344,9 @@ function readCommandFailureOutput(error) {
 export function classifySonarAnalysisFailure(error) {
   const output = readCommandFailureOutput(error);
 
-  if (output.includes(a3sInactiveMessage)) {
+  if (a3sInactiveSignals.some((signal) => output.includes(signal))) {
     return {
-      reason: a3sInactiveMessage,
+      reason: a3sInactiveReason,
       status: 'skipped',
     };
   }

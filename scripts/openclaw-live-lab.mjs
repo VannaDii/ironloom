@@ -50,7 +50,10 @@ const defaultWorkflowFileName = 'live-dispatch-canary.yml';
 const defaultSonarProjectTimeoutMs = 180_000;
 const defaultWorkflowTimeoutMs = 180_000;
 const defaultPollMs = 5_000;
-const workflowDispatchRetryAttempts = 6;
+/**
+ * GitHub can take more than 30 seconds to index a workflow in a newly created sandbox repo.
+ */
+const workflowDispatchRetryAttempts = 24;
 const workflowDispatchTriggerUnavailableText =
   "Workflow does not have 'workflow_dispatch' trigger";
 /**

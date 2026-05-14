@@ -718,6 +718,23 @@ describe('sonarqube-cli-analyze-changed', () => {
       },
     },
     {
+      name: 'classifies disabled Agentic Analysis as skipped',
+      inputs: {
+        error: {
+          stderr:
+            'SonarQube API error: 403 Forbidden - {"message":"Agentic Analysis is not activated for this organization. Enable it in your organization Administration settings"}',
+          stdout: '',
+        },
+      },
+      mock: async () => undefined,
+      assert: async (_context, inputs) => {
+        expect(classifySonarAnalysisFailure(inputs.error)).toEqual({
+          reason: 'A3S analysis is not activated for this organization',
+          status: 'skipped',
+        });
+      },
+    },
+    {
       name: 'classifies retryable SonarQube service outages as skipped',
       inputs: {
         error: {

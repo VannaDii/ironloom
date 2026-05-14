@@ -24,3 +24,7 @@ requests, channel setup, command registration, message receipts, simulated
 interaction transport, thread creation, package entrypoint resolution, and
 Gateway-bound session persistence, keeping the OpenClaw and Discord UX probes
 aligned.
+
+The OpenClaw live lab also tolerates GitHub's workflow indexing delay after
+creating a fresh sandbox repository, retrying transient workflow dispatch 422s
+long enough for the seeded `workflow_dispatch` canary to become available.
