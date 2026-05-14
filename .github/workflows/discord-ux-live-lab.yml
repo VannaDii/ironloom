@@ -47,6 +47,10 @@ jobs:
         name: Run Discord UX Preflight Tests
         run: npm run test:discord:ux:live-lab:preflight
 
+      - id: build_workspace
+        name: Build Workspace
+        run: npm run build:workspace
+
       - id: run_live_lab
         name: Run Discord UX Live Lab
         env:
