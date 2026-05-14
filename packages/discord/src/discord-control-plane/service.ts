@@ -872,6 +872,124 @@ export class DiscordControlPlaneService {
     };
   }
 
+  /**
+   * Handles a route failure after an HTTP webhook response has already ACKed Discord.
+   */
+  private async handleAcknowledgedInteractionRouteFailure(
+    input: DiscordOperatorInteraction,
+    reason: string,
+  ): Promise<DiscordControlResult> {
+    const responsePayload = renderDiscordRouteFailureMessage(input);
+    const request = createDiscordControlRequest({
+      id: input.id,
+      summary: reason,
+      status: 'blocked',
+      trace: [],
+      updatedAt: input.updatedAt,
+      actorId: input.actorId,
+      threadId: 'unresolved',
+      channelId: input.channelId,
+      action: DEVPLAT_ACTION_SHOW_STATUS,
+      privileged: false,
+    });
+
+    await this.telemetry.recordAudit({
+      auditId: `${input.id}:audit`,
+      runId: input.id,
+      eventId: input.id,
+      actorId: input.actorId,
+      action: DEVPLAT_ACTION_SHOW_STATUS,
+      scope: 'discord',
+      outcome: 'blocked',
+      reason:
+        'Discord interaction refused because thread binding was ambiguous.',
+      artifactIds: [],
+      recordedAt: input.updatedAt,
+      policyDecisionId: 'discord-fail-closed',
+      details: {
+        threadId: 'unresolved',
+        channelId: input.channelId,
+        resultStatus: 'refused',
+        correlationId: input.id,
+      },
+    });
+
+    return {
+      request,
+      policyDecisionId: 'discord-fail-closed',
+      allowed: false,
+      persistedKey: input.id,
+      responsePayload,
+      failedClosed: true,
+    };
+  }
+
+  /**
+   * Handles a routed interaction after the receiving surface has already ACKed Discord.
+   */
+  private async handleAcknowledgedRoutedInteraction(
+    input: DiscordOperatorInteraction,
+    request: DiscordControlRequest,
+  ): Promise<DiscordControlResult> {
+    const decision = this.policy.evaluateControlAction(
+      request.action,
+      request.privileged,
+    );
+    const responsePayload = decision.allowed
+      ? renderDiscordControlAcceptedMessage(request)
+      : renderDiscordControlBlockedMessage(request);
+    const result = await this.persistAction(request, decision);
+    const threadPostResult = await this.postThreadMessageAfterAcknowledgement(
+      request.threadId,
+      responsePayload,
+    );
+    let completionProjection: Partial<
+      Pick<DiscordControlResult, 'completionPostError' | 'completionReceipt'>
+    > = {};
+    if (!isDiscordComponentInteraction(input)) {
+      const completionPayload = threadPostResult.ok
+        ? renderDiscordInteractionCompletionMessage(request)
+        : renderDiscordInteractionThreadPostFailureCompletionMessage(
+            request,
+            threadPostResult.threadPostError,
+          );
+      const completionResult = await this.postInteractionCompletion(
+        input,
+        completionPayload,
+      );
+      completionProjection =
+        createDiscordCompletionResultProjection(completionResult);
+    }
+
+    return {
+      ...result,
+      responsePayload,
+      threadPayload: responsePayload,
+      ...(threadPostResult.ok
+        ? { threadReceipt: threadPostResult.threadReceipt }
+        : {
+            threadPostError: threadPostResult.threadPostError,
+            ...(threadPostResult.threadReceipt === undefined
+              ? {}
+              : { threadReceipt: threadPostResult.threadReceipt }),
+          }),
+      ...completionProjection,
+    };
+  }
+
+  /**
+   * Handles durable control-plane work after an HTTP interaction webhook ACK.
+   */
+  public async handleAcknowledgedInteraction(
+    input: DiscordOperatorInteraction,
+  ): Promise<DiscordControlResult> {
+    const route = createDiscordControlRequestFromInteraction(input);
+
+    return route.ok
+      ? this.handleAcknowledgedRoutedInteraction(input, route.request)
+      : this.handleAcknowledgedInteractionRouteFailure(input, route.reason);
+  }
+
   /** Handle interaction. */
   public async handleInteraction(
     input: DiscordOperatorInteraction,

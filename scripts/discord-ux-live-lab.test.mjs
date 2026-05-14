@@ -10,6 +10,7 @@ import {
   assertDiscordUxRouteReplayResult,
   createDiscordUxLiveLabEnvironmentIssues,
   createDiscordUxScopeDecision,
+  parseDiscordUxLiveLabArgs,
   runDiscordUxLiveLab,
   runDiscordUxInteractionProbe,
 } from './discord-ux-live-lab.mjs';
@@ -183,6 +184,56 @@ function createGatewayServiceMock({ transport }) {
   };
 }
 
+/**
+ * Creates a webhook service mock that models Discord's immediate component ACK.
+ */
+function createWebhookServiceMock({ transport }) {
+  const backgroundTasks = [];
+
+  return {
+    backgroundTasks,
+    service: {
+      async handle(request) {
+        const parsed = JSON.parse(request.body);
+        const customId = parsed.data?.custom_id;
+        backgroundTasks.push(
+          (async () => {
+            const payload = createDiscordPayloadFixture(
+              'Webhook button route accepted.',
+            );
+            const threadReceipt = await transport.postThreadMessage(
+              fixtureThreadId,
+              payload,
+            );
+
+            return {
+              allowed: true,
+              failedClosed: false,
+              persistedKey: parsed.id,
+              request: {
+                action: 'show-status',
+                threadId: fixtureThreadId,
+              },
+              threadPayload: payload,
+              threadReceipt,
+            };
+          })(),
+        );
+
+        return {
+          handled: typeof customId === 'string',
+          persistedKey: parsed.id,
+          responseBody: {
+            type: 6,
+          },
+          statusCode: 200,
+          threadId: fixtureThreadId,
+        };
+      },
+    },
+  };
+}
+
 describe('Discord UX live-lab helpers', () => {
   const cases = [
     {
@@ -287,6 +338,31 @@ describe('Discord UX live-lab helpers', () => {
           'LIVE_TEST_DISCORD_BOT_TOKEN',
           'LIVE_TEST_DISCORD_GUILD_ID',
         ]);
+      },
+    },
+    {
+      name: 'parses manual operator hold arguments and rejects invalid durations',
+      inputs: {
+        validArgs: [
+          '--changed-file',
+          'packages/discord/src/interaction-gateway/service.ts',
+          '--operator-hold-ms',
+          '150000',
+        ],
+        invalidArgs: ['--operator-hold-ms', '-1'],
+      },
+      mock: (inputs) => ({
+        invalidRun: () => parseDiscordUxLiveLabArgs(inputs.invalidArgs),
+        valid: parseDiscordUxLiveLabArgs(inputs.validArgs),
+      }),
+      assert: ({ invalidRun, valid }) => {
+        expect(valid).toMatchObject({
+          changedFiles: ['packages/discord/src/interaction-gateway/service.ts'],
+          operatorHoldMs: 150000,
+        });
+        expect(invalidRun).toThrow(
+          '--operator-hold-ms must be a non-negative integer.',
+        );
       },
     },
     {
@@ -549,6 +625,7 @@ describe('Discord UX live-lab helpers', () => {
           },
           {
             createDiscordGatewayService: createGatewayServiceMock,
+            createDiscordWebhookService: createWebhookServiceMock,
             persistDiscordGatewayBoundSession: async () => ({
               key: 'session-1',
               scope: 'state',
@@ -578,12 +655,138 @@ describe('Discord UX live-lab helpers', () => {
             label: 'button',
             threadId: fixtureThreadId,
           }),
+          expect.objectContaining({
+            acknowledgementType: 6,
+            action: 'show-status',
+            label: 'webhook-button',
+            threadId: fixtureThreadId,
+          }),
         ]);
         expect(result.messages.slash.componentCustomIds).toEqual([
           fixtureRenderedCustomId,
         ]);
         expect(result.messages.button.channelId).toBe(fixtureThreadId);
-        expect(report.routeReplays).toHaveLength(2);
+        expect(result.messages.webhookButton.channelId).toBe(fixtureThreadId);
+        expect(report.routeReplays).toHaveLength(3);
+      },
+    },
+    {
+      name: 'keeps a real Gateway runtime open during manual operator hold windows',
+      inputs: {
+        operatorHoldMs: 25,
+      },
+      mock: async (inputs) => {
+        const reportDirectory = await mkdtemp(
+          resolve(tmpdir(), 'devplat-discord-ux-gateway-runtime-'),
+        );
+        const gatewayEvents = [
+          {
+            eventName: 'READY',
+            status: 'ignored',
+          },
+        ];
+        const closeCalls = [];
+        const sleepCalls = [];
+        const result = await runDiscordUxLiveLab(
+          {
+            changedFiles: [
+              'packages/discord/src/interaction-gateway/service.ts',
+            ],
+            environment: {
+              discord: {
+                applicationId: 'application-1',
+                baseUrl: 'https://discord.test/api/v10',
+                botToken: 'bot-token-1',
+                gatewayIntents: 0,
+                gatewayUrl: 'wss://gateway.discord.test/?v=10&encoding=json',
+                guildId: 'guild-1',
+              },
+              githubWorkflow: {
+                eventName: 'pull_request',
+                ref: 'feature/live-ux',
+                runAttempt: '1',
+                runNumber: '200',
+                sha: 'sha-1',
+                stepSummaryPath: null,
+              },
+            },
+            operatorHoldMs: inputs.operatorHoldMs,
+            reportDir: reportDirectory,
+          },
+          {
+            discordRequest: async () => ({ id: 'guild-1' }),
+            ensureDiscordChannels: async () => ({
+              category: {
+                id: 'category-1',
+                name: 'test',
+              },
+              channels: createDiscordChannelsFixture(),
+            }),
+            registerDiscordApplicationCommands: async () => ({
+              count: 1,
+              endpoint: '/applications/application-1/guilds/guild-1/commands',
+              names: ['show-status'],
+              responseBody: [{ name: 'show-status' }],
+            }),
+            runDiscordUxInteractionProbe: async () => ({
+              messages: {},
+              routeReplays: [],
+              thread: {
+                id: fixtureThreadId,
+                name: 'thread',
+                parentChannelId: fixtureParentChannelId,
+              },
+            }),
+            sleep: async (duration) => {
+              sleepCalls.push(duration);
+              gatewayEvents.push({
+                interactionId: 'interaction-human-1',
+                responseStatusCode: 204,
+                status: 'handled',
+                threadId: fixtureThreadId,
+              });
+            },
+            startGatewayRuntime: async () => ({
+              close: () => {
+                closeCalls.push('closed');
+              },
+              errors: [],
+              events: gatewayEvents,
+              stateDirectory: resolve(reportDirectory, 'deep-test'),
+            }),
+          },
+        );
+        const runtimeReportText = await readFile(
+          resolve(reportDirectory, 'discord-ux-gateway-runtime-report.json'),
+          'utf8',
+        );
+
+        return {
+          closeCalls,
+          result,
+          runtimeReport: JSON.parse(runtimeReportText),
+          sleepCalls,
+        };
+      },
+      assert: ({ closeCalls, result, runtimeReport, sleepCalls }) => {
+        expect(sleepCalls).toEqual([25]);
+        expect(closeCalls).toEqual(['closed']);
+        expect(result.gatewayRuntime).toMatchObject({
+          operatorHoldMs: 25,
+          events: [
+            {
+              eventName: 'READY',
+              status: 'ignored',
+            },
+            {
+              interactionId: 'interaction-human-1',
+              responseStatusCode: 204,
+              status: 'handled',
+              threadId: fixtureThreadId,
+            },
+          ],
+        });
+        expect(runtimeReport.events).toHaveLength(2);
       },
     },
   ];

@@ -1,7 +1,9 @@
 import { execFile } from 'node:child_process';
+import { generateKeyPairSync, sign } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
+import { setTimeout as sleep } from 'node:timers/promises';
 import { promisify } from 'node:util';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -39,9 +41,25 @@ const discordUxInteractionProbeReportFileName =
   'discord-ux-interaction-probe.json';
 
 /**
+ * Gateway runtime report emitted while the manual operator window is open.
+ */
+const discordUxGatewayRuntimeReportFileName =
+  'discord-ux-gateway-runtime-report.json';
+
+/**
  * Default Discord API base used by the live UX suite.
  */
 const defaultDiscordApiBaseUrl = 'https://discord.com/api/v10';
+
+/**
+ * Default Discord Gateway URL used by the private live UX worker.
+ */
+const defaultDiscordGatewayUrl = 'wss://gateway.discord.gg/?v=10&encoding=json';
+
+/**
+ * Default Discord Gateway intents bitset for interaction-only workers.
+ */
+const defaultDiscordGatewayIntents = 0;
 
 /**
  * Default run number used by local live UX invocations.
@@ -57,6 +75,21 @@ const defaultRunAttempt = '1';
  * Default local ref used by local live UX invocations.
  */
 const defaultRef = 'local';
+
+/**
+ * Default manual operator hold duration for PR-safe live UX runs.
+ */
+const defaultOperatorHoldMs = 0;
+
+/**
+ * Maximum time to wait for Discord Gateway READY before posting controls.
+ */
+const discordGatewayReadyTimeoutMs = 15_000;
+
+/**
+ * Discord Gateway READY dispatch event name.
+ */
+const discordGatewayReadyEventName = 'READY';
 
 /**
  * Stable operator id used by automated Discord UX route replay.
@@ -220,11 +253,24 @@ function resolveCliPath(value) {
 }
 
 /**
+ * Parses a non-negative integer option value.
+ */
+function parseNonNegativeInteger(value, label) {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isInteger(parsed) || parsed < 0 || String(parsed) !== value) {
+    throw new Error(`${label} must be a non-negative integer.`);
+  }
+
+  return parsed;
+}
+
+/**
  * Parses Discord UX live-lab CLI arguments.
  */
 export function parseDiscordUxLiveLabArgs(argv) {
   const { args, changedFiles } = parseDiscordUxFlagArguments(argv);
   const reportDir = args.get('--report-dir');
+  const operatorHoldMs = args.get('--operator-hold-ms');
 
   return {
     baseRef:
@@ -240,6 +286,10 @@ export function parseDiscordUxLiveLabArgs(argv) {
     ref: typeof args.get('--ref') === 'string' ? args.get('--ref') : undefined,
     reportDir:
       typeof reportDir === 'string' ? resolveCliPath(reportDir) : undefined,
+    operatorHoldMs:
+      typeof operatorHoldMs === 'string'
+        ? parseNonNegativeInteger(operatorHoldMs, '--operator-hold-ms')
+        : defaultOperatorHoldMs,
   };
 }
 
@@ -287,6 +337,15 @@ export function createDiscordUxLiveLabEnvironment(env = process.env) {
         'LIVE_TEST_DISCORD_BOT_TOKEN',
       ),
       categoryName: env['LIVE_TEST_DISCORD_CATEGORY_NAME'],
+      gatewayIntents:
+        env['LIVE_TEST_DISCORD_GATEWAY_INTENTS'] === undefined
+          ? defaultDiscordGatewayIntents
+          : parseNonNegativeInteger(
+              env['LIVE_TEST_DISCORD_GATEWAY_INTENTS'],
+              'LIVE_TEST_DISCORD_GATEWAY_INTENTS',
+            ),
+      gatewayUrl:
+        env['LIVE_TEST_DISCORD_GATEWAY_URL'] ?? defaultDiscordGatewayUrl,
       guildId: readOptionalEnvironmentValue(env, 'LIVE_TEST_DISCORD_GUILD_ID'),
     },
     githubWorkflow: {
@@ -314,6 +373,9 @@ function createDiscordUxWorkflowEnvironment(env = process.env) {
         env['LIVE_TEST_DISCORD_API_BASE_URL'] ?? defaultDiscordApiBaseUrl,
       botToken: '',
       categoryName: env['LIVE_TEST_DISCORD_CATEGORY_NAME'],
+      gatewayIntents: defaultDiscordGatewayIntents,
+      gatewayUrl:
+        env['LIVE_TEST_DISCORD_GATEWAY_URL'] ?? defaultDiscordGatewayUrl,
       guildId: '',
     },
     githubWorkflow: {
@@ -693,6 +755,54 @@ export function assertDiscordUxRouteReplayResult({
 }
 
 /**
+ * Asserts an HTTP webhook replay acknowledged Discord's component interaction contract.
+ */
+function assertDiscordUxWebhookReplayResult({
+  controlResult,
+  expectedThreadId,
+  result,
+}) {
+  if (result.statusCode !== 200 || result.handled !== true) {
+    throw new Error('Discord UX webhook button replay was not handled.');
+  }
+
+  if (result.responseBody?.type !== 6) {
+    throw new Error(
+      'Discord UX webhook button replay did not return a deferred component update acknowledgement.',
+    );
+  }
+
+  if (
+    result.threadId !== expectedThreadId ||
+    controlResult.request.threadId !== expectedThreadId
+  ) {
+    throw new Error(
+      'Discord UX webhook button replay resolved the wrong thread.',
+    );
+  }
+
+  if (controlResult.allowed !== true || controlResult.failedClosed === true) {
+    throw new Error('Discord UX webhook button replay failed closed.');
+  }
+
+  const messageId = readDiscordReceiptMessageId(controlResult.threadReceipt);
+  if (messageId === null) {
+    throw new Error(
+      'Discord UX webhook button replay did not record a message id.',
+    );
+  }
+
+  return {
+    acknowledgementType: result.responseBody.type,
+    action: controlResult.request.action,
+    interactionId: result.persistedKey,
+    label: 'webhook-button',
+    messageId,
+    threadId: expectedThreadId,
+  };
+}
+
+/**
  * Builds a Gateway dispatch event for a slash-command-shaped interaction.
  */
 function createSlashCommandDispatchEvent({ channelId, runLabel }) {
@@ -735,6 +845,56 @@ function createButtonDispatchEvent({ channelId, customId, runLabel }) {
         user: {
           id: liveLabOperatorId,
         },
+      },
+    },
+  };
+}
+
+/**
+ * Creates a Discord-signed HTTP interaction request for webhook route replay.
+ */
+function createSignedDiscordWebhookRequest(callback) {
+  const { privateKey, publicKey } = generateKeyPairSync('ed25519');
+  const timestamp = new Date().toISOString();
+  const body = JSON.stringify(callback);
+  const publicKeyDer = publicKey.export({
+    format: 'der',
+    type: 'spki',
+  });
+  const publicKeyHex = publicKeyDer
+    .subarray(publicKeyDer.length - 32)
+    .toString('hex');
+  const signature = sign(
+    null,
+    Buffer.from(`${timestamp}${body}`),
+    privateKey,
+  ).toString('hex');
+
+  return {
+    body,
+    publicKey: publicKeyHex,
+    headers: {
+      'x-signature-ed25519': signature,
+      'x-signature-timestamp': timestamp,
+    },
+  };
+}
+
+/**
+ * Builds a webhook callback payload for a button-shaped interaction.
+ */
+function createButtonWebhookCallback({ channelId, customId, runLabel }) {
+  return {
+    id: `discord-ux-${runLabel}-webhook-button`,
+    token: `discord-ux-token-${runLabel}-webhook-button`,
+    channel_id: channelId,
+    data: {
+      [discordComponentCustomIdField]: customId,
+      component_type: 2,
+    },
+    member: {
+      user: {
+        id: liveLabOperatorId,
       },
     },
   };
@@ -806,6 +966,167 @@ async function createDiscordUxGatewayService({ reportDirectory, transport }) {
 }
 
 /**
+ * Creates the production webhook service used by live HTTP interaction replay.
+ */
+async function createDiscordUxWebhookService({ reportDirectory, transport }) {
+  const discordEntrypoint = await resolveWorkspacePackageEntrypoint('discord');
+  const storageEntrypoint = await resolveWorkspacePackageEntrypoint('storage');
+  const discordModule = await import(pathToFileURL(discordEntrypoint).href);
+  const storageModule = await import(pathToFileURL(storageEntrypoint).href);
+  const store = new storageModule.FileStoreService(
+    resolve(reportDirectory, 'deep-test', 'devplat-state'),
+  );
+  const controlPlane = new discordModule.DiscordControlPlaneService(
+    undefined,
+    undefined,
+    store,
+    transport,
+  );
+  const backgroundTasks = [];
+  const service = new discordModule.DiscordInteractionWebhookService(
+    controlPlane,
+    discordModule.createStorageBackedDiscordGatewayBindingResolver(store),
+    (task) => {
+      backgroundTasks.push(task());
+    },
+  );
+
+  return {
+    backgroundTasks,
+    service,
+  };
+}
+
+/**
+ * Builds the shared live UX Gateway state directory.
+ */
+function createDiscordUxGatewayStateDirectory(reportDirectory) {
+  return resolve(reportDirectory, 'deep-test', 'devplat-state');
+}
+
+/**
+ * Projects Gateway runtime results into compact report events.
+ */
+function createGatewayRuntimeResultEvent(result) {
+  if (result.status === 'handled') {
+    return {
+      status: result.status,
+      interactionId: result.interactionId,
+      threadId: result.threadId,
+      responseStatusCode:
+        result.controlResult.responseReceipt?.statusCode ?? null,
+      threadStatusCode: result.controlResult.threadReceipt?.statusCode ?? null,
+    };
+  }
+
+  return {
+    status: result.status,
+    eventName: result.eventName,
+    ...(result.reason === undefined ? {} : { reason: result.reason }),
+  };
+}
+
+/**
+ * Writes the live Gateway runtime report for manual-click diagnostics.
+ */
+async function writeGatewayRuntimeReport({ errors, events, reportDirectory }) {
+  await writeJsonReport(
+    resolve(reportDirectory, discordUxGatewayRuntimeReportFileName),
+    {
+      errors,
+      events,
+      updatedAt: new Date().toISOString(),
+    },
+  );
+}
+
+/**
+ * Starts a real Discord Gateway worker beside the live UX probe.
+ */
+async function startDiscordUxGatewayRuntime({
+  environment,
+  reportDirectory,
+  startTimeoutMs = discordGatewayReadyTimeoutMs,
+}) {
+  const discordEntrypoint = await resolveWorkspacePackageEntrypoint('discord');
+  const storageEntrypoint = await resolveWorkspacePackageEntrypoint('storage');
+  const discordModule = await import(pathToFileURL(discordEntrypoint).href);
+  const storageModule = await import(pathToFileURL(storageEntrypoint).href);
+  const stateDirectory = createDiscordUxGatewayStateDirectory(reportDirectory);
+  const store = new storageModule.FileStoreService(stateDirectory);
+  const transport = new discordModule.DiscordRestResponseTransport(
+    environment.discord.botToken,
+    environment.discord.baseUrl,
+    fetch,
+    environment.discord.applicationId,
+  );
+  const controlPlane = new discordModule.DiscordControlPlaneService(
+    undefined,
+    undefined,
+    store,
+    transport,
+  );
+  const handler = new discordModule.DiscordInteractionGatewayService(
+    controlPlane,
+    discordModule.createStorageBackedDiscordGatewayBindingResolver(store),
+  );
+  const client = new discordModule.DiscordInteractionGatewayClientService(
+    undefined,
+    handler,
+  );
+  const events = [];
+  const errors = [];
+  let readyResolver = () => undefined;
+  const ready = new Promise((resolveReady) => {
+    readyResolver = resolveReady;
+  });
+  const session = client.start({
+    botToken: environment.discord.botToken,
+    gatewayUrl: environment.discord.gatewayUrl,
+    intents: environment.discord.gatewayIntents,
+    onError: (error) => {
+      errors.push(serializeError(error));
+      writeGatewayRuntimeReport({
+        errors,
+        events,
+        reportDirectory,
+      }).catch(() => undefined);
+    },
+    onResult: (result) => {
+      const event = createGatewayRuntimeResultEvent(result);
+      events.push(event);
+      if (
+        event.status === 'ignored' &&
+        event.eventName === discordGatewayReadyEventName
+      ) {
+        readyResolver();
+      }
+      writeGatewayRuntimeReport({
+        errors,
+        events,
+        reportDirectory,
+      }).catch(() => undefined);
+    },
+  });
+
+  await Promise.race([
+    ready,
+    sleep(startTimeoutMs).then(() => {
+      throw new Error('Discord Gateway runtime did not become ready in time.');
+    }),
+  ]);
+
+  return {
+    close: () => {
+      session.close();
+    },
+    errors,
+    events,
+    stateDirectory,
+  };
+}
+
+/**
  * Writes JSON to a report path with a trailing newline.
  */
 async function writeJsonReport(path, payload) {
@@ -828,6 +1149,8 @@ export async function runDiscordUxInteractionProbe(
   await mkdir(reportDirectory, { recursive: true });
   const serviceFactory =
     dependencies.createDiscordGatewayService ?? createDiscordUxGatewayService;
+  const webhookServiceFactory =
+    dependencies.createDiscordWebhookService ?? createDiscordUxWebhookService;
   const persistGatewayBoundSession =
     dependencies.persistDiscordGatewayBoundSession ??
     persistDiscordGatewayBoundSession;
@@ -903,13 +1226,45 @@ export async function runDiscordUxInteractionProbe(
     discordRequest,
     receipt: buttonResult.controlResult.threadReceipt,
   });
+  const webhookContext = await webhookServiceFactory({
+    discordRequest,
+    reportDirectory,
+    transport,
+  });
+  const webhookButtonCallback = createButtonWebhookCallback({
+    channelId: threadId,
+    customId: buttonCustomId,
+    runLabel,
+  });
+  const webhookButtonResult = await webhookContext.service.handle(
+    createSignedDiscordWebhookRequest(webhookButtonCallback),
+  );
+  const [webhookControlResult] = await Promise.all(
+    webhookContext.backgroundTasks,
+  );
+  if (webhookControlResult === undefined) {
+    throw new Error(
+      'Discord UX webhook button replay did not run control work.',
+    );
+  }
+  const webhookButtonReplay = assertDiscordUxWebhookReplayResult({
+    controlResult: webhookControlResult,
+    expectedThreadId: threadId,
+    result: webhookButtonResult,
+  });
+  const webhookButtonMessage = await createFetchedMessageReport({
+    channelId: threadId,
+    discordRequest,
+    receipt: webhookControlResult.threadReceipt,
+  });
   const report = {
     thread,
     messages: {
       slash: slashMessage,
       button: buttonMessage,
+      webhookButton: webhookButtonMessage,
     },
-    routeReplays: [slashReplay, buttonReplay],
+    routeReplays: [slashReplay, buttonReplay, webhookButtonReplay],
   };
 
   await writeJsonReport(
@@ -964,6 +1319,7 @@ export async function runDiscordUxLiveLab(options, dependencies = {}) {
   const runLabel = createDiscordUxRunLabel(environment);
   const reportDirectory =
     options.reportDir ?? createDefaultReportDirectory(runLabel);
+  const operatorHoldMs = options.operatorHoldMs ?? defaultOperatorHoldMs;
   const scope =
     options.scopeDecision ??
     createDiscordUxScopeDecision({
@@ -980,6 +1336,7 @@ export async function runDiscordUxLiveLab(options, dependencies = {}) {
     thread: null,
     messages: null,
     routeReplays: [],
+    gatewayRuntime: null,
     error: null,
     scope,
   };
@@ -993,6 +1350,7 @@ export async function runDiscordUxLiveLab(options, dependencies = {}) {
     return report;
   }
 
+  let gatewayRuntime = null;
   try {
     const discordRequest =
       dependencies.discordRequest ??
@@ -1008,6 +1366,9 @@ export async function runDiscordUxLiveLab(options, dependencies = {}) {
       registerDiscordApplicationCommands;
     const runDiscordUxInteractionProbeFn =
       dependencies.runDiscordUxInteractionProbe ?? runDiscordUxInteractionProbe;
+    const startGatewayRuntimeFn =
+      dependencies.startGatewayRuntime ?? startDiscordUxGatewayRuntime;
+    const sleepFn = dependencies.sleep ?? sleep;
 
     await getGuild(environment.discord.guildId, discordRequest);
     const discordChannels = await ensureDiscordChannelsFn({
@@ -1042,6 +1403,19 @@ export async function runDiscordUxLiveLab(options, dependencies = {}) {
     });
     report.commands = assertDiscordUxCommandRegistration(commandRegistration);
 
+    if (operatorHoldMs > 0) {
+      gatewayRuntime = await startGatewayRuntimeFn({
+        environment,
+        reportDirectory,
+      });
+      report.gatewayRuntime = {
+        operatorHoldMs,
+        stateDirectory: gatewayRuntime.stateDirectory,
+        events: gatewayRuntime.events,
+        errors: gatewayRuntime.errors,
+      };
+    }
+
     const probe = await runDiscordUxInteractionProbeFn({
       discordChannels: discordChannels.channels,
       discordRequest,
@@ -1051,12 +1425,34 @@ export async function runDiscordUxLiveLab(options, dependencies = {}) {
     report.thread = probe.thread;
     report.messages = probe.messages;
     report.routeReplays = probe.routeReplays;
+
+    if (gatewayRuntime !== null && operatorHoldMs > 0) {
+      await writeGatewayRuntimeReport({
+        errors: gatewayRuntime.errors,
+        events: gatewayRuntime.events,
+        reportDirectory,
+      });
+      await sleepFn(operatorHoldMs);
+      report.gatewayRuntime = {
+        operatorHoldMs,
+        stateDirectory: gatewayRuntime.stateDirectory,
+        events: gatewayRuntime.events,
+        errors: gatewayRuntime.errors,
+      };
+      await writeGatewayRuntimeReport({
+        errors: gatewayRuntime.errors,
+        events: gatewayRuntime.events,
+        reportDirectory,
+      });
+    }
+
     report.status = 'passed';
   } catch (error) {
     report.status = 'failed';
     report.error = serializeError(error);
     throw error;
   } finally {
+    gatewayRuntime?.close();
     report.completedAt = new Date().toISOString();
     await writeJsonReport(reportPath, report);
     await appendStepSummary(environment.githubWorkflow.stepSummaryPath, report);

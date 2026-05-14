@@ -8,6 +8,11 @@ on:
         description: Optional ref to validate
         required: false
         type: string
+      operator_hold_ms:
+        default: '0'
+        description: Optional manual-click hold window in milliseconds
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -72,6 +77,7 @@ jobs:
           else
             args+=(
               --force
+              --operator-hold-ms "${{ inputs.operator_hold_ms || '0' }}"
               --ref "${{ inputs.ref || github.ref_name }}"
             )
           fi

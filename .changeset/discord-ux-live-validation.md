@@ -15,15 +15,32 @@ The live UX probe registers the real sandbox guild command contracts, creates a
 short-lived implementation thread under the shared test category, persists a
 realistic Discord thread-session binding, routes slash-command-shaped and
 fetched-button-shaped Gateway interactions through the Discord control plane,
-and then fetches the posted Discord messages back through REST to verify
-operator-visible content, allowed mentions, component rows, unique component
-custom ids, message ids, and same-thread routing.
+replays the fetched button through the HTTP interaction webhook path, and then
+fetches the posted Discord messages back through REST to verify operator-visible
+content, allowed mentions, component rows, unique component custom ids, message
+ids, same-thread routing, and the immediate component acknowledgement that real
+Discord button clicks require.
 
 The existing OpenClaw live lab now shares the Discord live-lab harness for REST
 requests, channel setup, command registration, message receipts, simulated
 interaction transport, thread creation, package entrypoint resolution, and
 Gateway-bound session persistence, keeping the OpenClaw and Discord UX probes
 aligned.
+
+Discord interaction webhooks now return the documented immediate deferred
+acknowledgement for routed slash commands and message components before durable
+control-plane persistence, thread posting, and follow-up work continue in the
+background. This keeps real Discord button clicks from timing out while
+preserving thread-bound operator audit records.
+
+The Discord UX live lab also has an explicit `--operator-hold-ms` manual-click
+window. When set, it starts the real private Discord Gateway runtime against the
+same temporary live state root before posting button-bearing messages, keeps that
+worker open for the requested hold duration, and writes
+`discord-ux-gateway-runtime-report.json` with READY, handled interaction,
+response status, thread status, and runtime error diagnostics. This lets
+maintainers validate actual Discord client button clicks against the same
+thread-session binding used by automated route replay.
 
 The OpenClaw live lab also tolerates GitHub's workflow indexing delay after
 creating a fresh sandbox repository, retrying transient workflow dispatch 422s
