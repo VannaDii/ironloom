@@ -9,8 +9,8 @@ on:
         required: false
         type: string
       operator_hold_ms:
-        default: '0'
-        description: Optional manual-click hold window in milliseconds
+        default: '150000'
+        description: Manual-click hold window in milliseconds
         required: false
         type: string
 
@@ -77,7 +77,7 @@ jobs:
           else
             args+=(
               --force
-              --operator-hold-ms "${{ inputs.operator_hold_ms || '0' }}"
+              --operator-hold-ms "${{ inputs.operator_hold_ms || '150000' }}"
               --ref "${{ inputs.ref || github.ref_name }}"
             )
           fi

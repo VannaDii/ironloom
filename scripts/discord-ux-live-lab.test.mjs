@@ -366,6 +366,102 @@ describe('Discord UX live-lab helpers', () => {
       },
     },
     {
+      name: 'keeps workflow-dispatch controls clickable by default when no hold is provided',
+      inputs: {},
+      mock: async () => {
+        const reportDirectory = await mkdtemp(
+          resolve(tmpdir(), 'devplat-discord-ux-default-hold-'),
+        );
+        const runtimeEvents = [
+          {
+            eventName: 'READY',
+            status: 'ignored',
+          },
+        ];
+        const closeCalls = [];
+        const sleepCalls = [];
+        const result = await runDiscordUxLiveLab(
+          {
+            changedFiles: [],
+            environment: {
+              discord: {
+                applicationId: 'application-1',
+                baseUrl: 'https://discord.test/api/v10',
+                botToken: 'bot-token-1',
+                gatewayIntents: 0,
+                gatewayUrl: 'wss://gateway.discord.test/?v=10&encoding=json',
+                guildId: 'guild-1',
+              },
+              githubWorkflow: {
+                eventName: 'workflow_dispatch',
+                ref: 'feature/live-ux',
+                runAttempt: '1',
+                runNumber: '200',
+                sha: 'sha-1',
+                stepSummaryPath: null,
+              },
+            },
+            reportDir: reportDirectory,
+          },
+          {
+            discordRequest: async () => ({ id: 'guild-1' }),
+            ensureDiscordChannels: async () => ({
+              category: {
+                id: 'category-1',
+                name: 'test',
+              },
+              channels: createDiscordChannelsFixture(),
+            }),
+            registerDiscordApplicationCommands: async () => ({
+              count: 1,
+              endpoint: '/applications/application-1/guilds/guild-1/commands',
+              names: ['show-status'],
+              responseBody: [{ name: 'show-status' }],
+            }),
+            runDiscordUxInteractionProbe: async () => ({
+              messages: {},
+              routeReplays: [],
+              thread: {
+                id: fixtureThreadId,
+                name: 'thread',
+                parentChannelId: fixtureParentChannelId,
+              },
+            }),
+            sleep: async (duration) => {
+              sleepCalls.push(duration);
+            },
+            startGatewayRuntime: async () => ({
+              close: () => {
+                closeCalls.push('closed');
+              },
+              errors: [],
+              events: runtimeEvents,
+              stateDirectory: resolve(reportDirectory, 'deep-test'),
+            }),
+          },
+        );
+
+        return {
+          closeCalls,
+          result,
+          sleepCalls,
+        };
+      },
+      assert: ({ closeCalls, result, sleepCalls }) => {
+        expect(sleepCalls).toEqual([150000]);
+        expect(closeCalls).toEqual(['closed']);
+        expect(result.gatewayRuntime).toMatchObject({
+          operatorHoldMs: 150000,
+          events: [
+            {
+              eventName: 'READY',
+              status: 'ignored',
+            },
+          ],
+        });
+      },
+    },
+    {
       name: 'fails when Discord command registration omits an expected command',
       inputs: {
         registration: {

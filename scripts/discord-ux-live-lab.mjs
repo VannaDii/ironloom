@@ -82,6 +82,11 @@ const defaultRef = 'local';
 const defaultOperatorHoldMs = 0;
 
 /**
+ * Default manual operator hold duration for explicit workflow-dispatch runs.
+ */
+const defaultWorkflowDispatchOperatorHoldMs = 150_000;
+
+/**
  * Maximum time to wait for Discord Gateway READY before posting controls.
  */
 const discordGatewayReadyTimeoutMs = 15_000;
@@ -265,6 +270,15 @@ function parseNonNegativeInteger(value, label) {
 }
 
 /**
+ * Resolves the hold window used when the caller did not pass one explicitly.
+ */
+function resolveDefaultOperatorHoldMs(eventName) {
+  return eventName === 'workflow_dispatch'
+    ? defaultWorkflowDispatchOperatorHoldMs
+    : defaultOperatorHoldMs;
+}
+
+/**
  * Parses Discord UX live-lab CLI arguments.
  */
 export function parseDiscordUxLiveLabArgs(argv) {
@@ -289,7 +303,7 @@ export function parseDiscordUxLiveLabArgs(argv) {
     operatorHoldMs:
       typeof operatorHoldMs === 'string'
         ? parseNonNegativeInteger(operatorHoldMs, '--operator-hold-ms')
-        : defaultOperatorHoldMs,
+        : undefined,
   };
 }
 
@@ -1319,7 +1333,9 @@ export async function runDiscordUxLiveLab(options, dependencies = {}) {
   const runLabel = createDiscordUxRunLabel(environment);
   const reportDirectory =
     options.reportDir ?? createDefaultReportDirectory(runLabel);
-  const operatorHoldMs = options.operatorHoldMs ?? defaultOperatorHoldMs;
+  const operatorHoldMs =
+    options.operatorHoldMs ??
+    resolveDefaultOperatorHoldMs(environment.githubWorkflow.eventName);
   const scope =
     options.scopeDecision ??
     createDiscordUxScopeDecision({

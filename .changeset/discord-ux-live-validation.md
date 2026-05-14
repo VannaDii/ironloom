@@ -40,7 +40,10 @@ worker open for the requested hold duration, and writes
 `discord-ux-gateway-runtime-report.json` with READY, handled interaction,
 response status, thread status, and runtime error diagnostics. This lets
 maintainers validate actual Discord client button clicks against the same
-thread-session binding used by automated route replay.
+thread-session binding used by automated route replay. Manual workflow-dispatch
+runs now default that hold window to 150000 ms so the posted controls have a live
+receiver by default; PR-triggered runs keep the zero-hold automated-gate behavior
+unless a caller explicitly opts into a hold window.
 
 The OpenClaw live lab also tolerates GitHub's workflow indexing delay after
 creating a fresh sandbox repository, retrying transient workflow dispatch 422s

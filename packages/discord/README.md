@@ -47,10 +47,12 @@ unit tests. The live-lab probe fails if the acknowledgement or thread message
 loses the structured button rows, posts those component-bearing payloads, and
 records the message ids, content, and component custom ids in the live-lab report
 for audit review while the private Gateway runtime is still alive. The live-lab
-`operator_hold_ms` input can keep that runtime open briefly for manual click
-acceptance. The probe persists its bound thread session into the same runtime
-state directory used by the private Gateway before posting controls, so manual
-clicks can revalidate the stored binding during the hold window. Gateway button
+`operator_hold_ms` input keeps that runtime open for manual workflow-dispatch
+click acceptance by default, and can be increased when operators need more time
+to tune the visible messages and controls. The probe persists its bound thread
+session into the same runtime state directory used by the private Gateway before
+posting controls, so manual clicks can revalidate the stored binding during the
+hold window. Gateway button
 callbacks resolve persisted sessions from the callback thread id, or from a
 component-encoded thread id only when the callback channel matches the persisted
 thread or parent channel, so parent-channel callback payloads still route while
