@@ -1,0 +1,101 @@
+name: Discord UX Live Lab
+
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Optional ref to validate
+        required: false
+        type: string
+      operator_hold_ms:
+        default: '150000'
+        description: Manual-click hold window in milliseconds
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: discord-ux-live-lab
+  cancel-in-progress: false
+
+jobs:
+  discord-ux-live-lab:
+    name: Discord UX Live Lab
+    runs-on: ubuntu-latest
+
+    steps:
+      - id: checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - id: install_deps
+        name: Install Deps
+        run: npm ci
+
+      - id: verify_node
+        name: Verify Node Alignment
+        run: npm run verify:node
+
+      - id: preflight
+        name: Run Discord UX Preflight Tests
+        run: npm run test:discord:ux:live-lab:preflight
+
+      - id: build_workspace
+        name: Build Workspace
+        run: npm run build:workspace
+
+      - id: run_live_lab
+        name: Run Discord UX Live Lab
+        env:
+          LIVE_TEST_DISCORD_APPLICATION_ID: ${{ secrets.LIVE_TEST_DISCORD_APPLICATION_ID }}
+          LIVE_TEST_DISCORD_BOT_TOKEN: ${{ secrets.LIVE_TEST_DISCORD_BOT_TOKEN }}
+          LIVE_TEST_DISCORD_GUILD_ID: ${{ vars.LIVE_TEST_DISCORD_GUILD_ID }}
+        run: |
+          args=(
+            --report-dir "$RUNNER_TEMP/discord-ux-live-lab"
+          )
+
+          if [[ "${{ github.event_name }}" == 'pull_request' ]]; then
+            git fetch origin "${{ github.base_ref }}" --depth=1
+            args+=(
+              --base-ref "origin/${{ github.base_ref }}"
+              --head-ref HEAD
+              --ref "${{ github.head_ref }}"
+            )
+          else
+            args+=(
+              --force
+              --operator-hold-ms "${{ inputs.operator_hold_ms || '150000' }}"
+              --ref "${{ inputs.ref || github.ref_name }}"
+            )
+          fi
+
+          npm run test:discord:ux:live-lab -- "${args[@]}"
+
+      - name: Normalize Discord UX Artifact Permissions
+        if: always()
+        run: |
+          if [[ -d "$RUNNER_TEMP/discord-ux-live-lab" ]]; then
+            sudo chown -R "$(id -u):$(id -g)" "$RUNNER_TEMP/discord-ux-live-lab" || true
+            sudo chmod -R u+rwX,go+rX "$RUNNER_TEMP/discord-ux-live-lab" || true
+          fi
+
+      - name: Upload Discord UX Artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: discord-ux-live-lab-${{ github.run_id }}-${{ github.run_attempt }}
+          retention-days: 14
+          path: ${{ runner.temp }}/discord-ux-live-lab

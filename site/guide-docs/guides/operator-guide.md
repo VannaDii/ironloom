@@ -35,6 +35,57 @@ Missing Discord credentials should fail during config load. Do not rely on place
 - expect the live lab to refresh sandbox guild slash commands before exercising the Discord interaction response path
 - expect the live lab to record simulated deferred acknowledgement and completion receipts while posting the operator-visible bound-thread update in the implementation channel
 
+## Commanded Delivery Flow
+
+Research and initial spec creation are OpenClaw tool or agent operations.
+Discord slash commands operate the bound spec, implementation, or pull-request
+thread after DevPlat has persisted that thread binding. Missing or ambiguous
+bindings must fail closed.
+
+```mermaid
+flowchart TD
+  Intake["Operator requests a repository change"]
+  Research["OpenClaw: create_research_brief"]
+  Spec["OpenClaw: create_spec_record"]
+  BindSpec["OpenClaw: open_discord_thread + bind_discord_thread<br/>spec thread"]
+  InspectSpec["/show-status<br/>/show-last-artifact"]
+  SpecDecision{"Spec accepted?"}
+  UpdateSpec["/update-spec<br/>OpenClaw: update_spec_record"]
+  ApproveSpec["/approve-this<br/>OpenClaw: approve_spec_record"]
+  Slice["OpenClaw: create_slice_plan<br/>OpenClaw: evaluate_slice_plan_readiness"]
+  BindImplementation["OpenClaw: open_discord_thread + bind_discord_thread<br/>implementation thread"]
+  StartWork["/claim-this<br/>/run-this"]
+  Worktree["OpenClaw: allocate_worktree<br/>OpenClaw: sync_worktree"]
+  Gates["OpenClaw: run_gates"]
+  GateDecision{"Gates pass?"}
+  Failure["/explain-failure<br/>OpenClaw: create_remediation_plan"]
+  Retry["/retry-gates"]
+  Review["OpenClaw: create_review_finding<br/>OpenClaw: create_remediation_plan"]
+  PullRequest["OpenClaw: create_pull_request_record<br/>OpenClaw: submit_pull_request_update"]
+  BindPullRequest["OpenClaw: bind_discord_thread<br/>pull-request thread"]
+  PullRequestDecision{"PR accepted?"}
+  Refresh["/sync-worktree<br/>/rebase-dependents"]
+  Merge["/merge-now<br/>OpenClaw: submit_pull_request_merge"]
+  Complete["/complete-this"]
+  Release["/release-worktree"]
+
+  Intake --> Research --> Spec --> BindSpec --> InspectSpec --> SpecDecision
+  SpecDecision -->|changes requested| UpdateSpec --> InspectSpec
+  SpecDecision -->|accepted| ApproveSpec --> Slice --> BindImplementation
+  BindImplementation --> StartWork --> Worktree --> Gates --> GateDecision
+  GateDecision -->|no| Failure --> Retry --> Gates
+  GateDecision -->|yes| Review --> PullRequest --> BindPullRequest
+  BindPullRequest --> PullRequestDecision
+  PullRequestDecision -->|changes requested| Refresh --> Gates
+  PullRequestDecision -->|accepted| Merge --> Complete --> Release
+```
+
+Use `/pause-this` and `/resume-this` to stop or continue automation in any
+bound lifecycle thread. Use `/block-this` when a spec, implementation, or
+pull-request thread needs explicit operator intervention before it can proceed.
+The complete slash-command reference lives in
+[Discord Workflows](./discord-workflows.md#operator-actions).
+
 ## Discord Operator Messages
 
 Discord messages are operator UI, not log output. Primary messages use this
@@ -56,6 +107,7 @@ changed for a refused interaction beyond audit logging.
 
 ## Related Guides
 
+- [Discord Workflows](./discord-workflows.md)
 - [Live Test Lab](./live-test-lab.md)
 - [Live Test GitHub Setup](./live-test-github-setup.md)
 - [Live Test Discord Setup](./live-test-discord-setup.md)

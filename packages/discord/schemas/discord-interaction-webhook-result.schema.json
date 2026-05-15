@@ -108,6 +108,26 @@
               "properties": {
                 "type": {
                   "const": 5
+                },
+                "data": {
+                  "type": "object",
+                  "properties": {
+                    "flags": {
+                      "type": "number"
+                    }
+                  },
+                  "required": ["flags"],
+                  "additionalProperties": false
+                }
+              },
+              "required": ["type"],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": 6
                 }
               },
               "required": ["type"],

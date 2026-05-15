@@ -156,6 +156,9 @@ message is posted in a short-lived implementation thread created under the
 `test` category's standard implementation channel, so real button clicks
 resolve to the same thread id encoded in the component payload and persisted
 Gateway session.
+The docs operator guide includes the full Mermaid command flow from research
+and spec creation through PR acceptance, and the Discord workflows guide lists
+the exact registered slash commands that drive bound threads.
 Live-lab status posts render compact workflow links with URL previews
 suppressed, and reports include selected channel `parentId` values so category
 placement can be audited.

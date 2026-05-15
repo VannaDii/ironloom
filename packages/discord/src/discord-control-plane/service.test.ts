@@ -988,6 +988,352 @@ describe('DiscordControlPlaneService', () => {
     });
   });
 
+  describe('acknowledged interaction durable work', () => {
+    const cases = [
+      {
+        name: 'records route failures after an HTTP webhook has already acknowledged Discord',
+        inputs: {
+          interaction: {
+            id: 'interaction-acknowledged-route-failure-001',
+            token: 'token-acknowledged-route-failure-1',
+            actorId: 'user-acknowledged-route-failure-1',
+            channelId: 'channel-acknowledged-route-failure-1',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            threadId: 'thread-acknowledged-route-failure-1',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: async () => {
+          const rootDirectory = await mkdtemp(
+            join(tmpdir(), 'devplat-discord-'),
+          );
+          const store = new FileStoreService(rootDirectory);
+          return {
+            store,
+            service: new DiscordControlPlaneService(
+              new DecisionPolicyService(),
+              new TelemetryEventService(store),
+              store,
+              createObservedResponseTransport([]),
+            ),
+          };
+        },
+        assert: async (
+          context: {
+            store: FileStoreService;
+            service: DiscordControlPlaneService;
+          },
+          inputs: {
+            interaction: DiscordOperatorInteraction;
+          },
+        ) => {
+          const result = await context.service.handleAcknowledgedInteraction(
+            inputs.interaction,
+          );
+
+          expect(result.allowed).toBe(false);
+          expect(result.failedClosed).toBe(true);
+          expect(result.request.threadId).toBe('unresolved');
+          expect(result.responseReceipt).toBeUndefined();
+          expect(await context.store.list('state')).not.toContain(
+            'interaction-acknowledged-route-failure-001',
+          );
+          expect(await context.store.list('audit')).toContain(
+            'interaction-acknowledged-route-failure-001:audit',
+          );
+        },
+      },
+      {
+        name: 'posts slash-command work after an HTTP webhook acknowledgement without a second initial callback',
+        inputs: {
+          interaction: {
+            id: 'interaction-acknowledged-slash-001',
+            token: 'token-acknowledged-slash-1',
+            actorId: 'user-acknowledged-slash-1',
+            channelId: 'channel-acknowledged-slash-1',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'show status',
+            threadId: 'thread-acknowledged-slash-1',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: async () => {
+          const rootDirectory = await mkdtemp(
+            join(tmpdir(), 'devplat-discord-'),
+          );
+          const events: string[] = [];
+          const store = new ObservedFileStoreService(rootDirectory, events);
+          return {
+            events,
+            store,
+            service: new DiscordControlPlaneService(
+              new DecisionPolicyService(),
+              new TelemetryEventService(store),
+              store,
+              createObservedResponseTransport(events),
+            ),
+          };
+        },
+        assert: async (
+          context: {
+            events: string[];
+            store: FileStoreService;
+            service: DiscordControlPlaneService;
+          },
+          inputs: {
+            interaction: DiscordOperatorInteraction;
+          },
+        ) => {
+          const result = await context.service.handleAcknowledgedInteraction(
+            inputs.interaction,
+          );
+
+          expect(result.allowed).toBe(true);
+          expect(result.failedClosed).toBe(false);
+          expect(result.responseReceipt).toBeUndefined();
+          expect(result.threadReceipt?.endpoint).toBe(
+            '/channels/thread-acknowledged-slash-1/messages',
+          );
+          expect(result.completionReceipt?.endpoint).toBe(
+            '/webhooks/application/token-acknowledged-slash-1',
+          );
+          expect(context.events).not.toContain(
+            'interaction-deferred:interaction-acknowledged-slash-001',
+          );
+          expect(context.events).not.toContain(
+            'interaction-response:interaction-acknowledged-slash-001',
+          );
+          expect(await context.store.list('state')).toContain(
+            'interaction-acknowledged-slash-001',
+          );
+        },
+      },
+      {
+        name: 'posts component work after an HTTP webhook acknowledgement without a follow-up completion',
+        inputs: {
+          interaction: {
+            id: 'interaction-acknowledged-component-001',
+            token: 'token-acknowledged-component-1',
+            actorId: 'user-acknowledged-component-1',
+            channelId: 'channel-acknowledged-component-1',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            customId: 'devplat:v1:show-status:thread-acknowledged-component-1',
+            threadId: 'thread-acknowledged-component-1',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: async () => {
+          const rootDirectory = await mkdtemp(
+            join(tmpdir(), 'devplat-discord-'),
+          );
+          const events: string[] = [];
+          const store = new ObservedFileStoreService(rootDirectory, events);
+          return {
+            events,
+            store,
+            service: new DiscordControlPlaneService(
+              new DecisionPolicyService(),
+              new TelemetryEventService(store),
+              store,
+              createObservedResponseTransport(events),
+            ),
+          };
+        },
+        assert: async (
+          context: {
+            events: string[];
+            store: FileStoreService;
+            service: DiscordControlPlaneService;
+          },
+          inputs: {
+            interaction: DiscordOperatorInteraction;
+          },
+        ) => {
+          const result = await context.service.handleAcknowledgedInteraction(
+            inputs.interaction,
+          );
+
+          expect(result.allowed).toBe(true);
+          expect(result.failedClosed).toBe(false);
+          expect(result.threadReceipt?.endpoint).toBe(
+            '/channels/thread-acknowledged-component-1/messages',
+          );
+          expect(result.completionReceipt).toBeUndefined();
+          expect(context.events).not.toContain(
+            'interaction-completion:interaction-acknowledged-component-001',
+          );
+          expect(await context.store.list('state')).toContain(
+            'interaction-acknowledged-component-001',
+          );
+        },
+      },
+      {
+        name: 'posts blocked policy decisions after an HTTP webhook acknowledgement',
+        inputs: {
+          interaction: {
+            id: 'interaction-acknowledged-blocked-001',
+            token: 'token-acknowledged-blocked-1',
+            actorId: 'user-acknowledged-blocked-1',
+            channelId: 'channel-acknowledged-blocked-1',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'release worktree',
+            threadId: 'thread-acknowledged-blocked-1',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: async () => {
+          const rootDirectory = await mkdtemp(
+            join(tmpdir(), 'devplat-discord-'),
+          );
+          const store = new FileStoreService(rootDirectory);
+          return {
+            store,
+            service: new DiscordControlPlaneService(
+              new DecisionPolicyService(),
+              new TelemetryEventService(store),
+              store,
+              createResponseTransport(),
+            ),
+          };
+        },
+        assert: async (
+          context: {
+            store: FileStoreService;
+            service: DiscordControlPlaneService;
+          },
+          inputs: {
+            interaction: DiscordOperatorInteraction;
+          },
+        ) => {
+          const result = await context.service.handleAcknowledgedInteraction(
+            inputs.interaction,
+          );
+
+          expect(result.allowed).toBe(false);
+          expect(result.failedClosed).toBe(false);
+          expect(result.responsePayload?.content).toContain(
+            'DevPlat · Action blocked',
+          );
+          expect(result.threadReceipt?.endpoint).toBe(
+            '/channels/thread-acknowledged-blocked-1/messages',
+          );
+          expect(await context.store.list('state')).toContain(
+            'interaction-acknowledged-blocked-001',
+          );
+        },
+      },
+      {
+        name: 'reports post-acknowledgement thread rejection receipts',
+        inputs: {
+          interaction: {
+            id: 'interaction-acknowledged-thread-rejection-001',
+            token: 'token-acknowledged-thread-rejection-1',
+            actorId: 'user-acknowledged-thread-rejection-1',
+            channelId: 'channel-acknowledged-thread-rejection-1',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'show status',
+            threadId: 'thread-acknowledged-thread-rejection-1',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: async () => {
+          const rootDirectory = await mkdtemp(
+            join(tmpdir(), 'devplat-discord-'),
+          );
+          const store = new FileStoreService(rootDirectory);
+          return {
+            store,
+            service: new DiscordControlPlaneService(
+              new DecisionPolicyService(),
+              new TelemetryEventService(store),
+              store,
+              createThreadRejectingResponseTransport(),
+            ),
+          };
+        },
+        assert: async (
+          context: {
+            store: FileStoreService;
+            service: DiscordControlPlaneService;
+          },
+          inputs: {
+            interaction: DiscordOperatorInteraction;
+          },
+        ) => {
+          const result = await context.service.handleAcknowledgedInteraction(
+            inputs.interaction,
+          );
+
+          expect(result.allowed).toBe(true);
+          expect(result.threadReceipt?.statusCode).toBe(403);
+          expect(result.threadPostError).toBe(
+            'Discord thread status message returned HTTP 403.',
+          );
+          expect(result.completionReceipt?.endpoint).toBe(
+            '/webhooks/application/token-acknowledged-thread-rejection-1',
+          );
+          expect(await context.store.list('state')).toContain(
+            'interaction-acknowledged-thread-rejection-001',
+          );
+        },
+      },
+      {
+        name: 'reports post-acknowledgement thread transport failures',
+        inputs: {
+          interaction: {
+            id: 'interaction-acknowledged-thread-failure-001',
+            token: 'token-acknowledged-thread-failure-1',
+            actorId: 'user-acknowledged-thread-failure-1',
+            channelId: 'channel-acknowledged-thread-failure-1',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'show status',
+            threadId: 'thread-acknowledged-thread-failure-1',
+          } satisfies DiscordOperatorInteraction,
+          error: 'post-ack thread failure',
+        },
+        mock: async (inputs: { error: unknown }) => {
+          const rootDirectory = await mkdtemp(
+            join(tmpdir(), 'devplat-discord-'),
+          );
+          const store = new FileStoreService(rootDirectory);
+          return {
+            store,
+            service: new DiscordControlPlaneService(
+              new DecisionPolicyService(),
+              new TelemetryEventService(store),
+              store,
+              createThreadFailingResponseTransport(inputs.error),
+            ),
+          };
+        },
+        assert: async (
+          context: {
+            store: FileStoreService;
+            service: DiscordControlPlaneService;
+          },
+          inputs: {
+            interaction: DiscordOperatorInteraction;
+            error: string;
+          },
+        ) => {
+          const result = await context.service.handleAcknowledgedInteraction(
+            inputs.interaction,
+          );
+
+          expect(result.allowed).toBe(true);
+          expect(result.threadReceipt).toBeUndefined();
+          expect(result.threadPostError).toBe(inputs.error);
+          expect(result.completionReceipt?.endpoint).toBe(
+            '/webhooks/application/token-acknowledged-thread-failure-1',
+          );
+          expect(await context.store.list('state')).toContain(
+            'interaction-acknowledged-thread-failure-001',
+          );
+        },
+      },
+    ];
+
+    it.each(cases)('$name', async ({ inputs, mock, assert }) => {
+      const context = await mock(inputs);
+      await assert(context, inputs);
+    });
+  });
+
   describe('thread response failures', () => {
     const cases = [
       {

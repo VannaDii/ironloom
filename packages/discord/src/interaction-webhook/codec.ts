@@ -30,8 +30,21 @@ export const DiscordInteractionWebhookMessageResponseBodyCodec = t.type({
 });
 
 /** Codec for discord interaction webhook deferred response body. */
-export const DiscordInteractionWebhookDeferredResponseBodyCodec = t.type({
-  type: t.literal(5),
+export const DiscordInteractionWebhookDeferredResponseBodyCodec =
+  t.intersection([
+    t.type({
+      type: t.literal(5),
+    }),
+    t.partial({
+      data: t.type({
+        flags: t.number,
+      }),
+    }),
+  ]);
+
+/** Codec for discord interaction webhook deferred component update response body. */
+export const DiscordInteractionWebhookDeferredUpdateResponseBodyCodec = t.type({
+  type: t.literal(6),
 });
 
 /** Codec for discord interaction webhook response body. */
@@ -39,6 +52,7 @@ export const DiscordInteractionWebhookResponseBodyCodec = t.union([
   DiscordInteractionWebhookPongResponseBodyCodec,
   DiscordInteractionWebhookMessageResponseBodyCodec,
   DiscordInteractionWebhookDeferredResponseBodyCodec,
+  DiscordInteractionWebhookDeferredUpdateResponseBodyCodec,
 ]);
 
 /** Codec for discord interaction webhook parse result. */
@@ -67,6 +81,10 @@ export const DiscordInteractionWebhookResultCodec = t.intersection([
     responseBody: DiscordInteractionWebhookResponseBodyCodec,
   }),
   t.partial({
+    /**
+     * Accepted Discord interaction id used for background persistence lookup;
+     * this does not guarantee that durable control-plane storage has completed.
+     */
     persistedKey: t.string,
     policyDecisionId: t.string,
     threadId: t.string,

@@ -58,21 +58,34 @@ Project-management lookups must stay read-only. Any lifecycle-changing action st
 
 ## Operator Actions
 
-- `run this`: execute work in the active thread context
-- `claim this`: claim the bound queue work item before execution begins
-- `approve this`: approve the bound spec, slice, or pull request state
-- `block this`: mark the active work item blocked without leaving thread context
-- `complete this`: mark the active work item complete when the thread reaches a terminal handoff
-- `retry`: re-run failed gates or remediation in the bound thread context
-- `merge`: trigger the merge path for the bound pull request context
-- `rebase dependents`: trigger branching coordination for the bound context
-- `pause` or `resume`: change execution state without leaving the bound thread
-- `show status`: summarize the active work item and last known lifecycle state
-- `show last artifact`: surface the latest auditable artifact for the bound thread
-- `explain failure`: summarize the latest failing gate, review, or remediation state
-- `sync worktree`: refresh the bound branch workspace against its base branch
-- `release worktree`: clean up the bound branch workspace after completion or abandonment
-- `update spec`: create a new revision of the bound spec while preserving approval history
+The registered Discord slash commands operate only after a Discord thread has
+been bound to a spec, implementation, or pull-request record. Research and
+initial spec creation still start through OpenClaw tool or agent execution; the
+slash commands then drive the bound thread through review, remediation, and PR
+acceptance.
+
+| Slash command         | Bound thread context                  | Operator intent                                                      |
+| --------------------- | ------------------------------------- | -------------------------------------------------------------------- |
+| `/run-this`           | implementation                        | Execute work in the active implementation thread.                    |
+| `/claim-this`         | implementation                        | Claim the queued work item before execution begins.                  |
+| `/approve-this`       | spec, implementation, or pull-request | Approve the bound spec, slice, or pull-request state.                |
+| `/block-this`         | spec, implementation, or pull-request | Mark the active work item blocked without leaving thread context.    |
+| `/complete-this`      | implementation or pull-request        | Mark the active work item complete after terminal handoff.           |
+| `/pause-this`         | spec, implementation, or pull-request | Pause automation for the bound item.                                 |
+| `/resume-this`        | spec, implementation, or pull-request | Resume automation for the bound item.                                |
+| `/retry-gates`        | implementation or pull-request        | Re-run failed gates or remediation in the bound thread context.      |
+| `/merge-now`          | pull-request                          | Trigger the merge path for the bound pull request context.           |
+| `/rebase-dependents`  | spec, implementation, or pull-request | Refresh branches that depend on the bound work item.                 |
+| `/sync-worktree`      | implementation or pull-request        | Refresh the bound branch workspace against its base branch.          |
+| `/release-worktree`   | implementation or pull-request        | Clean up the bound branch workspace after completion or abandonment. |
+| `/show-status`        | spec, implementation, or pull-request | Summarize the active work item and last known lifecycle state.       |
+| `/show-last-artifact` | spec, implementation, or pull-request | Surface the latest auditable artifact for the bound thread.          |
+| `/explain-failure`    | implementation or pull-request        | Summarize the latest failing gate, review, or remediation state.     |
+| `/update-spec`        | spec                                  | Create a new revision of the bound spec while preserving history.    |
+
+For the full research-to-PR command workflow, use the canonical
+[Commanded Delivery Flow](./operator-guide.md#commanded-delivery-flow) in the
+operator guide.
 
 ## Approval Flow
 
