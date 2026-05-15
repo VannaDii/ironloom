@@ -9,7 +9,10 @@ import { DecisionPolicyService } from '@vannadii/devplat-policy';
 import { FileStoreService } from '@vannadii/devplat-storage';
 
 import { SupervisorCycleService } from './service.js';
-import type { SupervisorDecision } from './codec.js';
+import type {
+  SupervisorContinuationRequest,
+  SupervisorDecision,
+} from './codec.js';
 
 type SupervisorRunStepInput = {
   action: string;
@@ -27,6 +30,10 @@ type SupervisorCycleServiceInputs =
       mode: 'execute-and-run';
       decision: SupervisorDecision;
       runStep: SupervisorRunStepInput;
+    }
+  | {
+      mode: 'continue';
+      request: SupervisorContinuationRequest;
     };
 
 type SupervisorCycleServiceCase = {
@@ -121,6 +128,60 @@ describe('SupervisorCycleService', () => {
           'merge-now -> review',
         );
         expect(decision.approved).toBe(false);
+      },
+    },
+    {
+      name: 'continues headless lifecycle requests without Discord state',
+      inputs: {
+        mode: 'continue',
+        request: {
+          requestId: 'continue-service',
+          repositoryKey: 'VannaDii/devplat',
+          objective: 'Build a non-Discord continuation lane.',
+          actorId: 'agent-1',
+          updatedAt: '2026-05-15T00:00:00.000Z',
+          artifacts: [
+            {
+              artifactId: 'research-artifact-1',
+              artifactType: 'research-brief',
+              status: 'complete',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'spec-artifact-1',
+              artifactType: 'spec-record',
+              status: 'approved',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'slice-artifact-1',
+              artifactType: 'slice-plan',
+              status: 'complete',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+          ],
+        },
+      },
+      mock: async () => ({
+        service: await createService(),
+      }),
+      assert: async (context, inputs) => {
+        if (inputs.mode !== 'continue') {
+          throw new Error('expected continue inputs');
+        }
+
+        const decision = await context.service.continueLifecycle(
+          inputs.request,
+        );
+
+        expect(decision.nextAction).toMatchObject({
+          kind: 'create-task-record',
+          toolName: 'create_task_record',
+          requiresHumanApproval: false,
+        });
+        expect(decision.trace).toContain(
+          'supervisor:continuation:create_task_record',
+        );
       },
     },
   ] satisfies SupervisorCycleServiceCase[];

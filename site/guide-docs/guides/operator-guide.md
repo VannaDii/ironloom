@@ -11,6 +11,7 @@
 
 - build or pull the runtime image
 - provide OpenClaw, Discord, GitHub, and Sonar credentials through environment variables, mounted config, or referenced secrets
+- for headless software-building loops, provide repository identity, storage root, worktree root, GitHub credentials, and Sonar context; Discord credentials are only required when running the Discord operator surface
 - set Discord v10 connection values: API base URL, Gateway URL/intents, application id, public key, bot token, guild id, repository category name, and the standard production spec, implementation, pull-request, audit, and project-management channel ids; production category names default to the repository name for multi-repo guild separation
 - start the gateway locally, in Docker, or via Helm on k3s
 - complete the live-lab setup guides before dispatching the networked E2E lane
@@ -21,6 +22,7 @@ Missing Discord credentials should fail during config load. Do not rely on place
 
 - watch GitHub Actions CI, the TypeScript compatibility matrix, Docker, Helm, and docs workflows
 - monitor SonarCloud gate status
+- use `continue_lifecycle` to choose the next agent-executable platform tool from repository objective and lifecycle artifact state
 - verify that operator-visible Discord actions map back to GitHub and artifact state
 - run the private Discord Gateway worker with `DISCORD_GATEWAY_ENABLED=true`
   when the runtime should accept real slash commands and button clicks without

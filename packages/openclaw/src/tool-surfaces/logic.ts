@@ -19,6 +19,7 @@ import {
   OPENCLAW_TOOL_FIELD_RECORD,
   OPENCLAW_TOOL_FIELD_STATUS,
   OPENCLAW_TOOL_FIELD_SUCCESS,
+  OPENCLAW_TOOL_FIELD_TOOL_NAME,
   OPENCLAW_TOOL_FIELD_TELEMETRY_EVENT_ID,
   REDACTED_TOOL_PAYLOAD_VALUE,
   TOOL_PAYLOAD_KEY_IGNORED_CHARACTER_PATTERN,
@@ -184,6 +185,11 @@ function resolveOpenClawOperationalNextAction(
 ): string | undefined {
   return (
     readStringField(record, OPENCLAW_TOOL_FIELD_NEXT_ACTION) ??
+    readNestedStringField(
+      record,
+      OPENCLAW_TOOL_FIELD_NEXT_ACTION,
+      OPENCLAW_TOOL_FIELD_TOOL_NAME,
+    ) ??
     readNestedStringField(
       record,
       OPENCLAW_TOOL_FIELD_CLASSIFICATION,

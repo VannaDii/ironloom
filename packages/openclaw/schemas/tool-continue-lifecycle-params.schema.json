@@ -1,0 +1,92 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/ContinueLifecycleToolInput",
+  "definitions": {
+    "ContinueLifecycleToolInput": {
+      "type": "object",
+      "properties": {
+        "requestId": {
+          "type": "string"
+        },
+        "repositoryKey": {
+          "type": "string",
+          "pattern": "^(?!.*(?:^|/)\\s)(?!.*\\s(?:/|$))[^/]+/[^/]+$"
+        },
+        "objective": {
+          "type": "string"
+        },
+        "actorId": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "artifactId": {
+                "type": "string"
+              },
+              "artifactType": {
+                "enum": [
+                  "approval-record",
+                  "audit-log",
+                  "discord-thread-session",
+                  "gate-run-report",
+                  "merge-decision",
+                  "pull-request-record",
+                  "rebase-result",
+                  "remediation-plan",
+                  "research-brief",
+                  "review-finding",
+                  "slice-plan",
+                  "spec-record",
+                  "task-record",
+                  "telemetry-event",
+                  "worktree-allocation"
+                ]
+              },
+              "status": {
+                "enum": [
+                  "draft",
+                  "queued",
+                  "claimed",
+                  "running",
+                  "review",
+                  "blocked",
+                  "approved",
+                  "merge-ready",
+                  "merged",
+                  "failed",
+                  "rebasing",
+                  "complete"
+                ]
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "nextAction": {
+                "type": "string"
+              }
+            },
+            "required": ["artifactId", "artifactType", "status", "updatedAt"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "requestId",
+        "repositoryKey",
+        "objective",
+        "actorId",
+        "updatedAt",
+        "artifacts"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

@@ -106,6 +106,7 @@ import {
   AllocateWorktreeToolInputCodec,
   BindDiscordThreadToolInputCodec,
   ClaimTaskToolInputCodec,
+  ContinueLifecycleToolInputCodec,
   CreateApprovalRecordToolInputCodec,
   CreateRemediationPlanToolInputCodec,
   CreateResearchBriefToolInputCodec,
@@ -2355,6 +2356,35 @@ export function createRunSupervisorStepTool(): AnyAgentTool {
   return tool;
 }
 
+/** Creates continue lifecycle tool. */
+export function createContinueLifecycleTool(): AnyAgentTool {
+  const tool: AnyAgentTool = {
+    name: 'continue_lifecycle',
+    label: 'Continue Lifecycle',
+    description:
+      'Plan the next headless software-building lifecycle action without Discord state.',
+    parameters: readSchema('tool-continue-lifecycle-params.schema.json'),
+    async execute(_toolCallId: string, params: unknown) {
+      const rawParams: unknown = params;
+      const decoded = decodeWithCodec(
+        ContinueLifecycleToolInputCodec,
+        rawParams,
+      );
+      if (!decoded.ok) {
+        return createTextResult({ status: 'failed', error: decoded.error });
+      }
+
+      const decision =
+        await createDefaultSupervisorCycleService().continueLifecycle(
+          decoded.value,
+        );
+      return createTextResult(decision);
+    },
+  };
+
+  return tool;
+}
+
 /**
  * Creates the full DevPlat OpenClaw tool inventory in registration order.
  */
@@ -2407,5 +2437,6 @@ export function createDevplatOpenClawTools(): AnyAgentTool[] {
     createSubmitGitHubActionTool(),
     createValidateArtifactTool(),
     createRunSupervisorStepTool(),
+    createContinueLifecycleTool(),
   ];
 }

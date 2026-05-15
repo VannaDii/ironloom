@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  createSupervisorContinuation,
   createSupervisorDecision,
   createSupervisorRoutePlan,
   decideNextState,
@@ -9,6 +10,7 @@ import {
 } from './logic.js';
 import type {
   SupervisorDecision,
+  SupervisorContinuationRequest,
   SupervisorLifecycleSignal,
   SupervisorPhase,
 } from './codec.js';
@@ -32,6 +34,13 @@ type SupervisorLogicInputs =
       approved: boolean;
       currentPhase: SupervisorPhase;
       lifecycleSignals: SupervisorLifecycleSignal[];
+    }
+  | {
+      mode: 'continuation';
+      request: SupervisorContinuationRequest;
+      expectedToolName: string;
+      expectedStatus: SupervisorDecision['status'];
+      expectedMissingArtifactTypes: string[];
     };
 
 type SupervisorLogicCase = {
@@ -242,6 +251,677 @@ describe('SupervisorDecision logic', () => {
 
         expect(routePlan.nextPhase).toBe('continuation');
         expect(routePlan.routedTo).toBe('branching-service');
+      },
+    },
+    {
+      name: 'starts headless work by requesting research',
+      inputs: {
+        mode: 'continuation',
+        request: {
+          requestId: 'continue-empty',
+          repositoryKey: 'VannaDii/devplat',
+          objective: 'Build the first headless continuation lane.',
+          actorId: 'agent-1',
+          updatedAt: '2026-05-15T00:00:00.000Z',
+          artifacts: [],
+        },
+        expectedToolName: 'create_research_brief',
+        expectedStatus: 'running',
+        expectedMissingArtifactTypes: ['research-brief'],
+      },
+      mock: () => undefined,
+      assert: (inputs) => {
+        if (inputs.mode !== 'continuation') {
+          throw new Error('expected continuation inputs');
+        }
+
+        const decision = createSupervisorContinuation(inputs.request);
+
+        expect(decision.nextAction).toMatchObject({
+          kind: 'create-research-brief',
+          phase: 'research',
+          toolName: inputs.expectedToolName,
+          requiresHumanApproval: false,
+        });
+        expect(decision.status).toBe(inputs.expectedStatus);
+        expect(decision.nextAction.missingArtifactTypes).toEqual(
+          inputs.expectedMissingArtifactTypes,
+        );
+      },
+    },
+    {
+      name: 'stops headless work for spec approval before slicing',
+      inputs: {
+        mode: 'continuation',
+        request: {
+          requestId: 'continue-draft-spec',
+          repositoryKey: 'VannaDii/devplat',
+          objective: 'Build the first headless continuation lane.',
+          actorId: 'agent-1',
+          updatedAt: '2026-05-15T00:00:00.000Z',
+          artifacts: [
+            {
+              artifactId: 'research-artifact-1',
+              artifactType: 'research-brief',
+              status: 'complete',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'spec-artifact-1',
+              artifactType: 'spec-record',
+              status: 'draft',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+          ],
+        },
+        expectedToolName: 'approve_spec_record',
+        expectedStatus: 'review',
+        expectedMissingArtifactTypes: [],
+      },
+      mock: () => undefined,
+      assert: (inputs) => {
+        if (inputs.mode !== 'continuation') {
+          throw new Error('expected continuation inputs');
+        }
+
+        const decision = createSupervisorContinuation(inputs.request);
+
+        expect(decision.nextAction).toMatchObject({
+          kind: 'request-spec-approval',
+          phase: 'spec',
+          toolName: inputs.expectedToolName,
+          requiresHumanApproval: true,
+        });
+        expect(decision.status).toBe(inputs.expectedStatus);
+        expect(decision.blockers).toEqual(['spec approval required']);
+      },
+    },
+    {
+      name: 'routes completed research to spec creation',
+      inputs: {
+        mode: 'continuation',
+        request: {
+          requestId: 'continue-research',
+          repositoryKey: 'VannaDii/devplat',
+          objective: 'Build the first headless continuation lane.',
+          actorId: 'agent-1',
+          updatedAt: '2026-05-15T00:00:00.000Z',
+          artifacts: [
+            {
+              artifactId: 'research-artifact-1',
+              artifactType: 'research-brief',
+              status: 'complete',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+          ],
+        },
+        expectedToolName: 'create_spec_record',
+        expectedStatus: 'running',
+        expectedMissingArtifactTypes: ['spec-record'],
+      },
+      mock: () => undefined,
+      assert: (inputs) => {
+        if (inputs.mode !== 'continuation') {
+          throw new Error('expected continuation inputs');
+        }
+
+        const decision = createSupervisorContinuation(inputs.request);
+
+        expect(decision.nextAction).toMatchObject({
+          kind: 'create-spec-record',
+          phase: 'spec',
+          toolName: inputs.expectedToolName,
+        });
+        expect(decision.nextAction.missingArtifactTypes).toEqual(
+          inputs.expectedMissingArtifactTypes,
+        );
+      },
+    },
+    {
+      name: 'routes approved specs to slice planning',
+      inputs: {
+        mode: 'continuation',
+        request: {
+          requestId: 'continue-approved-spec',
+          repositoryKey: 'VannaDii/devplat',
+          objective: 'Build the first headless continuation lane.',
+          actorId: 'agent-1',
+          updatedAt: '2026-05-15T00:00:00.000Z',
+          artifacts: [
+            {
+              artifactId: 'research-artifact-1',
+              artifactType: 'research-brief',
+              status: 'complete',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'spec-artifact-1',
+              artifactType: 'spec-record',
+              status: 'approved',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+          ],
+        },
+        expectedToolName: 'create_slice_plan',
+        expectedStatus: 'running',
+        expectedMissingArtifactTypes: ['slice-plan'],
+      },
+      mock: () => undefined,
+      assert: (inputs) => {
+        if (inputs.mode !== 'continuation') {
+          throw new Error('expected continuation inputs');
+        }
+
+        const decision = createSupervisorContinuation(inputs.request);
+
+        expect(decision.nextAction).toMatchObject({
+          kind: 'create-slice-plan',
+          phase: 'slicing',
+          toolName: inputs.expectedToolName,
+        });
+        expect(decision.nextAction.artifactIds).toEqual([
+          'research-artifact-1',
+          'spec-artifact-1',
+        ]);
+        expect(decision.nextAction.missingArtifactTypes).toEqual(
+          inputs.expectedMissingArtifactTypes,
+        );
+      },
+    },
+    {
+      name: 'routes claimed tasks to worktree allocation',
+      inputs: {
+        mode: 'continuation',
+        request: {
+          requestId: 'continue-task',
+          repositoryKey: 'VannaDii/devplat',
+          objective: 'Build the first headless continuation lane.',
+          actorId: 'agent-1',
+          updatedAt: '2026-05-15T00:00:00.000Z',
+          artifacts: [
+            {
+              artifactId: 'research-artifact-1',
+              artifactType: 'research-brief',
+              status: 'complete',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'spec-artifact-1',
+              artifactType: 'spec-record',
+              status: 'approved',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'slice-artifact-1',
+              artifactType: 'slice-plan',
+              status: 'complete',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'task-artifact-1',
+              artifactType: 'task-record',
+              status: 'claimed',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+          ],
+        },
+        expectedToolName: 'allocate_worktree',
+        expectedStatus: 'running',
+        expectedMissingArtifactTypes: ['worktree-allocation'],
+      },
+      mock: () => undefined,
+      assert: (inputs) => {
+        if (inputs.mode !== 'continuation') {
+          throw new Error('expected continuation inputs');
+        }
+
+        const decision = createSupervisorContinuation(inputs.request);
+
+        expect(decision.nextAction).toMatchObject({
+          kind: 'allocate-worktree',
+          phase: 'implementation',
+          toolName: inputs.expectedToolName,
+        });
+        expect(decision.nextAction.missingArtifactTypes).toEqual(
+          inputs.expectedMissingArtifactTypes,
+        );
+      },
+    },
+    {
+      name: 'routes implementation artifacts to gates',
+      inputs: {
+        mode: 'continuation',
+        request: {
+          requestId: 'continue-worktree',
+          repositoryKey: 'VannaDii/devplat',
+          objective: 'Build the first headless continuation lane.',
+          actorId: 'agent-1',
+          updatedAt: '2026-05-15T00:00:00.000Z',
+          artifacts: [
+            {
+              artifactId: 'research-artifact-1',
+              artifactType: 'research-brief',
+              status: 'complete',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'spec-artifact-1',
+              artifactType: 'spec-record',
+              status: 'approved',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'slice-artifact-1',
+              artifactType: 'slice-plan',
+              status: 'complete',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'task-artifact-1',
+              artifactType: 'task-record',
+              status: 'claimed',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'worktree-artifact-1',
+              artifactType: 'worktree-allocation',
+              status: 'complete',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+          ],
+        },
+        expectedToolName: 'run_gates',
+        expectedStatus: 'running',
+        expectedMissingArtifactTypes: ['gate-run-report'],
+      },
+      mock: () => undefined,
+      assert: (inputs) => {
+        if (inputs.mode !== 'continuation') {
+          throw new Error('expected continuation inputs');
+        }
+
+        const decision = createSupervisorContinuation(inputs.request);
+
+        expect(decision.nextAction).toMatchObject({
+          kind: 'run-gates',
+          phase: 'gates',
+          toolName: inputs.expectedToolName,
+        });
+        expect(decision.nextAction.missingArtifactTypes).toEqual(
+          inputs.expectedMissingArtifactTypes,
+        );
+      },
+    },
+    {
+      name: 'routes failed gates to remediation',
+      inputs: {
+        mode: 'continuation',
+        request: {
+          requestId: 'continue-failed-gates',
+          repositoryKey: 'VannaDii/devplat',
+          objective: 'Build the first headless continuation lane.',
+          actorId: 'agent-1',
+          updatedAt: '2026-05-15T00:00:00.000Z',
+          artifacts: [
+            {
+              artifactId: 'research-artifact-1',
+              artifactType: 'research-brief',
+              status: 'complete',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'spec-artifact-1',
+              artifactType: 'spec-record',
+              status: 'approved',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'slice-artifact-1',
+              artifactType: 'slice-plan',
+              status: 'complete',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'task-artifact-1',
+              artifactType: 'task-record',
+              status: 'claimed',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'worktree-artifact-1',
+              artifactType: 'worktree-allocation',
+              status: 'complete',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'gate-artifact-1',
+              artifactType: 'gate-run-report',
+              status: 'failed',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+              nextAction: 'create-remediation-plan',
+            },
+          ],
+        },
+        expectedToolName: 'create_remediation_plan',
+        expectedStatus: 'running',
+        expectedMissingArtifactTypes: ['remediation-plan'],
+      },
+      mock: () => undefined,
+      assert: (inputs) => {
+        if (inputs.mode !== 'continuation') {
+          throw new Error('expected continuation inputs');
+        }
+
+        const decision = createSupervisorContinuation(inputs.request);
+
+        expect(decision.nextAction).toMatchObject({
+          kind: 'create-remediation-plan',
+          phase: 'remediation',
+          toolName: inputs.expectedToolName,
+        });
+        expect(decision.nextAction.artifactIds).toContain('gate-artifact-1');
+      },
+    },
+    {
+      name: 'routes passed gates to pull request projection',
+      inputs: {
+        mode: 'continuation',
+        request: {
+          requestId: 'continue-passed-gates',
+          repositoryKey: 'VannaDii/devplat',
+          objective: 'Build the first headless continuation lane.',
+          actorId: 'agent-1',
+          updatedAt: '2026-05-15T00:00:00.000Z',
+          artifacts: [
+            {
+              artifactId: 'research-artifact-1',
+              artifactType: 'research-brief',
+              status: 'complete',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'spec-artifact-1',
+              artifactType: 'spec-record',
+              status: 'approved',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'slice-artifact-1',
+              artifactType: 'slice-plan',
+              status: 'complete',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'task-artifact-1',
+              artifactType: 'task-record',
+              status: 'claimed',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'worktree-artifact-1',
+              artifactType: 'worktree-allocation',
+              status: 'complete',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'gate-artifact-1',
+              artifactType: 'gate-run-report',
+              status: 'complete',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+          ],
+        },
+        expectedToolName: 'create_pull_request_record',
+        expectedStatus: 'running',
+        expectedMissingArtifactTypes: ['pull-request-record'],
+      },
+      mock: () => undefined,
+      assert: (inputs) => {
+        if (inputs.mode !== 'continuation') {
+          throw new Error('expected continuation inputs');
+        }
+
+        const decision = createSupervisorContinuation(inputs.request);
+
+        expect(decision.nextAction).toMatchObject({
+          kind: 'create-pull-request-record',
+          phase: 'merge',
+          toolName: inputs.expectedToolName,
+        });
+        expect(decision.nextAction.missingArtifactTypes).toEqual(
+          inputs.expectedMissingArtifactTypes,
+        );
+      },
+    },
+    {
+      name: 'routes merge-ready pull requests to merge submission',
+      inputs: {
+        mode: 'continuation',
+        request: {
+          requestId: 'continue-merge-ready',
+          repositoryKey: 'VannaDii/devplat',
+          objective: 'Build the first headless continuation lane.',
+          actorId: 'agent-1',
+          updatedAt: '2026-05-15T00:00:00.000Z',
+          artifacts: [
+            {
+              artifactId: 'research-artifact-1',
+              artifactType: 'research-brief',
+              status: 'complete',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'spec-artifact-1',
+              artifactType: 'spec-record',
+              status: 'approved',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'slice-artifact-1',
+              artifactType: 'slice-plan',
+              status: 'complete',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'task-artifact-1',
+              artifactType: 'task-record',
+              status: 'claimed',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'worktree-artifact-1',
+              artifactType: 'worktree-allocation',
+              status: 'complete',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'gate-artifact-1',
+              artifactType: 'gate-run-report',
+              status: 'complete',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'pr-artifact-1',
+              artifactType: 'pull-request-record',
+              status: 'merge-ready',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+          ],
+        },
+        expectedToolName: 'submit_pull_request_merge',
+        expectedStatus: 'running',
+        expectedMissingArtifactTypes: [],
+      },
+      mock: () => undefined,
+      assert: (inputs) => {
+        if (inputs.mode !== 'continuation') {
+          throw new Error('expected continuation inputs');
+        }
+
+        const decision = createSupervisorContinuation(inputs.request);
+
+        expect(decision.nextAction).toMatchObject({
+          kind: 'submit-pull-request-merge',
+          phase: 'merge',
+          toolName: inputs.expectedToolName,
+        });
+        expect(decision.nextAction.missingArtifactTypes).toEqual(
+          inputs.expectedMissingArtifactTypes,
+        );
+      },
+    },
+    {
+      name: 'routes non-ready pull requests to update submission',
+      inputs: {
+        mode: 'continuation',
+        request: {
+          requestId: 'continue-pr-update',
+          repositoryKey: 'VannaDii/devplat',
+          objective: 'Build the first headless continuation lane.',
+          actorId: 'agent-1',
+          updatedAt: '2026-05-15T00:00:00.000Z',
+          artifacts: [
+            {
+              artifactId: 'research-artifact-1',
+              artifactType: 'research-brief',
+              status: 'complete',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'spec-artifact-1',
+              artifactType: 'spec-record',
+              status: 'approved',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'slice-artifact-1',
+              artifactType: 'slice-plan',
+              status: 'complete',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'task-artifact-1',
+              artifactType: 'task-record',
+              status: 'claimed',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'worktree-artifact-1',
+              artifactType: 'worktree-allocation',
+              status: 'complete',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'gate-artifact-1',
+              artifactType: 'gate-run-report',
+              status: 'complete',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'pr-artifact-1',
+              artifactType: 'pull-request-record',
+              status: 'review',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+          ],
+        },
+        expectedToolName: 'submit_pull_request_update',
+        expectedStatus: 'running',
+        expectedMissingArtifactTypes: [],
+      },
+      mock: () => undefined,
+      assert: (inputs) => {
+        if (inputs.mode !== 'continuation') {
+          throw new Error('expected continuation inputs');
+        }
+
+        const decision = createSupervisorContinuation(inputs.request);
+
+        expect(decision.nextAction).toMatchObject({
+          kind: 'submit-pull-request-update',
+          phase: 'merge',
+          toolName: inputs.expectedToolName,
+        });
+        expect(decision.nextAction.missingArtifactTypes).toEqual(
+          inputs.expectedMissingArtifactTypes,
+        );
+      },
+    },
+    {
+      name: 'routes merged pull requests to dependent rebase planning',
+      inputs: {
+        mode: 'continuation',
+        request: {
+          requestId: 'continue-merged-pr',
+          repositoryKey: 'VannaDii/devplat',
+          objective: 'Build the first headless continuation lane.',
+          actorId: 'agent-1',
+          updatedAt: '2026-05-15T00:00:00.000Z',
+          artifacts: [
+            {
+              artifactId: 'research-artifact-1',
+              artifactType: 'research-brief',
+              status: 'complete',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'spec-artifact-1',
+              artifactType: 'spec-record',
+              status: 'approved',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'slice-artifact-1',
+              artifactType: 'slice-plan',
+              status: 'complete',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'task-artifact-1',
+              artifactType: 'task-record',
+              status: 'claimed',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'worktree-artifact-1',
+              artifactType: 'worktree-allocation',
+              status: 'complete',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'gate-artifact-1',
+              artifactType: 'gate-run-report',
+              status: 'complete',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+            {
+              artifactId: 'pr-artifact-1',
+              artifactType: 'pull-request-record',
+              status: 'merged',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+          ],
+        },
+        expectedToolName: 'plan_rebase_dependents',
+        expectedStatus: 'running',
+        expectedMissingArtifactTypes: [],
+      },
+      mock: () => undefined,
+      assert: (inputs) => {
+        if (inputs.mode !== 'continuation') {
+          throw new Error('expected continuation inputs');
+        }
+
+        const decision = createSupervisorContinuation(inputs.request);
+
+        expect(decision.nextAction).toMatchObject({
+          kind: 'plan-rebase-dependents',
+          phase: 'continuation',
+          toolName: inputs.expectedToolName,
+        });
+        expect(decision.nextAction.missingArtifactTypes).toEqual(
+          inputs.expectedMissingArtifactTypes,
+        );
       },
     },
   ] satisfies SupervisorLogicCase[];

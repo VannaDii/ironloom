@@ -64,6 +64,11 @@ normalizes status, artifact id, persisted record key, policy decision id,
 telemetry event id, and next-action hints without changing the package-owned
 payload, so agents and operators can read a consistent handoff shape while the
 adapter remains delegation-only.
+Headless continuation is exposed through `continue_lifecycle`. The tool
+delegates to `@vannadii/devplat-supervisor`, accepts repository/objective/actor
+state plus known lifecycle artifact signals, and returns the next platform tool
+to call. It does not require Discord thread bindings; Discord can still project
+the same lifecycle state when an operator surface is needed.
 
 ## Exposed Tools
 
@@ -132,6 +137,7 @@ surface, and tests stay aligned.
 - `submit_github_action`: submit a GitHub action request result
 - `validate_artifact`: validate artifact envelopes against platform contracts, delegated package payload codecs, and optional active repository registry constraints; required-migration failures preserve structured diagnostics, including ordered migration ids when the registry can bridge the stale artifact version to the current version
 - `run_supervisor_step`: run a supervisor orchestration step
+- `continue_lifecycle`: choose the next headless software-building tool from repository and lifecycle artifact state
 
 ## Deterministic Generation
 

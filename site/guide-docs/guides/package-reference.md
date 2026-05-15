@@ -15,6 +15,11 @@
 - `@vannadii/devplat-gates`, `@vannadii/devplat-review`, `@vannadii/devplat-remediation`
 - `@vannadii/devplat-prs`, `@vannadii/devplat-branching`, `@vannadii/devplat-supervisor`
 
+`@vannadii/devplat-supervisor` also owns headless continuation decisions. These
+decisions take repository/objective/actor context plus known lifecycle artifact
+signals and return the next concrete platform tool, route owner, missing
+artifact types, input requirements, and approval blockers.
+
 ## Integration Packages
 
 - `@vannadii/devplat-storage`: the only package allowed to read or write `.devplat/` paths directly

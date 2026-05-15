@@ -4,6 +4,7 @@ import { decodeWithCodec } from '@vannadii/devplat-core';
 
 import {
   AllocateWorktreeToolInputCodec,
+  ContinueLifecycleToolInputCodec,
   CreateResearchBriefToolInputCodec,
   EvaluateSonarQualityGateToolInputCodec,
   ExecuteCommandToolInputCodec,
@@ -165,6 +166,24 @@ describe('tool surface codecs', () => {
               privileged: true,
             },
           },
+          {
+            codec: ContinueLifecycleToolInputCodec,
+            value: {
+              requestId: 'continue-1',
+              repositoryKey: 'VannaDii/devplat',
+              objective: 'Build headless lifecycle continuation.',
+              actorId: 'agent-1',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+              artifacts: [
+                {
+                  artifactId: 'spec-artifact-1',
+                  artifactType: 'spec-record',
+                  status: 'approved',
+                  updatedAt: '2026-05-15T00:00:00.000Z',
+                },
+              ],
+            },
+          },
         ],
       },
       mock: async ({ decoders }) =>
@@ -232,6 +251,17 @@ describe('tool surface codecs', () => {
               action: 'retry-gates',
               actorId: 1,
               privileged: true,
+            },
+          },
+          {
+            codec: ContinueLifecycleToolInputCodec,
+            value: {
+              requestId: 'continue-1',
+              repositoryKey: 'devplat',
+              objective: 'Build headless lifecycle continuation.',
+              actorId: 'agent-1',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+              artifacts: [],
             },
           },
           {
