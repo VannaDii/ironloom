@@ -13,6 +13,7 @@ import {
   parseDiscordUxLiveLabArgs,
   runDiscordUxLiveLab,
   runDiscordUxInteractionProbe,
+  startDiscordUxGatewayRuntime,
 } from './discord-ux-live-lab.mjs';
 
 /**
@@ -883,6 +884,75 @@ describe('Discord UX live-lab helpers', () => {
           ],
         });
         expect(runtimeReport.events).toHaveLength(2);
+      },
+    },
+    {
+      name: 'closes Gateway sessions when READY startup times out',
+      inputs: {},
+      mock: async () => {
+        const reportDirectory = await mkdtemp(
+          resolve(tmpdir(), 'devplat-discord-ux-gateway-timeout-'),
+        );
+        const closeCalls = [];
+        const startInputs = [];
+        const run = async () =>
+          startDiscordUxGatewayRuntime(
+            {
+              environment: {
+                discord: {
+                  applicationId: 'application-1',
+                  baseUrl: 'https://discord.test/api/v10',
+                  botToken: 'bot-token-1',
+                  gatewayIntents: 0,
+                  gatewayUrl: 'wss://gateway.discord.test/?v=10&encoding=json',
+                  guildId: 'guild-1',
+                },
+                githubWorkflow: {
+                  eventName: 'workflow_dispatch',
+                  ref: 'feature/live-ux',
+                  runAttempt: '1',
+                  runNumber: '200',
+                  sha: 'sha-1',
+                  stepSummaryPath: null,
+                },
+              },
+              reportDirectory,
+              startTimeoutMs: 0,
+            },
+            {
+              client: {
+                start: (input) => {
+                  startInputs.push(input);
+
+                  return {
+                    close: () => {
+                      closeCalls.push('closed');
+                    },
+                    gatewayUrl: input.gatewayUrl,
+                  };
+                },
+              },
+            },
+          );
+
+        return {
+          closeCalls,
+          run,
+          startInputs,
+        };
+      },
+      assert: async ({ closeCalls, run, startInputs }) => {
+        await expect(run()).rejects.toThrow(
+          'Discord Gateway runtime did not become ready in time.',
+        );
+        expect(closeCalls).toEqual(['closed']);
+        expect(startInputs).toEqual([
+          expect.objectContaining({
+            botToken: 'bot-token-1',
+            gatewayUrl: 'wss://gateway.discord.test/?v=10&encoding=json',
+            intents: 0,
+          }),
+        ]);
       },
     },
   ];

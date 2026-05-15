@@ -44,6 +44,9 @@ thread-session binding used by automated route replay. Manual workflow-dispatch
 runs now default that hold window to 150000 ms so the posted controls have a live
 receiver by default; PR-triggered runs keep the zero-hold automated-gate behavior
 unless a caller explicitly opts into a hold window.
+Gateway startup timeout handling disposes the partially opened session before
+rethrowing, and the runtime report is written after the hold window so reported
+clicks reflect the final manual-validation state.
 
 The OpenClaw live lab also tolerates GitHub's workflow indexing delay after
 creating a fresh sandbox repository, retrying transient workflow dispatch 422s

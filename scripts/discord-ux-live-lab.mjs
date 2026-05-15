@@ -1055,18 +1055,16 @@ async function writeGatewayRuntimeReport({ errors, events, reportDirectory }) {
 }
 
 /**
- * Starts a real Discord Gateway worker beside the live UX probe.
+ * Creates the real Discord Gateway client used by live UX probes.
  */
-async function startDiscordUxGatewayRuntime({
+async function createDiscordUxGatewayRuntimeClient({
   environment,
-  reportDirectory,
-  startTimeoutMs = discordGatewayReadyTimeoutMs,
+  stateDirectory,
 }) {
   const discordEntrypoint = await resolveWorkspacePackageEntrypoint('discord');
   const storageEntrypoint = await resolveWorkspacePackageEntrypoint('storage');
   const discordModule = await import(pathToFileURL(discordEntrypoint).href);
   const storageModule = await import(pathToFileURL(storageEntrypoint).href);
-  const stateDirectory = createDiscordUxGatewayStateDirectory(reportDirectory);
   const store = new storageModule.FileStoreService(stateDirectory);
   const transport = new discordModule.DiscordRestResponseTransport(
     environment.discord.botToken,
@@ -1088,6 +1086,28 @@ async function startDiscordUxGatewayRuntime({
     undefined,
     handler,
   );
+
+  return client;
+}
+
+/**
+ * Starts a real Discord Gateway worker beside the live UX probe.
+ */
+export async function startDiscordUxGatewayRuntime(
+  {
+    environment,
+    reportDirectory,
+    startTimeoutMs = discordGatewayReadyTimeoutMs,
+  },
+  dependencies = {},
+) {
+  const stateDirectory = createDiscordUxGatewayStateDirectory(reportDirectory);
+  const client =
+    dependencies.client ??
+    (await createDiscordUxGatewayRuntimeClient({
+      environment,
+      stateDirectory,
+    }));
   const events = [];
   const errors = [];
   let readyResolver = () => undefined;
@@ -1122,17 +1142,28 @@ async function startDiscordUxGatewayRuntime({
       }).catch(() => undefined);
     },
   });
+  const sessionResources = new DisposableStack();
+  sessionResources.defer(() => {
+    session.close();
+  });
 
-  await Promise.race([
-    ready,
-    sleep(startTimeoutMs).then(() => {
-      throw new Error('Discord Gateway runtime did not become ready in time.');
-    }),
-  ]);
+  try {
+    await Promise.race([
+      ready,
+      sleep(startTimeoutMs).then(() => {
+        throw new Error(
+          'Discord Gateway runtime did not become ready in time.',
+        );
+      }),
+    ]);
+  } catch (error) {
+    sessionResources.dispose();
+    throw error;
+  }
 
   return {
     close: () => {
-      session.close();
+      sessionResources.dispose();
     },
     errors,
     events,
@@ -1443,18 +1474,7 @@ export async function runDiscordUxLiveLab(options, dependencies = {}) {
     report.routeReplays = probe.routeReplays;
 
     if (gatewayRuntime !== null && operatorHoldMs > 0) {
-      await writeGatewayRuntimeReport({
-        errors: gatewayRuntime.errors,
-        events: gatewayRuntime.events,
-        reportDirectory,
-      });
       await sleepFn(operatorHoldMs);
-      report.gatewayRuntime = {
-        operatorHoldMs,
-        stateDirectory: gatewayRuntime.stateDirectory,
-        events: gatewayRuntime.events,
-        errors: gatewayRuntime.errors,
-      };
       await writeGatewayRuntimeReport({
         errors: gatewayRuntime.errors,
         events: gatewayRuntime.events,

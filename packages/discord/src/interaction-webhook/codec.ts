@@ -81,6 +81,10 @@ export const DiscordInteractionWebhookResultCodec = t.intersection([
     responseBody: DiscordInteractionWebhookResponseBodyCodec,
   }),
   t.partial({
+    /**
+     * Accepted Discord interaction id used for background persistence lookup;
+     * this does not guarantee that durable control-plane storage has completed.
+     */
     persistedKey: t.string,
     policyDecisionId: t.string,
     threadId: t.string,
