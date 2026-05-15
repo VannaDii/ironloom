@@ -10,6 +10,9 @@
 6. Operator actions flow through OpenClaw + Discord with auditable artifacts.
 7. Release automation publishes aligned packages, images, charts, and docs.
 
+For the command-level operator workflow from research through PR acceptance,
+use the [Commanded Delivery Flow](./operator-guide.md#commanded-delivery-flow).
+
 ## Source of Truth
 
 - GitHub owns specs, pull requests, approvals, reviews, and merge history.

@@ -39,7 +39,10 @@ marker for the action. The webhook helper returns the same structured payload
 shape for explicit deployments that choose inbound callbacks, but the production
 runtime path does not require public ingress. Route failures and policy denials use standard
 blocked/refused messages and still write audit records. The exported
-command contract registry is the source for guild slash-command registration.
+command contract registry is the source for guild slash-command registration;
+the operator-facing command flow is documented in the guide docs'
+`operator-guide.md`, and the exact slash-command table is documented in
+`discord-workflows.md`.
 The live lab registers those commands and includes a Discord callback-shaped
 interaction probe so this response path is validated from raw slash-command
 payload normalization through operator-visible Discord messages, not only local

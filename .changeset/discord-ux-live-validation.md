@@ -51,3 +51,7 @@ clicks reflect the final manual-validation state.
 The OpenClaw live lab also tolerates GitHub's workflow indexing delay after
 creating a fresh sandbox repository, retrying transient workflow dispatch 422s
 long enough for the seeded `workflow_dispatch` canary to become available.
+
+Operator documentation now includes the exact registered Discord slash-command
+reference plus a Mermaid command flow that shows how OpenClaw tools and Discord
+commands carry a change from research and spec creation through PR acceptance.

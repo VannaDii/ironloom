@@ -46,18 +46,10 @@ npm run docs:build
 
 Use a small spec or implementation request that can be validated without publishing. The path should prove thread binding, lifecycle artifacts, task execution, gates, review projection, and PR update preparation before any merge.
 
-```mermaid
-flowchart TD
-  Start[Pick a small repository task] --> Research[Create research brief]
-  Research --> Spec[Create and approve spec record]
-  Spec --> Slice[Create PR-sized slice plan]
-  Slice --> Task[Claim task and allocate worktree]
-  Task --> Gates[Run gates and classify failures]
-  Gates --> Review[Create review and remediation artifacts]
-  Review --> PR[Prepare GitHub PR projection]
-  PR --> Policy[Evaluate merge and rebase policy]
-  Policy --> Status[Show Discord/OpenClaw status and last artifact]
-```
+The command-by-command operator path for the same lifecycle is documented in
+the [Operator Guide](./operator-guide.md#commanded-delivery-flow), with the
+exact Discord slash-command reference in
+[Discord Workflows](./discord-workflows.md#operator-actions).
 
 Run the hermetic cycle first:
 
@@ -86,6 +78,8 @@ npm run test:openclaw:live-lab:local
 Expected operator-visible results:
 
 - slash command contracts are registered for the configured guild
+- the registered commands match the documented `/run-this`, `/retry-gates`,
+  `/merge-now`, status, artifact, and remediation controls
 - simulated or real interaction callbacks resolve a bound thread context
 - ambiguous or missing bindings fail closed
 - status, audit, and last-artifact responses are posted to the intended thread
