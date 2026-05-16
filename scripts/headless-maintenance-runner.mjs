@@ -607,6 +607,21 @@ function appendExternalToolInput(plan, toolInput) {
 }
 
 /**
+ * Validates an external tool input against the runtime tool inventory.
+ */
+function validateExternalToolInputToolName(toolInput, tools) {
+  const toolNames = new Set(tools.map((tool) => tool.name));
+
+  if (!toolNames.has(toolInput.toolName)) {
+    throw new Error(
+      `Maintenance tool input toolName "${toolInput.toolName}" is not in the platform tool inventory.`,
+    );
+  }
+
+  return toolInput;
+}
+
+/**
  * Creates the stored plan entry for an external tool input.
  */
 function createExternalToolInputEntry(toolInput) {
@@ -622,6 +637,10 @@ function createExternalToolInputEntry(toolInput) {
  * Resolves plan and handoff paths from parsed command-line arguments.
  */
 function resolveRunnerPaths(args) {
+  if (args.planPath !== undefined && args.handoff) {
+    throw new Error('Use either --plan or --handoff, not both.');
+  }
+
   const planPath =
     args.planPath ?? (args.handoff ? DEFAULT_HANDOFF_PLAN_PATH : undefined);
 
@@ -878,14 +897,18 @@ export async function main({
 } = {}) {
   const args = parseHeadlessMaintenanceRunnerArgs(argv);
   const paths = resolveRunnerPaths(args);
-
-  const plan =
+  const basePlan = await readPlan(paths.planPath, baseDirectory);
+  const toolInput =
     args.toolInputPath === undefined
-      ? await readPlan(paths.planPath, baseDirectory)
-      : appendExternalToolInput(
-          await readPlan(paths.planPath, baseDirectory),
+      ? undefined
+      : validateExternalToolInputToolName(
           await readExternalToolInput(args.toolInputPath, baseDirectory),
+          tools,
         );
+  const plan =
+    toolInput === undefined
+      ? basePlan
+      : appendExternalToolInput(basePlan, toolInput);
   const maxSteps = args.maxSteps ?? plan.maxSteps;
   const report = await runHeadlessMaintenanceLoop({
     ...plan,

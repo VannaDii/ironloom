@@ -335,7 +335,6 @@ describe('headless-maintenance-runner', () => {
       name: 'parses plan max step flags',
       inputs: {
         argv: [
-          '--handoff',
           '--plan',
           'maintenance-plan.json',
           '--tool-input',
@@ -349,7 +348,7 @@ describe('headless-maintenance-runner', () => {
       mock: async () => undefined,
       assert: async (_context, inputs) => {
         expect(parseHeadlessMaintenanceRunnerArgs(inputs.argv)).toEqual({
-          handoff: true,
+          handoff: false,
           maxSteps: 3,
           planPath: 'maintenance-plan.json',
           toolInputPath: 'next-tool-input.json',
@@ -529,6 +528,111 @@ describe('headless-maintenance-runner', () => {
               writeOutput: () => undefined,
             }),
           ).rejects.toThrow('Maintenance tool input JSON is invalid');
+        } finally {
+          await rm(directory, { force: true, recursive: true });
+        }
+      },
+    },
+    {
+      name: 'rejects explicit plan and handoff mode before running tools',
+      inputs: {
+        plan: {
+          request: baseRequest,
+          toolInputs: {},
+        },
+      },
+      mock: async () => {
+        const executed = [];
+        const tools = [
+          createTool('continue_lifecycle', async () => {
+            executed.push('continue_lifecycle');
+
+            return createResult(
+              createDecision({
+                toolName: 'create_research_brief',
+                requiresHumanApproval: false,
+                blockers: [],
+                missingArtifactTypes: ['research-brief'],
+              }),
+            );
+          }),
+        ];
+
+        return { executed, tools };
+      },
+      assert: async (context, inputs) => {
+        const planPath = await writeTempPlan(inputs.plan);
+
+        try {
+          await expect(
+            main({
+              argv: ['--plan', planPath, '--handoff'],
+              tools: context.tools,
+              writeOutput: () => undefined,
+            }),
+          ).rejects.toThrow('Use either --plan or --handoff, not both.');
+          expect(context.executed).toEqual([]);
+        } finally {
+          await rm(dirname(planPath), { force: true, recursive: true });
+        }
+      },
+    },
+    {
+      name: 'rejects unknown external tool names before running tools',
+      inputs: {
+        plan: {
+          request: baseRequest,
+          toolInputs: {},
+        },
+        toolInput: {
+          toolName: 'missing_platform_tool',
+          params: {
+            researchId: 'research-1',
+          },
+        },
+      },
+      mock: async () => {
+        const executed = [];
+        const tools = [
+          createTool('continue_lifecycle', async () => {
+            executed.push('continue_lifecycle');
+
+            return createResult(
+              createDecision({
+                toolName: 'create_research_brief',
+                requiresHumanApproval: false,
+                blockers: [],
+                missingArtifactTypes: ['research-brief'],
+              }),
+            );
+          }),
+        ];
+
+        return { executed, tools };
+      },
+      assert: async (context, inputs) => {
+        const directory = await mkdtemp(join(tmpdir(), 'devplat-handoff-'));
+        const planPath = join(directory, 'plan.json');
+        const toolInputPath = join(directory, 'next-tool-input.json');
+
+        try {
+          await writeFile(planPath, JSON.stringify(inputs.plan), 'utf8');
+          await writeFile(
+            toolInputPath,
+            JSON.stringify(inputs.toolInput),
+            'utf8',
+          );
+
+          await expect(
+            main({
+              argv: ['--plan', planPath, '--tool-input', toolInputPath],
+              tools: context.tools,
+              writeOutput: () => undefined,
+            }),
+          ).rejects.toThrow(
+            'Maintenance tool input toolName "missing_platform_tool" is not in the platform tool inventory.',
+          );
+          expect(context.executed).toEqual([]);
         } finally {
           await rm(directory, { force: true, recursive: true });
         }

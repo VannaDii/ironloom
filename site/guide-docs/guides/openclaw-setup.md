@@ -54,16 +54,25 @@ timestamp, and known lifecycle artifact signals; the supervisor returns the next
 platform tool, route owner, artifact gaps, input requirements, and any human
 approval blocker.
 
-For local repository maintenance, `npm run maintenance:headless -- --plan
-./maintenance-plan.json --write-plan ./.devplat/state/next-maintenance-plan.json`
-wraps that pattern in a bounded loop: it calls `continue_lifecycle`, invokes the
-next supplied tool input, records the returned artifact signal, writes a
-resumable handoff plan when requested, and stops at missing input or human
-approval instead of guessing. After the first handoff exists, `npm run
-maintenance:headless -- --handoff --tool-input
-./.devplat/state/next-tool-input.json` reads the default ignored handoff path,
-appends one validated tool input, and rewrites the same handoff file for the
-next local run.
+For local repository maintenance:
+
+```bash
+npm run maintenance:headless -- --plan ./maintenance-plan.json --write-plan ./.devplat/state/next-maintenance-plan.json
+```
+
+This wraps that pattern in a bounded loop: it calls `continue_lifecycle`,
+invokes the next supplied tool input, records the returned artifact signal,
+writes a resumable handoff plan when requested, and stops at missing input or
+human approval instead of guessing.
+
+After the first handoff exists:
+
+```bash
+npm run maintenance:headless -- --handoff --tool-input ./.devplat/state/next-tool-input.json
+```
+
+This reads the default ignored handoff path, appends one validated tool input,
+and rewrites the same handoff file for the next local run.
 
 Required foundation-phase tool coverage includes:
 
