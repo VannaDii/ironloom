@@ -26,7 +26,10 @@ import { SlicePlanCodec } from '@vannadii/devplat-slicing';
 import { DevplatConfigCodec } from '@vannadii/devplat-config';
 import { SonarBootstrapVerificationInputCodec } from '@vannadii/devplat-sonarcloud';
 import { SpecRecordCodec } from '@vannadii/devplat-specs';
-import { SupervisorLifecycleSignalCodec } from '@vannadii/devplat-supervisor';
+import {
+  SupervisorContinuationRequestCodec,
+  SupervisorLifecycleSignalCodec,
+} from '@vannadii/devplat-supervisor';
 import { PullRequestRecordCodec } from '@vannadii/devplat-prs';
 import { TaskRecordCodec } from '@vannadii/devplat-queue';
 import { CommandExecutionOptionsCodec } from '@vannadii/devplat-execution';
@@ -356,6 +359,10 @@ export const RunSupervisorStepToolInputCodec = t.intersection([
   }),
 ]);
 
+/** Codec for continue lifecycle tool input. */
+export const ContinueLifecycleToolInputCodec =
+  SupervisorContinuationRequestCodec;
+
 /** Input for the run gates OpenClaw tool. */
 export type RunGatesToolInput = t.TypeOf<typeof RunGatesToolInputCodec>;
 
@@ -585,4 +592,9 @@ export type ValidateArtifactToolInput = t.TypeOf<
 /** Input for the run supervisor step OpenClaw tool. */
 export type RunSupervisorStepToolInput = t.TypeOf<
   typeof RunSupervisorStepToolInputCodec
+>;
+
+/** Input for the continue lifecycle OpenClaw tool. */
+export type ContinueLifecycleToolInput = t.TypeOf<
+  typeof ContinueLifecycleToolInputCodec
 >;

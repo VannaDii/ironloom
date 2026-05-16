@@ -35,6 +35,11 @@ The policy surface returns lifecycle evaluations with explicit action category,
 risk, escalation target, audit reason, privilege, and next-action metadata so
 OpenClaw callers do not need to infer merge, command, rebase, publish, autofix,
 or destructive cleanup handling.
+The headless `continue_lifecycle` tool is the non-Discord entrypoint for
+software-building loops. Callers provide the repository key, objective, actor,
+timestamp, and known lifecycle artifact signals; the supervisor returns the next
+platform tool, route owner, artifact gaps, input requirements, and any human
+approval blocker.
 
 Required foundation-phase tool coverage includes:
 
@@ -48,6 +53,7 @@ Required foundation-phase tool coverage includes:
 - artifact validation
 - review and remediation triggering
 - supervisor step control
+- headless lifecycle continuation for agent-driven software-building work
 - pull request update, merge, and dependent rebase execution semantics
 
 Keep required tool names documented in `packages/openclaw/README.md`, keep the manifest deterministic, and keep Discord-related tools thread-aware.

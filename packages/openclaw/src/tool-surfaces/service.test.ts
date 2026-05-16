@@ -24,6 +24,7 @@ import {
   createAuditLogTool,
   createBindDiscordThreadTool,
   createClaimTaskTool,
+  createContinueLifecycleTool,
   createExecuteRebaseDependentsTool,
   createEvaluateSlicePlanReadinessTool,
   createExecuteCommandTool,
@@ -4843,11 +4844,67 @@ describe('tool surface service', () => {
     });
   });
 
+  it('continues headless lifecycle work from valid tool input', async () => {
+    const result = await createContinueLifecycleTool().execute(
+      'tool-call-continue-1',
+      {
+        requestId: 'continue-1',
+        repositoryKey: 'VannaDii/devplat',
+        objective: 'Build headless lifecycle continuation.',
+        actorId: 'agent-1',
+        updatedAt: '2026-05-15T00:00:00.000Z',
+        artifacts: [
+          {
+            artifactId: 'research-artifact-1',
+            artifactType: 'research-brief',
+            status: 'complete',
+            updatedAt: '2026-05-15T00:00:00.000Z',
+          },
+          {
+            artifactId: 'spec-artifact-1',
+            artifactType: 'spec-record',
+            status: 'approved',
+            updatedAt: '2026-05-15T00:00:00.000Z',
+          },
+        ],
+      },
+    );
+
+    expect(result.details).toMatchObject({
+      requestId: 'continue-1',
+      repositoryKey: 'VannaDii/devplat',
+      nextAction: {
+        kind: 'create-slice-plan',
+        toolName: 'create_slice_plan',
+      },
+      operationalResult: {
+        status: 'running',
+        nextAction: 'create_slice_plan',
+      },
+    });
+  });
+
   it('returns decode failures for invalid supervisor input', async () => {
     const result = await createRunSupervisorStepTool().execute('tool-call-13', {
       action: 'retry-gates',
       actorId: 'operator-1',
     });
+
+    expect(result.details).toMatchObject({ status: 'failed' });
+  });
+
+  it('returns decode failures for invalid continuation input', async () => {
+    const result = await createContinueLifecycleTool().execute(
+      'tool-call-continue-2',
+      {
+        requestId: 'continue-1',
+        repositoryKey: 'devplat',
+        objective: 'Build headless lifecycle continuation.',
+        actorId: 'agent-1',
+        updatedAt: '2026-05-15T00:00:00.000Z',
+        artifacts: [],
+      },
+    );
 
     expect(result.details).toMatchObject({ status: 'failed' });
   });

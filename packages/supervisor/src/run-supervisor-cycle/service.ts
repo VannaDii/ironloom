@@ -2,11 +2,16 @@ import { TelemetryEventService } from '@vannadii/devplat-observability';
 import { DecisionPolicyService } from '@vannadii/devplat-policy';
 
 import {
+  createSupervisorContinuation,
   createSupervisorDecision,
   decideNextState,
   describeSupervisorDecision,
 } from './logic.js';
-import type { SupervisorDecision } from './codec.js';
+import type {
+  SupervisorContinuationDecision,
+  SupervisorContinuationRequest,
+  SupervisorDecision,
+} from './codec.js';
 
 /** Supervisor cycle service. */
 export class SupervisorCycleService {
@@ -55,6 +60,32 @@ export class SupervisorCycleService {
         approved: decision.approved,
         phase: decision.phase,
         routePlan: decision.routePlan,
+      },
+    });
+
+    return decision;
+  }
+
+  /** Continue a headless software-building lifecycle without Discord state. */
+  public async continueLifecycle(
+    input: SupervisorContinuationRequest,
+  ): Promise<SupervisorContinuationDecision> {
+    const decision = createSupervisorContinuation(input);
+
+    await this.telemetry.record({
+      id: decision.id,
+      summary: decision.summary,
+      status: decision.status,
+      trace: decision.trace,
+      updatedAt: decision.updatedAt,
+      actorId: input.actorId,
+      action: decision.nextAction.toolName,
+      scope: 'supervisor',
+      details: {
+        objective: decision.objective,
+        repositoryKey: decision.repositoryKey,
+        nextAction: decision.nextAction,
+        blockers: decision.blockers,
       },
     });
 

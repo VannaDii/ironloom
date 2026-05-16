@@ -42,20 +42,40 @@ npm run test:openclaw:deep
 npm run docs:build
 ```
 
-## First Small Project
+## First Software-Building Loop
 
-Use a small spec or implementation request that can be validated without publishing. The path should prove thread binding, lifecycle artifacts, task execution, gates, review projection, and PR update preparation before any merge.
+Use a small spec or implementation request that can be validated without publishing. Start with the headless continuation path so GitHub, OpenClaw, and `.devplat` state drive the loop; Discord can project the same state later when an operator surface is needed.
 
 The command-by-command operator path for the same lifecycle is documented in
 the [Operator Guide](./operator-guide.md#commanded-delivery-flow), with the
 exact Discord slash-command reference in
 [Discord Workflows](./discord-workflows.md#operator-actions).
 
+```mermaid
+flowchart TD
+  Start[Pick a small repository task] --> Continue[continue_lifecycle]
+  Continue --> Research[Create research brief]
+  Research --> Spec[Create and approve spec record]
+  Spec --> Slice[Create PR-sized slice plan]
+  Slice --> Task[Claim task and allocate worktree]
+  Task --> Gates[Run gates and classify failures]
+  Gates --> Review[Create review and remediation artifacts]
+  Review --> PR[Prepare GitHub PR projection]
+  PR --> Policy[Evaluate merge and rebase policy]
+  Policy --> Status[Show Discord/OpenClaw status and last artifact]
+```
+
 Run the hermetic cycle first:
 
 ```bash
 npm run test:openclaw:deep
 ```
+
+For an agent-driven local cycle, call `continue_lifecycle` with the repository
+key, objective, actor, timestamp, and any known artifact signals. The response
+names the next platform tool, required inputs, missing artifact types, and any
+human approval blocker. After each tool call writes or returns a new lifecycle
+artifact, call `continue_lifecycle` again with the updated artifact list.
 
 Then run the local workflow simulation before pushing:
 

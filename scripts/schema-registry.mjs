@@ -112,6 +112,12 @@ export const schemaRegistry = [
     'schemas/supervisor-decision.schema.json',
   ],
   [
+    'supervisor',
+    'run-supervisor-cycle',
+    'SupervisorContinuationDecision',
+    'schemas/supervisor-continuation-decision.schema.json',
+  ],
+  [
     'observability',
     'telemetry-event',
     'TelemetryEvent',
@@ -542,6 +548,12 @@ export const schemaRegistry = [
     'tool-surfaces',
     'RunSupervisorStepToolInput',
     'schemas/tool-run-supervisor-step-params.schema.json',
+  ],
+  [
+    'openclaw',
+    'tool-surfaces',
+    'ContinueLifecycleToolInput',
+    'schemas/tool-continue-lifecycle-params.schema.json',
   ],
 ].map(([pkg, unit, typeName, output]) => ({
   packageName: pkg,

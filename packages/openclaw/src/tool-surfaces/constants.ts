@@ -148,6 +148,11 @@ export const OPENCLAW_TOOL_FIELD_POLICY_DECISION_ID = 'policyDecisionId';
 export const OPENCLAW_TOOL_FIELD_NEXT_ACTION = 'nextAction';
 
 /**
+ * Payload field that carries the delegated platform tool name.
+ */
+export const OPENCLAW_TOOL_FIELD_TOOL_NAME = 'toolName';
+
+/**
  * Payload field that carries a package result record.
  */
 export const OPENCLAW_TOOL_FIELD_RECORD = 'record';

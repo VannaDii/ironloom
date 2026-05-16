@@ -1564,6 +1564,42 @@ export function createDeepScenario(runtimeEnv) {
       'delivery',
     ),
     createStep(
+      'continue_lifecycle',
+      {
+        requestId: 'continue-1',
+        repositoryKey: `${runtimeEnv.GITHUB_OWNER}/${runtimeEnv.GITHUB_REPO}`,
+        objective: 'Build headless lifecycle continuation.',
+        actorId: 'operator-1',
+        updatedAt: fixedTimestamp,
+        artifacts: [
+          {
+            artifactId: 'research-artifact-1',
+            artifactType: 'research-brief',
+            status: 'complete',
+            updatedAt: fixedTimestamp,
+          },
+          {
+            artifactId: 'spec-artifact-1',
+            artifactType: 'spec-record',
+            status: 'approved',
+            updatedAt: fixedTimestamp,
+          },
+        ],
+      },
+      {
+        requestId: 'continue-1',
+        nextAction: {
+          kind: 'create-slice-plan',
+          toolName: 'create_slice_plan',
+        },
+        operationalResult: {
+          status: 'running',
+          nextAction: 'create_slice_plan',
+        },
+      },
+      'delivery',
+    ),
+    createStep(
       'create_artifact_envelope',
       {
         id: 'artifact-generic-1',
