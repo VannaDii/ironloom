@@ -1,8 +1,14 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { decodeWithCodec } from '@vannadii/devplat-core';
 import { createDevplatOpenClawTools } from '@vannadii/devplat-openclaw';
+import {
+  SupervisorContinuationArtifactSignalCodec,
+  SupervisorContinuationRequestCodec,
+} from '@vannadii/devplat-supervisor';
+import * as t from 'io-ts';
 
 /**
  * Tool name for the continuation planner.
@@ -13,6 +19,78 @@ const CONTINUE_LIFECYCLE_TOOL_NAME = 'continue_lifecycle';
  * Default loop bound so bad plans cannot spin forever.
  */
 const DEFAULT_MAX_STEPS = 8;
+
+/**
+ * Smallest accepted loop bound.
+ */
+const MINIMUM_MAX_STEPS = 1;
+
+/**
+ * Successful process exit code.
+ */
+const SUCCESS_EXIT_CODE = 0;
+
+/**
+ * Failing process exit code.
+ */
+const FAILURE_EXIT_CODE = 1;
+
+/**
+ * Offset from a flag token to its consumed value token.
+ */
+const NEXT_TOKEN_OFFSET = 1;
+
+/**
+ * Plan file command-line flag.
+ */
+const PLAN_FLAG = '--plan';
+
+/**
+ * Maximum step command-line flag.
+ */
+const MAX_STEPS_FLAG = '--max-steps';
+
+/**
+ * Continuation handoff plan command-line flag.
+ */
+const WRITE_PLAN_FLAG = '--write-plan';
+
+/**
+ * Usage text emitted when required CLI input is missing.
+ */
+const USAGE_TEXT =
+  'Usage: npm run maintenance:headless -- --plan <file> [--write-plan <file>]';
+
+/**
+ * Indentation used for machine-readable JSON artifacts.
+ */
+const JSON_INDENTATION_SPACES = 2;
+
+/**
+ * Positive integer codec for loop bounds loaded from external JSON.
+ */
+const PositiveIntegerCodec = new t.Type(
+  'PositiveInteger',
+  (value) => typeof value === 'number' && isPositiveInteger(value),
+  (value, context) =>
+    typeof value === 'number' && isPositiveInteger(value)
+      ? t.success(value)
+      : t.failure(value, context),
+  t.identity,
+);
+
+/**
+ * Generic plan codec for the JSON boundary.
+ */
+const HeadlessMaintenancePlanCodec = t.intersection([
+  t.type({
+    request: SupervisorContinuationRequestCodec,
+  }),
+  t.partial({
+    maxSteps: PositiveIntegerCodec,
+    toolInputs: t.UnknownRecord,
+  }),
+]);
 
 /**
  * Successful artifact status used when a delegated result has no status field.
@@ -45,24 +123,6 @@ const MAX_STEPS_REACHED_STATUS = 'max-steps-reached';
 const FAILED_STATUS = 'failed';
 
 /**
- * Artifact type ownership for tool results that do not declare a missing type.
- */
-const TOOL_ARTIFACT_TYPES = {
-  create_research_brief: 'research-brief',
-  create_spec_record: 'spec-record',
-  approve_spec_record: 'spec-record',
-  create_slice_plan: 'slice-plan',
-  create_task_record: 'task-record',
-  allocate_worktree: 'worktree-allocation',
-  run_gates: 'gate-run-report',
-  create_remediation_plan: 'remediation-plan',
-  create_pull_request_record: 'pull-request-record',
-  submit_pull_request_update: 'pull-request-record',
-  submit_pull_request_merge: 'pull-request-record',
-  plan_rebase_dependents: 'rebase-result',
-};
-
-/**
  * Common result fields that can identify a lifecycle artifact.
  */
 const ARTIFACT_ID_FIELDS = [
@@ -83,25 +143,32 @@ const ARTIFACT_ID_FIELDS = [
  */
 export function parseHeadlessMaintenanceRunnerArgs(argv) {
   const parsed = {
-    json: false,
     maxSteps: undefined,
     planPath: undefined,
+    writePlanPath: undefined,
   };
 
   for (let index = 0; index < argv.length; index += 1) {
     const token = argv[index];
 
     switch (token) {
-      case '--json':
-        parsed.json = true;
+      case MAX_STEPS_FLAG:
+        parsed.maxSteps = parseMaxStepsFlag(
+          readRequiredFlagValue(argv, index, MAX_STEPS_FLAG),
+        );
+        index += NEXT_TOKEN_OFFSET;
         break;
-      case '--max-steps':
-        parsed.maxSteps = Number(argv[index + 1]);
-        index += 1;
+      case PLAN_FLAG:
+        parsed.planPath = readRequiredFlagValue(argv, index, PLAN_FLAG);
+        index += NEXT_TOKEN_OFFSET;
         break;
-      case '--plan':
-        parsed.planPath = argv[index + 1];
-        index += 1;
+      case WRITE_PLAN_FLAG:
+        parsed.writePlanPath = readRequiredFlagValue(
+          argv,
+          index,
+          WRITE_PLAN_FLAG,
+        );
+        index += NEXT_TOKEN_OFFSET;
         break;
       default:
         throw new Error(`Unknown headless maintenance option: ${token}`);
@@ -120,13 +187,14 @@ export async function runHeadlessMaintenanceLoop({
   toolInputs = {},
   tools = createDevplatOpenClawTools(),
 }) {
+  const loopMaxSteps = readPositiveInteger(maxSteps, 'maxSteps');
   const toolMap = createToolMap(tools);
   const finalRequest = cloneContinuationRequest(request);
   const decisions = [];
   const executedSteps = [];
   const toolUseCounts = new Map();
 
-  for (let index = 0; index < maxSteps; index += 1) {
+  for (let index = 0; index < loopMaxSteps; index += 1) {
     const iteration = index + 1;
     const decision = await executeTool({
       params: finalRequest,
@@ -190,7 +258,6 @@ export async function runHeadlessMaintenanceLoop({
       nextAction,
       fallbackUpdatedAt: finalRequest.updatedAt,
       toolInput,
-      toolName,
       toolResult,
     });
 
@@ -206,7 +273,7 @@ export async function runHeadlessMaintenanceLoop({
   }
 
   return createReport({
-    blockers: [`maximum step count reached: ${String(maxSteps)}`],
+    blockers: [`maximum step count reached: ${String(loopMaxSteps)}`],
     decisions,
     executedSteps,
     finalRequest,
@@ -223,7 +290,20 @@ export async function runHeadlessMaintenanceLoop({
  */
 async function readPlan(planPath) {
   const contents = await readFile(resolve(planPath), 'utf8');
-  return JSON.parse(contents);
+  const parsed = parsePlanJson(contents);
+
+  return validateHeadlessMaintenancePlan(parsed);
+}
+
+/**
+ * Writes a resumable maintenance plan to disk.
+ */
+async function writePlan(planPath, plan) {
+  await writeFile(
+    resolve(planPath),
+    `${JSON.stringify(plan, undefined, JSON_INDENTATION_SPACES)}\n`,
+    'utf8',
+  );
 }
 
 /**
@@ -322,16 +402,17 @@ function resolveArtifactSignal({
   fallbackUpdatedAt,
   nextAction,
   toolInput,
-  toolName,
   toolResult,
 }) {
   if (toolInput.artifactSignal !== undefined) {
     return toolInput.artifactSignal;
   }
 
-  const artifactType =
-    readFirstString(nextAction.missingArtifactTypes) ??
-    TOOL_ARTIFACT_TYPES[toolName];
+  if (!isRecord(toolResult)) {
+    return undefined;
+  }
+
+  const artifactType = readFirstString(nextAction.missingArtifactTypes);
   const artifactId = readResultArtifactId(toolResult);
 
   if (artifactType === undefined || artifactId === undefined) {
@@ -350,12 +431,16 @@ function resolveArtifactSignal({
  * Normalizes an artifact signal before it is fed into the next continuation call.
  */
 function normalizeArtifactSignal(value) {
-  return {
-    artifactId: readString(value.artifactId, 'artifactSignal.artifactId'),
-    artifactType: readString(value.artifactType, 'artifactSignal.artifactType'),
-    status: readString(value.status, 'artifactSignal.status'),
-    updatedAt: readString(value.updatedAt, 'artifactSignal.updatedAt'),
-  };
+  const decoded = decodeWithCodec(
+    SupervisorContinuationArtifactSignalCodec,
+    value,
+  );
+
+  if (!decoded.ok) {
+    throw new Error(`Maintenance artifact signal is invalid: ${decoded.error}`);
+  }
+
+  return decoded.value;
 }
 
 /**
@@ -406,13 +491,15 @@ function isFailedToolResult(toolResult) {
  * Clones the mutable request state used across loop iterations.
  */
 function cloneContinuationRequest(request) {
-  if (!isRecord(request)) {
-    throw new Error('Maintenance plan must include a request object.');
+  const decoded = decodeWithCodec(SupervisorContinuationRequestCodec, request);
+
+  if (!decoded.ok) {
+    throw new Error(`Maintenance plan request is invalid: ${decoded.error}`);
   }
 
   return {
-    ...request,
-    artifacts: Array.isArray(request.artifacts) ? [...request.artifacts] : [],
+    ...decoded.value,
+    artifacts: [...decoded.value.artifacts],
   };
 }
 
@@ -435,6 +522,162 @@ function createReport({
     executedSteps,
     finalRequest,
   };
+}
+
+/**
+ * Creates a resumable plan from the latest continuation report.
+ */
+function createHandoffPlan({ maxSteps, report, toolInputs }) {
+  return {
+    request: report.finalRequest,
+    toolInputs,
+    ...(maxSteps === undefined ? {} : { maxSteps }),
+  };
+}
+
+/**
+ * Returns true when a value is an allowed positive integer.
+ */
+function isPositiveInteger(value) {
+  return Number.isInteger(value) && value >= MINIMUM_MAX_STEPS;
+}
+
+/**
+ * Reads and validates a positive integer input.
+ */
+function readPositiveInteger(value, label) {
+  if (!isPositiveInteger(value)) {
+    throw new Error(`${label} must be a positive integer.`);
+  }
+
+  return value;
+}
+
+/**
+ * Reads a required flag value and rejects another option in its place.
+ */
+function readRequiredFlagValue(argv, flagIndex, flagName) {
+  const value = argv[flagIndex + NEXT_TOKEN_OFFSET];
+
+  if (value === undefined || isOptionToken(value)) {
+    throw new Error(`${flagName} requires a value.`);
+  }
+
+  return value;
+}
+
+/**
+ * Parses the maximum step flag value.
+ */
+function parseMaxStepsFlag(value) {
+  const parsed = Number(value);
+
+  return readPositiveInteger(parsed, `${MAX_STEPS_FLAG} value`);
+}
+
+/**
+ * Returns true when a token is another command-line option.
+ */
+function isOptionToken(value) {
+  return value.startsWith('--');
+}
+
+/**
+ * Parses maintenance plan JSON with a clear boundary error.
+ */
+function parsePlanJson(contents) {
+  try {
+    return JSON.parse(contents);
+  } catch (error) {
+    throw new Error(
+      `Maintenance plan JSON is invalid: ${readErrorMessage(error)}`,
+      { cause: error },
+    );
+  }
+}
+
+/**
+ * Validates a parsed maintenance plan at the JSON boundary.
+ */
+function validateHeadlessMaintenancePlan(value) {
+  const decoded = decodeWithCodec(HeadlessMaintenancePlanCodec, value);
+
+  if (!decoded.ok) {
+    throw new Error(`Maintenance plan is invalid: ${decoded.error}`);
+  }
+
+  return {
+    request: decoded.value.request,
+    ...(decoded.value.maxSteps === undefined
+      ? {}
+      : { maxSteps: decoded.value.maxSteps }),
+    toolInputs: validatePlanToolInputs(decoded.value.toolInputs ?? {}),
+  };
+}
+
+/**
+ * Validates the generic tool-input map in a maintenance plan.
+ */
+function validatePlanToolInputs(value) {
+  if (!isRecord(value)) {
+    throw new Error('Maintenance plan toolInputs must be an object.');
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).map(([toolName, entries]) => [
+      readString(toolName, 'toolInputs tool name'),
+      validatePlanToolInputEntries(toolName, entries),
+    ]),
+  );
+}
+
+/**
+ * Validates one tool's input entry or entry list.
+ */
+function validatePlanToolInputEntries(toolName, value) {
+  if (Array.isArray(value)) {
+    return value.map((entry, index) =>
+      validatePlanToolInputEntry(toolName, entry, index),
+    );
+  }
+
+  return validatePlanToolInputEntry(toolName, value, undefined);
+}
+
+/**
+ * Validates one generic platform tool input entry.
+ */
+function validatePlanToolInputEntry(toolName, entry, index) {
+  const label =
+    index === undefined
+      ? `toolInputs.${toolName}`
+      : `toolInputs.${toolName}[${String(index)}]`;
+
+  if (!isRecord(entry)) {
+    throw new Error(`${label} must be an object.`);
+  }
+
+  if (!('params' in entry)) {
+    return entry;
+  }
+
+  if (!isRecord(entry.params)) {
+    throw new Error(`${label}.params must be an object.`);
+  }
+
+  return {
+    params: entry.params,
+    ...('artifactSignal' in entry
+      ? { artifactSignal: normalizeArtifactSignal(entry.artifactSignal) }
+      : {}),
+  };
+}
+
+/**
+ * Reads an error message from an unknown thrown value.
+ */
+function readErrorMessage(error) {
+  return error instanceof Error ? error.message : String(error);
 }
 
 /**
@@ -487,29 +730,55 @@ function isRecord(value) {
 /**
  * Runs the command-line entrypoint.
  */
-async function main() {
-  const args = parseHeadlessMaintenanceRunnerArgs(process.argv.slice(2));
+export async function main({
+  argv = process.argv.slice(2),
+  tools = createDevplatOpenClawTools(),
+  writeOutput = console.log,
+} = {}) {
+  const args = parseHeadlessMaintenanceRunnerArgs(argv);
 
   if (args.planPath === undefined) {
-    throw new Error('Usage: npm run maintenance:headless -- --plan <file>');
+    throw new Error(USAGE_TEXT);
   }
 
   const plan = await readPlan(args.planPath);
+  const maxSteps = args.maxSteps ?? plan.maxSteps;
   const report = await runHeadlessMaintenanceLoop({
     ...plan,
-    maxSteps: args.maxSteps ?? plan.maxSteps,
+    maxSteps,
+    tools,
   });
 
-  console.log(JSON.stringify(report, undefined, 2));
+  if (args.writePlanPath !== undefined) {
+    await writePlan(
+      args.writePlanPath,
+      createHandoffPlan({
+        maxSteps,
+        report,
+        toolInputs: plan.toolInputs,
+      }),
+    );
+  }
+
+  writeOutput(JSON.stringify(report, undefined, JSON_INDENTATION_SPACES));
 
   if (
     report.status === FAILED_STATUS ||
     report.status === MAX_STEPS_REACHED_STATUS
   ) {
-    process.exitCode = 1;
+    return {
+      exitCode: FAILURE_EXIT_CODE,
+      report,
+    };
   }
+
+  return {
+    exitCode: SUCCESS_EXIT_CODE,
+    report,
+  };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  await main();
+  const result = await main();
+  process.exitCode = result.exitCode;
 }

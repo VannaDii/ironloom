@@ -81,14 +81,16 @@ For repeatable local dogfooding, put the starting request and next-tool inputs
 in a JSON plan and run:
 
 ```bash
-npm run maintenance:headless -- --plan ./maintenance-plan.json
+npm run maintenance:headless -- --plan ./maintenance-plan.json --write-plan ./.devplat/state/next-maintenance-plan.json
 ```
 
 The runner invokes `continue_lifecycle`, executes the next supplied platform
 tool input, appends the resulting artifact signal, and repeats until it reaches
 a human approval blocker, missing input, a failed tool response, or the step
-limit. Use this path to maintain DevPlat from repository-scoped artifacts before
-projecting the same state into Discord.
+limit. The optional `--write-plan` target stores the updated continuation
+request so a later DevPlat run can resume from the artifact-backed handoff
+instead of replaying earlier tool inputs. Use this path to maintain DevPlat from
+repository-scoped artifacts before projecting the same state into Discord.
 
 Then run the local workflow simulation before pushing:
 
