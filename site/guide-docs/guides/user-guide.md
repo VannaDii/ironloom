@@ -77,6 +77,19 @@ names the next platform tool, required inputs, missing artifact types, and any
 human approval blocker. After each tool call writes or returns a new lifecycle
 artifact, call `continue_lifecycle` again with the updated artifact list.
 
+For repeatable local dogfooding, put the starting request and next-tool inputs
+in a JSON plan and run:
+
+```bash
+npm run maintenance:headless -- --plan ./maintenance-plan.json
+```
+
+The runner invokes `continue_lifecycle`, executes the next supplied platform
+tool input, appends the resulting artifact signal, and repeats until it reaches
+a human approval blocker, missing input, a failed tool response, or the step
+limit. Use this path to maintain DevPlat from repository-scoped artifacts before
+projecting the same state into Discord.
+
 Then run the local workflow simulation before pushing:
 
 ```bash

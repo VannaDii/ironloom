@@ -69,6 +69,10 @@ delegates to `@vannadii/devplat-supervisor`, accepts repository/objective/actor
 state plus known lifecycle artifact signals, and returns the next platform tool
 to call. It does not require Discord thread bindings; Discord can still project
 the same lifecycle state when an operator surface is needed.
+The repository-level `maintenance:headless` script dogfoods that contract from
+a JSON plan: it calls `continue_lifecycle`, executes the next supplied tool
+input through the registered tool inventory, appends an artifact signal, and
+stops at human approval blockers or missing input.
 
 ## Exposed Tools
 

@@ -40,6 +40,11 @@ software-building loops. Callers provide the repository key, objective, actor,
 timestamp, and known lifecycle artifact signals; the supervisor returns the next
 platform tool, route owner, artifact gaps, input requirements, and any human
 approval blocker.
+For local repository maintenance, `npm run maintenance:headless -- --plan
+./maintenance-plan.json` wraps that pattern in a bounded loop: it calls
+`continue_lifecycle`, invokes the next supplied tool input, records the returned
+artifact signal, and stops at missing input or human approval instead of
+guessing.
 
 Required foundation-phase tool coverage includes:
 
