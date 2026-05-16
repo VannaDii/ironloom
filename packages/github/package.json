@@ -1,6 +1,6 @@
 {
   "name": "@vannadii/devplat-github",
-  "version": "0.0.0",
+  "version": "0.2.0",
   "description": "GitHub-native integration contracts.",
   "license": "MIT",
   "type": "module",
@@ -30,9 +30,9 @@
   },
   "dependencies": {
     "io-ts": "2.2.22",
-    "@vannadii/devplat-core": "0.0.0",
-    "@vannadii/devplat-observability": "0.0.0",
-    "@vannadii/devplat-policy": "0.0.0"
+    "@vannadii/devplat-core": "0.2.0",
+    "@vannadii/devplat-observability": "0.2.0",
+    "@vannadii/devplat-policy": "0.2.0"
   },
   "repository": {
     "type": "git",

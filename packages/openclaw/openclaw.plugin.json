@@ -152,6 +152,6 @@
     }
   },
   "name": "DevPlat OpenClaw Adapter",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "DevPlat capability bridge for OpenClaw with Discord-first operational flows."
 }

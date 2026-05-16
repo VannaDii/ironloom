@@ -1,85 +1,8 @@
-# @vannadii/devplat-config
+# @vannadii/devplat-review
 
 ## 0.2.0
 
 ### Patch Changes
-
-- [#60](https://github.com/VannaDii/devplat/pull/60) [`214fd77`](https://github.com/VannaDii/devplat/commit/214fd7718fa0da333f39d45daff02295e98b71a7) Thanks [@VannaDii](https://github.com/VannaDii)! - Project dependent-branch rebase conflicts back into the executed rebase plan.
-  Deepen OpenClaw worktree delegation with explicit Git-backed worktree tool
-  execution.
-  Record OpenClaw gate execution telemetry with actor, classification, and
-  next-action details.
-
-  Dependent rebase execution already delegated branch refresh work to
-  `@vannadii/devplat-worktrees` and returned the raw sync results. It now also
-  derives the returned plan's `conflictClassification` from sync results that
-  report `conflictsDetected`, so downstream OpenClaw tool output and operator
-  surfaces receive the concrete affected branches and `resolve-conflicts` next
-  action without reinterpreting raw worktree records.
-
-  OpenClaw worktree lifecycle tools now accept explicit `applyToDisk` input. Pure
-  record projection remains the default, while `applyToDisk: true` delegates
-  allocation, sync, and release to the Git-backed worktree service methods.
-  The Git-backed sync and release service methods now recompute the expected
-  worktree path from the configured root, task id, and branch name, then block
-  before Git execution when a caller-provided allocation path points somewhere
-  else.
-
-  OpenClaw gate runs now record telemetry through the configured storage root.
-  The `run_gates` tool accepts an optional `actorId`, preserves the gate report
-  shape, and adds the persisted telemetry event id to its result so downstream
-  operators can audit pass/fail classification and next actions.
-
-  OpenClaw Sonar quality-gate evaluations now record telemetry through the same
-  storage path. The `evaluate_sonar_quality_gate` tool accepts an optional
-  `actorId`, delegates threshold evaluation to the SonarCloud package, and returns
-  the persisted telemetry event id with project, coverage, blocking issue, status,
-  and next-action details.
-
-  OpenClaw worktree tool `baseBranch` inputs now use the shared Git branch codec
-  instead of raw strings. Generated schemas also carry the shared Git branch
-  pattern so adapter decoding and external tool contracts reject flag-like,
-  whitespace-containing, or otherwise invalid branch refs before any Git-backed
-  worktree operation runs.
-
-  GitHub workflow submission decisions now include the persisted telemetry event
-  id returned from the policy and REST submission boundary. OpenClaw pull request
-  update and merge tools continue to delegate to the PR/GitHub packages, but their
-  operator-facing output can now point directly at the durable GitHub workflow
-  telemetry record for accepted, blocked, dry-run, and rejected submissions.
-
-  Pull request records now decode `branchName` and `baseBranch` through the shared
-  Git branch codec and `updatedAt` through the shared ISO timestamp codec.
-  Generated PR and OpenClaw PR-tool schemas carry the same branch pattern and
-  date-time format, so unsafe refs and malformed timestamps are rejected before PR
-  update or merge submission.
-
-  Worktree allocation, sync, and release records now decode `updatedAt` through
-  the shared ISO timestamp codec, and sync result `baseBranch` values decode
-  through the shared Git branch codec. Generated worktree and embedded OpenClaw
-  schemas now expose the stricter date-time contract for persisted allocation
-  input while blocked worktree records can still preserve unsafe operator branch
-  input for auditability.
-
-  Queue task records now decode `updatedAt` and transition `occurredAt` values
-  through the shared ISO timestamp codec. Generated queue and OpenClaw task tool
-  schemas now expose date-time formats for durable lifecycle records and
-  transition-event history.
-
-  Telemetry events, audit records, and run summaries now decode event, audit, and
-  run boundary timestamps through the shared ISO timestamp codec. Generated
-  observability and OpenClaw telemetry-record schemas now expose date-time formats
-  for persisted telemetry and audit surfaces.
-
-  Runtime config now decodes repository default branches and worktree base
-  branches through the shared Git branch codec, repository keys through the shared
-  repository key codec, and config `updatedAt` through the shared ISO timestamp
-  codec. The schema generator now supports the shared repository-key codec through
-  a tested core-owned JSON Schema pattern.
-
-  Specification records and revision metadata now decode `updatedAt` through the
-  shared ISO timestamp codec. Generated spec and OpenClaw spec tool schemas now
-  expose date-time formats for durable spec history.
 
 - [#55](https://github.com/VannaDii/devplat/pull/55) [`efccadf`](https://github.com/VannaDii/devplat/commit/efccadfbd840179c8d1088c7674a7ee6252a1fe7) Thanks [@VannaDii](https://github.com/VannaDii)! - Add the first full-autonomy contract slices:
   - repository-scoped runtime configuration, GitHub API/web/token defaults, `.devplat` storage directories, worktree sync defaults, and Docker/Helm deployment defaults
@@ -121,17 +44,6 @@
 
   Repository validation now requires package-local README coverage with real-world Mermaid flow diagrams, and generated schemas/manifests are emitted in Prettier-stable JSON so generation, repo validation, and formatting checks agree.
 
-- Updated dependencies [[`214fd77`](https://github.com/VannaDii/devplat/commit/214fd7718fa0da333f39d45daff02295e98b71a7), [`efccadf`](https://github.com/VannaDii/devplat/commit/efccadfbd840179c8d1088c7674a7ee6252a1fe7), [`fe4da91`](https://github.com/VannaDii/devplat/commit/fe4da91b778b31a57994f1465913c948476bc96f)]:
+- Updated dependencies [[`04f92aa`](https://github.com/VannaDii/devplat/commit/04f92aa2bd0392813650e2fd8c8ba229d52558bb), [`214fd77`](https://github.com/VannaDii/devplat/commit/214fd7718fa0da333f39d45daff02295e98b71a7), [`efccadf`](https://github.com/VannaDii/devplat/commit/efccadfbd840179c8d1088c7674a7ee6252a1fe7), [`fe4da91`](https://github.com/VannaDii/devplat/commit/fe4da91b778b31a57994f1465913c948476bc96f)]:
+  - @vannadii/devplat-artifacts@0.2.0
   - @vannadii/devplat-core@0.2.0
-
-## 0.1.0
-
-### Minor Changes
-
-- [#14](https://github.com/VannaDii/devplat/pull/14) [`4288cff`](https://github.com/VannaDii/devplat/commit/4288cff50dded6c2e97a9de6ec77b6c9102ad7e4) Thanks [@VannaDii](https://github.com/VannaDii)! - Align the Discord control-plane contracts with explicit v10 runtime
-  configuration and thread-scoped operator behavior.
-
-  This change adds Discord v10 connection and install settings to the runtime and
-  OpenClaw plugin configuration, expands Discord thread and control contracts to
-  stay fully thread-aware, and updates the generated schemas, manifest, and guide
-  documentation to match the current operator workflow and CI expectations.
