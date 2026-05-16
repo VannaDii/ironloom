@@ -1,7 +1,7 @@
 ARG NODE_VERSION=24.14.1
 ARG ALPINE_VERSION=3.23
 
-FROM node:${NODE_VERSION}-alpine${ALPINE_VERSION} AS node-base
+FROM --platform=$BUILDPLATFORM node:${NODE_VERSION}-alpine${ALPINE_VERSION} AS node-base
 
 RUN apk add --no-cache \
     bash \
@@ -18,8 +18,17 @@ COPY . .
 
 RUN npm ci --ignore-scripts \
     && npm run prepare:generated \
-    && npm run build:workspace \
-    && npm prune --omit=dev --ignore-scripts
+    && npm run build:workspace
+
+FROM node:${NODE_VERSION}-alpine${ALPINE_VERSION} AS production-dependencies
+
+WORKDIR /workspace
+
+COPY package.json package-lock.json ./
+COPY packages ./packages
+COPY tools ./tools
+
+RUN npm ci --omit=dev --ignore-scripts
 
 FROM node:${NODE_VERSION}-alpine${ALPINE_VERSION} AS runtime
 
@@ -34,7 +43,7 @@ RUN apk add --no-cache ca-certificates libstdc++ \
     && chown -R devplat:devplat /var/lib/devplat /config /app
 
 COPY --from=build /workspace/package.json /workspace/package-lock.json ./
-COPY --from=build /workspace/node_modules ./node_modules
+COPY --from=production-dependencies /workspace/node_modules ./node_modules
 COPY --from=build /workspace/packages ./packages
 COPY docker/openclaw-runtime/entrypoint.sh /usr/local/bin/devplat-openclaw-entrypoint
 

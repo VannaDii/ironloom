@@ -11,4 +11,7 @@ repository-scoped maintenance and adds `npm run docker:openclaw:latest` for
 running the latest published OpenClaw runtime image with local dashboard access.
 Docker runtime publishing now emits a multi-platform manifest for `linux/amd64`
 and `linux/arm64/v8`. Handoff mode also rejects conflicting `--plan` usage and
-unknown external tool names before the lifecycle loop starts.
+unknown external tool names before the lifecycle loop starts. The runtime image
+build now compiles workspace output on the build platform and installs
+production dependencies in the target-platform stage so arm64 publishing avoids
+running the workspace build under QEMU.
