@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
@@ -335,8 +335,11 @@ describe('headless-maintenance-runner', () => {
       name: 'parses plan max step flags',
       inputs: {
         argv: [
+          '--handoff',
           '--plan',
           'maintenance-plan.json',
+          '--tool-input',
+          'next-tool-input.json',
           '--max-steps',
           '3',
           '--write-plan',
@@ -346,8 +349,10 @@ describe('headless-maintenance-runner', () => {
       mock: async () => undefined,
       assert: async (_context, inputs) => {
         expect(parseHeadlessMaintenanceRunnerArgs(inputs.argv)).toEqual({
+          handoff: true,
           maxSteps: 3,
           planPath: 'maintenance-plan.json',
+          toolInputPath: 'next-tool-input.json',
           writePlanPath: 'handoff-plan.json',
         });
       },
@@ -362,6 +367,8 @@ describe('headless-maintenance-runner', () => {
           ['--max-steps', '0'],
           ['--write-plan'],
           ['--write-plan', '--plan'],
+          ['--tool-input'],
+          ['--tool-input', '--plan'],
           ['--json'],
         ],
       },
@@ -369,6 +376,161 @@ describe('headless-maintenance-runner', () => {
       assert: async (_context, inputs) => {
         for (const argv of inputs.argvCases) {
           expect(() => parseHeadlessMaintenanceRunnerArgs(argv)).toThrow();
+        }
+      },
+    },
+    {
+      name: 'runs local handoff mode with an external tool input and updates the default plan',
+      inputs: {
+        plan: {
+          request: baseRequest,
+          toolInputs: {},
+        },
+        toolInput: {
+          toolName: 'create_research_brief',
+          params: {
+            researchId: 'research-1',
+            topic: 'Headless maintenance',
+            question: 'How should the loop continue?',
+            constraints: ['No Discord dependency'],
+            findings: ['Use continuation decisions'],
+            recommendation: 'Run the next platform tool.',
+            sourceUrls: [],
+            updatedAt: fixedTimestamp,
+          },
+          artifactSignal: {
+            artifactId: 'research-1',
+            artifactType: 'research-brief',
+            status: 'complete',
+            updatedAt: fixedTimestamp,
+          },
+        },
+      },
+      mock: async () => {
+        const tools = [
+          createTool('continue_lifecycle', async (_toolCallId, params) => {
+            const artifacts = Array.isArray(params.artifacts)
+              ? params.artifacts
+              : [];
+
+            if (artifacts.length === 0) {
+              return createResult(
+                createDecision({
+                  toolName: 'create_research_brief',
+                  requiresHumanApproval: false,
+                  blockers: [],
+                  missingArtifactTypes: ['research-brief'],
+                }),
+              );
+            }
+
+            return createResult(
+              createDecision({
+                toolName: 'approve_spec_record',
+                requiresHumanApproval: true,
+                blockers: ['spec approval required'],
+                missingArtifactTypes: [],
+              }),
+            );
+          }),
+          createTool('create_research_brief', async (_toolCallId, params) =>
+            createResult({
+              researchId: params.researchId,
+              updatedAt: params.updatedAt,
+            }),
+          ),
+        ];
+
+        return { tools };
+      },
+      assert: async (context, inputs) => {
+        const output = [];
+        const directory = await mkdtemp(join(tmpdir(), 'devplat-handoff-'));
+        const stateDirectory = join(directory, '.devplat', 'state');
+        const planPath = join(stateDirectory, 'next-maintenance-plan.json');
+        const toolInputPath = join(stateDirectory, 'next-tool-input.json');
+
+        try {
+          await mkdir(stateDirectory, { recursive: true });
+          await writeFile(planPath, JSON.stringify(inputs.plan), 'utf8');
+          await writeFile(
+            toolInputPath,
+            JSON.stringify(inputs.toolInput),
+            'utf8',
+          );
+
+          const result = await main({
+            argv: [
+              '--handoff',
+              '--tool-input',
+              '.devplat/state/next-tool-input.json',
+            ],
+            baseDirectory: directory,
+            tools: context.tools,
+            writeOutput: (line) => output.push(line),
+          });
+          const handoff = JSON.parse(await readFile(planPath, 'utf8'));
+
+          expect(result.exitCode).toBe(0);
+          expect(result.report.status).toBe('blocked');
+          expect(JSON.parse(output[0]).status).toBe('blocked');
+          expect(handoff.request.artifacts).toContainEqual({
+            artifactId: 'research-1',
+            artifactType: 'research-brief',
+            status: 'complete',
+            updatedAt: fixedTimestamp,
+          });
+          expect(handoff.toolInputs.create_research_brief).toEqual([
+            {
+              params: inputs.toolInput.params,
+              artifactSignal: inputs.toolInput.artifactSignal,
+            },
+          ]);
+        } finally {
+          await rm(directory, { force: true, recursive: true });
+        }
+      },
+    },
+    {
+      name: 'rejects malformed external tool input before running tools',
+      inputs: {
+        plan: {
+          request: baseRequest,
+          toolInputs: {},
+        },
+      },
+      mock: async () => ({
+        tools: [
+          createTool('continue_lifecycle', async () =>
+            createResult(
+              createDecision({
+                toolName: 'create_research_brief',
+                requiresHumanApproval: false,
+                blockers: [],
+                missingArtifactTypes: ['research-brief'],
+              }),
+            ),
+          ),
+        ],
+      }),
+      assert: async (context, inputs) => {
+        const directory = await mkdtemp(join(tmpdir(), 'devplat-handoff-'));
+        const planPath = join(directory, 'plan.json');
+        const toolInputPath = join(directory, 'next-tool-input.json');
+
+        try {
+          await writeFile(planPath, JSON.stringify(inputs.plan), 'utf8');
+          await writeFile(toolInputPath, '{', 'utf8');
+
+          await expect(
+            main({
+              argv: ['--plan', planPath, '--tool-input', toolInputPath],
+              tools: context.tools,
+              writeOutput: () => undefined,
+            }),
+          ).rejects.toThrow('Maintenance tool input JSON is invalid');
+        } finally {
+          await rm(directory, { force: true, recursive: true });
         }
       },
     },

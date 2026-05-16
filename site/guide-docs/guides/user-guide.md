@@ -92,6 +92,19 @@ request so a later DevPlat run can resume from the artifact-backed handoff
 instead of replaying earlier tool inputs. Use this path to maintain DevPlat from
 repository-scoped artifacts before projecting the same state into Discord.
 
+To continue the ignored local handoff directly, write the next safe tool input
+as `.devplat/state/next-tool-input.json` and run:
+
+```bash
+npm run maintenance:headless -- --handoff --tool-input ./.devplat/state/next-tool-input.json
+```
+
+The `--handoff` flag reads and rewrites
+`.devplat/state/next-maintenance-plan.json`. The tool input file has a
+`toolName` plus a `params` object matching that tool's generated schema, with an
+optional `artifactSignal` override when the delegated tool result cannot expose
+one on its own.
+
 Then run the local workflow simulation before pushing:
 
 ```bash

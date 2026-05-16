@@ -46,7 +46,11 @@ For local repository maintenance, `npm run maintenance:headless -- --plan
 wraps that pattern in a bounded loop: it calls `continue_lifecycle`, invokes the
 next supplied tool input, records the returned artifact signal, writes a
 resumable handoff plan when requested, and stops at missing input or human
-approval instead of guessing.
+approval instead of guessing. After the first handoff exists, `npm run
+maintenance:headless -- --handoff --tool-input
+./.devplat/state/next-tool-input.json` reads the default ignored handoff path,
+appends one validated tool input, and rewrites the same handoff file for the
+next local run.
 
 Required foundation-phase tool coverage includes:
 
