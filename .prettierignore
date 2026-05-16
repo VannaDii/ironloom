@@ -1,1 +1,2 @@
 deploy/helm/devplat/templates/*.yaml
+.devplat/**

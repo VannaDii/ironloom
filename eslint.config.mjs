@@ -123,6 +123,7 @@ export default [
   {
     ignores: [
       'coverage/**',
+      '.devplat/**',
       'node_modules/**',
       'packages/*/dist/**',
       'site/guide-docs/.vitepress/dist/**',

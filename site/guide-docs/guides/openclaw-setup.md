@@ -31,7 +31,10 @@ Then open `http://127.0.0.1:18789/` and use the configured
 `OPENCLAW_GATEWAY_TOKEN`, or `devplat-local` when no token is set. Published
 runtime manifests include `linux/amd64` and `linux/arm64/v8`; set
 `DEVPLAT_DOCKER_PLATFORM` only when you need to force a platform for an older
-tag.
+tag. The npm command uses a Node runner for Docker argument construction so the
+same command works under npm on macOS and Linux. Set
+`DEVPLAT_OPENCLAW_RUNTIME_IMAGE` to validate a published PR image before
+`latest` has been updated.
 
 ## Platform Context
 

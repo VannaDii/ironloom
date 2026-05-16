@@ -12,7 +12,10 @@ run, exposes the OpenClaw dashboard at `http://127.0.0.1:18789/`, and uses
 running the command to use a different token. Published runtime manifests include
 `linux/amd64` and `linux/arm64/v8`; set `DEVPLAT_DOCKER_PLATFORM` only when you
 need to force a platform for an older tag. Runtime state is mounted at
-`.devplat/docker-state`, which stays ignored by Git.
+`.devplat/docker-state`, which stays ignored by Git. The npm command delegates
+to a Node runner so macOS uses the same Docker argument handling as Linux instead
+of relying on inline shell expansion. Set `DEVPLAT_OPENCLAW_RUNTIME_IMAGE` when
+you need to validate a published PR image before `latest` has been updated.
 
 ## Build Locally
 
