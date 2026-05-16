@@ -20,8 +20,8 @@ npm run build
 
 The runtime expects OpenClaw configuration through environment variables, mounted config, or explicit CLI arguments.
 
-To run the latest published Docker runtime with the dashboard exposed on the
-host, use:
+To run the latest published Docker runtime with the dashboard published on the
+host loopback interface, use:
 
 ```bash
 npm run docker:openclaw:latest
@@ -34,7 +34,9 @@ runtime manifests include `linux/amd64` and `linux/arm64/v8`; set
 tag. The npm command uses a Node runner for Docker argument construction so the
 same command works under npm on macOS and Linux. Set
 `DEVPLAT_OPENCLAW_RUNTIME_IMAGE` to validate a published PR image before
-`latest` has been updated.
+`latest` has been updated. Docker publishes the host port only on `127.0.0.1`;
+the gateway binds inside the container so that loopback-only host publish can
+forward traffic.
 
 ## Platform Context
 

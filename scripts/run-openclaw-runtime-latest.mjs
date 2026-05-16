@@ -25,6 +25,16 @@ const latestOpenClawRuntimeContainerName = 'devplat-openclaw-latest';
 const openClawGatewayPort = '18789';
 
 /**
+ * Loopback host used for local dashboard exposure.
+ */
+const openClawGatewayHost = '127.0.0.1';
+
+/**
+ * OpenClaw bind mode used inside the container for Docker port forwarding.
+ */
+const openClawGatewayBindMode = 'lan';
+
+/**
  * Default local token used when the operator has not configured one.
  */
 const defaultGatewayToken = 'devplat-local';
@@ -131,7 +141,7 @@ export function createLatestOpenClawRuntimeDockerPlan({
   appendUserMapping(args, userId, groupId);
   args.push(
     '-p',
-    `${openClawGatewayPort}:${openClawGatewayPort}`,
+    `${openClawGatewayHost}:${openClawGatewayPort}:${openClawGatewayPort}`,
     '-e',
     `${gatewayTokenEnvironmentKey}=${gatewayToken}`,
     '-e',
@@ -146,7 +156,7 @@ export function createLatestOpenClawRuntimeDockerPlan({
     '--port',
     openClawGatewayPort,
     '--bind',
-    'lan',
+    openClawGatewayBindMode,
     '--auth',
     'token',
     '--token',

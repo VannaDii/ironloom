@@ -18,4 +18,6 @@ running the workspace build under QEMU. The latest-image npm command now
 delegates Docker argument construction to a Node runner so macOS and Linux use
 the same command path without inline shell expansion, with an image override for
 validating published PR images before `latest` moves forward. Local Docker state
-under `.devplat/` is ignored by repo-wide lint and formatting scans.
+under `.devplat/` is ignored by repo-wide lint and formatting scans. The local
+Docker command publishes the dashboard on host loopback by default while keeping
+the gateway reachable for Docker's container-to-host port forward.

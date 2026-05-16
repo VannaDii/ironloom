@@ -71,7 +71,7 @@ describe('docker runtime npm scripts', () => {
           '--user',
           '501:20',
           '-p',
-          '18789:18789',
+          '127.0.0.1:18789:18789',
           '-e',
           'OPENCLAW_GATEWAY_TOKEN=mac-local-token',
           '-e',
