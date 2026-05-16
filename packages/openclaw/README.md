@@ -73,7 +73,10 @@ The repository-level `maintenance:headless` script dogfoods that contract from
 a JSON plan: it calls `continue_lifecycle`, executes the next supplied tool
 input through the registered tool inventory, appends an artifact signal, writes a
 resumable handoff plan when `--write-plan` is supplied, and stops at human
-approval blockers or missing input.
+approval blockers or missing input. Pass `--handoff` to read and rewrite the
+default ignored `.devplat/state/next-maintenance-plan.json` file, and pass
+`--tool-input <file>` to append one next-tool input with a `toolName`, matching
+`params`, and optional `artifactSignal`.
 
 ## Exposed Tools
 

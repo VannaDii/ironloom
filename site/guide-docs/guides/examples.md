@@ -29,3 +29,13 @@ The input plan contains the current continuation request and any explicit tool
 inputs that are safe to run. The handoff plan written by `--write-plan` contains
 the updated request with new artifact signals, so the next run can resume from
 current lifecycle evidence and stop at the next missing input or approval gate.
+Once that handoff file exists, local continuation can use the default state path
+and a single external tool input:
+
+```bash
+npm run maintenance:headless -- --handoff --tool-input ./.devplat/state/next-tool-input.json
+```
+
+`next-tool-input.json` contains the selected `toolName`, that tool's `params`,
+and only needs `artifactSignal` when the tool response cannot derive the new
+lifecycle artifact signal.

@@ -39,6 +39,7 @@
     "docs:build": "vitepress build site/guide-docs",
     "docs:dev": "vitepress dev site/guide-docs",
     "docs:preview": "vitepress preview site/guide-docs",
+    "docker:openclaw:latest": "node scripts/run-openclaw-runtime-latest.mjs",
     "dev:local-stack": "node --env-file=.env --import tsx --conditions=source scripts/openclaw-local-stack.mjs",
     "format:check": "prettier . --check",
     "format": "prettier . --write",

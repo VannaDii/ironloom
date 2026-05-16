@@ -46,9 +46,19 @@ const NEXT_TOKEN_OFFSET = 1;
 const PLAN_FLAG = '--plan';
 
 /**
+ * Local handoff command-line flag.
+ */
+const HANDOFF_FLAG = '--handoff';
+
+/**
  * Maximum step command-line flag.
  */
 const MAX_STEPS_FLAG = '--max-steps';
+
+/**
+ * External tool input command-line flag.
+ */
+const TOOL_INPUT_FLAG = '--tool-input';
 
 /**
  * Continuation handoff plan command-line flag.
@@ -56,10 +66,15 @@ const MAX_STEPS_FLAG = '--max-steps';
 const WRITE_PLAN_FLAG = '--write-plan';
 
 /**
+ * Default ignored plan path used by local handoff mode.
+ */
+const DEFAULT_HANDOFF_PLAN_PATH = '.devplat/state/next-maintenance-plan.json';
+
+/**
  * Usage text emitted when required CLI input is missing.
  */
 const USAGE_TEXT =
-  'Usage: npm run maintenance:headless -- --plan <file> [--write-plan <file>]';
+  'Usage: npm run maintenance:headless -- (--plan <file> [--write-plan <file>] | --handoff) [--tool-input <file>]';
 
 /**
  * Indentation used for machine-readable JSON artifacts.
@@ -143,8 +158,10 @@ const ARTIFACT_ID_FIELDS = [
  */
 export function parseHeadlessMaintenanceRunnerArgs(argv) {
   const parsed = {
+    handoff: false,
     maxSteps: undefined,
     planPath: undefined,
+    toolInputPath: undefined,
     writePlanPath: undefined,
   };
 
@@ -152,6 +169,9 @@ export function parseHeadlessMaintenanceRunnerArgs(argv) {
     const token = argv[index];
 
     switch (token) {
+      case HANDOFF_FLAG:
+        parsed.handoff = true;
+        break;
       case MAX_STEPS_FLAG:
         parsed.maxSteps = parseMaxStepsFlag(
           readRequiredFlagValue(argv, index, MAX_STEPS_FLAG),
@@ -160,6 +180,14 @@ export function parseHeadlessMaintenanceRunnerArgs(argv) {
         break;
       case PLAN_FLAG:
         parsed.planPath = readRequiredFlagValue(argv, index, PLAN_FLAG);
+        index += NEXT_TOKEN_OFFSET;
+        break;
+      case TOOL_INPUT_FLAG:
+        parsed.toolInputPath = readRequiredFlagValue(
+          argv,
+          index,
+          TOOL_INPUT_FLAG,
+        );
         index += NEXT_TOKEN_OFFSET;
         break;
       case WRITE_PLAN_FLAG:
@@ -288,8 +316,11 @@ export async function runHeadlessMaintenanceLoop({
 /**
  * Loads and parses a JSON loop plan from disk.
  */
-async function readPlan(planPath) {
-  const contents = await readFile(resolve(planPath), 'utf8');
+async function readPlan(planPath, baseDirectory) {
+  const contents = await readFile(
+    resolveRunnerPath(baseDirectory, planPath),
+    'utf8',
+  );
   const parsed = parsePlanJson(contents);
 
   return validateHeadlessMaintenancePlan(parsed);
@@ -298,12 +329,32 @@ async function readPlan(planPath) {
 /**
  * Writes a resumable maintenance plan to disk.
  */
-async function writePlan(planPath, plan) {
+async function writePlan(planPath, plan, baseDirectory) {
   await writeFile(
-    resolve(planPath),
+    resolveRunnerPath(baseDirectory, planPath),
     `${JSON.stringify(plan, undefined, JSON_INDENTATION_SPACES)}\n`,
     'utf8',
   );
+}
+
+/**
+ * Loads and parses one external tool input file from disk.
+ */
+async function readExternalToolInput(toolInputPath, baseDirectory) {
+  const contents = await readFile(
+    resolveRunnerPath(baseDirectory, toolInputPath),
+    'utf8',
+  );
+  const parsed = parseExternalToolInputJson(contents);
+
+  return validateExternalToolInput(parsed);
+}
+
+/**
+ * Resolves runner input and output paths from a base directory.
+ */
+function resolveRunnerPath(baseDirectory, inputPath) {
+  return resolve(baseDirectory, inputPath);
 }
 
 /**
@@ -536,6 +587,74 @@ function createHandoffPlan({ maxSteps, report, toolInputs }) {
 }
 
 /**
+ * Appends one validated external tool input to a loaded plan.
+ */
+function appendExternalToolInput(plan, toolInput) {
+  const existingEntries = normalizeToolEntries(
+    plan.toolInputs[toolInput.toolName],
+  );
+
+  return {
+    ...plan,
+    toolInputs: {
+      ...plan.toolInputs,
+      [toolInput.toolName]: [
+        ...existingEntries,
+        createExternalToolInputEntry(toolInput),
+      ],
+    },
+  };
+}
+
+/**
+ * Validates an external tool input against the runtime tool inventory.
+ */
+function validateExternalToolInputToolName(toolInput, tools) {
+  const toolNames = new Set(tools.map((tool) => tool.name));
+
+  if (!toolNames.has(toolInput.toolName)) {
+    throw new Error(
+      `Maintenance tool input toolName "${toolInput.toolName}" is not in the platform tool inventory.`,
+    );
+  }
+
+  return toolInput;
+}
+
+/**
+ * Creates the stored plan entry for an external tool input.
+ */
+function createExternalToolInputEntry(toolInput) {
+  return {
+    params: toolInput.params,
+    ...(toolInput.artifactSignal === undefined
+      ? {}
+      : { artifactSignal: toolInput.artifactSignal }),
+  };
+}
+
+/**
+ * Resolves plan and handoff paths from parsed command-line arguments.
+ */
+function resolveRunnerPaths(args) {
+  if (args.planPath !== undefined && args.handoff) {
+    throw new Error('Use either --plan or --handoff, not both.');
+  }
+
+  const planPath =
+    args.planPath ?? (args.handoff ? DEFAULT_HANDOFF_PLAN_PATH : undefined);
+
+  if (planPath === undefined) {
+    throw new Error(USAGE_TEXT);
+  }
+
+  return {
+    planPath,
+    writePlanPath: args.writePlanPath ?? (args.handoff ? planPath : undefined),
+  };
+}
+
+/**
  * Returns true when a value is an allowed positive integer.
  */
 function isPositiveInteger(value) {
@@ -597,6 +716,20 @@ function parsePlanJson(contents) {
 }
 
 /**
+ * Parses external tool input JSON with a clear boundary error.
+ */
+function parseExternalToolInputJson(contents) {
+  try {
+    return JSON.parse(contents);
+  } catch (error) {
+    throw new Error(
+      `Maintenance tool input JSON is invalid: ${readErrorMessage(error)}`,
+      { cause: error },
+    );
+  }
+}
+
+/**
  * Validates a parsed maintenance plan at the JSON boundary.
  */
 function validateHeadlessMaintenancePlan(value) {
@@ -612,6 +745,32 @@ function validateHeadlessMaintenancePlan(value) {
       ? {}
       : { maxSteps: decoded.value.maxSteps }),
     toolInputs: validatePlanToolInputs(decoded.value.toolInputs ?? {}),
+  };
+}
+
+/**
+ * Validates one external platform tool input at the JSON boundary.
+ */
+function validateExternalToolInput(value) {
+  if (!isRecord(value)) {
+    throw new Error('Maintenance tool input must be an object.');
+  }
+
+  const toolName = readString(
+    value.toolName,
+    'Maintenance tool input toolName',
+  );
+
+  if (!isRecord(value.params)) {
+    throw new Error('Maintenance tool input params must be an object.');
+  }
+
+  return {
+    toolName,
+    params: value.params,
+    ...('artifactSignal' in value
+      ? { artifactSignal: normalizeArtifactSignal(value.artifactSignal) }
+      : {}),
   };
 }
 
@@ -732,16 +891,24 @@ function isRecord(value) {
  */
 export async function main({
   argv = process.argv.slice(2),
+  baseDirectory = process.cwd(),
   tools = createDevplatOpenClawTools(),
   writeOutput = console.log,
 } = {}) {
   const args = parseHeadlessMaintenanceRunnerArgs(argv);
-
-  if (args.planPath === undefined) {
-    throw new Error(USAGE_TEXT);
-  }
-
-  const plan = await readPlan(args.planPath);
+  const paths = resolveRunnerPaths(args);
+  const basePlan = await readPlan(paths.planPath, baseDirectory);
+  const toolInput =
+    args.toolInputPath === undefined
+      ? undefined
+      : validateExternalToolInputToolName(
+          await readExternalToolInput(args.toolInputPath, baseDirectory),
+          tools,
+        );
+  const plan =
+    toolInput === undefined
+      ? basePlan
+      : appendExternalToolInput(basePlan, toolInput);
   const maxSteps = args.maxSteps ?? plan.maxSteps;
   const report = await runHeadlessMaintenanceLoop({
     ...plan,
@@ -749,14 +916,15 @@ export async function main({
     tools,
   });
 
-  if (args.writePlanPath !== undefined) {
+  if (paths.writePlanPath !== undefined) {
     await writePlan(
-      args.writePlanPath,
+      paths.writePlanPath,
       createHandoffPlan({
         maxSteps,
         report,
         toolInputs: plan.toolInputs,
       }),
+      baseDirectory,
     );
   }
 

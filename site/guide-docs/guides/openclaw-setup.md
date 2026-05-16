@@ -20,6 +20,24 @@ npm run build
 
 The runtime expects OpenClaw configuration through environment variables, mounted config, or explicit CLI arguments.
 
+To run the latest published Docker runtime with the dashboard published on the
+host loopback interface, use:
+
+```bash
+npm run docker:openclaw:latest
+```
+
+Then open `http://127.0.0.1:18789/` and use the configured
+`OPENCLAW_GATEWAY_TOKEN`, or `devplat-local` when no token is set. Published
+runtime manifests include `linux/amd64` and `linux/arm64/v8`; set
+`DEVPLAT_DOCKER_PLATFORM` only when you need to force a platform for an older
+tag. The npm command uses a Node runner for Docker argument construction so the
+same command works under npm on macOS and Linux. Set
+`DEVPLAT_OPENCLAW_RUNTIME_IMAGE` to validate a published PR image before
+`latest` has been updated. Docker publishes the host port only on `127.0.0.1`;
+the gateway binds inside the container so that loopback-only host publish can
+forward traffic.
+
 ## Platform Context
 
 - GitHub remains the system of record for specs, pull requests, reviews, and merges.
@@ -41,12 +59,25 @@ timestamp, and known lifecycle artifact signals; the supervisor returns the next
 platform tool, route owner, artifact gaps, input requirements, and any human
 approval blocker.
 
-For local repository maintenance, `npm run maintenance:headless -- --plan
-./maintenance-plan.json --write-plan ./.devplat/state/next-maintenance-plan.json`
-wraps that pattern in a bounded loop: it calls `continue_lifecycle`, invokes the
-next supplied tool input, records the returned artifact signal, writes a
-resumable handoff plan when requested, and stops at missing input or human
-approval instead of guessing.
+For local repository maintenance:
+
+```bash
+npm run maintenance:headless -- --plan ./maintenance-plan.json --write-plan ./.devplat/state/next-maintenance-plan.json
+```
+
+This wraps that pattern in a bounded loop: it calls `continue_lifecycle`,
+invokes the next supplied tool input, records the returned artifact signal,
+writes a resumable handoff plan when requested, and stops at missing input or
+human approval instead of guessing.
+
+After the first handoff exists:
+
+```bash
+npm run maintenance:headless -- --handoff --tool-input ./.devplat/state/next-tool-input.json
+```
+
+This reads the default ignored handoff path, appends one validated tool input,
+and rewrites the same handoff file for the next local run.
 
 Required foundation-phase tool coverage includes:
 
