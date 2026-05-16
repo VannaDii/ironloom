@@ -420,6 +420,7 @@ jobs:
           context: .
           file: docker/openclaw-runtime/Dockerfile
           push: true
+          platforms: linux/amd64,linux/arm64/v8
           build-args: |
             NODE_VERSION=${{ steps.meta_vars.outputs.node_version }}
           labels: |

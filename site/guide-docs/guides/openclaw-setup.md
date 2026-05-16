@@ -20,6 +20,19 @@ npm run build
 
 The runtime expects OpenClaw configuration through environment variables, mounted config, or explicit CLI arguments.
 
+To run the latest published Docker runtime with the dashboard exposed on the
+host, use:
+
+```bash
+npm run docker:openclaw:latest
+```
+
+Then open `http://127.0.0.1:18789/` and use the configured
+`OPENCLAW_GATEWAY_TOKEN`, or `devplat-local` when no token is set. Published
+runtime manifests include `linux/amd64` and `linux/arm64/v8`; set
+`DEVPLAT_DOCKER_PLATFORM` only when you need to force a platform for an older
+tag.
+
 ## Platform Context
 
 - GitHub remains the system of record for specs, pull requests, reviews, and merges.

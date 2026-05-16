@@ -39,6 +39,7 @@
     "docs:build": "vitepress build site/guide-docs",
     "docs:dev": "vitepress dev site/guide-docs",
     "docs:preview": "vitepress preview site/guide-docs",
+    "docker:openclaw:latest": "mkdir -p .devplat/docker-state && docker run --rm --pull always ${DEVPLAT_DOCKER_PLATFORM:+--platform} ${DEVPLAT_DOCKER_PLATFORM:+$DEVPLAT_DOCKER_PLATFORM} --name devplat-openclaw-latest --user \"$(id -u):$(id -g)\" -p 18789:18789 -e \"OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-devplat-local}\" -e DEVPLAT_STORAGE_ROOT=/var/lib/devplat/state -e DEVPLAT_WORKTREE_ROOT=/var/lib/devplat/worktrees -e OPENCLAW_HOME=/var/lib/devplat/openclaw-home -v \"$PWD/.devplat/docker-state:/var/lib/devplat\" ghcr.io/vannadii/devplat-openclaw-runtime:latest --port 18789 --bind lan --auth token --token \"${OPENCLAW_GATEWAY_TOKEN:-devplat-local}\" --allow-unconfigured",
     "dev:local-stack": "node --env-file=.env --import tsx --conditions=source scripts/openclaw-local-stack.mjs",
     "format:check": "prettier . --check",
     "format": "prettier . --write",
