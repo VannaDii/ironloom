@@ -1,85 +1,72 @@
-# @vannadii/devplat-config
+# @vannadii/devplat-artifacts
 
 ## 0.2.0
 
 ### Patch Changes
 
-- [#60](https://github.com/VannaDii/devplat/pull/60) [`214fd77`](https://github.com/VannaDii/devplat/commit/214fd7718fa0da333f39d45daff02295e98b71a7) Thanks [@VannaDii](https://github.com/VannaDii)! - Project dependent-branch rebase conflicts back into the executed rebase plan.
-  Deepen OpenClaw worktree delegation with explicit Git-backed worktree tool
-  execution.
-  Record OpenClaw gate execution telemetry with actor, classification, and
-  next-action details.
+- [#63](https://github.com/VannaDii/devplat/pull/63) [`04f92aa`](https://github.com/VannaDii/devplat/commit/04f92aa2bd0392813650e2fd8c8ba229d52558bb) Thanks [@VannaDii](https://github.com/VannaDii)! - Deepen artifact validation by allowing callers to provide delegated payload
+  validators for registry-supported artifact envelopes whose payload contracts are
+  owned by downstream packages.
 
-  Dependent rebase execution already delegated branch refresh work to
-  `@vannadii/devplat-worktrees` and returned the raw sync results. It now also
-  derives the returned plan's `conflictClassification` from sync results that
-  report `conflictsDetected`, so downstream OpenClaw tool output and operator
-  surfaces receive the concrete affected branches and `resolve-conflicts` next
-  action without reinterpreting raw worktree records.
+  The artifacts package still owns envelope, registry, migration, and local
+  approval/audit/merge/rebase payload validation. It now also accepts an optional
+  payload-validator map and fails closed with a structured
+  `artifact.payload_invalid` diagnostic when a delegated package validator rejects
+  an envelope payload. Successful delegated validation appends an
+  `artifact-payload:<type>` trace entry before generic envelope normalization, so
+  operators can see that both the envelope and embedded payload contract were
+  checked.
 
-  OpenClaw worktree lifecycle tools now accept explicit `applyToDisk` input. Pure
-  record projection remains the default, while `applyToDisk: true` delegates
-  allocation, sync, and release to the Git-backed worktree service methods.
-  The Git-backed sync and release service methods now recompute the expected
-  worktree path from the configured root, task id, and branch name, then block
-  before Git execution when a caller-provided allocation path points somewhere
-  else.
+  The OpenClaw artifact-validation tool now supplies delegated validators for
+  research briefs, spec records, slice plans, task records, gate reports, review
+  findings, remediation plans, pull request records, telemetry events, worktree
+  allocations, and Discord thread sessions. Generic lifecycle envelopes therefore
+  no longer pass OpenClaw validation solely because the outer envelope is shaped
+  correctly; their embedded payload must also satisfy the owning package codec.
+  OpenClaw tool responses now also project object-shaped delegated results into
+  an `operationalResult` summary when lifecycle evidence is present. The summary
+  surfaces normalized status, artifact id, persisted record key, policy decision
+  id, telemetry event id, and next-action hints without replacing the
+  package-owned payload, giving agent loops a consistent handoff shape across
+  artifact, storage, policy, telemetry, and gate tools.
 
-  OpenClaw gate runs now record telemetry through the configured storage root.
-  The `run_gates` tool accepts an optional `actorId`, preserves the gate report
-  shape, and adds the persisted telemetry event id to its result so downstream
-  operators can audit pass/fail classification and next actions.
+  Discord Gateway button routing now resolves persisted thread sessions from the
+  component-encoded thread id when Discord reports the interaction channel as the
+  parent channel. The resolver still revalidates the encoded thread against the
+  stored session and requires the callback channel to match the persisted thread
+  or parent channel, so unrelated-channel replays fail closed while live-lab
+  manual button clicks can route to the bound thread. Callback channel and
+  component thread identifiers are computed once per interaction before scanning
+  stored sessions, and OpenClaw artifact validation now constructs its delegated
+  validator map once before optional registry hardening is attached.
 
-  OpenClaw Sonar quality-gate evaluations now record telemetry through the same
-  storage path. The `evaluate_sonar_quality_gate` tool accepts an optional
-  `actorId`, delegates threshold evaluation to the SonarCloud package, and returns
-  the persisted telemetry event id with project, coverage, blocking issue, status,
-  and next-action details.
+  Repository governance is also tightened so instruction drift is caught locally
+  before review. `check:repo` now includes a package-source JSDoc gate, the unit
+  test checker rejects non-canonical `it.each(<name>)` case-table variables, and
+  the instruction checker requires the code-change Changesets rule, canonical
+  test-table wording, and JSDoc governance documentation to stay aligned across
+  the agent, contributor, GitHub, and developer-guide surfaces. The JSDoc gate
+  also rejects low-quality placeholder wording such as duplicated service labels,
+  `Creates create.`, and codec labels on non-codec helpers so generated comments
+  must be made intentional before review.
 
-  OpenClaw worktree tool `baseBranch` inputs now use the shared Git branch codec
-  instead of raw strings. Generated schemas also carry the shared Git branch
-  pattern so adapter decoding and external tool contracts reject flag-like,
-  whitespace-containing, or otherwise invalid branch refs before any Git-backed
-  worktree operation runs.
-
-  GitHub workflow submission decisions now include the persisted telemetry event
-  id returned from the policy and REST submission boundary. OpenClaw pull request
-  update and merge tools continue to delegate to the PR/GitHub packages, but their
-  operator-facing output can now point directly at the durable GitHub workflow
-  telemetry record for accepted, blocked, dry-run, and rejected submissions.
-
-  Pull request records now decode `branchName` and `baseBranch` through the shared
-  Git branch codec and `updatedAt` through the shared ISO timestamp codec.
-  Generated PR and OpenClaw PR-tool schemas carry the same branch pattern and
-  date-time format, so unsafe refs and malformed timestamps are rejected before PR
-  update or merge submission.
-
-  Worktree allocation, sync, and release records now decode `updatedAt` through
-  the shared ISO timestamp codec, and sync result `baseBranch` values decode
-  through the shared Git branch codec. Generated worktree and embedded OpenClaw
-  schemas now expose the stricter date-time contract for persisted allocation
-  input while blocked worktree records can still preserve unsafe operator branch
-  input for auditability.
-
-  Queue task records now decode `updatedAt` and transition `occurredAt` values
-  through the shared ISO timestamp codec. Generated queue and OpenClaw task tool
-  schemas now expose date-time formats for durable lifecycle records and
-  transition-event history.
-
-  Telemetry events, audit records, and run summaries now decode event, audit, and
-  run boundary timestamps through the shared ISO timestamp codec. Generated
-  observability and OpenClaw telemetry-record schemas now expose date-time formats
-  for persisted telemetry and audit surfaces.
-
-  Runtime config now decodes repository default branches and worktree base
-  branches through the shared Git branch codec, repository keys through the shared
-  repository key codec, and config `updatedAt` through the shared ISO timestamp
-  codec. The schema generator now supports the shared repository-key codec through
-  a tested core-owned JSON Schema pattern.
-
-  Specification records and revision metadata now decode `updatedAt` through the
-  shared ISO timestamp codec. Generated spec and OpenClaw spec tool schemas now
-  expose date-time formats for durable spec history.
+  The source-local governance checks now run through ESLint instead of duplicate
+  repository scripts. A local DevPlat ESLint plugin enforces authored JSDoc,
+  structured case tables, regular-expression placement and `PATTERN` naming, and
+  static policy boundaries, while the remaining scripts only perform cross-file
+  or generated-artifact checks that lint rules cannot express cleanly. The local
+  toolchain also bumps to the latest compatible `eslint` and `typescript-eslint`
+  versions available for the repository's ESLint 10 and TypeScript 6 baseline.
+  The structured case-table lint rule now validates required `inputs`, `mock`,
+  and `assert` fields on each element of the canonical `cases` array, including
+  tables wrapped in TypeScript `satisfies` expressions, so unrelated object
+  literals cannot satisfy the rule. Regex linting also rejects inline regex
+  literals and `RegExp` constructors inside `constants.ts` unless they are direct
+  `const *_PATTERN` declarations.
+  The sibling-test layout rule for non-trivial `logic.ts` and `service.ts` units
+  now runs inside the DevPlat ESLint plugin too, so `check:repo` no longer needs a
+  separate `check:unit-tests` script for behavior that can be enforced per source
+  file.
 
 - [#55](https://github.com/VannaDii/devplat/pull/55) [`efccadf`](https://github.com/VannaDii/devplat/commit/efccadfbd840179c8d1088c7674a7ee6252a1fe7) Thanks [@VannaDii](https://github.com/VannaDii)! - Add the first full-autonomy contract slices:
   - repository-scoped runtime configuration, GitHub API/web/token defaults, `.devplat` storage directories, worktree sync defaults, and Docker/Helm deployment defaults
@@ -123,15 +110,3 @@
 
 - Updated dependencies [[`214fd77`](https://github.com/VannaDii/devplat/commit/214fd7718fa0da333f39d45daff02295e98b71a7), [`efccadf`](https://github.com/VannaDii/devplat/commit/efccadfbd840179c8d1088c7674a7ee6252a1fe7), [`fe4da91`](https://github.com/VannaDii/devplat/commit/fe4da91b778b31a57994f1465913c948476bc96f)]:
   - @vannadii/devplat-core@0.2.0
-
-## 0.1.0
-
-### Minor Changes
-
-- [#14](https://github.com/VannaDii/devplat/pull/14) [`4288cff`](https://github.com/VannaDii/devplat/commit/4288cff50dded6c2e97a9de6ec77b6c9102ad7e4) Thanks [@VannaDii](https://github.com/VannaDii)! - Align the Discord control-plane contracts with explicit v10 runtime
-  configuration and thread-scoped operator behavior.
-
-  This change adds Discord v10 connection and install settings to the runtime and
-  OpenClaw plugin configuration, expands Discord thread and control contracts to
-  stay fully thread-aware, and updates the generated schemas, manifest, and guide
-  documentation to match the current operator workflow and CI expectations.

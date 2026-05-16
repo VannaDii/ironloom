@@ -1,6 +1,6 @@
 {
   "name": "@vannadii/devplat-memory",
-  "version": "0.0.0",
+  "version": "0.2.0",
   "description": "Persistent project memory domain contracts.",
   "license": "MIT",
   "type": "module",
@@ -30,8 +30,8 @@
   },
   "dependencies": {
     "io-ts": "2.2.22",
-    "@vannadii/devplat-core": "0.0.0",
-    "@vannadii/devplat-storage": "0.0.0"
+    "@vannadii/devplat-core": "0.2.0",
+    "@vannadii/devplat-storage": "0.2.0"
   },
   "repository": {
     "type": "git",

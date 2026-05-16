@@ -1,12 +1,6 @@
-# @vannadii/devplat-supervisor
+# @vannadii/devplat-policy
 
 ## 0.2.0
-
-### Minor Changes
-
-- [#71](https://github.com/VannaDii/devplat/pull/71) [`9f89d64`](https://github.com/VannaDii/devplat/commit/9f89d649c9d2f3b948fd64529a29661f2fa4f6ca) Thanks [@VannaDii](https://github.com/VannaDii)! - Add a headless lifecycle continuation path for agent-driven software-building work.
-
-  The supervisor now accepts repository, objective, actor, timestamp, and lifecycle artifact signals, then returns the next concrete platform tool with route ownership, missing artifact types, input requirements, and human approval blockers. OpenClaw exposes the delegated `continue_lifecycle` tool so callers can continue research/spec/slice/task/worktree/gate/remediation/PR/merge loops without Discord thread state.
 
 ### Patch Changes
 
@@ -90,26 +84,5 @@
 
   Indexed storage records can now be resolved through `FileStoreService.readIndexedRecord()` and the `read_indexed_record` OpenClaw tool, allowing lifecycle callers to go from active-thread, task, pull-request, branch, or artifact index keys to the owning stored record without chaining direct `.devplat` path reads. The hermetic deep test now exercises that indexed-record lookup after persisting an artifact-indexed lifecycle record.
 
-- Updated dependencies [[`04f92aa`](https://github.com/VannaDii/devplat/commit/04f92aa2bd0392813650e2fd8c8ba229d52558bb), [`214fd77`](https://github.com/VannaDii/devplat/commit/214fd7718fa0da333f39d45daff02295e98b71a7), [`efccadf`](https://github.com/VannaDii/devplat/commit/efccadfbd840179c8d1088c7674a7ee6252a1fe7), [`fe4da91`](https://github.com/VannaDii/devplat/commit/fe4da91b778b31a57994f1465913c948476bc96f)]:
-  - @vannadii/devplat-artifacts@0.2.0
+- Updated dependencies [[`214fd77`](https://github.com/VannaDii/devplat/commit/214fd7718fa0da333f39d45daff02295e98b71a7), [`efccadf`](https://github.com/VannaDii/devplat/commit/efccadfbd840179c8d1088c7674a7ee6252a1fe7), [`fe4da91`](https://github.com/VannaDii/devplat/commit/fe4da91b778b31a57994f1465913c948476bc96f)]:
   - @vannadii/devplat-core@0.2.0
-  - @vannadii/devplat-branching@0.2.0
-  - @vannadii/devplat-observability@0.2.0
-  - @vannadii/devplat-prs@0.2.0
-  - @vannadii/devplat-queue@0.2.0
-  - @vannadii/devplat-specs@0.2.0
-  - @vannadii/devplat-gates@0.2.0
-  - @vannadii/devplat-policy@0.2.0
-  - @vannadii/devplat-remediation@0.2.0
-  - @vannadii/devplat-review@0.2.0
-  - @vannadii/devplat-slicing@0.2.0
-
-## 0.0.1
-
-### Patch Changes
-
-- Updated dependencies [[`da1e426`](https://github.com/VannaDii/devplat/commit/da1e4269cdfa9cf2f18eaf39e93f5d721ccd46a0)]:
-  - @vannadii/devplat-prs@0.1.0
-  - @vannadii/devplat-specs@0.1.0
-  - @vannadii/devplat-branching@0.0.1
-  - @vannadii/devplat-slicing@0.0.1
