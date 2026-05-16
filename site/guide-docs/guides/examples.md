@@ -15,3 +15,17 @@
 2. `create_remediation_plan`
 3. `run_gates`
 4. `evaluate_sonar_quality_gate`
+
+## Headless Maintenance Handoff
+
+Use a JSON plan when DevPlat should continue repository maintenance without a
+Discord thread binding:
+
+```bash
+npm run maintenance:headless -- --plan ./maintenance-plan.json --write-plan ./.devplat/state/next-maintenance-plan.json
+```
+
+The input plan contains the current continuation request and any explicit tool
+inputs that are safe to run. The handoff plan written by `--write-plan` contains
+the updated request with new artifact signals, so the next run can resume from
+current lifecycle evidence and stop at the next missing input or approval gate.

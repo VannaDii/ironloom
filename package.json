@@ -45,6 +45,7 @@
     "generate:openclaw-manifest": "node scripts/generate-openclaw-manifest.mjs",
     "generate:schemas": "node --import tsx --conditions=source scripts/generate-schemas.mjs",
     "lint": "eslint . --max-warnings 0",
+    "maintenance:headless": "node --import tsx --conditions=source scripts/headless-maintenance-runner.mjs",
     "preinstall": "node scripts/verify-node-version.mjs",
     "prepare:generated": "npm run generate:schemas && npm run generate:openclaw-manifest",
     "prepare": "husky",
