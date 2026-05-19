@@ -9,7 +9,9 @@ npm run docker:openclaw:latest
 The command pulls `ghcr.io/vannadii/devplat-openclaw-runtime:latest` before each
 run, publishes the OpenClaw dashboard on loopback at
 `http://127.0.0.1:18789/`, and uses `devplat-local` as the default gateway token.
-Set `OPENCLAW_GATEWAY_TOKEN` before running the command to use a different token.
+It prints the active gateway token, tokenized dashboard URL, tokenized chat URL,
+and WebSocket URL before the container logs start. Set
+`OPENCLAW_GATEWAY_TOKEN` before running the command to use a different token.
 Published runtime manifests include `linux/amd64` and `linux/arm64/v8`; set
 `DEVPLAT_DOCKER_PLATFORM` only when you need to force a platform for an older
 tag. Runtime state is mounted at

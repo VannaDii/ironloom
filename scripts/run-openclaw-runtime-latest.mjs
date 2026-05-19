@@ -30,6 +30,41 @@ const openClawGatewayPort = '18789';
 const openClawGatewayHost = '127.0.0.1';
 
 /**
+ * HTTP protocol used for the local dashboard links.
+ */
+const localHttpProtocol = 'http';
+
+/**
+ * WebSocket protocol used for the local gateway connection.
+ */
+const localWebSocketProtocol = 'ws';
+
+/**
+ * Control UI path for the local dashboard.
+ */
+const localDashboardPath = '/';
+
+/**
+ * Control UI path for the local chat surface.
+ */
+const localChatPath = '/chat';
+
+/**
+ * Default chat session opened by the local helper.
+ */
+const localChatSession = 'main';
+
+/**
+ * URL search parameter key used by OpenClaw chat links.
+ */
+const chatSessionSearchParameter = 'session';
+
+/**
+ * URL fragment key consumed by the OpenClaw Control UI token bootstrap.
+ */
+const gatewayTokenFragmentKey = 'token';
+
+/**
  * OpenClaw bind mode used inside the container for Docker port forwarding.
  */
 const openClawGatewayBindMode = 'lan';
@@ -112,6 +147,60 @@ function appendUserMapping(args, userId, groupId) {
 }
 
 /**
+ * Creates a local HTTP URL with the gateway token in the URL fragment.
+ */
+function createTokenizedLocalHttpUrl({
+  gatewayToken,
+  path,
+  searchParams = [],
+}) {
+  const url = new URL(
+    `${localHttpProtocol}://${openClawGatewayHost}:${openClawGatewayPort}${path}`,
+  );
+
+  for (const [key, value] of searchParams) {
+    url.searchParams.set(key, value);
+  }
+
+  url.hash = `${gatewayTokenFragmentKey}=${encodeURIComponent(gatewayToken)}`;
+
+  return url.toString();
+}
+
+/**
+ * Creates local connection details for the latest OpenClaw runtime.
+ */
+function createLatestOpenClawRuntimeConnectionDetails(gatewayToken) {
+  return {
+    chatUrl: createTokenizedLocalHttpUrl({
+      gatewayToken,
+      path: localChatPath,
+      searchParams: [[chatSessionSearchParameter, localChatSession]],
+    }),
+    dashboardUrl: createTokenizedLocalHttpUrl({
+      gatewayToken,
+      path: localDashboardPath,
+    }),
+    gatewayToken,
+    websocketUrl: `${localWebSocketProtocol}://${openClawGatewayHost}:${openClawGatewayPort}`,
+  };
+}
+
+/**
+ * Renders the local connection details printed before Docker logs.
+ */
+export function renderLatestOpenClawRuntimeConnectionSummary(connection) {
+  return [
+    'OpenClaw local runtime connection:',
+    `Gateway token: ${connection.gatewayToken}`,
+    `Dashboard URL: ${connection.dashboardUrl}`,
+    `Chat URL: ${connection.chatUrl}`,
+    `WebSocket URL: ${connection.websocketUrl}`,
+    '',
+  ].join('\n');
+}
+
+/**
  * Creates the Docker command plan for the latest OpenClaw runtime image.
  */
 export function createLatestOpenClawRuntimeDockerPlan({
@@ -130,6 +219,7 @@ export function createLatestOpenClawRuntimeDockerPlan({
   const runtimeImage =
     readOptionalEnvironmentValue(env, runtimeImageEnvironmentKey) ??
     latestOpenClawRuntimeImage;
+  const connection = createLatestOpenClawRuntimeConnectionDetails(gatewayToken);
   const stateDirectory = resolve(rootDirectory, dockerStateDirectory);
   const args = ['run', '--rm', '--pull', 'always'];
 
@@ -167,6 +257,7 @@ export function createLatestOpenClawRuntimeDockerPlan({
   return {
     args,
     command: 'docker',
+    connection,
     stateDirectory,
   };
 }
@@ -203,6 +294,13 @@ function runCommand({ args, command }) {
 }
 
 /**
+ * Writes a line to the current process output.
+ */
+function writeOutput(message) {
+  console.log(message);
+}
+
+/**
  * Creates local Docker state and runs the latest OpenClaw runtime image.
  */
 export async function runLatestOpenClawRuntime({
@@ -215,6 +313,7 @@ export async function runLatestOpenClawRuntime({
   });
 
   await mkdir(plan.stateDirectory, { recursive: true });
+  writeOutput(renderLatestOpenClawRuntimeConnectionSummary(plan.connection));
   await runCommand(plan);
 }
 

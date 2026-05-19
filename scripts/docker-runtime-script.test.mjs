@@ -6,6 +6,10 @@ const dockerRunLatestScriptName = 'docker:openclaw:latest';
 const dockerRunLatestRunnerPath = 'scripts/run-openclaw-runtime-latest.mjs';
 const latestOpenClawRuntimeImage =
   'ghcr.io/vannadii/devplat-openclaw-runtime:latest';
+const localDashboardUrl = 'http://127.0.0.1:18789/#token=mac-local-token';
+const localChatUrl =
+  'http://127.0.0.1:18789/chat?session=main#token=mac-local-token';
+const localWebSocketUrl = 'ws://127.0.0.1:18789';
 
 describe('docker runtime npm scripts', () => {
   const cases = [
@@ -93,6 +97,51 @@ describe('docker runtime npm scripts', () => {
           'mac-local-token',
           '--allow-unconfigured',
         ]);
+        expect(plan.connection).toEqual({
+          chatUrl: localChatUrl,
+          dashboardUrl: localDashboardUrl,
+          gatewayToken: 'mac-local-token',
+          websocketUrl: localWebSocketUrl,
+        });
+      },
+    },
+    {
+      name: 'renders local connection details before Docker runtime logs',
+      inputs: {
+        env: {
+          OPENCLAW_GATEWAY_TOKEN: 'mac-local-token',
+        },
+        groupId: 20,
+        rootDirectory: '/Users/example/devplat',
+        runnerUrl: new URL(
+          './run-openclaw-runtime-latest.mjs',
+          import.meta.url,
+        ),
+        userId: 501,
+      },
+      mock: async (inputs) => ({
+        inputs,
+        runner: await import(inputs.runnerUrl).catch(() => undefined),
+      }),
+      assert: async ({ inputs, runner }) => {
+        expect(runner).toBeDefined();
+        if (runner === undefined) {
+          return;
+        }
+
+        expect(runner.renderLatestOpenClawRuntimeConnectionSummary).toEqual(
+          expect.any(Function),
+        );
+
+        const plan = runner.createLatestOpenClawRuntimeDockerPlan(inputs);
+        const summary = runner.renderLatestOpenClawRuntimeConnectionSummary(
+          plan.connection,
+        );
+
+        expect(summary).toContain('Gateway token: mac-local-token');
+        expect(summary).toContain(`Dashboard URL: ${localDashboardUrl}`);
+        expect(summary).toContain(`Chat URL: ${localChatUrl}`);
+        expect(summary).toContain(`WebSocket URL: ${localWebSocketUrl}`);
       },
     },
     {

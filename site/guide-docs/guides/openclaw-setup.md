@@ -28,11 +28,13 @@ npm run docker:openclaw:latest
 ```
 
 Then open `http://127.0.0.1:18789/` and use the configured
-`OPENCLAW_GATEWAY_TOKEN`, or `devplat-local` when no token is set. Published
-runtime manifests include `linux/amd64` and `linux/arm64/v8`; set
-`DEVPLAT_DOCKER_PLATFORM` only when you need to force a platform for an older
-tag. The npm command uses a Node runner for Docker argument construction so the
-same command works under npm on macOS and Linux. Set
+`OPENCLAW_GATEWAY_TOKEN`, or `devplat-local` when no token is set. The command
+prints the active gateway token, tokenized dashboard URL, tokenized chat URL,
+and WebSocket URL before the runtime logs begin. Published runtime manifests
+include `linux/amd64` and `linux/arm64/v8`; set `DEVPLAT_DOCKER_PLATFORM` only
+when you need to force a platform for an older tag. The npm command uses a Node
+runner for Docker argument construction so the same command works under npm on
+macOS and Linux. Set
 `DEVPLAT_OPENCLAW_RUNTIME_IMAGE` to validate a published PR image before
 `latest` has been updated. Docker publishes the host port only on `127.0.0.1`;
 the gateway binds inside the container so that loopback-only host publish can
