@@ -32,6 +32,35 @@ afterEach(async () => {
   );
 });
 
+/**
+ * Builds a mocked docker exec response for readiness probes and tool invokes.
+ */
+function createMockGatewayExecResult(args, details = { status: 'ok' }) {
+  const script = args.at(-1);
+  if (typeof script === 'string' && script.includes('/readyz')) {
+    return {
+      stdout: JSON.stringify({
+        status: 200,
+        body: { ready: true },
+      }),
+      stderr: '',
+    };
+  }
+
+  return {
+    stdout: JSON.stringify({
+      status: 200,
+      body: {
+        ok: true,
+        result: {
+          details,
+        },
+      },
+    }),
+    stderr: '',
+  };
+}
+
 describe('openclaw-deep-test helpers', () => {
   const cases = [
     {
@@ -117,18 +146,7 @@ describe('openclaw-deep-test helpers', () => {
                 return { stdout: 'container-1\n', stderr: '' };
               }
               if (args[0] === 'exec') {
-                return {
-                  stdout: JSON.stringify({
-                    status: 200,
-                    body: {
-                      ok: true,
-                      result: {
-                        details: { status: 'ok' },
-                      },
-                    },
-                  }),
-                  stderr: '',
-                };
+                return createMockGatewayExecResult(args);
               }
               if (args[0] === 'logs' || args[0] === 'rm') {
                 return { stdout: '', stderr: '' };
@@ -185,18 +203,7 @@ describe('openclaw-deep-test helpers', () => {
               }
               if (args[0] === 'exec') {
                 events.push(['exec']);
-                return {
-                  stdout: JSON.stringify({
-                    status: 200,
-                    body: {
-                      ok: true,
-                      result: {
-                        details: { status: 'ok' },
-                      },
-                    },
-                  }),
-                  stderr: '',
-                };
+                return createMockGatewayExecResult(args);
               }
               if (args[0] === 'logs') {
                 events.push(['logs']);
@@ -284,18 +291,7 @@ describe('openclaw-deep-test helpers', () => {
                   return { stdout: '', stderr: '' };
                 }
 
-                return {
-                  stdout: JSON.stringify({
-                    status: 200,
-                    body: {
-                      ok: true,
-                      result: {
-                        details: { status: 'ok' },
-                      },
-                    },
-                  }),
-                  stderr: '',
-                };
+                return createMockGatewayExecResult(args);
               }
               if (args[0] === 'logs' || args[0] === 'rm') {
                 return { stdout: '', stderr: '' };
@@ -380,18 +376,7 @@ describe('openclaw-deep-test helpers', () => {
                   throw new Error('chmod unavailable');
                 }
 
-                return {
-                  stdout: JSON.stringify({
-                    status: 200,
-                    body: {
-                      ok: true,
-                      result: {
-                        details: { status: 'ok' },
-                      },
-                    },
-                  }),
-                  stderr: '',
-                };
+                return createMockGatewayExecResult(args);
               }
               if (args[0] === 'logs' || args[0] === 'rm') {
                 return { stdout: '', stderr: '' };
@@ -884,18 +869,10 @@ describe('runDeepTest', () => {
             return { stdout: 'container-1\n', stderr: '' };
           }
           if (args[0] === 'exec') {
-            return {
-              stdout: JSON.stringify({
-                status: 200,
-                body: {
-                  ok: true,
-                  result: {
-                    details: { status: 'ok', scope: 'state' },
-                  },
-                },
-              }),
-              stderr: '',
-            };
+            return createMockGatewayExecResult(args, {
+              scope: 'state',
+              status: 'ok',
+            });
           }
           if (args[0] === 'logs') {
             return { stdout: 'gateway ok\n', stderr: '' };
@@ -1002,6 +979,95 @@ describe('runDeepTest', () => {
       },
     },
     {
+      name: 'probes gateway readiness before invoking scenario tools',
+      inputs: {
+        scenario: [
+          {
+            expected: { status: 'ok' },
+            params: { scope: 'state' },
+            phase: 'config',
+            tool: 'list_stored_records',
+          },
+        ],
+      },
+      mock: async () => {
+        const reportDirectory = await mkdtemp(
+          resolve(tmpdir(), 'devplat-openclaw-deep-test-ready-'),
+        );
+        temporaryRoots.push(reportDirectory);
+
+        const execScripts = [];
+        const commandRunner = async (_command, args) => {
+          if (args[0] === 'build') {
+            return { stdout: '', stderr: '' };
+          }
+          if (args[0] === 'run') {
+            return { stdout: 'container-1\n', stderr: '' };
+          }
+          if (args[0] === 'exec') {
+            const script = args.at(-1);
+            execScripts.push(script);
+            if (script.includes('/readyz')) {
+              return {
+                stdout: JSON.stringify({
+                  status: 200,
+                  body: { ready: true },
+                }),
+                stderr: '',
+              };
+            }
+
+            return {
+              stdout: JSON.stringify({
+                status: 200,
+                body: {
+                  ok: true,
+                  result: {
+                    details: { status: 'ok', scope: 'state' },
+                  },
+                },
+              }),
+              stderr: '',
+            };
+          }
+          if (args[0] === 'logs') {
+            return { stdout: 'gateway ok\n', stderr: '' };
+          }
+          if (args[0] === 'rm') {
+            return { stdout: '', stderr: '' };
+          }
+
+          throw new Error(`Unexpected docker args: ${args.join(' ')}`);
+        };
+
+        return { commandRunner, execScripts, reportDirectory };
+      },
+      assert: async (context, inputs) => {
+        await runDeepTest(
+          {
+            mode: 'hermetic',
+            reportDir: context.reportDirectory,
+            runtimeEnv: createRuntimeEnv(),
+            scenario: inputs.scenario,
+          },
+          {
+            collectStoredKeys: async () => ({
+              artifacts: ['artifact-1'],
+              memory: ['memory-1'],
+              state: ['state-1'],
+              telemetry: ['telemetry-1'],
+            }),
+            commandRunner: context.commandRunner,
+            onProgress: () => undefined,
+          },
+        );
+
+        expect(context.execScripts[0]).toContain('/readyz');
+        expect(context.execScripts[0]).not.toContain('/tools/invoke');
+        expect(context.execScripts[1]).toContain('/tools/invoke');
+      },
+    },
+    {
       name: 'removes the container after readiness failures',
       inputs: {},
       mock: async () => {
@@ -1080,20 +1146,7 @@ describe('runDeepTest', () => {
             return { stdout: 'container-1\n', stderr: '' };
           }
           if (args[0] === 'exec') {
-            return {
-              stdout: JSON.stringify({
-                status: 200,
-                body: {
-                  ok: true,
-                  result: {
-                    details: {
-                      status: 'ok',
-                    },
-                  },
-                },
-              }),
-              stderr: '',
-            };
+            return createMockGatewayExecResult(args);
           }
           if (args[0] === 'logs') {
             return { stdout: 'gateway ok\n', stderr: '' };

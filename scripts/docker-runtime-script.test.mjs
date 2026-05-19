@@ -1,4 +1,6 @@
-import { readFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 
 import { describe, expect, it } from 'vitest';
 
@@ -10,6 +12,14 @@ const localDashboardUrl = 'http://127.0.0.1:18789/#token=mac-local-token';
 const localChatUrl =
   'http://127.0.0.1:18789/chat?session=main#token=mac-local-token';
 const localWebSocketUrl = 'ws://127.0.0.1:18789';
+const printGatewayTokenEnvironmentKey = 'DEVPLAT_OPENCLAW_PRINT_GATEWAY_TOKEN';
+
+/**
+ * Returns the gateway-token line from a rendered local connection summary.
+ */
+function readGatewayTokenLine(summary) {
+  return summary.split('\n').find((line) => line.startsWith('Gateway token:'));
+}
 
 describe('docker runtime npm scripts', () => {
   const cases = [
@@ -101,6 +111,8 @@ describe('docker runtime npm scripts', () => {
           chatUrl: localChatUrl,
           dashboardUrl: localDashboardUrl,
           gatewayToken: 'mac-local-token',
+          gatewayTokenLabel:
+            '<hidden; set DEVPLAT_OPENCLAW_PRINT_GATEWAY_TOKEN=1 to print>',
           websocketUrl: localWebSocketUrl,
         });
       },
@@ -138,10 +150,160 @@ describe('docker runtime npm scripts', () => {
           plan.connection,
         );
 
-        expect(summary).toContain('Gateway token: mac-local-token');
+        expect(summary).toContain(
+          `Gateway token: <hidden; set ${printGatewayTokenEnvironmentKey}=1 to print>`,
+        );
         expect(summary).toContain(`Dashboard URL: ${localDashboardUrl}`);
         expect(summary).toContain(`Chat URL: ${localChatUrl}`);
         expect(summary).toContain(`WebSocket URL: ${localWebSocketUrl}`);
+      },
+    },
+    {
+      name: 'prints the default gateway token without an override',
+      inputs: {
+        env: {},
+        groupId: 20,
+        rootDirectory: '/Users/example/devplat',
+        runnerUrl: new URL(
+          './run-openclaw-runtime-latest.mjs',
+          import.meta.url,
+        ),
+        userId: 501,
+      },
+      mock: async (inputs) => ({
+        inputs,
+        runner: await import(inputs.runnerUrl).catch(() => undefined),
+      }),
+      assert: async ({ inputs, runner }) => {
+        expect(runner).toBeDefined();
+        if (runner === undefined) {
+          return;
+        }
+
+        const plan = runner.createLatestOpenClawRuntimeDockerPlan(inputs);
+        const summary = runner.renderLatestOpenClawRuntimeConnectionSummary(
+          plan.connection,
+        );
+
+        expect(readGatewayTokenLine(summary)).toBe(
+          'Gateway token: devplat-local',
+        );
+      },
+    },
+    {
+      name: 'masks custom gateway tokens unless raw-token output is requested',
+      inputs: {
+        env: {
+          OPENCLAW_GATEWAY_TOKEN: 'mac-local-token',
+        },
+        groupId: 20,
+        rootDirectory: '/Users/example/devplat',
+        runnerUrl: new URL(
+          './run-openclaw-runtime-latest.mjs',
+          import.meta.url,
+        ),
+        userId: 501,
+      },
+      mock: async (inputs) => ({
+        inputs,
+        runner: await import(inputs.runnerUrl).catch(() => undefined),
+      }),
+      assert: async ({ inputs, runner }) => {
+        expect(runner).toBeDefined();
+        if (runner === undefined) {
+          return;
+        }
+
+        const plan = runner.createLatestOpenClawRuntimeDockerPlan(inputs);
+        const summary = runner.renderLatestOpenClawRuntimeConnectionSummary(
+          plan.connection,
+        );
+
+        expect(readGatewayTokenLine(summary)).toBe(
+          `Gateway token: <hidden; set ${printGatewayTokenEnvironmentKey}=1 to print>`,
+        );
+      },
+    },
+    {
+      name: 'prints custom gateway tokens when raw-token output is requested',
+      inputs: {
+        env: {
+          OPENCLAW_GATEWAY_TOKEN: 'mac-local-token',
+          [printGatewayTokenEnvironmentKey]: '1',
+        },
+        groupId: 20,
+        rootDirectory: '/Users/example/devplat',
+        runnerUrl: new URL(
+          './run-openclaw-runtime-latest.mjs',
+          import.meta.url,
+        ),
+        userId: 501,
+      },
+      mock: async (inputs) => ({
+        inputs,
+        runner: await import(inputs.runnerUrl).catch(() => undefined),
+      }),
+      assert: async ({ inputs, runner }) => {
+        expect(runner).toBeDefined();
+        if (runner === undefined) {
+          return;
+        }
+
+        const plan = runner.createLatestOpenClawRuntimeDockerPlan(inputs);
+        const summary = runner.renderLatestOpenClawRuntimeConnectionSummary(
+          plan.connection,
+        );
+
+        expect(readGatewayTokenLine(summary)).toBe(
+          'Gateway token: mac-local-token',
+        );
+      },
+    },
+    {
+      name: 'writes the connection summary before starting Docker',
+      inputs: {
+        env: {},
+        runnerUrl: new URL(
+          './run-openclaw-runtime-latest.mjs',
+          import.meta.url,
+        ),
+      },
+      mock: async (inputs) => {
+        const rootDirectory = await mkdtemp(
+          join(tmpdir(), 'devplat-runtime-runner-'),
+        );
+
+        return {
+          inputs: {
+            ...inputs,
+            rootDirectory,
+          },
+          rootDirectory,
+          runner: await import(inputs.runnerUrl).catch(() => undefined),
+        };
+      },
+      assert: async ({ inputs, rootDirectory, runner }) => {
+        expect(runner).toBeDefined();
+        if (runner === undefined) {
+          return;
+        }
+
+        const events = [];
+        await runner.runLatestOpenClawRuntime({
+          ...inputs,
+          commandRunner: async () => {
+            events.push('run');
+          },
+          output: (message) => {
+            events.push(message);
+          },
+        });
+
+        expect(events).toHaveLength(2);
+        expect(events[0]).toContain('OpenClaw local runtime connection:');
+        expect(events[1]).toBe('run');
+
+        await rm(rootDirectory, { force: true, recursive: true });
       },
     },
     {

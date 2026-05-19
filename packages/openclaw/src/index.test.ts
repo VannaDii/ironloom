@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import devplatOpenClawPlugin, {
@@ -118,6 +121,14 @@ describe('openclaw plugin entry', () => {
         expect(validation.ok).toBe(true);
         expect(toolNames).toStrictEqual(inventoryToolNames);
         expect(new Set(toolNames).size).toBe(toolNames.length);
+        expect(
+          JSON.parse(
+            readFileSync(
+              resolve(import.meta.dirname, '..', 'openclaw.plugin.json'),
+              'utf8',
+            ),
+          ).contracts.tools,
+        ).toStrictEqual(inventoryToolNames);
         expect(createRunGatesTool().name).toBe('run_gates');
         expect(new PluginConfigService().constructor.name).toBe(
           'PluginConfigService',
