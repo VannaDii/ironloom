@@ -28,8 +28,13 @@ npm run docker:openclaw:latest
 ```
 
 Then open `http://127.0.0.1:18789/` and use the configured
-`OPENCLAW_GATEWAY_TOKEN`, or `devplat-local` when no token is set. Published
-runtime manifests include `linux/amd64` and `linux/arm64/v8`; set
+`OPENCLAW_GATEWAY_TOKEN`, or `devplat-local` when no token is set. The command
+prints the active gateway token, tokenized dashboard URL, tokenized chat URL,
+and WebSocket URL before the runtime logs begin. Custom gateway tokens are
+hidden in the standalone token line unless
+`DEVPLAT_OPENCLAW_PRINT_GATEWAY_TOKEN=1` is set. Treat tokenized URLs as
+credentials; do not share terminal output in tickets, logs, or public channels.
+Published runtime manifests include `linux/amd64` and `linux/arm64/v8`; set
 `DEVPLAT_DOCKER_PLATFORM` only when you need to force a platform for an older
 tag. The npm command uses a Node runner for Docker argument construction so the
 same command works under npm on macOS and Linux. Set

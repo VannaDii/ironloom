@@ -53,7 +53,7 @@
     "@vannadii/devplat-supervisor": "0.2.0",
     "@vannadii/devplat-worktrees": "0.2.0",
     "io-ts": "2.2.22",
-    "openclaw": "2026.4.27"
+    "openclaw": "2026.5.18"
   },
   "openclaw": {
     "extensions": [

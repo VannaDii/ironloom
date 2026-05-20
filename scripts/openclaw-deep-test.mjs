@@ -9,6 +9,10 @@ import { pathToFileURL } from 'node:url';
 const execFileAsync = promisify(execFile);
 const repoRootDirectory = resolve(import.meta.dirname, '..');
 const defaultGatewayPort = 18789;
+/**
+ * Gateway readiness endpoint exposed by the bundled runtime.
+ */
+const gatewayReadinessPath = '/readyz';
 const defaultReadinessTimeoutMs = 60_000;
 const defaultReadinessPollMs = 1_000;
 const defaultImageTagPrefix = 'devplat-openclaw-deep-test';
@@ -441,6 +445,28 @@ const response = await fetch('http://127.0.0.1:${String(defaultGatewayPort)}/too
     'content-type': 'application/json',
   },
   body: JSON.stringify(body),
+});
+const text = await response.text();
+let parsedBody = null;
+if (text.length > 0) {
+  parsedBody = JSON.parse(text);
+}
+process.stdout.write(JSON.stringify({ status: response.status, body: parsedBody }));
+})().catch((error) => {
+  process.stderr.write(String(error instanceof Error ? error.message : error));
+  process.exitCode = 1;
+});
+`;
+}
+
+/**
+ * Creates a container-side readiness probe without invoking tool routes.
+ */
+export function createReadinessScript() {
+  return `
+(async () => {
+const response = await fetch('http://127.0.0.1:${String(defaultGatewayPort)}${gatewayReadinessPath}', {
+  method: 'GET',
 });
 const text = await response.text();
 let parsedBody = null;
@@ -1805,10 +1831,24 @@ async function invokeTool({
   return JSON.parse(response.stdout);
 }
 
+/**
+ * Invokes the gateway readiness endpoint from inside the runtime container.
+ */
+async function invokeGatewayReadiness({ commandRunner, containerName }) {
+  const response = await commandRunner('docker', [
+    'exec',
+    containerName,
+    'node',
+    '-e',
+    createReadinessScript(),
+  ]);
+
+  return JSON.parse(response.stdout);
+}
+
 async function waitForGatewayReadiness({
   commandRunner,
   containerName,
-  gatewayToken,
   timeoutMs,
   pollMs,
 }) {
@@ -1817,18 +1857,11 @@ async function waitForGatewayReadiness({
 
   while (Date.now() - startedAt < timeoutMs) {
     try {
-      const response = await invokeTool({
+      const response = await invokeGatewayReadiness({
         commandRunner,
         containerName,
-        gatewayToken,
-        step: createStep(
-          'list_stored_records',
-          { scope: 'state' },
-          { status: 'ok', scope: 'state' },
-          'bootstrap',
-        ),
       });
-      if (response.status === 200 && response.body?.ok === true) {
+      if (response.status === 200 && response.body?.ready === true) {
         return;
       }
 
@@ -2004,7 +2037,6 @@ export async function runDeepTest(options, dependencies = {}) {
     await waitForGatewayReadiness({
       commandRunner,
       containerName,
-      gatewayToken,
       timeoutMs: options.readinessTimeoutMs ?? defaultReadinessTimeoutMs,
       pollMs: options.readinessPollMs ?? defaultReadinessPollMs,
     });
