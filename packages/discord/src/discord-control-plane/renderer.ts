@@ -560,6 +560,32 @@ function renderDiscordItemValue(request: DiscordControlRequest): string {
 }
 
 /**
+ * Resolves the role label required for a blocked action in this thread context.
+ */
+function resolveRequiredRoleLabel(
+  request: DiscordControlRequest,
+): string | undefined {
+  switch (request.action) {
+    case DEVPLAT_ACTION_NEW_PROJECT:
+    case DEVPLAT_ACTION_OPEN_PROJECT:
+    case DEVPLAT_ACTION_PROJECT_SETTINGS:
+    case DEVPLAT_ACTION_CANCEL_PROJECT:
+    case DEVPLAT_ACTION_RESUME_PROJECT:
+      return 'project-operator';
+    case DEVPLAT_ACTION_RELEASE_PROJECT:
+      return 'project-operator | merge-approver';
+    case DEVPLAT_ACTION_MERGE_NOW:
+      return 'merge-approver';
+    case DEVPLAT_ACTION_APPROVE_THIS:
+      return request.workItem?.threadKind === 'pull-request'
+        ? 'merge-approver'
+        : 'spec-approver';
+    default:
+      return undefined;
+  }
+}
+
+/**
  * Creates the compact DevPlat component custom id.
  */
 function createDiscordComponentCustomId(
@@ -848,12 +874,15 @@ export function renderDiscordControlAcceptedMessage(
 export function renderDiscordControlBlockedMessage(
   request: DiscordControlRequest,
 ): DiscordMessagePayload {
+  const requiredRole = resolveRequiredRoleLabel(request);
   const content = renderDiscordMessageContent({
     actionLabel: 'Action blocked',
     fields: {
       Status: 'blocked',
+      Caller: describeActor(request.actorId),
       Action: request.action,
       Scope: renderDiscordScopeValue(request),
+      ...(requiredRole === undefined ? {} : { 'Required role': requiredRole }),
       Reason: 'policy denied this action',
     },
     indicator: '🔴',
