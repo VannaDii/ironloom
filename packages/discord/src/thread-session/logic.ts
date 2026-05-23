@@ -1,4 +1,4 @@
-import { appendTrace } from '@vannadii/devplat-core';
+import { DEVPLAT_ACTION_SPEC, appendTrace } from '@vannadii/devplat-core';
 
 import type {
   DiscordThreadSession,
@@ -44,7 +44,7 @@ export function createDiscordThreadSession(
   };
 
   switch (input.kind) {
-    case 'spec':
+    case DEVPLAT_ACTION_SPEC:
       if (input.specId === null) {
         throw new Error('Spec threads must be linked to a specId.');
       }

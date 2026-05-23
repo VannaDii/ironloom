@@ -14,6 +14,7 @@ import {
   DEVPLAT_ACTION_RUN_THIS,
   DEVPLAT_ACTION_SHOW_LAST_ARTIFACT,
   DEVPLAT_ACTION_SHOW_STATUS,
+  DEVPLAT_ACTION_SPEC,
   DEVPLAT_ACTION_SYNC_WORKTREE,
   DEVPLAT_ACTION_UPDATE_SPEC,
   DEVPLAT_ACTION_PAUSE_THIS,
@@ -296,7 +297,7 @@ export function createDiscordWorkItemBinding(
   };
 
   switch (session.kind) {
-    case 'spec':
+    case DEVPLAT_ACTION_SPEC:
       return {
         ...base,
         specId: session.specId,

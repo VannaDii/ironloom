@@ -1,6 +1,7 @@
 import * as t from 'io-ts';
 
 import {
+  DEVPLAT_ACTION_SPEC,
   IsoTimestampCodec,
   LifecycleStatusCodec,
 } from '@vannadii/devplat-core';
@@ -37,7 +38,7 @@ const DiscordThreadSessionBaseCodec = t.type({
 
 /** Codec for discord thread kind. */
 export const DiscordThreadKindCodec = t.union([
-  t.literal('spec'),
+  t.literal(DEVPLAT_ACTION_SPEC),
   t.literal('implementation'),
   t.literal('pull-request'),
 ]);
@@ -57,7 +58,7 @@ export const DiscordThreadSessionInputCodec = t.intersection([
 export const DiscordSpecThreadSessionCodec = t.intersection([
   DiscordThreadSessionBaseCodec,
   t.type({
-    kind: t.literal('spec'),
+    kind: t.literal(DEVPLAT_ACTION_SPEC),
     specId: t.string,
     sliceId: t.null,
     pullRequestNumber: t.null,

@@ -1,4 +1,6 @@
 import {
+  DEVPLAT_ACTION_RESEARCH,
+  DEVPLAT_ACTION_SPEC,
   DEVPLAT_ACTION_AUTOFIX,
   DEVPLAT_ACTION_RUN_GATES,
 } from '@vannadii/devplat-core';
@@ -9,8 +11,8 @@ import type { SupervisorPhase } from './codec.js';
  * Ordered supervisor lifecycle phases used to route ready work forward.
  */
 export const SUPERVISOR_PHASE_ORDER = [
-  'research',
-  'spec',
+  DEVPLAT_ACTION_RESEARCH,
+  DEVPLAT_ACTION_SPEC,
   'slicing',
   'implementation',
   'gates',
@@ -44,8 +46,8 @@ export const SUPERVISOR_WORKTREE_ROUTE_TARGET = 'worktree-allocation-service';
  * Action keyword vocabulary used to infer a lifecycle phase.
  */
 export const SUPERVISOR_PHASE_ACTION_KEYWORDS = {
-  research: ['research'],
-  spec: ['spec'],
+  research: [DEVPLAT_ACTION_RESEARCH],
+  spec: [DEVPLAT_ACTION_SPEC],
   slicing: ['slice'],
   implementation: [],
   gates: ['gate'],

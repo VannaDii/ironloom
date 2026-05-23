@@ -1,13 +1,14 @@
 import * as t from 'io-ts';
 
 import {
+  DEVPLAT_ACTION_SPEC,
   IsoTimestampCodec,
   LifecycleStatusCodec,
 } from '@vannadii/devplat-core';
 
 /** Codec for discord binding kind. */
 export const DiscordBindingKindCodec = t.union([
-  t.literal('spec'),
+  t.literal(DEVPLAT_ACTION_SPEC),
   t.literal('implementation'),
   t.literal('pull-request'),
   t.literal('audit'),

@@ -1,6 +1,8 @@
 import * as t from 'io-ts';
 
 import {
+  DEVPLAT_ACTION_RESEARCH,
+  DEVPLAT_ACTION_SPEC,
   IsoTimestampCodec,
   LifecycleStatusCodec,
   RepositoryKeyCodec,
@@ -36,8 +38,8 @@ import {
 
 /** Codec for supervisor phase. */
 export const SupervisorPhaseCodec = t.union([
-  t.literal('research'),
-  t.literal('spec'),
+  t.literal(DEVPLAT_ACTION_RESEARCH),
+  t.literal(DEVPLAT_ACTION_SPEC),
   t.literal('slicing'),
   t.literal('implementation'),
   t.literal('gates'),

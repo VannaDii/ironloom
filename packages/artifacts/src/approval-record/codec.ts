@@ -2,6 +2,7 @@ import * as t from 'io-ts';
 
 import {
   ARTIFACT_TYPE_APPROVAL_RECORD,
+  DEVPLAT_ACTION_SPEC,
   IsoTimestampCodec,
   LifecycleStatusCodec,
 } from '@vannadii/devplat-core';
@@ -12,7 +13,7 @@ import { APPROVAL_RECORD_ARTIFACT_VERSION } from './constants.js';
  * Codec for the lifecycle subject covered by an approval decision.
  */
 export const ApprovalSubjectTypeCodec = t.union([
-  t.literal('spec'),
+  t.literal(DEVPLAT_ACTION_SPEC),
   t.literal('slice'),
   t.literal('pull-request'),
   t.literal('merge'),

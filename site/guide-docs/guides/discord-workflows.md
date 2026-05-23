@@ -58,30 +58,42 @@ Project-management lookups must stay read-only. Any lifecycle-changing action st
 
 ## Operator Actions
 
-The registered Discord slash commands operate only after a Discord thread has
-been bound to a spec, implementation, or pull-request record. Research and
-initial spec creation still start through OpenClaw tool or agent execution; the
-slash commands then drive the bound thread through review, remediation, and PR
-acceptance.
+The Discord command surface supports project bootstrap, project management, and
+bound-thread lifecycle controls.
 
-| Slash command         | Bound thread context                  | Operator intent                                                      |
-| --------------------- | ------------------------------------- | -------------------------------------------------------------------- |
-| `/run-this`           | implementation                        | Execute work in the active implementation thread.                    |
-| `/claim-this`         | implementation                        | Claim the queued work item before execution begins.                  |
-| `/approve-this`       | spec, implementation, or pull-request | Approve the bound spec, slice, or pull-request state.                |
-| `/block-this`         | spec, implementation, or pull-request | Mark the active work item blocked without leaving thread context.    |
-| `/complete-this`      | implementation or pull-request        | Mark the active work item complete after terminal handoff.           |
-| `/pause-this`         | spec, implementation, or pull-request | Pause automation for the bound item.                                 |
-| `/resume-this`        | spec, implementation, or pull-request | Resume automation for the bound item.                                |
-| `/retry-gates`        | implementation or pull-request        | Re-run failed gates or remediation in the bound thread context.      |
-| `/merge-now`          | pull-request                          | Trigger the merge path for the bound pull request context.           |
-| `/rebase-dependents`  | spec, implementation, or pull-request | Refresh branches that depend on the bound work item.                 |
-| `/sync-worktree`      | implementation or pull-request        | Refresh the bound branch workspace against its base branch.          |
-| `/release-worktree`   | implementation or pull-request        | Clean up the bound branch workspace after completion or abandonment. |
-| `/show-status`        | spec, implementation, or pull-request | Summarize the active work item and last known lifecycle state.       |
-| `/show-last-artifact` | spec, implementation, or pull-request | Surface the latest auditable artifact for the bound thread.          |
-| `/explain-failure`    | implementation or pull-request        | Summarize the latest failing gate, review, or remediation state.     |
-| `/update-spec`        | spec                                  | Create a new revision of the bound spec while preserving history.    |
+| Slash command               | Bound thread context                             | Operator intent                                                      |
+| --------------------------- | ------------------------------------------------ | -------------------------------------------------------------------- |
+| `/new-project`              | project-management                               | Bootstrap a project with repository and project identity.            |
+| `/open-project`             | project-management                               | Reopen a project run with explicit intent and dashboard routing.     |
+| `/project-summary`          | project-management                               | Show read-only lifecycle and release-precondition summary.           |
+| `/project-settings`         | project-management                               | Update project runtime settings and approval mode.                   |
+| `/project-settings-history` | project-management                               | Show append-only settings history (public or detailed by role).      |
+| `/cancel-project`           | project-management                               | Pause all project activity and post per-phase cancellation status.   |
+| `/resume-project`           | project-management                               | Run global preflight and resume paused project activity.             |
+| `/release-project`          | project-management                               | Request release orchestration and approval.                          |
+| `/phase-contract`           | spec, implementation, or pull-request            | Show authoritative allowed actions, lock markers, and role gates.    |
+| `/alternatives`             | discovery or research                            | Show three alternatives with effort and risk metadata.               |
+| `/alts`                     | discovery or research                            | Alias for `/alternatives`.                                           |
+| `/redirect`                 | discovery or research                            | Replace the active research direction prompt.                        |
+| `/consider`                 | discovery or research                            | Queue a URL for inclusion in the next research update.               |
+| `/research`                 | discovery, spec, implementation, or pull-request | Enter or re-enter research mode for the bound project.               |
+| `/spec`                     | discovery, spec, implementation, or pull-request | Prepare and request spec approval for the active project.            |
+| `/run-this`                 | implementation                                   | Execute work in the active implementation thread.                    |
+| `/claim-this`               | implementation                                   | Claim the queued work item before execution begins.                  |
+| `/approve-this`             | spec, implementation, or pull-request            | Approve the bound spec, slice, or pull-request state.                |
+| `/block-this`               | spec, implementation, or pull-request            | Mark the active work item blocked without leaving thread context.    |
+| `/complete-this`            | implementation or pull-request                   | Mark the active work item complete after terminal handoff.           |
+| `/pause-this`               | spec, implementation, or pull-request            | Pause automation for the bound item.                                 |
+| `/resume-this`              | spec, implementation, or pull-request            | Resume automation for the bound item.                                |
+| `/retry-gates`              | implementation or pull-request                   | Re-run failed gates or remediation in the bound thread context.      |
+| `/merge-now`                | pull-request                                     | Trigger the merge path for the bound pull request context.           |
+| `/rebase-dependents`        | spec, implementation, or pull-request            | Refresh branches that depend on the bound work item.                 |
+| `/sync-worktree`            | implementation or pull-request                   | Refresh the bound branch workspace against its base branch.          |
+| `/release-worktree`         | implementation or pull-request                   | Clean up the bound branch workspace after completion or abandonment. |
+| `/show-status`              | spec, implementation, or pull-request            | Summarize the active work item and last known lifecycle state.       |
+| `/show-last-artifact`       | spec, implementation, or pull-request            | Surface the latest auditable artifact for the bound thread.          |
+| `/explain-failure`          | implementation or pull-request                   | Summarize the latest failing gate, review, or remediation state.     |
+| `/update-spec`              | spec                                             | Create a new revision of the bound spec while preserving history.    |
 
 For the full research-to-PR command workflow, use the canonical
 [Commanded Delivery Flow](./operator-guide.md#commanded-delivery-flow) in the

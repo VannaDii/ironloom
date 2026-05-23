@@ -109,7 +109,21 @@
                         "explain-failure",
                         "sync-worktree",
                         "release-worktree",
-                        "update-spec"
+                        "update-spec",
+                        "new-project",
+                        "open-project",
+                        "project-summary",
+                        "project-settings",
+                        "project-settings-history",
+                        "cancel-project",
+                        "resume-project",
+                        "release-project",
+                        "phase-contract",
+                        "alternatives",
+                        "redirect",
+                        "consider",
+                        "research",
+                        "spec"
                       ]
                     },
                     "privileged": {

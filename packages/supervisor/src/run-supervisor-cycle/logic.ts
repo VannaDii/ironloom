@@ -8,6 +8,8 @@ import {
   ARTIFACT_TYPE_SPEC_RECORD,
   ARTIFACT_TYPE_TASK_RECORD,
   ARTIFACT_TYPE_WORKTREE_ALLOCATION,
+  DEVPLAT_ACTION_RESEARCH,
+  DEVPLAT_ACTION_SPEC,
 } from '@vannadii/devplat-core';
 
 import type { PolicyDecision } from '@vannadii/devplat-policy';
@@ -153,10 +155,10 @@ export function inferSupervisorPhase(action: string): SupervisorPhase {
   const normalizedAction = action.trim();
 
   switch (true) {
-    case actionContainsPhaseKeyword(normalizedAction, 'research'):
-      return 'research';
-    case actionContainsPhaseKeyword(normalizedAction, 'spec'):
-      return 'spec';
+    case actionContainsPhaseKeyword(normalizedAction, DEVPLAT_ACTION_RESEARCH):
+      return DEVPLAT_ACTION_RESEARCH;
+    case actionContainsPhaseKeyword(normalizedAction, DEVPLAT_ACTION_SPEC):
+      return DEVPLAT_ACTION_SPEC;
     case actionContainsPhaseKeyword(normalizedAction, 'slicing'):
       return 'slicing';
     case actionContainsPhaseKeyword(normalizedAction, 'gates'):
@@ -281,7 +283,7 @@ function planContinuationNextAction(
   if (!isCompleteContinuationArtifact(research)) {
     return createContinuationNextAction({
       kind: SUPERVISOR_CONTINUATION_ACTION_CREATE_RESEARCH_BRIEF,
-      phase: 'research',
+      phase: DEVPLAT_ACTION_RESEARCH,
       routedTo: SUPERVISOR_ROUTE_TARGETS.research,
       toolName: SUPERVISOR_CONTINUATION_TOOL_CREATE_RESEARCH_BRIEF,
       summary: 'Create a research brief.',
@@ -297,7 +299,7 @@ function planContinuationNextAction(
   if (spec === undefined) {
     return createContinuationNextAction({
       kind: SUPERVISOR_CONTINUATION_ACTION_CREATE_SPEC_RECORD,
-      phase: 'spec',
+      phase: DEVPLAT_ACTION_SPEC,
       routedTo: SUPERVISOR_ROUTE_TARGETS.spec,
       toolName: SUPERVISOR_CONTINUATION_TOOL_CREATE_SPEC_RECORD,
       summary: 'Create a spec record.',
@@ -312,7 +314,7 @@ function planContinuationNextAction(
   if (spec.status !== 'approved') {
     return createContinuationNextAction({
       kind: SUPERVISOR_CONTINUATION_ACTION_REQUEST_SPEC_APPROVAL,
-      phase: 'spec',
+      phase: DEVPLAT_ACTION_SPEC,
       routedTo: SUPERVISOR_ROUTE_TARGETS.spec,
       toolName: SUPERVISOR_CONTINUATION_TOOL_APPROVE_SPEC_RECORD,
       summary: 'Request spec approval.',

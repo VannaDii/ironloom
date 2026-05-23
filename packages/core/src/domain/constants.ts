@@ -254,6 +254,77 @@ export const DEVPLAT_ACTION_RELEASE_WORKTREE = 'release-worktree';
 export const DEVPLAT_ACTION_UPDATE_SPEC = 'update-spec';
 
 /**
+ * Shared lifecycle action that bootstraps a Discord-first project.
+ */
+export const DEVPLAT_ACTION_NEW_PROJECT = 'new-project';
+
+/**
+ * Shared lifecycle action that reopens an existing project context.
+ */
+export const DEVPLAT_ACTION_OPEN_PROJECT = 'open-project';
+
+/**
+ * Shared lifecycle action that renders the project summary.
+ */
+export const DEVPLAT_ACTION_PROJECT_SUMMARY = 'project-summary';
+
+/**
+ * Shared lifecycle action that updates project settings.
+ */
+export const DEVPLAT_ACTION_PROJECT_SETTINGS = 'project-settings';
+
+/**
+ * Shared lifecycle action that shows project settings history.
+ */
+export const DEVPLAT_ACTION_PROJECT_SETTINGS_HISTORY =
+  'project-settings-history';
+
+/**
+ * Shared lifecycle action that cancels all active project work.
+ */
+export const DEVPLAT_ACTION_CANCEL_PROJECT = 'cancel-project';
+
+/**
+ * Shared lifecycle action that resumes all paused project work.
+ */
+export const DEVPLAT_ACTION_RESUME_PROJECT = 'resume-project';
+
+/**
+ * Shared lifecycle action that orchestrates project release.
+ */
+export const DEVPLAT_ACTION_RELEASE_PROJECT = 'release-project';
+
+/**
+ * Shared lifecycle action that renders the phase contract for a thread.
+ */
+export const DEVPLAT_ACTION_PHASE_CONTRACT = 'phase-contract';
+
+/**
+ * Shared lifecycle action that generates alternative approaches.
+ */
+export const DEVPLAT_ACTION_ALTERNATIVES = 'alternatives';
+
+/**
+ * Shared lifecycle action that redirects discovery/research direction.
+ */
+export const DEVPLAT_ACTION_REDIRECT = 'redirect';
+
+/**
+ * Shared lifecycle action that queues external context for research.
+ */
+export const DEVPLAT_ACTION_CONSIDER = 'consider';
+
+/**
+ * Shared lifecycle action that runs discovery research.
+ */
+export const DEVPLAT_ACTION_RESEARCH = 'research';
+
+/**
+ * Shared lifecycle action that transitions discovery into spec approval.
+ */
+export const DEVPLAT_ACTION_SPEC = 'spec';
+
+/**
  * Shared lifecycle action that publishes external artifacts.
  */
 export const DEVPLAT_ACTION_PUBLISH = 'publish';

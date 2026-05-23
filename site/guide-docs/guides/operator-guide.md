@@ -39,10 +39,10 @@ Missing Discord credentials should fail during config load. Do not rely on place
 
 ## Commanded Delivery Flow
 
-Research and initial spec creation are OpenClaw tool or agent operations.
-Discord slash commands operate the bound spec, implementation, or pull-request
-thread after DevPlat has persisted that thread binding. Missing or ambiguous
-bindings must fail closed.
+Bootstrap starts in Discord with `/new-project --repo ... --project ...`.
+Discord then drives discovery (`/research`, `/spec`, `/alternatives`,
+`/redirect`, `/consider`) and bound spec/implementation/pull-request threads.
+Missing or ambiguous bindings must fail closed.
 
 ```mermaid
 flowchart TD

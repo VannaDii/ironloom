@@ -1,18 +1,32 @@
 import {
+  DEVPLAT_ACTION_ALTERNATIVES,
   DEVPLAT_ACTION_APPROVE_THIS,
   DEVPLAT_ACTION_BLOCK_THIS,
+  DEVPLAT_ACTION_CANCEL_PROJECT,
   DEVPLAT_ACTION_CLAIM_THIS,
   DEVPLAT_ACTION_COMPLETE_THIS,
+  DEVPLAT_ACTION_CONSIDER,
   DEVPLAT_ACTION_EXPLAIN_FAILURE,
   DEVPLAT_ACTION_MERGE_NOW,
+  DEVPLAT_ACTION_NEW_PROJECT,
+  DEVPLAT_ACTION_OPEN_PROJECT,
   DEVPLAT_ACTION_PAUSE_THIS,
+  DEVPLAT_ACTION_PHASE_CONTRACT,
+  DEVPLAT_ACTION_PROJECT_SETTINGS,
+  DEVPLAT_ACTION_PROJECT_SETTINGS_HISTORY,
+  DEVPLAT_ACTION_PROJECT_SUMMARY,
+  DEVPLAT_ACTION_REDIRECT,
+  DEVPLAT_ACTION_RELEASE_PROJECT,
   DEVPLAT_ACTION_REBASE_ALL_DEPENDENTS,
   DEVPLAT_ACTION_RELEASE_WORKTREE,
+  DEVPLAT_ACTION_RESEARCH,
+  DEVPLAT_ACTION_RESUME_PROJECT,
   DEVPLAT_ACTION_RESUME_THIS,
   DEVPLAT_ACTION_RETRY_GATES,
   DEVPLAT_ACTION_RUN_THIS,
   DEVPLAT_ACTION_SHOW_LAST_ARTIFACT,
   DEVPLAT_ACTION_SHOW_STATUS,
+  DEVPLAT_ACTION_SPEC,
   DEVPLAT_ACTION_SYNC_WORKTREE,
   DEVPLAT_ACTION_UPDATE_SPEC,
 } from '@vannadii/devplat-core';
@@ -71,6 +85,107 @@ type DiscordMessageContentInput = {
 const actionDisplays: Readonly<
   Record<DiscordControlAction, DiscordActionDisplay>
 > = {
+  [DEVPLAT_ACTION_NEW_PROJECT]: {
+    label: 'New Project',
+    acceptedTitle: 'Project bootstrap started',
+    acceptedIndicator: '🟡',
+    result: 'Project bootstrap is running with Discord-first controls.',
+    controls: [DEVPLAT_ACTION_PROJECT_SUMMARY, DEVPLAT_ACTION_SHOW_STATUS],
+  },
+  [DEVPLAT_ACTION_OPEN_PROJECT]: {
+    label: 'Open Project',
+    acceptedTitle: 'Project opened',
+    acceptedIndicator: '🟢',
+    result: 'Project context restored with thread-bound routing.',
+    controls: [DEVPLAT_ACTION_PROJECT_SUMMARY, DEVPLAT_ACTION_PHASE_CONTRACT],
+  },
+  [DEVPLAT_ACTION_PROJECT_SUMMARY]: {
+    label: 'Project Summary',
+    acceptedTitle: 'Project summary',
+    acceptedIndicator: 'ℹ️',
+    result: 'Project lifecycle summary is available.',
+    controls: [DEVPLAT_ACTION_PHASE_CONTRACT, DEVPLAT_ACTION_SHOW_STATUS],
+  },
+  [DEVPLAT_ACTION_PROJECT_SETTINGS]: {
+    label: 'Project Settings',
+    acceptedTitle: 'Settings update requested',
+    acceptedIndicator: '🟡',
+    result: 'Project settings update is being applied.',
+    controls: [
+      DEVPLAT_ACTION_PROJECT_SETTINGS_HISTORY,
+      DEVPLAT_ACTION_PROJECT_SUMMARY,
+    ],
+  },
+  [DEVPLAT_ACTION_PROJECT_SETTINGS_HISTORY]: {
+    label: 'Settings History',
+    acceptedTitle: 'Settings history',
+    acceptedIndicator: 'ℹ️',
+    result: 'Append-only settings history is available.',
+    controls: [DEVPLAT_ACTION_PROJECT_SUMMARY, DEVPLAT_ACTION_PHASE_CONTRACT],
+  },
+  [DEVPLAT_ACTION_CANCEL_PROJECT]: {
+    label: 'Cancel Project',
+    acceptedTitle: 'Project paused',
+    acceptedIndicator: '🔴',
+    result: 'Project activity paused and cancellation summaries are posted.',
+    controls: [DEVPLAT_ACTION_RESUME_PROJECT, DEVPLAT_ACTION_PROJECT_SUMMARY],
+  },
+  [DEVPLAT_ACTION_RESUME_PROJECT]: {
+    label: 'Resume Project',
+    acceptedTitle: 'Project resume requested',
+    acceptedIndicator: '🟡',
+    result: 'Global preflight is running before project resume.',
+    controls: [DEVPLAT_ACTION_PROJECT_SUMMARY, DEVPLAT_ACTION_SHOW_STATUS],
+  },
+  [DEVPLAT_ACTION_RELEASE_PROJECT]: {
+    label: 'Release Project',
+    acceptedTitle: 'Release requested',
+    acceptedIndicator: '🟡',
+    result: 'Release preconditions are being re-validated.',
+    controls: [DEVPLAT_ACTION_PROJECT_SUMMARY, DEVPLAT_ACTION_SHOW_STATUS],
+  },
+  [DEVPLAT_ACTION_PHASE_CONTRACT]: {
+    label: 'Phase Contract',
+    acceptedTitle: 'Phase contract',
+    acceptedIndicator: 'ℹ️',
+    result: 'Current phase command contract is shown.',
+    controls: [DEVPLAT_ACTION_SHOW_STATUS, DEVPLAT_ACTION_SHOW_LAST_ARTIFACT],
+  },
+  [DEVPLAT_ACTION_ALTERNATIVES]: {
+    label: 'Alternatives',
+    acceptedTitle: 'Alternatives requested',
+    acceptedIndicator: '🟡',
+    result: 'Generating alternatives with effort and risk summaries.',
+    controls: [DEVPLAT_ACTION_RESEARCH, DEVPLAT_ACTION_SPEC],
+  },
+  [DEVPLAT_ACTION_REDIRECT]: {
+    label: 'Redirect',
+    acceptedTitle: 'Direction updated',
+    acceptedIndicator: '🟢',
+    result: 'Research direction was replaced for future updates.',
+    controls: [DEVPLAT_ACTION_RESEARCH, DEVPLAT_ACTION_ALTERNATIVES],
+  },
+  [DEVPLAT_ACTION_CONSIDER]: {
+    label: 'Consider',
+    acceptedTitle: 'Input queued',
+    acceptedIndicator: '🟢',
+    result: 'The link is queued for the next research update.',
+    controls: [DEVPLAT_ACTION_RESEARCH, DEVPLAT_ACTION_ALTERNATIVES],
+  },
+  [DEVPLAT_ACTION_RESEARCH]: {
+    label: 'Research',
+    acceptedTitle: 'Research requested',
+    acceptedIndicator: '🟡',
+    result: 'Research is running for the current project context.',
+    controls: [DEVPLAT_ACTION_ALTERNATIVES, DEVPLAT_ACTION_SPEC],
+  },
+  [DEVPLAT_ACTION_SPEC]: {
+    label: 'Spec',
+    acceptedTitle: 'Spec requested',
+    acceptedIndicator: '🟡',
+    result: 'Preparing spec summary and approval checkpoint.',
+    controls: [DEVPLAT_ACTION_APPROVE_THIS, DEVPLAT_ACTION_SHOW_STATUS],
+  },
   [DEVPLAT_ACTION_APPROVE_THIS]: {
     label: 'Approve',
     acceptedTitle: 'Approval recorded',
@@ -472,16 +587,31 @@ function resolveButtonStyle(action: DiscordControlAction): DiscordButtonStyle {
     case DEVPLAT_ACTION_RUN_THIS:
     case DEVPLAT_ACTION_RETRY_GATES:
       return DISCORD_BUTTON_STYLE_PRIMARY;
+    case DEVPLAT_ACTION_CANCEL_PROJECT:
+    case DEVPLAT_ACTION_RELEASE_PROJECT:
+      return DISCORD_BUTTON_STYLE_DANGER;
     case DEVPLAT_ACTION_CLAIM_THIS:
     case DEVPLAT_ACTION_COMPLETE_THIS:
+    case DEVPLAT_ACTION_CONSIDER:
     case DEVPLAT_ACTION_EXPLAIN_FAILURE:
+    case DEVPLAT_ACTION_NEW_PROJECT:
+    case DEVPLAT_ACTION_OPEN_PROJECT:
     case DEVPLAT_ACTION_MERGE_NOW:
     case DEVPLAT_ACTION_PAUSE_THIS:
+    case DEVPLAT_ACTION_PHASE_CONTRACT:
+    case DEVPLAT_ACTION_PROJECT_SETTINGS:
+    case DEVPLAT_ACTION_PROJECT_SETTINGS_HISTORY:
+    case DEVPLAT_ACTION_PROJECT_SUMMARY:
+    case DEVPLAT_ACTION_REDIRECT:
     case DEVPLAT_ACTION_REBASE_ALL_DEPENDENTS:
+    case DEVPLAT_ACTION_RESEARCH:
     case DEVPLAT_ACTION_RESUME_THIS:
+    case DEVPLAT_ACTION_RESUME_PROJECT:
+    case DEVPLAT_ACTION_SPEC:
     case DEVPLAT_ACTION_SHOW_LAST_ARTIFACT:
     case DEVPLAT_ACTION_SHOW_STATUS:
     case DEVPLAT_ACTION_SYNC_WORKTREE:
+    case DEVPLAT_ACTION_ALTERNATIVES:
     case DEVPLAT_ACTION_UPDATE_SPEC:
       return DISCORD_BUTTON_STYLE_SECONDARY;
   }
@@ -501,6 +631,20 @@ function resolveAcceptedControls(
         : display.controls.filter(
             (action) => action !== DEVPLAT_ACTION_MERGE_NOW,
           );
+    case DEVPLAT_ACTION_ALTERNATIVES:
+    case DEVPLAT_ACTION_CANCEL_PROJECT:
+    case DEVPLAT_ACTION_CONSIDER:
+    case DEVPLAT_ACTION_NEW_PROJECT:
+    case DEVPLAT_ACTION_OPEN_PROJECT:
+    case DEVPLAT_ACTION_PHASE_CONTRACT:
+    case DEVPLAT_ACTION_PROJECT_SETTINGS:
+    case DEVPLAT_ACTION_PROJECT_SETTINGS_HISTORY:
+    case DEVPLAT_ACTION_PROJECT_SUMMARY:
+    case DEVPLAT_ACTION_REDIRECT:
+    case DEVPLAT_ACTION_RELEASE_PROJECT:
+    case DEVPLAT_ACTION_RESEARCH:
+    case DEVPLAT_ACTION_RESUME_PROJECT:
+    case DEVPLAT_ACTION_SPEC:
     case DEVPLAT_ACTION_BLOCK_THIS:
     case DEVPLAT_ACTION_CLAIM_THIS:
     case DEVPLAT_ACTION_COMPLETE_THIS:
