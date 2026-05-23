@@ -128,9 +128,14 @@ export const DiscordReceivedEventUserSnapshotCodec = t.exact(
 
 /** Codec for minimal received Discord member identity retained for diagnostics. */
 export const DiscordReceivedEventMemberSnapshotCodec = t.exact(
-  t.type({
-    user: DiscordReceivedEventUserSnapshotCodec,
-  }),
+  t.intersection([
+    t.type({
+      user: DiscordReceivedEventUserSnapshotCodec,
+    }),
+    t.partial({
+      roles: t.readonlyArray(t.string),
+    }),
+  ]),
 );
 
 /** Codec for bounded received Discord callback diagnostics. */
@@ -169,6 +174,10 @@ export const DiscordOperatorInteractionCodec = t.intersection([
     boundThreadId: t.string,
     boundSession: DiscordThreadSessionCodec,
     receivedEvent: DiscordReceivedEventSnapshotCodec,
+    actorRoleIds: t.readonlyArray(t.string),
+    projectOperatorRoleId: t.string,
+    specApproverRoleId: t.string,
+    mergeApproverRoleId: t.string,
     privileged: t.boolean,
   }),
 ]);
@@ -179,9 +188,14 @@ export const DiscordInteractionCallbackUserCodec = t.type({
 });
 
 /** Codec for discord interaction callback member. */
-export const DiscordInteractionCallbackMemberCodec = t.type({
-  user: DiscordInteractionCallbackUserCodec,
-});
+export const DiscordInteractionCallbackMemberCodec = t.intersection([
+  t.type({
+    user: DiscordInteractionCallbackUserCodec,
+  }),
+  t.partial({
+    roles: t.readonlyArray(t.string),
+  }),
+]);
 
 /** Codec for discord interaction callback data. */
 export const DiscordInteractionCallbackDataCodec = t.partial({
@@ -215,6 +229,9 @@ export const DiscordInteractionCallbackOptionsCodec = t.partial({
   boundThreadId: t.string,
   boundSession: DiscordThreadSessionCodec,
   summary: t.string,
+  projectOperatorRoleId: t.string,
+  specApproverRoleId: t.string,
+  mergeApproverRoleId: t.string,
   privileged: t.boolean,
   updatedAt: IsoTimestampCodec,
 });

@@ -169,6 +169,22 @@ export function startDiscordInteractionGatewayRuntimeFromEnvironment(
   const config = new RuntimeConfigService().fromEnvironment(env);
   const store = new FileStoreService(config.storage.rootDirectory);
   const resolver = createStorageBackedDiscordGatewayBindingResolver(store);
+  const projectOperatorRoleId =
+    env['DISCORD_PROJECT_OPERATOR_ROLE_ID']?.trim() ?? '';
+  const specApproverRoleId = env['DISCORD_SPEC_APPROVER_ROLE_ID']?.trim() ?? '';
+  const mergeApproverRoleId =
+    env['DISCORD_MERGE_APPROVER_ROLE_ID']?.trim() ?? '';
+  const roleBindingOptions = {
+    ...(projectOperatorRoleId.length === 0 ? {} : { projectOperatorRoleId }),
+    ...(specApproverRoleId.length === 0 ? {} : { specApproverRoleId }),
+    ...(mergeApproverRoleId.length === 0 ? {} : { mergeApproverRoleId }),
+  };
+  const roleAwareResolver: DiscordInteractionGatewayBindingResolver = async (
+    input,
+  ) => ({
+    ...(await resolver(input)),
+    ...roleBindingOptions,
+  });
   const controlPlane = new DiscordControlPlaneService(
     new DecisionPolicyService(),
     new TelemetryEventService(store),
@@ -182,7 +198,7 @@ export function startDiscordInteractionGatewayRuntimeFromEnvironment(
   );
   const gatewayHandler = new DiscordInteractionGatewayService(
     controlPlane,
-    resolver,
+    roleAwareResolver,
   );
   const client =
     dependencies.client ??

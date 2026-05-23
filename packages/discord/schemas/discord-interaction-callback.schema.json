@@ -39,6 +39,12 @@
               },
               "required": ["id"],
               "additionalProperties": false
+            },
+            "roles": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           },
           "required": ["user"],

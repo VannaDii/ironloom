@@ -256,6 +256,31 @@ describe('DiscordControlRequest logic', () => {
       {
         inputs: {
           interaction: {
+            id: 'interaction-007b',
+            token: 'token-7b',
+            actorId: 'user-7b',
+            channelId: 'channel-7b',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'new-project',
+            boundThreadId: 'thread-7b',
+            actorRoleIds: ['role-project-operator'],
+            projectOperatorRoleId: 'role-project-operator',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.action).toBe('new-project');
+            expect(route.request.privileged).toBe(true);
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
             id: 'interaction-008',
             token: 'token-8',
             actorId: 'user-8',
@@ -767,6 +792,7 @@ describe('DiscordControlRequest logic', () => {
               user: {
                 id: 'member-operator-007',
               },
+              roles: ['role-1'],
             },
             user: {
               id: 'operator-007',

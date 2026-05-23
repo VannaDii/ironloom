@@ -283,6 +283,15 @@
         "summary": {
           "type": "string"
         },
+        "projectOperatorRoleId": {
+          "type": "string"
+        },
+        "specApproverRoleId": {
+          "type": "string"
+        },
+        "mergeApproverRoleId": {
+          "type": "string"
+        },
         "privileged": {
           "type": "boolean"
         },

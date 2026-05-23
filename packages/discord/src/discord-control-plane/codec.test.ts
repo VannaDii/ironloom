@@ -321,6 +321,7 @@ describe('discord control request codec', () => {
                   user: {
                     id: 'operator-1',
                   },
+                  roles: ['ignored'],
                 },
                 user: {
                   id: 'operator-2',

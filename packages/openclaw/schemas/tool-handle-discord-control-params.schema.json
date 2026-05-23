@@ -466,6 +466,12 @@
                       },
                       "required": ["id"],
                       "additionalProperties": false
+                    },
+                    "roles": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
                     }
                   },
                   "required": ["user"],
@@ -484,6 +490,21 @@
               },
               "required": ["id", "token", "channel_id"],
               "additionalProperties": false
+            },
+            "actorRoleIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "projectOperatorRoleId": {
+              "type": "string"
+            },
+            "specApproverRoleId": {
+              "type": "string"
+            },
+            "mergeApproverRoleId": {
+              "type": "string"
             },
             "privileged": {
               "type": "boolean"
