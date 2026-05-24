@@ -506,6 +506,9 @@
             "mergeApproverRoleId": {
               "type": "string"
             },
+            "openProjectIntent": {
+              "enum": ["maintenance", "bugfix", "new-feature"]
+            },
             "privileged": {
               "type": "boolean"
             }

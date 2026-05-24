@@ -178,6 +178,11 @@ export const DiscordOperatorInteractionCodec = t.intersection([
     projectOperatorRoleId: t.string,
     specApproverRoleId: t.string,
     mergeApproverRoleId: t.string,
+    openProjectIntent: t.union([
+      t.literal('maintenance'),
+      t.literal('bugfix'),
+      t.literal('new-feature'),
+    ]),
     privileged: t.boolean,
   }),
 ]);
@@ -204,6 +209,12 @@ export const DiscordInteractionCallbackDataCodec = t.partial({
    * Discord interaction callback wire key; internally normalized to `customId`.
    */
   custom_id: t.string,
+  options: t.readonlyArray(
+    t.type({
+      name: t.string,
+      value: t.string,
+    }),
+  ),
 });
 
 /** Codec for discord interaction callback. */
@@ -232,6 +243,11 @@ export const DiscordInteractionCallbackOptionsCodec = t.partial({
   projectOperatorRoleId: t.string,
   specApproverRoleId: t.string,
   mergeApproverRoleId: t.string,
+  openProjectIntent: t.union([
+    t.literal('maintenance'),
+    t.literal('bugfix'),
+    t.literal('new-feature'),
+  ]),
   privileged: t.boolean,
   updatedAt: IsoTimestampCodec,
 });

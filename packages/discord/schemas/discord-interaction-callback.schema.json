@@ -22,6 +22,22 @@
             },
             "custom_id": {
               "type": "string"
+            },
+            "options": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                },
+                "required": ["name", "value"],
+                "additionalProperties": false
+              }
             }
           },
           "required": [],

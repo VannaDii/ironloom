@@ -303,6 +303,52 @@ describe('DiscordControlRequest logic', () => {
       {
         inputs: {
           interaction: {
+            id: 'interaction-008b',
+            token: 'token-8b',
+            actorId: 'user-8b',
+            channelId: 'channel-8b',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'open-project',
+            boundThreadId: 'thread-8b',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(false);
+          if (!route.ok) {
+            expect(route.reason).toContain('open-project requires --intent');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-008c',
+            token: 'token-8c',
+            actorId: 'user-8c',
+            channelId: 'channel-8c',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'open-project',
+            boundThreadId: 'thread-8c',
+            openProjectIntent: 'bugfix',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.action).toBe('open-project');
+            expect(route.request.summary).toContain('intent:bugfix');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
             id: 'interaction-009',
             token: 'token-9',
             actorId: 'user-9',
@@ -617,6 +663,41 @@ describe('DiscordControlRequest logic', () => {
             threadId: 'thread-002',
             boundThreadId: 'thread-002',
             customId: 'devplat:show-status',
+          });
+        },
+      },
+      {
+        name: 'extracts open-project intent from slash-command options',
+        inputs: {
+          callback: {
+            id: 'callback-002b',
+            token: 'token-002b',
+            channel_id: 'thread-002b',
+            data: {
+              name: 'open-project',
+              options: [
+                {
+                  name: 'intent',
+                  value: 'maintenance',
+                },
+              ],
+            },
+            user: {
+              id: 'operator-002b',
+            },
+          },
+        },
+        mock: () => ({}),
+        assert: (context, inputs) => {
+          const interaction = createDiscordOperatorInteractionFromCallback(
+            inputs.callback,
+          );
+
+          expect(interaction).toMatchObject({
+            id: 'callback-002b',
+            actorId: 'operator-002b',
+            commandName: 'open-project',
+            openProjectIntent: 'maintenance',
           });
         },
       },

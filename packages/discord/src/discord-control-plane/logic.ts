@@ -59,6 +59,11 @@ type DevplatOperatorRole =
   | 'merge-approver';
 
 /**
+ * Supported immutable run intents for `/open-project`.
+ */
+type OpenProjectIntent = 'maintenance' | 'bugfix' | 'new-feature';
+
+/**
  * Human and component action tokens accepted by the operator router.
  */
 const commandActionMap = new Map<string, DiscordControlAction>([
@@ -211,6 +216,31 @@ function trimOptional(value: string | undefined): string | undefined {
   }
 
   return trimmed;
+}
+
+/** Resolves `/open-project --intent ...` from callback options. */
+function resolveOpenProjectIntentFromCallback(
+  input: DiscordInteractionCallback,
+): OpenProjectIntent | undefined {
+  const options = input.data?.options;
+  if (options === undefined) {
+    return undefined;
+  }
+
+  const intentOption = options.find(
+    (option) => option.name.trim().toLowerCase() === 'intent',
+  );
+  const intentValue = trimOptional(intentOption?.value)?.toLowerCase();
+  switch (intentValue) {
+    case 'maintenance':
+      return 'maintenance';
+    case 'bugfix':
+      return 'bugfix';
+    case 'new-feature':
+      return 'new-feature';
+    default:
+      return undefined;
+  }
 }
 
 /**
@@ -396,6 +426,8 @@ export function createDiscordOperatorInteractionFromCallback(
   const commandName = trimOptional(input.data?.name);
   const customId = trimOptional(input.data?.custom_id);
   const summary = trimOptional(options.summary);
+  const callbackIntent = resolveOpenProjectIntentFromCallback(input);
+  const resolvedIntent = callbackIntent ?? options.openProjectIntent;
 
   return {
     id: input.id,
@@ -414,6 +446,9 @@ export function createDiscordOperatorInteractionFromCallback(
       ? {}
       : { boundSession: options.boundSession }),
     ...(summary === undefined ? {} : { summary }),
+    ...(resolvedIntent === undefined
+      ? {}
+      : { openProjectIntent: resolvedIntent }),
     ...(input.member?.roles === undefined
       ? {}
       : {
@@ -504,10 +539,15 @@ function createInteractionControlRequestInput(
 ): DiscordControlRequest {
   const privileged =
     input.privileged ?? isActionPrivilegedForInteraction(action, input);
+  const intentSuffix =
+    action === DEVPLAT_ACTION_OPEN_PROJECT &&
+    input.openProjectIntent !== undefined
+      ? ` (intent:${input.openProjectIntent})`
+      : '';
   if (input.boundSession === undefined) {
     return {
       id: input.id,
-      summary: input.summary?.trim() ?? action,
+      summary: `${input.summary?.trim() ?? action}${intentSuffix}`.trim(),
       status: 'running',
       trace: [],
       updatedAt: input.updatedAt,
@@ -521,7 +561,7 @@ function createInteractionControlRequestInput(
 
   return {
     id: input.id,
-    summary: input.summary?.trim() ?? action,
+    summary: `${input.summary?.trim() ?? action}${intentSuffix}`.trim(),
     status: 'running',
     trace: [],
     updatedAt: input.updatedAt,
@@ -554,6 +594,17 @@ export function createDiscordControlRequestFromInteraction(
       interactionId: input.id,
       reason: 'Discord interaction must resolve to exactly one bound thread.',
     };
+  }
+
+  if (action === DEVPLAT_ACTION_OPEN_PROJECT) {
+    if (input.openProjectIntent === undefined) {
+      return {
+        ok: false,
+        interactionId: input.id,
+        reason:
+          'open-project requires --intent maintenance|bugfix|new-feature.',
+      };
+    }
   }
 
   const threadId = threadCandidates.join('');
