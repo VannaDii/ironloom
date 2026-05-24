@@ -91,6 +91,42 @@ describe('Discord command contract logic', () => {
           })),
         );
         expect(
+          payloads.find((payload) => payload.name === 'new-project'),
+        ).toEqual({
+          name: 'new-project',
+          description:
+            'Bootstrap a project from Discord-only operator controls.',
+          type: 1,
+          options: [
+            {
+              type: 3,
+              name: 'repo',
+              description: 'Repository name to bootstrap or create.',
+              required: true,
+              choices: [],
+            },
+            {
+              type: 3,
+              name: 'project',
+              description:
+                'Unique project name (3-30 characters) within the repository.',
+              required: true,
+              choices: [],
+            },
+            {
+              type: 3,
+              name: 'quality-strictness',
+              description:
+                'Enable strict standards enforcement for this project run.',
+              required: false,
+              choices: [
+                { name: 'on', value: 'on' },
+                { name: 'off', value: 'off' },
+              ],
+            },
+          ],
+        });
+        expect(
           payloads.find((payload) => payload.name === 'open-project'),
         ).toEqual({
           name: 'open-project',
@@ -98,6 +134,21 @@ describe('Discord command contract logic', () => {
             'Open a project dashboard and route commands by context.',
           type: 1,
           options: [
+            {
+              type: 3,
+              name: 'repo',
+              description: 'Repository name that owns the project.',
+              required: true,
+              choices: [],
+            },
+            {
+              type: 3,
+              name: 'project',
+              description:
+                'Project name bound to the operator control context.',
+              required: true,
+              choices: [],
+            },
             {
               type: 3,
               name: 'intent',

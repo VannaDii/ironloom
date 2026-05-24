@@ -54,18 +54,106 @@ const stringCommandOptionType: DiscordCommandOptionType = 3;
 /**
  * Supported immutable `/open-project --intent` option values.
  */
-const openProjectIntentOptionChoices: readonly DiscordCommandOption[] = [
-  {
+const openProjectIntentOptionValues = [
+  'maintenance',
+  'bugfix',
+  'new-feature',
+] satisfies readonly string[];
+
+/**
+ * Supported `/new-project --quality-strictness` option values.
+ */
+const newProjectQualityStrictnessOptionValues = [
+  'on',
+  'off',
+] satisfies readonly string[];
+
+/**
+ * Builds a required string slash-command option from fixed values.
+ */
+function createRequiredStringOption(
+  name: string,
+  description: string,
+  values: readonly string[],
+): DiscordCommandOption {
+  return {
     type: stringCommandOptionType,
-    name: 'intent',
-    description: 'Execution intent for immutable open-project run context.',
+    name,
+    description,
     required: true,
-    choices: [
-      { name: 'maintenance', value: 'maintenance' },
-      { name: 'bugfix', value: 'bugfix' },
-      { name: 'new-feature', value: 'new-feature' },
-    ],
-  },
+    choices: values.map((value) => ({
+      name: value,
+      value,
+    })),
+  };
+}
+
+/**
+ * Builds a required free-text slash-command option.
+ */
+function createRequiredTextOption(
+  name: string,
+  description: string,
+): DiscordCommandOption {
+  return {
+    type: stringCommandOptionType,
+    name,
+    description,
+    required: true,
+    choices: [],
+  };
+}
+
+/**
+ * Builds an optional string slash-command option from fixed values.
+ */
+function createOptionalStringOption(
+  name: string,
+  description: string,
+  values: readonly string[],
+): DiscordCommandOption {
+  return {
+    type: stringCommandOptionType,
+    name,
+    description,
+    required: false,
+    choices: values.map((value) => ({
+      name: value,
+      value,
+    })),
+  };
+}
+
+/**
+ * Named options exposed by `/new-project`.
+ */
+const newProjectOptions: readonly DiscordCommandOption[] = [
+  createRequiredTextOption('repo', 'Repository name to bootstrap or create.'),
+  createRequiredTextOption(
+    'project',
+    'Unique project name (3-30 characters) within the repository.',
+  ),
+  createOptionalStringOption(
+    'quality-strictness',
+    'Enable strict standards enforcement for this project run.',
+    newProjectQualityStrictnessOptionValues,
+  ),
+];
+
+/**
+ * Named options exposed by `/open-project`.
+ */
+const openProjectOptions: readonly DiscordCommandOption[] = [
+  createRequiredTextOption('repo', 'Repository name that owns the project.'),
+  createRequiredTextOption(
+    'project',
+    'Project name bound to the operator control context.',
+  ),
+  createRequiredStringOption(
+    'intent',
+    'Execution intent for immutable open-project run context.',
+    openProjectIntentOptionValues,
+  ),
 ];
 
 /**
@@ -78,6 +166,7 @@ const commandContracts: readonly DiscordCommandContract[] = [
     type: applicationCommandType,
     action: DEVPLAT_ACTION_NEW_PROJECT,
     privileged: true,
+    options: newProjectOptions,
   },
   {
     name: DEVPLAT_ACTION_OPEN_PROJECT,
@@ -85,7 +174,7 @@ const commandContracts: readonly DiscordCommandContract[] = [
     type: applicationCommandType,
     action: DEVPLAT_ACTION_OPEN_PROJECT,
     privileged: true,
-    options: openProjectIntentOptionChoices,
+    options: openProjectOptions,
   },
   {
     name: DEVPLAT_ACTION_PROJECT_SUMMARY,
