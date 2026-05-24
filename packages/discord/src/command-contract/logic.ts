@@ -179,6 +179,26 @@ const projectSettingsHistoryOptions: readonly DiscordCommandOption[] = [
 ];
 
 /**
+ * Named options exposed by `/redirect`.
+ */
+const redirectOptions: readonly DiscordCommandOption[] = [
+  createRequiredTextOption(
+    'direction-prompt',
+    'Replacement direction for the next research cycle.',
+  ),
+];
+
+/**
+ * Named options exposed by `/consider`.
+ */
+const considerOptions: readonly DiscordCommandOption[] = [
+  createRequiredTextOption(
+    'url',
+    'URL queued for inclusion in the next research update.',
+  ),
+];
+
+/**
  * Versioned Discord slash-command contracts exposed to operators.
  */
 const commandContracts: readonly DiscordCommandContract[] = [
@@ -271,6 +291,7 @@ const commandContracts: readonly DiscordCommandContract[] = [
     type: applicationCommandType,
     action: DEVPLAT_ACTION_REDIRECT,
     privileged: false,
+    options: redirectOptions,
   },
   {
     name: DEVPLAT_ACTION_CONSIDER,
@@ -278,6 +299,7 @@ const commandContracts: readonly DiscordCommandContract[] = [
     type: applicationCommandType,
     action: DEVPLAT_ACTION_CONSIDER,
     privileged: false,
+    options: considerOptions,
   },
   {
     name: DEVPLAT_ACTION_RESEARCH,

@@ -301,6 +301,12 @@
         "projectName": {
           "type": "string"
         },
+        "redirectPrompt": {
+          "type": "string"
+        },
+        "considerUrl": {
+          "type": "string"
+        },
         "newProjectQualityStrictness": {
           "enum": ["on", "off"]
         },

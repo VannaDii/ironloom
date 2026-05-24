@@ -1024,6 +1024,52 @@ describe('DiscordControlRequest logic', () => {
       {
         inputs: {
           interaction: {
+            id: 'interaction-008k',
+            token: 'token-8k',
+            actorId: 'user-8k',
+            channelId: 'channel-8k',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'redirect',
+            boundThreadId: 'thread-8k',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(false);
+          if (!route.ok) {
+            expect(route.reason).toContain(
+              'redirect requires --direction-prompt',
+            );
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-008l',
+            token: 'token-8l',
+            actorId: 'user-8l',
+            channelId: 'channel-8l',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'consider',
+            boundThreadId: 'thread-8l',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(false);
+          if (!route.ok) {
+            expect(route.reason).toContain('consider requires --url');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
             id: 'interaction-009',
             token: 'token-9',
             actorId: 'user-9',
@@ -1531,6 +1577,68 @@ describe('DiscordControlRequest logic', () => {
             inputs.callback,
           );
           expect(interaction.newProjectQualityStrictness).toBe('off');
+        },
+      },
+      {
+        name: 'extracts redirect prompt from slash-command options',
+        inputs: {
+          callback: {
+            id: 'callback-002g4',
+            token: 'token-002g4',
+            channel_id: 'thread-002g4',
+            data: {
+              name: 'redirect',
+              options: [
+                {
+                  name: 'direction-prompt',
+                  value: 'focus on mobile handoff and rollback risks',
+                },
+              ],
+            },
+            user: {
+              id: 'operator-002g4',
+            },
+          },
+        },
+        mock: () => ({}),
+        assert: (context, inputs) => {
+          const interaction = createDiscordOperatorInteractionFromCallback(
+            inputs.callback,
+          );
+          expect(interaction.redirectPrompt).toBe(
+            'focus on mobile handoff and rollback risks',
+          );
+        },
+      },
+      {
+        name: 'extracts consider url from slash-command options',
+        inputs: {
+          callback: {
+            id: 'callback-002g5',
+            token: 'token-002g5',
+            channel_id: 'thread-002g5',
+            data: {
+              name: 'consider',
+              options: [
+                {
+                  name: 'url',
+                  value: 'https://example.com/operator-reference',
+                },
+              ],
+            },
+            user: {
+              id: 'operator-002g5',
+            },
+          },
+        },
+        mock: () => ({}),
+        assert: (context, inputs) => {
+          const interaction = createDiscordOperatorInteractionFromCallback(
+            inputs.callback,
+          );
+          expect(interaction.considerUrl).toBe(
+            'https://example.com/operator-reference',
+          );
         },
       },
       {

@@ -209,6 +209,41 @@ describe('Discord command contract logic', () => {
             },
           ],
         });
+        expect(payloads.find((payload) => payload.name === 'redirect')).toEqual(
+          {
+            name: 'redirect',
+            description:
+              'Replace discovery direction for the next research updates.',
+            type: 1,
+            options: [
+              {
+                type: 3,
+                name: 'direction-prompt',
+                description:
+                  'Replacement direction for the next research cycle.',
+                required: true,
+                choices: [],
+              },
+            ],
+          },
+        );
+        expect(payloads.find((payload) => payload.name === 'consider')).toEqual(
+          {
+            name: 'consider',
+            description: 'Queue a URL for the next research update.',
+            type: 1,
+            options: [
+              {
+                type: 3,
+                name: 'url',
+                description:
+                  'URL queued for inclusion in the next research update.',
+                required: true,
+                choices: [],
+              },
+            ],
+          },
+        );
         expect(
           registry.contracts
             .filter((contract) => contract.privileged)

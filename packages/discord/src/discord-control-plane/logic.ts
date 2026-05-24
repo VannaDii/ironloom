@@ -17,6 +17,8 @@ import {
   DEVPLAT_ACTION_RESUME_PROJECT,
   DEVPLAT_ACTION_PROJECT_SETTINGS_HISTORY,
   DEVPLAT_ACTION_RESUME_THIS,
+  DEVPLAT_ACTION_CONSIDER,
+  DEVPLAT_ACTION_REDIRECT,
   DEVPLAT_ACTION_RETRY_GATES,
   DEVPLAT_ACTION_RUN_THIS,
   DEVPLAT_ACTION_SHOW_LAST_ARTIFACT,
@@ -265,6 +267,17 @@ function resolveProjectRouteRequirementFailureReason(
     return resolveProjectNameLengthFailureReason(action, input.projectName);
   }
 
+  if (
+    action === DEVPLAT_ACTION_REDIRECT &&
+    input.redirectPrompt === undefined
+  ) {
+    return 'redirect requires --direction-prompt <text>.';
+  }
+
+  if (action === DEVPLAT_ACTION_CONSIDER && input.considerUrl === undefined) {
+    return 'consider requires --url <value>.';
+  }
+
   return undefined;
 }
 
@@ -474,6 +487,58 @@ function createNewProjectQualityStrictnessInteractionFields(
 }
 
 /**
+ * Resolves callback-derived optional interaction fields.
+ */
+function resolveCallbackOptionalInteractionFields(
+  input: DiscordInteractionCallback,
+  options: DiscordInteractionCallbackOptions,
+): {
+  readonly openProjectIntent?: OpenProjectIntent;
+  readonly projectRepo?: string;
+  readonly projectName?: string;
+  readonly resumeProjectForce?: boolean;
+  readonly projectSettingsHistoryDetailed?: boolean;
+  readonly newProjectQualityStrictness?: NewProjectQualityStrictness;
+  readonly redirectPrompt?: string;
+  readonly considerUrl?: string;
+} {
+  const openProjectIntent =
+    resolveOpenProjectIntentFromCallback(input) ?? options.openProjectIntent;
+  const projectRepo =
+    resolveNamedOptionFromCallback(input, 'repo') ?? options.projectRepo;
+  const projectName =
+    resolveNamedOptionFromCallback(input, 'project') ?? options.projectName;
+  const resumeProjectForce =
+    resolveResumeProjectForceFromCallback(input) ?? options.resumeProjectForce;
+  const projectSettingsHistoryDetailed =
+    resolveProjectSettingsHistoryDetailedFromCallback(input) ??
+    options.projectSettingsHistoryDetailed;
+  const newProjectQualityStrictness =
+    resolveNewProjectQualityStrictnessFromCallback(input) ??
+    options.newProjectQualityStrictness;
+  const redirectPrompt =
+    resolveNamedOptionFromCallback(input, 'direction-prompt') ??
+    options.redirectPrompt;
+  const considerUrl =
+    resolveNamedOptionFromCallback(input, 'url') ?? options.considerUrl;
+
+  return {
+    ...(openProjectIntent === undefined ? {} : { openProjectIntent }),
+    ...(projectRepo === undefined ? {} : { projectRepo }),
+    ...(projectName === undefined ? {} : { projectName }),
+    ...(resumeProjectForce === undefined ? {} : { resumeProjectForce }),
+    ...(projectSettingsHistoryDetailed === undefined
+      ? {}
+      : { projectSettingsHistoryDetailed }),
+    ...createNewProjectQualityStrictnessInteractionFields(
+      newProjectQualityStrictness,
+    ),
+    ...(redirectPrompt === undefined ? {} : { redirectPrompt }),
+    ...(considerUrl === undefined ? {} : { considerUrl }),
+  };
+}
+
+/**
  * Creates the minimal command data snapshot used by route-failure diagnostics.
  */
 function createDiscordReceivedEventDataSnapshot(
@@ -656,22 +721,10 @@ export function createDiscordOperatorInteractionFromCallback(
   const commandName = trimOptional(input.data?.name);
   const customId = trimOptional(input.data?.custom_id);
   const summary = trimOptional(options.summary);
-  const callbackIntent = resolveOpenProjectIntentFromCallback(input);
-  const resolvedIntent = callbackIntent ?? options.openProjectIntent;
-  const callbackProjectRepo = resolveNamedOptionFromCallback(input, 'repo');
-  const resolvedProjectRepo = callbackProjectRepo ?? options.projectRepo;
-  const callbackProjectName = resolveNamedOptionFromCallback(input, 'project');
-  const resolvedProjectName = callbackProjectName ?? options.projectName;
-  const callbackResumeForce = resolveResumeProjectForceFromCallback(input);
-  const resolvedResumeForce = callbackResumeForce ?? options.resumeProjectForce;
-  const callbackSettingsHistoryDetailed =
-    resolveProjectSettingsHistoryDetailedFromCallback(input);
-  const resolvedSettingsHistoryDetailed =
-    callbackSettingsHistoryDetailed ?? options.projectSettingsHistoryDetailed;
-  const callbackQualityStrictness =
-    resolveNewProjectQualityStrictnessFromCallback(input);
-  const resolvedQualityStrictness =
-    callbackQualityStrictness ?? options.newProjectQualityStrictness;
+  const callbackOptionFields = resolveCallbackOptionalInteractionFields(
+    input,
+    options,
+  );
 
   return {
     id: input.id,
@@ -690,24 +743,7 @@ export function createDiscordOperatorInteractionFromCallback(
       ? {}
       : { boundSession: options.boundSession }),
     ...(summary === undefined ? {} : { summary }),
-    ...(resolvedIntent === undefined
-      ? {}
-      : { openProjectIntent: resolvedIntent }),
-    ...(resolvedProjectRepo === undefined
-      ? {}
-      : { projectRepo: resolvedProjectRepo }),
-    ...(resolvedProjectName === undefined
-      ? {}
-      : { projectName: resolvedProjectName }),
-    ...(resolvedResumeForce === undefined
-      ? {}
-      : { resumeProjectForce: resolvedResumeForce }),
-    ...(resolvedSettingsHistoryDetailed === undefined
-      ? {}
-      : { projectSettingsHistoryDetailed: resolvedSettingsHistoryDetailed }),
-    ...createNewProjectQualityStrictnessInteractionFields(
-      resolvedQualityStrictness,
-    ),
+    ...callbackOptionFields,
     ...(input.member?.roles === undefined
       ? {}
       : {
