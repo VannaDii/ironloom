@@ -217,12 +217,8 @@ function resolveRoleAuthorizationFailure(
  */
 function resolveProjectNameLengthFailureReason(
   action: DiscordControlAction,
-  projectName: string | undefined,
+  projectName: string,
 ): string | undefined {
-  if (projectName === undefined) {
-    return undefined;
-  }
-
   const length = projectName.length;
   if (
     length >= DISCORD_PROJECT_NAME_MIN_LENGTH &&
