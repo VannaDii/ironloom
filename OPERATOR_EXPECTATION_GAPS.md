@@ -263,8 +263,8 @@ Usage rules:
 
 ## 19. `/open-project` Reopen Semantics
 
-- [ ] Implement `/open-project --repo ... --project ... --intent maintenance|bugfix|new-feature`.
-- [ ] Require `--intent` with no default.
+- [x] Implement `/open-project --repo ... --project ... --intent maintenance|bugfix|new-feature`.
+- [x] Require `--intent` with no default.
 - [ ] Keep reopen intent immutable for the reopened run.
 - [ ] On open, post project dashboard summary:
 - [ ] phase.

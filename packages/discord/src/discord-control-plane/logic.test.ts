@@ -161,8 +161,7 @@ describe('DiscordControlRequest logic', () => {
         ) => {
           expect(route.ok).toBe(false);
           if (!route.ok) {
-            expect(route.reason).toContain('permission denied');
-            expect(route.reason).toContain('requiredRole=project-operator');
+            expect(route.reason).toContain('new-project requires --repo');
           }
         },
       },
@@ -466,6 +465,8 @@ describe('DiscordControlRequest logic', () => {
             updatedAt: '2026-04-04T00:00:00.000Z',
             commandName: 'new-project',
             boundThreadId: 'thread-7b',
+            projectRepo: 'devplat',
+            projectName: 'alpha',
             actorRoleIds: ['role-project-operator'],
             projectOperatorRoleId: 'role-project-operator',
           } satisfies DiscordOperatorInteraction,
@@ -491,6 +492,8 @@ describe('DiscordControlRequest logic', () => {
             updatedAt: '2026-04-04T00:00:00.000Z',
             commandName: 'new-project',
             boundThreadId: 'thread-7c',
+            projectRepo: 'devplat',
+            projectName: 'alpha',
             actorRoleIds: ['role-spec-approver'],
             projectOperatorRoleId: 'role-project-operator',
           } satisfies DiscordOperatorInteraction,
@@ -571,7 +574,7 @@ describe('DiscordControlRequest logic', () => {
         ) => {
           expect(route.ok).toBe(false);
           if (!route.ok) {
-            expect(route.reason).toContain('open-project requires --intent');
+            expect(route.reason).toContain('open-project requires --repo');
           }
         },
       },
@@ -585,6 +588,8 @@ describe('DiscordControlRequest logic', () => {
             updatedAt: '2026-04-04T00:00:00.000Z',
             commandName: 'open-project',
             boundThreadId: 'thread-8c',
+            projectRepo: 'devplat',
+            projectName: 'beta',
             openProjectIntent: 'bugfix',
             actorRoleIds: ['role-project-operator'],
             projectOperatorRoleId: 'role-project-operator',
@@ -597,6 +602,8 @@ describe('DiscordControlRequest logic', () => {
           expect(route.ok).toBe(true);
           if (route.ok) {
             expect(route.request.action).toBe('open-project');
+            expect(route.request.summary).toContain('repo:devplat');
+            expect(route.request.summary).toContain('project:beta');
             expect(route.request.summary).toContain('intent:bugfix');
           }
         },
@@ -934,6 +941,14 @@ describe('DiscordControlRequest logic', () => {
               name: 'open-project',
               options: [
                 {
+                  name: 'repo',
+                  value: 'devplat',
+                },
+                {
+                  name: 'project',
+                  value: 'alpha',
+                },
+                {
                   name: 'intent',
                   value: 'maintenance',
                 },
@@ -954,6 +969,8 @@ describe('DiscordControlRequest logic', () => {
             id: 'callback-002b',
             actorId: 'operator-002b',
             commandName: 'open-project',
+            projectRepo: 'devplat',
+            projectName: 'alpha',
             openProjectIntent: 'maintenance',
           });
         },
@@ -968,6 +985,14 @@ describe('DiscordControlRequest logic', () => {
             data: {
               name: 'open-project',
               options: [
+                {
+                  name: 'repo',
+                  value: 'devplat',
+                },
+                {
+                  name: 'project',
+                  value: 'alpha',
+                },
                 {
                   name: 'intent',
                   value: 'bugfix',
@@ -998,6 +1023,14 @@ describe('DiscordControlRequest logic', () => {
               name: 'open-project',
               options: [
                 {
+                  name: 'repo',
+                  value: 'devplat',
+                },
+                {
+                  name: 'project',
+                  value: 'alpha',
+                },
+                {
                   name: 'intent',
                   value: 'new-feature',
                 },
@@ -1014,6 +1047,40 @@ describe('DiscordControlRequest logic', () => {
             inputs.callback,
           );
           expect(interaction.openProjectIntent).toBe('new-feature');
+        },
+      },
+      {
+        name: 'extracts new-project repo and project options from slash-command options',
+        inputs: {
+          callback: {
+            id: 'callback-002g',
+            token: 'token-002g',
+            channel_id: 'thread-002g',
+            data: {
+              name: 'new-project',
+              options: [
+                {
+                  name: 'repo',
+                  value: 'devplat',
+                },
+                {
+                  name: 'project',
+                  value: 'mobile-run',
+                },
+              ],
+            },
+            user: {
+              id: 'operator-002g',
+            },
+          },
+        },
+        mock: () => ({}),
+        assert: (context, inputs) => {
+          const interaction = createDiscordOperatorInteractionFromCallback(
+            inputs.callback,
+          );
+          expect(interaction.projectRepo).toBe('devplat');
+          expect(interaction.projectName).toBe('mobile-run');
         },
       },
       {

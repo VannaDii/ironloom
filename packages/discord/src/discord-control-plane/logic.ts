@@ -332,19 +332,30 @@ function resolveOpenProjectIntentFromCallback(
   }
 }
 
-/** Resolves `/resume-project --force` from callback options. */
-function resolveResumeProjectForceFromCallback(
+/** Resolves a named string option from callback options. */
+function resolveNamedOptionFromCallback(
   input: DiscordInteractionCallback,
-): boolean | undefined {
+  name: string,
+): string | undefined {
   const options = input.data?.options;
   if (options === undefined) {
     return undefined;
   }
 
-  const forceOption = options.find(
-    (option) => option.name.trim().toLowerCase() === 'force',
+  const resolvedOption = options.find(
+    (option) => option.name.trim().toLowerCase() === name,
   );
-  const forceValue = trimOptional(forceOption?.value)?.toLowerCase();
+  return trimOptional(resolvedOption?.value);
+}
+
+/** Resolves `/resume-project --force` from callback options. */
+function resolveResumeProjectForceFromCallback(
+  input: DiscordInteractionCallback,
+): boolean | undefined {
+  const forceValue = resolveNamedOptionFromCallback(
+    input,
+    'force',
+  )?.toLowerCase();
   return forceValue === undefined ? undefined : forceValue === 'force';
 }
 
@@ -533,6 +544,10 @@ export function createDiscordOperatorInteractionFromCallback(
   const summary = trimOptional(options.summary);
   const callbackIntent = resolveOpenProjectIntentFromCallback(input);
   const resolvedIntent = callbackIntent ?? options.openProjectIntent;
+  const callbackProjectRepo = resolveNamedOptionFromCallback(input, 'repo');
+  const resolvedProjectRepo = callbackProjectRepo ?? options.projectRepo;
+  const callbackProjectName = resolveNamedOptionFromCallback(input, 'project');
+  const resolvedProjectName = callbackProjectName ?? options.projectName;
   const callbackResumeForce = resolveResumeProjectForceFromCallback(input);
   const resolvedResumeForce = callbackResumeForce ?? options.resumeProjectForce;
 
@@ -556,6 +571,12 @@ export function createDiscordOperatorInteractionFromCallback(
     ...(resolvedIntent === undefined
       ? {}
       : { openProjectIntent: resolvedIntent }),
+    ...(resolvedProjectRepo === undefined
+      ? {}
+      : { projectRepo: resolvedProjectRepo }),
+    ...(resolvedProjectName === undefined
+      ? {}
+      : { projectName: resolvedProjectName }),
     ...(resolvedResumeForce === undefined
       ? {}
       : { resumeProjectForce: resolvedResumeForce }),
@@ -593,12 +614,16 @@ function createInteractionControlRequestInput(
     input.openProjectIntent !== undefined
       ? ` (intent:${input.openProjectIntent})`
       : '';
+  const projectContextSuffix =
+    input.projectRepo === undefined || input.projectName === undefined
+      ? ''
+      : ` (repo:${input.projectRepo}) (project:${input.projectName})`;
   const resumeForceSuffix =
     action === DEVPLAT_ACTION_RESUME_PROJECT && input.resumeProjectForce
       ? ' (force:true)'
       : '';
   const summary =
-    `${input.summary?.trim() ?? action}${intentSuffix}${resumeForceSuffix}`.trim();
+    `${input.summary?.trim() ?? action}${projectContextSuffix}${intentSuffix}${resumeForceSuffix}`.trim();
   if (input.boundSession === undefined) {
     return {
       id: input.id,
@@ -660,12 +685,31 @@ export function createDiscordControlRequestFromInteraction(
   }
 
   if (action === DEVPLAT_ACTION_OPEN_PROJECT) {
+    if (input.projectRepo === undefined || input.projectName === undefined) {
+      return {
+        ok: false,
+        interactionId: input.id,
+        reason:
+          'open-project requires --repo <repo_name> and --project <project_name>.',
+      };
+    }
     if (input.openProjectIntent === undefined) {
       return {
         ok: false,
         interactionId: input.id,
         reason:
           'open-project requires --intent maintenance|bugfix|new-feature.',
+      };
+    }
+  }
+
+  if (action === DEVPLAT_ACTION_NEW_PROJECT) {
+    if (input.projectRepo === undefined || input.projectName === undefined) {
+      return {
+        ok: false,
+        interactionId: input.id,
+        reason:
+          'new-project requires --repo <repo_name> and --project <project_name>.',
       };
     }
   }

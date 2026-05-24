@@ -295,6 +295,12 @@
         "openProjectIntent": {
           "enum": ["maintenance", "bugfix", "new-feature"]
         },
+        "projectRepo": {
+          "type": "string"
+        },
+        "projectName": {
+          "type": "string"
+        },
         "resumeProjectForce": {
           "type": "boolean"
         },
