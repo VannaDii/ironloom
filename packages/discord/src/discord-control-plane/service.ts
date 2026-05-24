@@ -173,7 +173,7 @@ function parseConfigVersionNumber(value: string): number | undefined {
   }
 
   const numeric = Number.parseInt(trimmed.slice(1), 10);
-  return Number.isInteger(numeric) && numeric >= 1 ? numeric : undefined;
+  return numeric;
 }
 
 /**

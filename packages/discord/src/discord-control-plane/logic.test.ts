@@ -1534,6 +1534,43 @@ describe('DiscordControlRequest logic', () => {
         },
       },
       {
+        name: 'extracts new-project quality strictness on option from slash-command options',
+        inputs: {
+          callback: {
+            id: 'callback-002g3',
+            token: 'token-002g3',
+            channel_id: 'thread-002g3',
+            data: {
+              name: 'new-project',
+              options: [
+                {
+                  name: 'repo',
+                  value: 'devplat',
+                },
+                {
+                  name: 'project',
+                  value: 'mobile-run',
+                },
+                {
+                  name: 'quality-strictness',
+                  value: 'on',
+                },
+              ],
+            },
+            user: {
+              id: 'operator-002g3',
+            },
+          },
+        },
+        mock: () => ({}),
+        assert: (context, inputs) => {
+          const interaction = createDiscordOperatorInteractionFromCallback(
+            inputs.callback,
+          );
+          expect(interaction.newProjectQualityStrictness).toBe('on');
+        },
+      },
+      {
         name: 'extracts resume-project force flag from slash-command options',
         inputs: {
           callback: {

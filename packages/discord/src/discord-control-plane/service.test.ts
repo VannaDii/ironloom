@@ -1208,6 +1208,44 @@ describe('DiscordControlPlaneService', () => {
     expect(result.responsePayload?.content).toContain('Config version: v1');
   });
 
+  it('renders show-last-artifact interactions with artifact interpretation text', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+      createResponseTransport(),
+    );
+
+    await service.handleAction({
+      id: 'discord-004c-artifact',
+      summary: 'open-project (intent:maintenance)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-4c-artifact',
+      threadId: 'thread-4c-artifact',
+      channelId: 'channel-4c-artifact',
+      action: 'open-project',
+      privileged: false,
+    });
+
+    const result = await service.handleInteraction({
+      id: 'interaction-004c-artifact',
+      token: 'token-004c-artifact',
+      actorId: 'user-4c-artifact',
+      channelId: 'channel-4c-artifact',
+      updatedAt: '2026-04-04T00:00:02.000Z',
+      commandName: 'show-last-artifact',
+      boundThreadId: 'thread-4c-artifact',
+    });
+
+    expect(result.allowed).toBe(true);
+    expect(result.responsePayload?.content).toContain('Last artifact');
+    expect(result.responsePayload?.content).toContain('Why this matters now:');
+  });
+
   it('ignores non-string persisted metadata values when hydrating status summaries', async () => {
     const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
     const store = new FileStoreService(rootDirectory);
