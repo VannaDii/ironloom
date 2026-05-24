@@ -631,6 +631,67 @@ describe('DiscordControlPlaneService', () => {
     );
   });
 
+  it('reports routed intent mismatch failures when thread posting throws after acknowledgement', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+      createThreadFailingResponseTransport(
+        'Discord thread status message network failure',
+      ),
+    );
+
+    await service.handleAction({
+      id: 'discord-004f-3',
+      summary: 'open-project (intent:maintenance)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-4f-3',
+      threadId: 'thread-4f-3',
+      channelId: 'channel-4f-3',
+      action: 'open-project',
+      privileged: false,
+    });
+
+    const result = await service.handleInteraction({
+      id: 'interaction-004f-3',
+      token: 'token-004f-3',
+      actorId: 'user-4f-3',
+      channelId: 'channel-4f-3',
+      updatedAt: '2026-04-04T00:00:01.000Z',
+      commandName: 'open-project',
+      boundThreadId: 'thread-4f-3',
+      openProjectIntent: 'bugfix',
+      boundSession: {
+        id: 'thread-session-4f-3',
+        summary: 'Implementation session',
+        status: 'running',
+        trace: [],
+        updatedAt: '2026-04-04T00:00:00.000Z',
+        guildId: 'guild-4f-3',
+        channelId: 'thread-4f-3',
+        parentChannelId: 'implementation-channel',
+        threadId: 'thread-4f-3',
+        kind: 'implementation',
+        specId: 'spec-4f-3',
+        sliceId: 'slice-4f-3',
+        pullRequestNumber: null,
+        artifactId: 'artifact-4f-3',
+      },
+    });
+
+    expect(result.allowed).toBe(false);
+    expect(result.failedClosed).toBe(true);
+    expect(result.responseReceipt?.statusCode).toBe(200);
+    expect(result.threadReceipt).toBeUndefined();
+    expect(result.threadPostError).toBe(
+      'Discord thread status message network failure',
+    );
+  });
+
   it('accepts open-project intents when persisted thread intent payload is unavailable', async () => {
     const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
     const store = new FileStoreService(rootDirectory);
@@ -692,6 +753,67 @@ describe('DiscordControlPlaneService', () => {
 
     expect(result.allowed).toBe(false);
     expect(result.failedClosed).toBe(true);
+  });
+
+  it('records intent-mismatch audits with artifact context when work items are present', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const first = await service.handleAction({
+      id: 'discord-004h-artifact-1',
+      summary: 'open-project (intent:maintenance)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-4h-artifact',
+      threadId: 'thread-4h-artifact',
+      channelId: 'channel-4h-artifact',
+      action: 'open-project',
+      privileged: false,
+      workItem: {
+        threadKind: 'implementation',
+        threadId: 'thread-4h-artifact',
+        sliceId: 'slice-4h-artifact',
+        artifactId: 'artifact-4h-artifact',
+      },
+    });
+
+    const second = await service.handleAction({
+      id: 'discord-004h-artifact-2',
+      summary: 'open-project (intent:bugfix)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:01.000Z',
+      actorId: 'user-4h-artifact',
+      threadId: 'thread-4h-artifact',
+      channelId: 'channel-4h-artifact',
+      action: 'open-project',
+      privileged: false,
+      workItem: {
+        threadKind: 'implementation',
+        threadId: 'thread-4h-artifact',
+        sliceId: 'slice-4h-artifact',
+        artifactId: 'artifact-4h-artifact',
+      },
+    });
+
+    expect(first.allowed).toBe(true);
+    expect(second.allowed).toBe(false);
+    const auditRecord = await store.read(
+      'audit',
+      'discord-004h-artifact-2:audit',
+    );
+    expect(auditRecord.ok).toBe(true);
+    if (auditRecord.ok) {
+      expect(auditRecord.value.payload).toMatchObject({
+        artifactIds: ['artifact-4h-artifact'],
+      });
+    }
   });
 
   it('fails closed when open-project summary contains an unterminated intent marker', async () => {
@@ -854,6 +976,56 @@ describe('DiscordControlPlaneService', () => {
     if (persisted.ok) {
       expect(persisted.value.payload).toMatchObject({
         configVersion: 'v1',
+      });
+    }
+  });
+
+  it('increments valid persisted config versions on project settings updates', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    await store.store({
+      id: 'record-project-config-thread-4j-v2',
+      key: 'project-config-version:thread-4j-v2',
+      scope: 'state',
+      summary: 'Project config version.',
+      status: 'approved',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:01.000Z',
+      payload: {
+        threadId: 'thread-4j-v2',
+        action: 'project-settings',
+        configVersion: 'v2',
+      },
+    });
+
+    const result = await service.handleAction({
+      id: 'discord-004j-v2-settings',
+      summary: 'project settings update',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:02.000Z',
+      actorId: 'user-4j-v2',
+      threadId: 'thread-4j-v2',
+      channelId: 'channel-4j-v2',
+      action: 'project-settings',
+      privileged: false,
+    });
+
+    expect(result.allowed).toBe(true);
+    const persisted = await store.read(
+      'state',
+      'project-config-version:thread-4j-v2',
+    );
+    expect(persisted.ok).toBe(true);
+    if (persisted.ok) {
+      expect(persisted.value.payload).toMatchObject({
+        configVersion: 'v3',
       });
     }
   });
