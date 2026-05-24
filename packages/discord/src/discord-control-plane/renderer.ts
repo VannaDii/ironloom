@@ -584,7 +584,7 @@ function resolveSummaryMetadata(summary: string): {
 /**
  * Returns additional fields for status and project summary messages.
  */
-function resolveAcceptedMetadataFields(
+function resolveStatusSummaryMetadataFields(
   request: DiscordControlRequest,
 ): Readonly<Record<string, string>> {
   if (
@@ -929,7 +929,7 @@ export function renderDiscordControlAcceptedMessage(
       Scope: renderDiscordScopeValue(request),
       Item: renderDiscordItemValue(request),
       Actor: describeActor(request.actorId),
-      ...resolveAcceptedMetadataFields(request),
+      ...resolveStatusSummaryMetadataFields(request),
     },
     indicator: display.acceptedIndicator,
     result: display.result,
@@ -957,6 +957,7 @@ export function renderDiscordControlBlockedMessage(
       Action: request.action,
       Scope: renderDiscordScopeValue(request),
       Context: renderBlockedActionContextValue(request),
+      ...resolveStatusSummaryMetadataFields(request),
       ...(requiredRole === undefined ? {} : { 'Required role': requiredRole }),
       Reason: 'policy denied this action',
     },

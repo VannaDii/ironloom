@@ -255,6 +255,24 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'renders blocked status metadata fields when summary includes config and intent markers',
+      inputs: {
+        request: {
+          ...request,
+          action: 'show-status',
+          summary: 'Project status (intent:maintenance) (config-version:v9)',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlBlockedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlBlockedMessage>,
+      ) => {
+        expect(payload.content).toContain('Run intent: maintenance');
+        expect(payload.content).toContain('Config version: v9');
+      },
+    },
+    {
       name: 'renders route failures with the standard refusal message',
       inputs: {
         interaction,
