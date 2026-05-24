@@ -222,6 +222,54 @@ describe('DiscordControlRequest logic', () => {
       {
         inputs: {
           interaction: {
+            id: 'interaction-010e',
+            token: 'token-10e',
+            actorId: 'user-10e',
+            channelId: 'thread-10e',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'release-project',
+            boundThreadId: 'thread-10e',
+            actorRoleIds: ['role-project-operator'],
+            projectOperatorRoleId: 'role-project-operator',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.privileged).toBe(true);
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-010f',
+            token: 'token-10f',
+            actorId: 'user-10f',
+            channelId: 'thread-10f',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'merge-now',
+            boundThreadId: 'thread-10f',
+            actorRoleIds: ['role-merge-approver'],
+            mergeApproverRoleId: 'role-merge-approver',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.privileged).toBe(true);
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
             id: 'interaction-010d',
             token: 'token-10d',
             actorId: 'user-10d',
@@ -806,6 +854,64 @@ describe('DiscordControlRequest logic', () => {
             commandName: 'open-project',
             openProjectIntent: 'maintenance',
           });
+        },
+      },
+      {
+        name: 'extracts bugfix open-project intent from slash-command options',
+        inputs: {
+          callback: {
+            id: 'callback-002c',
+            token: 'token-002c',
+            channel_id: 'thread-002c',
+            data: {
+              name: 'open-project',
+              options: [
+                {
+                  name: 'intent',
+                  value: 'bugfix',
+                },
+              ],
+            },
+            user: {
+              id: 'operator-002c',
+            },
+          },
+        },
+        mock: () => ({}),
+        assert: (context, inputs) => {
+          const interaction = createDiscordOperatorInteractionFromCallback(
+            inputs.callback,
+          );
+          expect(interaction.openProjectIntent).toBe('bugfix');
+        },
+      },
+      {
+        name: 'extracts new-feature open-project intent from slash-command options',
+        inputs: {
+          callback: {
+            id: 'callback-002d',
+            token: 'token-002d',
+            channel_id: 'thread-002d',
+            data: {
+              name: 'open-project',
+              options: [
+                {
+                  name: 'intent',
+                  value: 'new-feature',
+                },
+              ],
+            },
+            user: {
+              id: 'operator-002d',
+            },
+          },
+        },
+        mock: () => ({}),
+        assert: (context, inputs) => {
+          const interaction = createDiscordOperatorInteractionFromCallback(
+            inputs.callback,
+          );
+          expect(interaction.openProjectIntent).toBe('new-feature');
         },
       },
       {

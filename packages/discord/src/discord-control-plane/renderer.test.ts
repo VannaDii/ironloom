@@ -348,6 +348,22 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'renders blocked project-operator role for new-project actions',
+      inputs: {
+        request: {
+          ...request,
+          action: 'new-project',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlBlockedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlBlockedMessage>,
+      ) => {
+        expect(payload.content).toContain('Required role: project-operator');
+      },
+    },
+    {
       name: 'renders blocked implementation-thread context when implementation slice is unavailable',
       inputs: {
         request: {

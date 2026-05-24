@@ -512,6 +512,125 @@ describe('DiscordControlPlaneService', () => {
     expect(result.responseReceipt?.statusCode).toBe(404);
   });
 
+  it('reports routed intent mismatch failures when deferred acknowledgement transport throws', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+      createAcknowledgementThrowingResponseTransport(
+        'Discord intent-mismatch acknowledgement network failure',
+      ),
+    );
+
+    await service.handleAction({
+      id: 'discord-004f-1',
+      summary: 'open-project (intent:maintenance)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-4f-1',
+      threadId: 'thread-4f-1',
+      channelId: 'channel-4f-1',
+      action: 'open-project',
+      privileged: false,
+    });
+
+    const result = await service.handleInteraction({
+      id: 'interaction-004f-1',
+      token: 'token-004f-1',
+      actorId: 'user-4f-1',
+      channelId: 'channel-4f-1',
+      updatedAt: '2026-04-04T00:00:01.000Z',
+      commandName: 'open-project',
+      boundThreadId: 'thread-4f-1',
+      openProjectIntent: 'bugfix',
+      boundSession: {
+        id: 'thread-session-4f-1',
+        summary: 'Implementation session',
+        status: 'running',
+        trace: [],
+        updatedAt: '2026-04-04T00:00:00.000Z',
+        guildId: 'guild-4f-1',
+        channelId: 'thread-4f-1',
+        parentChannelId: 'implementation-channel',
+        threadId: 'thread-4f-1',
+        kind: 'implementation',
+        specId: 'spec-4f-1',
+        sliceId: 'slice-4f-1',
+        pullRequestNumber: null,
+        artifactId: 'artifact-4f-1',
+      },
+    });
+
+    expect(result.allowed).toBe(false);
+    expect(result.failedClosed).toBe(true);
+    expect(result.responseReceipt).toBeUndefined();
+    expect(result.responsePostError).toBe(
+      'Discord intent-mismatch acknowledgement network failure',
+    );
+  });
+
+  it('reports routed intent mismatch failures when thread posting is rejected after acknowledgement', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+      createThreadRejectingResponseTransport(),
+    );
+
+    await service.handleAction({
+      id: 'discord-004f-2',
+      summary: 'open-project (intent:maintenance)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-4f-2',
+      threadId: 'thread-4f-2',
+      channelId: 'channel-4f-2',
+      action: 'open-project',
+      privileged: false,
+    });
+
+    const result = await service.handleInteraction({
+      id: 'interaction-004f-2',
+      token: 'token-004f-2',
+      actorId: 'user-4f-2',
+      channelId: 'channel-4f-2',
+      updatedAt: '2026-04-04T00:00:01.000Z',
+      commandName: 'open-project',
+      boundThreadId: 'thread-4f-2',
+      openProjectIntent: 'bugfix',
+      boundSession: {
+        id: 'thread-session-4f-2',
+        summary: 'Implementation session',
+        status: 'running',
+        trace: [],
+        updatedAt: '2026-04-04T00:00:00.000Z',
+        guildId: 'guild-4f-2',
+        channelId: 'thread-4f-2',
+        parentChannelId: 'implementation-channel',
+        threadId: 'thread-4f-2',
+        kind: 'implementation',
+        specId: 'spec-4f-2',
+        sliceId: 'slice-4f-2',
+        pullRequestNumber: null,
+        artifactId: 'artifact-4f-2',
+      },
+    });
+
+    expect(result.allowed).toBe(false);
+    expect(result.failedClosed).toBe(true);
+    expect(result.responseReceipt?.statusCode).toBe(200);
+    expect(result.threadReceipt?.statusCode).toBe(403);
+    expect(result.threadPostError).toContain(
+      'Discord thread status message returned HTTP 403.',
+    );
+  });
+
   it('accepts open-project intents when persisted thread intent payload is unavailable', async () => {
     const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
     const store = new FileStoreService(rootDirectory);
@@ -593,6 +712,32 @@ describe('DiscordControlPlaneService', () => {
       actorId: 'user-4i',
       threadId: 'thread-4i',
       channelId: 'channel-4i',
+      action: 'open-project',
+      privileged: false,
+    });
+
+    expect(result.allowed).toBe(false);
+    expect(result.failedClosed).toBe(true);
+  });
+
+  it('fails closed when open-project summary contains an empty intent marker', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const result = await service.handleAction({
+      id: 'discord-004i-empty',
+      summary: 'open-project (intent: )',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-4i-empty',
+      threadId: 'thread-4i-empty',
+      channelId: 'channel-4i-empty',
       action: 'open-project',
       privileged: false,
     });
