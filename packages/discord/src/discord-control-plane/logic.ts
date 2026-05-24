@@ -797,8 +797,16 @@ function createInteractionControlRequestInput(
     input.newProjectQualityStrictness !== undefined
       ? ` (quality-strictness:${input.newProjectQualityStrictness})`
       : '';
+  const redirectPromptSuffix =
+    action === DEVPLAT_ACTION_REDIRECT && input.redirectPrompt !== undefined
+      ? ` (direction-prompt:${input.redirectPrompt})`
+      : '';
+  const considerUrlSuffix =
+    action === DEVPLAT_ACTION_CONSIDER && input.considerUrl !== undefined
+      ? ` (url:${input.considerUrl})`
+      : '';
   const summary =
-    `${input.summary?.trim() ?? action}${projectContextSuffix}${intentSuffix}${resumeForceSuffix}${settingsHistoryModeSuffix}${qualityStrictnessSuffix}`.trim();
+    `${input.summary?.trim() ?? action}${projectContextSuffix}${intentSuffix}${resumeForceSuffix}${settingsHistoryModeSuffix}${qualityStrictnessSuffix}${redirectPromptSuffix}${considerUrlSuffix}`.trim();
   if (input.boundSession === undefined) {
     return {
       id: input.id,

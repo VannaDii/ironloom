@@ -1070,6 +1070,56 @@ describe('DiscordControlRequest logic', () => {
       {
         inputs: {
           interaction: {
+            id: 'interaction-008m',
+            token: 'token-8m',
+            actorId: 'user-8m',
+            channelId: 'channel-8m',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'redirect',
+            boundThreadId: 'thread-8m',
+            redirectPrompt: 'focus on operational health visibility',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.summary).toContain(
+              'direction-prompt:focus on operational health visibility',
+            );
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-008n',
+            token: 'token-8n',
+            actorId: 'user-8n',
+            channelId: 'channel-8n',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'consider',
+            boundThreadId: 'thread-8n',
+            considerUrl: 'https://example.com/dependency-risk-model',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.summary).toContain(
+              'url:https://example.com/dependency-risk-model',
+            );
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
             id: 'interaction-009',
             token: 'token-9',
             actorId: 'user-9',
