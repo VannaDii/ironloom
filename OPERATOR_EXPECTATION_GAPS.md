@@ -361,7 +361,7 @@ Usage rules:
 
 ## 24. Visibility and Redaction Model
 
-- [ ] Implement `/project-summary` read-only command for all participants.
+- [x] Implement `/project-summary` read-only command for all participants.
 - [x] Restrict `/open-project` to `project-operator` only.
 - [ ] For non-role participants, `/project-summary` shows:
 - [ ] repo.

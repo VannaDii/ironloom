@@ -327,6 +327,28 @@ describe('DiscordControlRequest logic', () => {
       {
         inputs: {
           interaction: {
+            id: 'interaction-010a',
+            token: 'token-10a',
+            actorId: 'user-10a',
+            channelId: 'thread-10a',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'project-summary',
+            threadId: 'thread-10a',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.action).toBe('project-summary');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
             id: 'interaction-010b',
             token: 'token-10b',
             actorId: 'user-10b',
@@ -360,6 +382,50 @@ describe('DiscordControlRequest logic', () => {
           if (!route.ok) {
             expect(route.reason).toContain('project/thread context mismatch');
             expect(route.reason).toContain('expected= thread-11 ');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-010i',
+            token: 'token-10i',
+            actorId: 'user-10i',
+            channelId: 'thread-10i',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'show-last-artifact',
+            threadId: 'thread-10i',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.action).toBe('show-last-artifact');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-010j',
+            token: 'token-10j',
+            actorId: 'user-10j',
+            channelId: 'thread-10j',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'phase-contract',
+            threadId: 'thread-10j',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.action).toBe('phase-contract');
           }
         },
       },
