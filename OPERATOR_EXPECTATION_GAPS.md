@@ -33,7 +33,7 @@ Usage rules:
 
 ## 4. Roles and Permissions
 
-- [ ] Configure global role mappings: `project-operator`, `spec-approver`, `merge-approver`.
+- [x] Configure global role mappings: `project-operator`, `spec-approver`, `merge-approver`.
 - [x] Restrict `/new-project` to `project-operator`.
 - [x] Restrict `/open-project` to `project-operator`.
 - [x] Restrict `/project-settings` to `project-operator`.

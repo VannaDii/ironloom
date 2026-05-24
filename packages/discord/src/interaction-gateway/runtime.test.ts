@@ -568,19 +568,58 @@ describe('Discord interaction Gateway runtime', () => {
       },
       mock: async (inputs: { env: Record<string, string> }) => {
         const connection = new FakeDiscordGatewayConnection();
-        const fetchCalls: string[] = [];
+        const fetchCalls: { url: string; body: string }[] = [];
+        const rootDirectory = await mkdtemp(
+          join(tmpdir(), 'devplat-discord-gateway-runtime-roles-'),
+        );
+        const store = new FileStoreService(rootDirectory);
+        await store.store({
+          id: 'session-runtime-roles',
+          key: 'session-runtime-roles',
+          scope: 'state',
+          summary: 'Runtime roles thread',
+          status: 'approved',
+          trace: [],
+          updatedAt: '2026-05-01T00:00:00.000Z',
+          payload: {
+            id: 'session-runtime-roles',
+            summary: 'Runtime roles thread',
+            status: 'approved',
+            trace: [],
+            updatedAt: '2026-05-01T00:00:00.000Z',
+            guildId: 'guild-runtime-roles',
+            channelId: 'thread-runtime-roles',
+            parentChannelId: 'project-management',
+            threadId: 'thread-runtime-roles',
+            artifactId: 'artifact-runtime-roles',
+            kind: 'implementation',
+            specId: 'spec-runtime-roles',
+            sliceId: 'slice-runtime-roles',
+            pullRequestNumber: null,
+          },
+        });
+        const runtimeEnv = {
+          ...inputs.env,
+          DEVPLAT_STORAGE_ROOT: rootDirectory,
+        };
         const originalFetch = globalThis.fetch;
         let session:
           | ReturnType<DiscordInteractionGatewayClientService['start']>
           | undefined;
         try {
-          globalThis.fetch = async (input): Promise<Response> => {
-            fetchCalls.push(String(input));
+          globalThis.fetch = async (input, init): Promise<Response> => {
+            fetchCalls.push({
+              url: String(input),
+              body:
+                typeof init?.body === 'string'
+                  ? init.body
+                  : '<non-string-body>',
+            });
             return new Response(JSON.stringify({ ok: true }), { status: 200 });
           };
 
           session = startDiscordInteractionGatewayRuntimeFromEnvironment(
-            inputs.env,
+            runtimeEnv,
             {
               connectionFactory: {
                 connect: () => connection,
@@ -598,7 +637,17 @@ describe('Discord interaction Gateway runtime', () => {
                 token: 'token-runtime-roles',
                 channel_id: 'thread-runtime-roles',
                 data: {
-                  name: 'show-status',
+                  name: 'new-project',
+                  options: [
+                    {
+                      name: 'repo',
+                      value: 'devplat',
+                    },
+                    {
+                      name: 'project',
+                      value: 'runtime-roles',
+                    },
+                  ],
                 },
                 member: {
                   user: {
@@ -609,9 +658,16 @@ describe('Discord interaction Gateway runtime', () => {
               },
             }),
           );
-          await new Promise((resolve) => {
-            setTimeout(resolve, 0);
-          });
+          const maxWaitIterations = 40;
+          for (let iteration = 0; iteration < maxWaitIterations; iteration++) {
+            if (fetchCalls.length >= 2) {
+              break;
+            }
+
+            await new Promise((resolve) => {
+              setTimeout(resolve, 5);
+            });
+          }
 
           return { fetchCalls, session };
         } finally {
@@ -620,13 +676,23 @@ describe('Discord interaction Gateway runtime', () => {
         }
       },
       assert: async (context: {
-        fetchCalls: string[];
+        fetchCalls: { url: string; body: string }[];
         session: ReturnType<DiscordInteractionGatewayClientService['start']>;
       }) => {
         expect(context.session.gatewayUrl).toBe(
           'wss://gateway.discord.test/?v=10&encoding=json',
         );
         expect(context.fetchCalls.length).toBeGreaterThan(0);
+        expect(
+          context.fetchCalls.some((call) =>
+            call.body.includes('Project bootstrap started'),
+          ),
+        ).toBe(true);
+        expect(
+          context.fetchCalls.some((call) =>
+            call.body.includes('permission denied'),
+          ),
+        ).toBe(false);
       },
     },
   ];
