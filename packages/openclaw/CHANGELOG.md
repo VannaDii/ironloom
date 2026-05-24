@@ -1,5 +1,35 @@
 # @vannadii/devplat-openclaw
 
+## 0.2.1
+
+### Patch Changes
+
+- [#76](https://github.com/VannaDii/devplat/pull/76) [`33b6091`](https://github.com/VannaDii/devplat/commit/33b6091b44a90bf56e551ebce417afc8cc0bb3c9) Thanks [@VannaDii](https://github.com/VannaDii)! - Update the local Docker runtime helper to print connection details before container logs start, hide custom raw gateway tokens unless explicitly requested, and refresh the bundled OpenClaw runtime dependency to 2026.5.18.
+
+- Updated dependencies []:
+  - @vannadii/devplat-artifacts@0.2.1
+  - @vannadii/devplat-branching@0.2.1
+  - @vannadii/devplat-config@0.2.1
+  - @vannadii/devplat-core@0.2.1
+  - @vannadii/devplat-discord@0.2.1
+  - @vannadii/devplat-execution@0.2.1
+  - @vannadii/devplat-gates@0.2.1
+  - @vannadii/devplat-github@0.2.1
+  - @vannadii/devplat-memory@0.2.1
+  - @vannadii/devplat-observability@0.2.1
+  - @vannadii/devplat-policy@0.2.1
+  - @vannadii/devplat-prs@0.2.1
+  - @vannadii/devplat-queue@0.2.1
+  - @vannadii/devplat-remediation@0.2.1
+  - @vannadii/devplat-research@0.2.1
+  - @vannadii/devplat-review@0.2.1
+  - @vannadii/devplat-slicing@0.2.1
+  - @vannadii/devplat-sonarcloud@0.2.1
+  - @vannadii/devplat-specs@0.2.1
+  - @vannadii/devplat-storage@0.2.1
+  - @vannadii/devplat-supervisor@0.2.1
+  - @vannadii/devplat-worktrees@0.2.1
+
 ## 0.2.0
 
 ### Minor Changes

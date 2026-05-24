@@ -1,5 +1,23 @@
 # @vannadii/devplat-supervisor
 
+## 0.2.1
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @vannadii/devplat-artifacts@0.2.1
+  - @vannadii/devplat-branching@0.2.1
+  - @vannadii/devplat-core@0.2.1
+  - @vannadii/devplat-gates@0.2.1
+  - @vannadii/devplat-observability@0.2.1
+  - @vannadii/devplat-policy@0.2.1
+  - @vannadii/devplat-prs@0.2.1
+  - @vannadii/devplat-queue@0.2.1
+  - @vannadii/devplat-remediation@0.2.1
+  - @vannadii/devplat-review@0.2.1
+  - @vannadii/devplat-slicing@0.2.1
+  - @vannadii/devplat-specs@0.2.1
+
 ## 0.2.0
 
 ### Minor Changes
