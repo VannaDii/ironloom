@@ -384,6 +384,49 @@ describe('DiscordControlPlaneService', () => {
     expect(await store.list('state')).toContain('discord-004');
   });
 
+  it('keeps open-project intent immutable per thread context', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const first = await service.handleAction({
+      id: 'discord-004a',
+      summary: 'open-project (intent:maintenance)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-4a',
+      threadId: 'thread-4a',
+      channelId: 'channel-4a',
+      action: 'open-project',
+      privileged: false,
+    });
+    const second = await service.handleAction({
+      id: 'discord-004b',
+      summary: 'open-project (intent:bugfix)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:01.000Z',
+      actorId: 'user-4a',
+      threadId: 'thread-4a',
+      channelId: 'channel-4a',
+      action: 'open-project',
+      privileged: false,
+    });
+
+    expect(first.allowed).toBe(true);
+    expect(second.allowed).toBe(false);
+    expect(second.failedClosed).toBe(true);
+    expect(await store.list('state')).toContain(
+      'open-project-intent:thread-4a',
+    );
+    expect(await store.list('audit')).toContain('discord-004b:audit');
+  });
+
   describe('Discord interaction responses and thread updates', () => {
     const cases = [
       {

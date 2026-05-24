@@ -1,4 +1,7 @@
-import { DEVPLAT_ACTION_SHOW_STATUS } from '@vannadii/devplat-core';
+import {
+  DEVPLAT_ACTION_OPEN_PROJECT,
+  DEVPLAT_ACTION_SHOW_STATUS,
+} from '@vannadii/devplat-core';
 import { TelemetryEventService } from '@vannadii/devplat-observability';
 import { DecisionPolicyService } from '@vannadii/devplat-policy';
 import { FileStoreService } from '@vannadii/devplat-storage';
@@ -80,6 +83,35 @@ type DiscordInteractionCompletionResult =
       readonly completionPostError: string;
       readonly completionReceipt?: DiscordResponseReceipt;
     };
+
+/**
+ * Parses an `intent:<value>` marker from a normalized request summary.
+ */
+function resolveOpenProjectIntentFromSummary(
+  summary: string,
+): string | undefined {
+  const marker = '(intent:';
+  const markerIndex = summary.indexOf(marker);
+  if (markerIndex < 0) {
+    return undefined;
+  }
+
+  const start = markerIndex + marker.length;
+  const end = summary.indexOf(')', start);
+  if (end < 0) {
+    return undefined;
+  }
+
+  const intent = summary.slice(start, end).trim();
+  return intent.length === 0 ? undefined : intent;
+}
+
+/**
+ * Builds the state key that stores immutable open-project intent context.
+ */
+function createOpenProjectIntentStateKey(threadId: string): string {
+  return `open-project-intent:${threadId}`;
+}
 
 /** Contract for discord control response transport. */
 export interface DiscordControlResponseTransport {
@@ -438,11 +470,103 @@ export class DiscordControlPlaneService {
     return describeDiscordControlRequest(input);
   }
 
+  /**
+   * Enforces immutable `/open-project --intent` context for a thread scope.
+   */
+  private async enforceOpenProjectIntentImmutability(
+    request: DiscordControlRequest,
+  ): Promise<{ ok: true } | { ok: false; reason: string }> {
+    if (request.action !== DEVPLAT_ACTION_OPEN_PROJECT) {
+      return { ok: true };
+    }
+
+    const currentIntent = resolveOpenProjectIntentFromSummary(request.summary);
+    if (currentIntent === undefined) {
+      return {
+        ok: false,
+        reason:
+          'open-project intent is required and immutable for a reopened run.',
+      };
+    }
+
+    const stateKey = createOpenProjectIntentStateKey(request.threadId);
+    const previous = await this.store.read('state', stateKey);
+    if (!previous.ok) {
+      await this.store.store({
+        id: `${request.id}:open-project-intent`,
+        key: stateKey,
+        scope: 'state',
+        summary: 'Open-project immutable intent binding.',
+        status: 'approved',
+        trace: request.trace,
+        updatedAt: request.updatedAt,
+        payload: {
+          threadId: request.threadId,
+          action: request.action,
+          intent: currentIntent,
+        },
+      });
+      return { ok: true };
+    }
+
+    const payload = previous.value.payload;
+    const intent =
+      typeof payload === 'object' &&
+      'intent' in payload &&
+      typeof payload['intent'] === 'string'
+        ? payload['intent'].trim()
+        : undefined;
+    if (intent === undefined || intent === currentIntent) {
+      return { ok: true };
+    }
+
+    return {
+      ok: false,
+      reason: `open-project intent is immutable for this run: expected ${intent}, received ${currentIntent}.`,
+    };
+  }
+
   /** Handle action. */
   public async handleAction(
     input: DiscordControlRequest,
   ): Promise<DiscordControlResult> {
     const request = this.execute(input);
+    const immutability =
+      await this.enforceOpenProjectIntentImmutability(request);
+    if (!immutability.ok) {
+      await this.telemetry.recordAudit({
+        auditId: `${request.id}:audit`,
+        runId: request.id,
+        eventId: request.id,
+        actorId: request.actorId,
+        action: request.action,
+        scope: 'discord',
+        outcome: 'blocked',
+        reason: immutability.reason,
+        artifactIds:
+          request.workItem?.artifactId === undefined
+            ? []
+            : [request.workItem.artifactId],
+        recordedAt: request.updatedAt,
+        policyDecisionId: 'discord-fail-closed',
+        details: {
+          threadId: request.threadId,
+          channelId: request.channelId,
+          resultStatus: 'intent-mismatch',
+          correlationId: request.id,
+        },
+      });
+      return createDiscordControlResultWithOptionalWorkItem(
+        {
+          request,
+          policyDecisionId: 'discord-fail-closed',
+          allowed: false,
+          persistedKey: request.id,
+          failedClosed: true,
+        },
+        request,
+      );
+    }
     const decision = this.policy.evaluateControlAction(
       request.action,
       request.privileged,
@@ -794,12 +918,105 @@ export class DiscordControlPlaneService {
   }
 
   /**
+   * Handles routed interaction failure when open-project intent is not immutable.
+   */
+  private async handleRoutedIntentImmutabilityFailure(
+    input: DiscordOperatorInteraction,
+    request: DiscordControlRequest,
+    reason: string,
+  ): Promise<DiscordControlResult> {
+    const responsePayload = renderDiscordControlBlockedMessage(request);
+    const acknowledgement =
+      await this.postInteractionDeferredAcknowledgement(input);
+    if (!acknowledgement.ok) {
+      await this.recordInteractionResponseFailure(
+        request,
+        'discord-fail-closed',
+        acknowledgement.responsePostError,
+        acknowledgement.responseReceipt,
+      );
+      return createDiscordControlResultWithOptionalWorkItem(
+        {
+          request,
+          policyDecisionId: 'discord-fail-closed',
+          allowed: false,
+          persistedKey: request.id,
+          failedClosed: true,
+          responsePayload,
+          responsePostError: acknowledgement.responsePostError,
+          ...(acknowledgement.responseReceipt === undefined
+            ? {}
+            : { responseReceipt: acknowledgement.responseReceipt }),
+        },
+        request,
+      );
+    }
+
+    await this.telemetry.recordAudit({
+      auditId: `${request.id}:audit`,
+      runId: request.id,
+      eventId: request.id,
+      actorId: request.actorId,
+      action: request.action,
+      scope: 'discord',
+      outcome: 'blocked',
+      reason,
+      artifactIds:
+        request.workItem?.artifactId === undefined
+          ? []
+          : [request.workItem.artifactId],
+      recordedAt: request.updatedAt,
+      policyDecisionId: 'discord-fail-closed',
+      details: {
+        threadId: request.threadId,
+        channelId: request.channelId,
+        resultStatus: 'intent-mismatch',
+        correlationId: request.id,
+      },
+    });
+    const threadPostResult = await this.postThreadMessageAfterAcknowledgement(
+      request.threadId,
+      responsePayload,
+    );
+    return createDiscordControlResultWithOptionalWorkItem(
+      {
+        request,
+        policyDecisionId: 'discord-fail-closed',
+        allowed: false,
+        persistedKey: request.id,
+        failedClosed: true,
+        responsePayload,
+        responseReceipt: acknowledgement.responseReceipt,
+        ...(threadPostResult.ok
+          ? { threadReceipt: threadPostResult.threadReceipt }
+          : {
+              ...(threadPostResult.threadReceipt === undefined
+                ? {}
+                : { threadReceipt: threadPostResult.threadReceipt }),
+              threadPostError: threadPostResult.threadPostError,
+            }),
+      },
+      request,
+    );
+  }
+
+  /**
    * Handles a routed interaction after thread context has resolved.
    */
   private async handleRoutedInteraction(
     input: DiscordOperatorInteraction,
     request: DiscordControlRequest,
   ): Promise<DiscordControlResult> {
+    const immutability =
+      await this.enforceOpenProjectIntentImmutability(request);
+    if (!immutability.ok) {
+      return this.handleRoutedIntentImmutabilityFailure(
+        input,
+        request,
+        immutability.reason,
+      );
+    }
+
     const decision = this.policy.evaluateControlAction(
       request.action,
       request.privileged,
