@@ -639,6 +639,71 @@ describe('DiscordControlRequest logic', () => {
       {
         inputs: {
           interaction: {
+            id: 'interaction-010d-denied-spec',
+            token: 'token-10d-denied-spec',
+            actorId: 'user-10d-denied-spec',
+            channelId: 'thread-10d-denied-spec',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'approve-this',
+            boundThreadId: 'thread-10d-denied-spec',
+            specApproverRoleId: 'role-spec-approver',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(false);
+          if (!route.ok) {
+            expect(route.reason).toContain('permission denied');
+            expect(route.reason).toContain('requiredRole=spec-approver');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-010d-denied-pr',
+            token: 'token-10d-denied-pr',
+            actorId: 'user-10d-denied-pr',
+            channelId: 'thread-10d-denied-pr',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'approve-this',
+            boundThreadId: 'thread-10d-denied-pr',
+            boundSession: {
+              id: 'thread-session-010d-denied-pr',
+              summary: 'Pull request session',
+              status: 'running',
+              trace: [],
+              updatedAt: '2026-04-04T00:00:00.000Z',
+              guildId: 'guild-10d-denied-pr',
+              channelId: 'thread-10d-denied-pr',
+              parentChannelId: 'pull-request-channel',
+              threadId: 'thread-10d-denied-pr',
+              kind: 'pull-request',
+              specId: 'spec-10d-denied-pr',
+              sliceId: 'slice-10d-denied-pr',
+              pullRequestNumber: 101,
+              artifactId: 'artifact-10d-denied-pr',
+            },
+            mergeApproverRoleId: 'role-merge-approver',
+            actorRoleIds: ['role-spec-approver'],
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(false);
+          if (!route.ok) {
+            expect(route.reason).toContain('permission denied');
+            expect(route.reason).toContain('requiredRole=merge-approver');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
             id: 'interaction-003',
             token: 'token-3',
             actorId: 'user-3',
