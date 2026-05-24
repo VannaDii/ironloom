@@ -168,25 +168,26 @@ function resolveRoleAuthorizationFailure(
     return undefined;
   }
 
-  const roleIdsByRole = requiredRoles.map((role) => ({
-    role,
-    roleId: resolveConfiguredRoleId(role, input),
-  }));
-  const missingMappings = roleIdsByRole.filter(
-    ({ roleId }) => roleId === undefined,
-  );
+  const missingMappings: DevplatOperatorRole[] = [];
+  const requiredRoleIds: string[] = [];
+  for (const role of requiredRoles) {
+    const roleId = resolveConfiguredRoleId(role, input);
+    if (roleId === undefined) {
+      missingMappings.push(role);
+      continue;
+    }
+    requiredRoleIds.push(roleId);
+  }
+
   if (missingMappings.length > 0) {
     return (
       `permission denied: caller=${input.actorId} action=${action} requiredRole=${requiredRoles.join('|')} ` +
-      `context=thread:${threadId} missingRoleMapping=${missingMappings.map(({ role }) => role).join('|')}`
+      `context=thread:${threadId} missingRoleMapping=${missingMappings.join('|')}`
     );
   }
 
   const actorRoleIds = (input.actorRoleIds ?? []).map((roleId) =>
     roleId.trim(),
-  );
-  const requiredRoleIds = roleIdsByRole.flatMap(({ roleId }) =>
-    roleId === undefined ? [] : [roleId],
   );
   const hasRequiredRole = requiredRoleIds.some((requiredRoleId) =>
     actorRoleIds.includes(requiredRoleId),
