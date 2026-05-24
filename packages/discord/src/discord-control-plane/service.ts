@@ -1,4 +1,6 @@
 import {
+  DEVPLAT_ACTION_PROJECT_SETTINGS,
+  DEVPLAT_ACTION_PROJECT_SUMMARY,
   DEVPLAT_ACTION_OPEN_PROJECT,
   DEVPLAT_ACTION_SHOW_STATUS,
 } from '@vannadii/devplat-core';
@@ -111,6 +113,26 @@ function resolveOpenProjectIntentFromSummary(
  */
 function createOpenProjectIntentStateKey(threadId: string): string {
   return `open-project-intent:${threadId}`;
+}
+
+/**
+ * Builds the state key that stores project config version for a thread scope.
+ */
+function createProjectConfigVersionStateKey(threadId: string): string {
+  return `project-config-version:${threadId}`;
+}
+
+/**
+ * Parses numeric config version suffix from a `v<number>` marker.
+ */
+function parseConfigVersionNumber(value: string): number | undefined {
+  const trimmed = value.trim();
+  if (!trimmed.startsWith('v')) {
+    return undefined;
+  }
+
+  const numeric = Number.parseInt(trimmed.slice(1), 10);
+  return Number.isInteger(numeric) && numeric >= 1 ? numeric : undefined;
 }
 
 /** Contract for discord control response transport. */
@@ -471,6 +493,121 @@ export class DiscordControlPlaneService {
   }
 
   /**
+   * Reads persisted project metadata used by status and summary responses.
+   */
+  private async resolveThreadProjectMetadata(
+    threadId: string,
+  ): Promise<{ intent?: string; configVersion?: string }> {
+    const intentState = await this.store.read(
+      'state',
+      createOpenProjectIntentStateKey(threadId),
+    );
+    const configVersionState = await this.store.read(
+      'state',
+      createProjectConfigVersionStateKey(threadId),
+    );
+
+    const intentPayload = intentState.ok
+      ? intentState.value.payload
+      : undefined;
+    const intent =
+      intentPayload !== undefined &&
+      typeof intentPayload === 'object' &&
+      'intent' in intentPayload &&
+      typeof intentPayload['intent'] === 'string'
+        ? intentPayload['intent'].trim()
+        : undefined;
+
+    const configPayload = configVersionState.ok
+      ? configVersionState.value.payload
+      : undefined;
+    const configVersion =
+      configPayload !== undefined &&
+      typeof configPayload === 'object' &&
+      'configVersion' in configPayload &&
+      typeof configPayload['configVersion'] === 'string'
+        ? configPayload['configVersion'].trim()
+        : undefined;
+
+    return {
+      ...(intent === undefined || intent.length === 0 ? {} : { intent }),
+      ...(configVersion === undefined || configVersion.length === 0
+        ? {}
+        : { configVersion }),
+    };
+  }
+
+  /**
+   * Injects persisted intent/config markers into status and project-summary requests.
+   */
+  private async hydrateRequestSummaryMetadata(
+    request: DiscordControlRequest,
+  ): Promise<DiscordControlRequest> {
+    if (
+      request.action !== DEVPLAT_ACTION_SHOW_STATUS &&
+      request.action !== DEVPLAT_ACTION_PROJECT_SUMMARY
+    ) {
+      return request;
+    }
+
+    const metadata = await this.resolveThreadProjectMetadata(request.threadId);
+    const intentMarker =
+      metadata.intent === undefined ? '' : ` (intent:${metadata.intent})`;
+    const configMarker =
+      metadata.configVersion === undefined
+        ? ''
+        : ` (config-version:${metadata.configVersion})`;
+
+    return {
+      ...request,
+      summary: `${request.summary}${intentMarker}${configMarker}`.trim(),
+    };
+  }
+
+  /**
+   * Advances and persists config version on successful project-settings mutations.
+   */
+  private async persistProjectConfigVersion(
+    request: DiscordControlRequest,
+    decision: DiscordControlActionDecision,
+  ): Promise<void> {
+    if (
+      request.action !== DEVPLAT_ACTION_PROJECT_SETTINGS ||
+      !decision.allowed
+    ) {
+      return;
+    }
+
+    const stateKey = createProjectConfigVersionStateKey(request.threadId);
+    const previous = await this.store.read('state', stateKey);
+    const previousPayload = previous.ok ? previous.value.payload : undefined;
+    const previousVersion =
+      previousPayload !== undefined &&
+      typeof previousPayload === 'object' &&
+      'configVersion' in previousPayload &&
+      typeof previousPayload['configVersion'] === 'string'
+        ? previousPayload['configVersion']
+        : 'v0';
+    const nextNumber = (parseConfigVersionNumber(previousVersion) ?? 0) + 1;
+    const nextVersion = `v${String(nextNumber)}`;
+
+    await this.store.store({
+      id: `${request.id}:project-config-version`,
+      key: stateKey,
+      scope: 'state',
+      summary: 'Project config version.',
+      status: 'approved',
+      trace: request.trace,
+      updatedAt: request.updatedAt,
+      payload: {
+        threadId: request.threadId,
+        action: request.action,
+        configVersion: nextVersion,
+      },
+    });
+  }
+
+  /**
    * Enforces immutable `/open-project --intent` context for a thread scope.
    */
   private async enforceOpenProjectIntentImmutability(
@@ -656,6 +793,7 @@ export class DiscordControlPlaneService {
       policyDecisionId: decision.id,
       details,
     });
+    await this.persistProjectConfigVersion(request, decision);
 
     const result = {
       request,
@@ -1007,38 +1145,39 @@ export class DiscordControlPlaneService {
     input: DiscordOperatorInteraction,
     request: DiscordControlRequest,
   ): Promise<DiscordControlResult> {
+    const renderedRequest = await this.hydrateRequestSummaryMetadata(request);
     const immutability =
-      await this.enforceOpenProjectIntentImmutability(request);
+      await this.enforceOpenProjectIntentImmutability(renderedRequest);
     if (!immutability.ok) {
       return this.handleRoutedIntentImmutabilityFailure(
         input,
-        request,
+        renderedRequest,
         immutability.reason,
       );
     }
 
     const decision = this.policy.evaluateControlAction(
-      request.action,
-      request.privileged,
+      renderedRequest.action,
+      renderedRequest.privileged,
     );
     const responsePayload = decision.allowed
-      ? renderDiscordControlAcceptedMessage(request)
-      : renderDiscordControlBlockedMessage(request);
+      ? renderDiscordControlAcceptedMessage(renderedRequest)
+      : renderDiscordControlBlockedMessage(renderedRequest);
     const threadPayload = responsePayload;
     const acknowledgement =
       await this.postInteractionDeferredAcknowledgement(input);
     if (!acknowledgement.ok) {
       await this.recordInteractionResponseFailure(
-        request,
+        renderedRequest,
         decision.id,
         acknowledgement.responsePostError,
         acknowledgement.responseReceipt,
       );
       const result = {
-        request,
+        request: renderedRequest,
         policyDecisionId: decision.id,
         allowed: false,
-        persistedKey: request.id,
+        persistedKey: renderedRequest.id,
         failedClosed: true,
         responsePayload,
         responsePostError: acknowledgement.responsePostError,
@@ -1047,11 +1186,14 @@ export class DiscordControlPlaneService {
           : { responseReceipt: acknowledgement.responseReceipt }),
       };
 
-      return createDiscordControlResultWithOptionalWorkItem(result, request);
+      return createDiscordControlResultWithOptionalWorkItem(
+        result,
+        renderedRequest,
+      );
     }
-    const result = await this.persistAction(request, decision);
+    const result = await this.persistAction(renderedRequest, decision);
     const threadPostResult = await this.postThreadMessageAfterAcknowledgement(
-      request.threadId,
+      renderedRequest.threadId,
       threadPayload,
     );
     let completionProjection: Partial<
@@ -1059,9 +1201,9 @@ export class DiscordControlPlaneService {
     > = {};
     if (!isDiscordComponentInteraction(input)) {
       const completionPayload = threadPostResult.ok
-        ? renderDiscordInteractionCompletionMessage(request)
+        ? renderDiscordInteractionCompletionMessage(renderedRequest)
         : renderDiscordInteractionThreadPostFailureCompletionMessage(
-            request,
+            renderedRequest,
             threadPostResult.threadPostError,
           );
       const completionResult = await this.postInteractionCompletion(
@@ -1148,16 +1290,17 @@ export class DiscordControlPlaneService {
     input: DiscordOperatorInteraction,
     request: DiscordControlRequest,
   ): Promise<DiscordControlResult> {
+    const renderedRequest = await this.hydrateRequestSummaryMetadata(request);
     const decision = this.policy.evaluateControlAction(
-      request.action,
-      request.privileged,
+      renderedRequest.action,
+      renderedRequest.privileged,
     );
     const responsePayload = decision.allowed
-      ? renderDiscordControlAcceptedMessage(request)
-      : renderDiscordControlBlockedMessage(request);
-    const result = await this.persistAction(request, decision);
+      ? renderDiscordControlAcceptedMessage(renderedRequest)
+      : renderDiscordControlBlockedMessage(renderedRequest);
+    const result = await this.persistAction(renderedRequest, decision);
     const threadPostResult = await this.postThreadMessageAfterAcknowledgement(
-      request.threadId,
+      renderedRequest.threadId,
       responsePayload,
     );
     let completionProjection: Partial<
@@ -1165,9 +1308,9 @@ export class DiscordControlPlaneService {
     > = {};
     if (!isDiscordComponentInteraction(input)) {
       const completionPayload = threadPostResult.ok
-        ? renderDiscordInteractionCompletionMessage(request)
+        ? renderDiscordInteractionCompletionMessage(renderedRequest)
         : renderDiscordInteractionThreadPostFailureCompletionMessage(
-            request,
+            renderedRequest,
             threadPostResult.threadPostError,
           );
       const completionResult = await this.postInteractionCompletion(

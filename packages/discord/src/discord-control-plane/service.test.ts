@@ -427,6 +427,58 @@ describe('DiscordControlPlaneService', () => {
     expect(await store.list('audit')).toContain('discord-004b:audit');
   });
 
+  it('hydrates show-status metadata from persisted project state', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+      createResponseTransport(),
+    );
+
+    await service.handleAction({
+      id: 'discord-004c',
+      summary: 'open-project (intent:maintenance)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-4c',
+      threadId: 'thread-4c',
+      channelId: 'channel-4c',
+      action: 'open-project',
+      privileged: false,
+    });
+    await service.handleAction({
+      id: 'discord-004d',
+      summary: 'project settings update',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:01.000Z',
+      actorId: 'user-4c',
+      threadId: 'thread-4c',
+      channelId: 'channel-4c',
+      action: 'project-settings',
+      privileged: false,
+    });
+
+    const result = await service.handleInteraction({
+      id: 'interaction-004c',
+      token: 'token-004c',
+      actorId: 'user-4c',
+      channelId: 'channel-4c',
+      updatedAt: '2026-04-04T00:00:02.000Z',
+      commandName: 'show-status',
+      boundThreadId: 'thread-4c',
+    });
+
+    expect(result.allowed).toBe(true);
+    expect(result.responsePayload?.content).toContain(
+      'Run intent: maintenance',
+    );
+    expect(result.responsePayload?.content).toContain('Config version: v1');
+  });
+
   describe('Discord interaction responses and thread updates', () => {
     const cases = [
       {
