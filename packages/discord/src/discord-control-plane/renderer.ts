@@ -45,8 +45,6 @@ import {
   DISCORD_MESSAGE_CONTENT_MAX_LENGTH,
   DISCORD_ROUTE_FAILURE_EVENT_LABEL,
   DISCORD_ROUTE_FAILURE_REDACTED_VALUE,
-  DISCORD_SUMMARY_CONFIG_VERSION_PATTERN,
-  DISCORD_SUMMARY_INTENT_PATTERN,
   DISCORD_ROUTE_FAILURE_TRUNCATED_MARKER,
 } from './constants.js';
 import { describeDiscordWorkItemBinding } from './logic.js';
@@ -568,10 +566,8 @@ function resolveSummaryMetadata(summary: string): {
   readonly runIntent?: string;
   readonly configVersion?: string;
 } {
-  const intentMatch = DISCORD_SUMMARY_INTENT_PATTERN.exec(summary);
-  const configMatch = DISCORD_SUMMARY_CONFIG_VERSION_PATTERN.exec(summary);
-  const runIntent = intentMatch?.[1]?.trim();
-  const configVersion = configMatch?.[1]?.trim();
+  const runIntent = resolveSummaryMarkerValue(summary, '(intent:');
+  const configVersion = resolveSummaryMarkerValue(summary, '(config-version:');
 
   return {
     ...(runIntent === undefined || runIntent.length === 0 ? {} : { runIntent }),
@@ -579,6 +575,29 @@ function resolveSummaryMetadata(summary: string): {
       ? {}
       : { configVersion }),
   };
+}
+
+/**
+ * Resolves one parenthesized summary metadata marker with deterministic scanning.
+ */
+function resolveSummaryMarkerValue(
+  summary: string,
+  markerPrefix: string,
+): string | undefined {
+  const markerStart = summary.indexOf(markerPrefix);
+
+  if (markerStart < 0) {
+    return undefined;
+  }
+
+  const valueStart = markerStart + markerPrefix.length;
+  const valueEnd = summary.indexOf(')', valueStart);
+
+  if (valueEnd < 0) {
+    return undefined;
+  }
+
+  return summary.slice(valueStart, valueEnd).trim();
 }
 
 /**
