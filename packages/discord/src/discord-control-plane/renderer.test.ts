@@ -552,6 +552,23 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'renders button styles for the full v1 action surface',
+      inputs: {
+        request,
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordActionComponentRows(inputRequest, allActions),
+      assert: (
+        components: ReturnType<typeof renderDiscordActionComponentRows>,
+      ) => {
+        const renderedActionCount = components.reduce(
+          (count, row) => count + row.components.length,
+          0,
+        );
+        expect(renderedActionCount).toBe(allActions.length);
+      },
+    },
+    {
       name: 'returns no component rows when no actions are available',
       inputs: {
         request,
@@ -685,6 +702,66 @@ describe('Discord control-plane renderer', () => {
         expect(
           payload.components?.[0]?.components.map((button) => button.label),
         ).toContain('Merge');
+      },
+    },
+    {
+      name: 'does not show merge after approval for non-pull-request threads',
+      inputs: {
+        request: {
+          ...request,
+          action: 'approve-this',
+          workItem: {
+            threadKind: 'implementation',
+            threadId: 'thread-impl-approve',
+            artifactId: 'artifact-impl-approve',
+            sliceId: 'slice-impl-approve',
+          },
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(
+          payload.components?.[0]?.components.map((button) => button.label),
+        ).not.toContain('Merge');
+      },
+    },
+    {
+      name: 'renders blocked project-operator requirement for project settings actions',
+      inputs: {
+        request: {
+          ...request,
+          action: 'project-settings',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlBlockedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlBlockedMessage>,
+      ) => {
+        expect(payload.content).toContain('Required role: project-operator');
+      },
+    },
+    {
+      name: 'renders blocked pull-request context when PR number is unavailable',
+      inputs: {
+        request: {
+          ...request,
+          workItem: {
+            threadKind: 'pull-request',
+            threadId: 'thread-pr-nonumber',
+            artifactId: 'artifact-pr-nonumber',
+          },
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlBlockedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlBlockedMessage>,
+      ) => {
+        expect(payload.content).toContain('Context: thread:thread-pr-nonumber');
       },
     },
     {
