@@ -1024,6 +1024,37 @@ describe('DiscordControlRequest logic', () => {
       {
         inputs: {
           interaction: {
+            id: 'interaction-008d',
+            token: 'token-8d',
+            actorId: 'user-8d',
+            channelId: 'channel-8d',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'open-project',
+            boundThreadId: 'thread-8d',
+            projectRepo: 'devplat(intent:spoof)',
+            projectName: 'beta:phase(one)',
+            openProjectIntent: 'maintenance',
+            actorRoleIds: ['role-project-operator'],
+            projectOperatorRoleId: 'role-project-operator',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.summary).toContain(
+              'repo:devplat[intent-spoof]',
+            );
+            expect(route.request.summary).toContain('project:beta-phase[one]');
+            expect(route.request.summary).toContain('intent:maintenance');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
             id: 'interaction-008k',
             token: 'token-8k',
             actorId: 'user-8k',

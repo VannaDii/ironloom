@@ -110,7 +110,7 @@ function resolveOpenProjectIntentFromSummary(
   summary: string,
 ): string | undefined {
   const marker = '(intent:';
-  const markerIndex = summary.indexOf(marker);
+  const markerIndex = summary.lastIndexOf(marker);
   if (markerIndex < 0) {
     return undefined;
   }
@@ -549,14 +549,10 @@ export class DiscordControlPlaneService {
   private async resolveThreadProjectMetadata(
     threadId: string,
   ): Promise<{ intent?: string; configVersion?: string }> {
-    const intentState = await this.store.read(
-      'state',
-      createOpenProjectIntentStateKey(threadId),
-    );
-    const configVersionState = await this.store.read(
-      'state',
-      createProjectConfigVersionStateKey(threadId),
-    );
+    const [intentState, configVersionState] = await Promise.all([
+      this.store.read('state', createOpenProjectIntentStateKey(threadId)),
+      this.store.read('state', createProjectConfigVersionStateKey(threadId)),
+    ]);
 
     const intentPayload = intentState.ok
       ? intentState.value.payload

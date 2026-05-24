@@ -767,6 +767,18 @@ export function createDiscordOperatorInteractionFromCallback(
 }
 
 /** Creates interaction control request input. */
+function sanitizeSummaryMarkerValue(value: string): string {
+  return value
+    .split('(')
+    .join('[')
+    .split(')')
+    .join(']')
+    .split(':')
+    .join('-')
+    .trim();
+}
+
+/** Creates interaction control request input. */
 function createInteractionControlRequestInput(
   input: DiscordOperatorInteraction,
   action: DiscordControlAction,
@@ -781,7 +793,7 @@ function createInteractionControlRequestInput(
   const projectContextSuffix =
     input.projectRepo === undefined || input.projectName === undefined
       ? ''
-      : ` (repo:${input.projectRepo}) (project:${input.projectName})`;
+      : ` (repo:${sanitizeSummaryMarkerValue(input.projectRepo)}) (project:${sanitizeSummaryMarkerValue(input.projectName)})`;
   const resumeForceSuffix =
     action === DEVPLAT_ACTION_RESUME_PROJECT && input.resumeProjectForce
       ? ' (force:true)'
