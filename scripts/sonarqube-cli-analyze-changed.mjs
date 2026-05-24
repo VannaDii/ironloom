@@ -29,6 +29,8 @@ const sonarUnauthenticatedMessage =
 const sonarUnauthenticatedSignals = [
   'Not authenticated. Run: sonar auth login',
   'Run: sonar auth login',
+  'Not authenticated.',
+  "Run 'sonar auth login' to authenticate.",
 ];
 const retryableSonarServiceFailureReason =
   'SonarQube service unavailable during local analysis; retry this gate after the upstream service recovers.';
