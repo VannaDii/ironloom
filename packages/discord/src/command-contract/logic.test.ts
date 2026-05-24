@@ -85,8 +85,33 @@ describe('Discord command contract logic', () => {
             name: contract.name,
             description: contract.description,
             type: contract.type,
+            ...(contract.options === undefined
+              ? {}
+              : { options: contract.options }),
           })),
         );
+        expect(
+          payloads.find((payload) => payload.name === 'open-project'),
+        ).toEqual({
+          name: 'open-project',
+          description:
+            'Open a project dashboard and route commands by context.',
+          type: 1,
+          options: [
+            {
+              type: 3,
+              name: 'intent',
+              description:
+                'Execution intent for immutable open-project run context.',
+              required: true,
+              choices: [
+                { name: 'maintenance', value: 'maintenance' },
+                { name: 'bugfix', value: 'bugfix' },
+                { name: 'new-feature', value: 'new-feature' },
+              ],
+            },
+          ],
+        });
         expect(
           registry.contracts
             .filter((contract) => contract.privileged)

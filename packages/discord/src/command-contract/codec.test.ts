@@ -19,6 +19,26 @@ describe('Discord command contract codec', () => {
               action: 'retry-gates',
               privileged: false,
             },
+            {
+              name: 'open-project',
+              description: 'Open project command.',
+              type: 1,
+              action: 'open-project',
+              privileged: true,
+              options: [
+                {
+                  type: 3,
+                  name: 'intent',
+                  description: 'Execution intent.',
+                  required: true,
+                  choices: [
+                    { name: 'maintenance', value: 'maintenance' },
+                    { name: 'bugfix', value: 'bugfix' },
+                    { name: 'new-feature', value: 'new-feature' },
+                  ],
+                },
+              ],
+            },
           ],
         },
       },

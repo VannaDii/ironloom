@@ -1102,7 +1102,7 @@ export class DiscordControlPlaneService {
     request: DiscordControlRequest,
     reason: string,
   ): Promise<DiscordControlResult> {
-    const responsePayload = renderDiscordControlBlockedMessage(request);
+    const responsePayload = renderDiscordControlBlockedMessage(request, reason);
     const acknowledgement =
       await this.postInteractionDeferredAcknowledgement(input);
     if (!acknowledgement.ok) {

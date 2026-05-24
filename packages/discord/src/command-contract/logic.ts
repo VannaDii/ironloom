@@ -35,6 +35,8 @@ import {
 import type { DiscordControlAction } from '../discord-control-plane/codec.js';
 import type {
   DiscordApplicationCommandType,
+  DiscordCommandOption,
+  DiscordCommandOptionType,
   DiscordCommandContract,
   DiscordCommandContractRegistry,
 } from './codec.js';
@@ -43,6 +45,28 @@ import type {
  * Discord application command type for chat-input slash commands.
  */
 const applicationCommandType: DiscordApplicationCommandType = 1;
+
+/**
+ * Discord slash-command option type for string options.
+ */
+const stringCommandOptionType: DiscordCommandOptionType = 3;
+
+/**
+ * Supported immutable `/open-project --intent` option values.
+ */
+const openProjectIntentOptionChoices: readonly DiscordCommandOption[] = [
+  {
+    type: stringCommandOptionType,
+    name: 'intent',
+    description: 'Execution intent for immutable open-project run context.',
+    required: true,
+    choices: [
+      { name: 'maintenance', value: 'maintenance' },
+      { name: 'bugfix', value: 'bugfix' },
+      { name: 'new-feature', value: 'new-feature' },
+    ],
+  },
+];
 
 /**
  * Versioned Discord slash-command contracts exposed to operators.
@@ -61,6 +85,7 @@ const commandContracts: readonly DiscordCommandContract[] = [
     type: applicationCommandType,
     action: DEVPLAT_ACTION_OPEN_PROJECT,
     privileged: true,
+    options: openProjectIntentOptionChoices,
   },
   {
     name: DEVPLAT_ACTION_PROJECT_SUMMARY,
@@ -296,11 +321,12 @@ export function resolveDiscordCommandAction(
  */
 export function createDiscordApplicationCommandPayloads(): readonly Pick<
   DiscordCommandContract,
-  'name' | 'description' | 'type'
+  'name' | 'description' | 'type' | 'options'
 >[] {
   return commandContracts.map((contract) => ({
     name: contract.name,
     description: contract.description,
     type: contract.type,
+    ...(contract.options === undefined ? {} : { options: contract.options }),
   }));
 }

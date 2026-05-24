@@ -996,6 +996,7 @@ export function renderDiscordControlAcceptedMessage(
  */
 export function renderDiscordControlBlockedMessage(
   request: DiscordControlRequest,
+  reason = 'policy denied this action',
 ): DiscordMessagePayload {
   const requiredRole = resolveRequiredRoleLabel(request);
   const content = renderDiscordMessageContent({
@@ -1008,7 +1009,7 @@ export function renderDiscordControlBlockedMessage(
       Context: renderBlockedActionContextValue(request),
       ...resolveStatusSummaryMetadataFields(request),
       ...(requiredRole === undefined ? {} : { 'Required role': requiredRole }),
-      Reason: 'policy denied this action',
+      Reason: reason,
     },
     indicator: '🔴',
     result: 'No platform state was changed beyond audit logging.',

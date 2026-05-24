@@ -492,7 +492,7 @@ describe('DiscordControlPlaneService', () => {
     expect(result.allowed).toBe(false);
     expect(result.failedClosed).toBe(true);
     expect(result.responsePayload?.content).toContain(
-      'Reason: policy denied this action',
+      'Reason: open-project intent is immutable for this run: expected maintenance, received bugfix.',
     );
     expect(result.threadReceipt?.endpoint).toBe('/channels/thread-4e/messages');
     expect(await store.list('audit')).toContain('interaction-004e:audit');

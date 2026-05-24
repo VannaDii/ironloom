@@ -325,6 +325,27 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'renders blocked message with explicit fail-closed reason',
+      inputs: {
+        request: {
+          ...request,
+          action: 'open-project',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlBlockedMessage(
+          inputRequest,
+          'open-project intent is immutable for this run: expected maintenance, received bugfix.',
+        ),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlBlockedMessage>,
+      ) => {
+        expect(payload.content).toContain(
+          'Reason: open-project intent is immutable for this run: expected maintenance, received bugfix.',
+        );
+      },
+    },
+    {
       name: 'renders blocked project-level role and thread context without a bound work item',
       inputs: {
         request: {
