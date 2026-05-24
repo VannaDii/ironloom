@@ -222,7 +222,11 @@ describe('Discord control-plane renderer', () => {
       ) => {
         expect(payload.content).toContain('🔴 DevPlat · Action blocked');
         expect(payload.content).toContain('Status: blocked');
+        expect(payload.content).toContain('Caller: <@operator-1>');
         expect(payload.content).toContain('Action: release-worktree');
+        expect(payload.content).toContain(
+          'Context: slice:slice-1 thread:thread-1',
+        );
         expect(payload.content).toContain('Reason: policy denied this action');
         expect(payload.content).toContain(
           '→ No platform state was changed beyond audit logging.',

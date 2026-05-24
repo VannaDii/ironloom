@@ -560,6 +560,33 @@ function renderDiscordItemValue(request: DiscordControlRequest): string {
 }
 
 /**
+ * Renders compact project/thread context for blocked action diagnostics.
+ */
+function renderBlockedActionContextValue(
+  request: DiscordControlRequest,
+): string {
+  if (request.workItem === undefined) {
+    return request.threadId;
+  }
+
+  if (request.workItem.threadKind === 'implementation') {
+    return request.workItem.sliceId === undefined
+      ? `thread:${request.workItem.threadId}`
+      : `slice:${request.workItem.sliceId} thread:${request.workItem.threadId}`;
+  }
+
+  if (request.workItem.threadKind === 'pull-request') {
+    return request.workItem.pullRequestNumber === undefined
+      ? `thread:${request.workItem.threadId}`
+      : `pr:#${String(request.workItem.pullRequestNumber)} thread:${request.workItem.threadId}`;
+  }
+
+  return request.workItem.specId === undefined
+    ? `thread:${request.workItem.threadId}`
+    : `spec:${request.workItem.specId} thread:${request.workItem.threadId}`;
+}
+
+/**
  * Resolves the role label required for a blocked action in this thread context.
  */
 function resolveRequiredRoleLabel(
@@ -882,6 +909,7 @@ export function renderDiscordControlBlockedMessage(
       Caller: describeActor(request.actorId),
       Action: request.action,
       Scope: renderDiscordScopeValue(request),
+      Context: renderBlockedActionContextValue(request),
       ...(requiredRole === undefined ? {} : { 'Required role': requiredRole }),
       Reason: 'policy denied this action',
     },
