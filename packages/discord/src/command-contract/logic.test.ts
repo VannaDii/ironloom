@@ -80,6 +80,11 @@ describe('Discord command contract logic', () => {
         expect(registry.contracts.map((contract) => contract.name)).toEqual(
           inputs.expectedNames,
         );
+        for (const name of registry.contracts.map(
+          (contract) => contract.name,
+        )) {
+          expect(name).toMatch(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+        }
         expect(payloads).toEqual(
           registry.contracts.map((contract) => ({
             name: contract.name,

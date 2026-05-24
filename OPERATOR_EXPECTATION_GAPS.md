@@ -25,7 +25,7 @@ Usage rules:
 
 ## 3. Global Command Contract
 
-- [ ] Enforce kebab-case command naming.
+- [x] Enforce kebab-case command naming.
 - [x] Enforce named options only for new commands (no positional args).
 - [x] Enforce dynamic role checks at action time for slash and button actions.
 - [x] Keep non-mutating commands broadly available.
