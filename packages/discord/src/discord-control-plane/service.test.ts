@@ -778,7 +778,7 @@ describe('DiscordControlPlaneService', () => {
       payload: {
         threadId: 'thread-4j',
         action: 'project-settings',
-        configVersion: 'version-2',
+        configVersion: 'x2',
       },
     });
 
@@ -799,6 +799,56 @@ describe('DiscordControlPlaneService', () => {
     const persisted = await store.read(
       'state',
       'project-config-version:thread-4j',
+    );
+    expect(persisted.ok).toBe(true);
+    if (persisted.ok) {
+      expect(persisted.value.payload).toMatchObject({
+        configVersion: 'v1',
+      });
+    }
+  });
+
+  it('resets invalid numeric config versions to v1 on project settings updates', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    await store.store({
+      id: 'record-project-config-thread-4j-v0',
+      key: 'project-config-version:thread-4j-v0',
+      scope: 'state',
+      summary: 'Project config version.',
+      status: 'approved',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:01.000Z',
+      payload: {
+        threadId: 'thread-4j-v0',
+        action: 'project-settings',
+        configVersion: 'v0',
+      },
+    });
+
+    const result = await service.handleAction({
+      id: 'discord-004j-v0-settings',
+      summary: 'project settings update',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:02.000Z',
+      actorId: 'user-4j-v0',
+      threadId: 'thread-4j-v0',
+      channelId: 'channel-4j-v0',
+      action: 'project-settings',
+      privileged: false,
+    });
+
+    expect(result.allowed).toBe(true);
+    const persisted = await store.read(
+      'state',
+      'project-config-version:thread-4j-v0',
     );
     expect(persisted.ok).toBe(true);
     if (persisted.ok) {
