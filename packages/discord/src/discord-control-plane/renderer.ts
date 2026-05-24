@@ -45,6 +45,8 @@ import {
   DISCORD_MESSAGE_CONTENT_MAX_LENGTH,
   DISCORD_ROUTE_FAILURE_EVENT_LABEL,
   DISCORD_ROUTE_FAILURE_REDACTED_VALUE,
+  DISCORD_SUMMARY_CONFIG_VERSION_PATTERN,
+  DISCORD_SUMMARY_INTENT_PATTERN,
   DISCORD_ROUTE_FAILURE_TRUNCATED_MARKER,
 } from './constants.js';
 import { describeDiscordWorkItemBinding } from './logic.js';
@@ -560,6 +562,50 @@ function renderDiscordItemValue(request: DiscordControlRequest): string {
 }
 
 /**
+ * Extracts summary metadata markers used by project status surfaces.
+ */
+function resolveSummaryMetadata(summary: string): {
+  readonly runIntent?: string;
+  readonly configVersion?: string;
+} {
+  const intentMatch = DISCORD_SUMMARY_INTENT_PATTERN.exec(summary);
+  const configMatch = DISCORD_SUMMARY_CONFIG_VERSION_PATTERN.exec(summary);
+  const runIntent = intentMatch?.[1]?.trim();
+  const configVersion = configMatch?.[1]?.trim();
+
+  return {
+    ...(runIntent === undefined || runIntent.length === 0 ? {} : { runIntent }),
+    ...(configVersion === undefined || configVersion.length === 0
+      ? {}
+      : { configVersion }),
+  };
+}
+
+/**
+ * Returns additional fields for status and project summary messages.
+ */
+function resolveAcceptedMetadataFields(
+  request: DiscordControlRequest,
+): Readonly<Record<string, string>> {
+  if (
+    request.action !== DEVPLAT_ACTION_SHOW_STATUS &&
+    request.action !== DEVPLAT_ACTION_PROJECT_SUMMARY
+  ) {
+    return {};
+  }
+
+  const metadata = resolveSummaryMetadata(request.summary);
+  return {
+    ...(metadata.runIntent === undefined
+      ? {}
+      : { 'Run intent': metadata.runIntent }),
+    ...(metadata.configVersion === undefined
+      ? {}
+      : { 'Config version': metadata.configVersion }),
+  };
+}
+
+/**
  * Renders compact project/thread context for blocked action diagnostics.
  */
 function renderBlockedActionContextValue(
@@ -883,6 +929,7 @@ export function renderDiscordControlAcceptedMessage(
       Scope: renderDiscordScopeValue(request),
       Item: renderDiscordItemValue(request),
       Actor: describeActor(request.actorId),
+      ...resolveAcceptedMetadataFields(request),
     },
     indicator: display.acceptedIndicator,
     result: display.result,

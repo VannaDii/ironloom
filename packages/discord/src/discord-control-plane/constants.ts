@@ -98,3 +98,14 @@ export const DISCORD_REST_SUCCESS_MIN_STATUS = 200;
  * Exclusive upper bound for successful Discord REST response status codes.
  */
 export const DISCORD_REST_SUCCESS_MAX_EXCLUSIVE_STATUS = 300;
+
+/**
+ * Pattern for `(intent:<value>)` summary markers.
+ */
+export const DISCORD_SUMMARY_INTENT_PATTERN = /\(intent:([^)]+)\)/u;
+
+/**
+ * Pattern for `(config-version:<value>)` summary markers.
+ */
+export const DISCORD_SUMMARY_CONFIG_VERSION_PATTERN =
+  /\(config-version:([^)]+)\)/u;

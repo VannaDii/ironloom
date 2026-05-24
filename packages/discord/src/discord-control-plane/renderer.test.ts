@@ -208,6 +208,24 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'renders status metadata fields when summary includes config and intent markers',
+      inputs: {
+        request: {
+          ...request,
+          action: 'show-status',
+          summary: 'Project status (intent:maintenance) (config-version:v7)',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain('Run intent: maintenance');
+        expect(payload.content).toContain('Config version: v7');
+      },
+    },
+    {
       name: 'renders policy-denied actions with the standard blocked format',
       inputs: {
         request: {
