@@ -20,7 +20,7 @@ Usage rules:
 
 - [ ] Close gap: bootstrap currently requires OpenClaw/agent initiation.
 - [ ] Add full Discord-only bootstrap path.
-- [ ] Close gap: no `/new-project` currently exists.
+- [x] Close gap: no `/new-project` currently exists.
 - [ ] Ensure release produces canonical summary with required links and health metrics.
 
 ## 3. Global Command Contract
@@ -80,7 +80,7 @@ Usage rules:
 
 ## 7. `/new-project` Bootstrap
 
-- [ ] Implement `/new-project --repo <repo_name> --project <project_name> [--quality-strictness on|off]`.
+- [x] Implement `/new-project --repo <repo_name> --project <project_name> [--quality-strictness on|off]`.
 - [ ] Remove dependency on static `GITHUB_REPO` for standard runtime bootstrap.
 - [ ] Resolve repo using connected GitHub credentials/account.
 - [ ] If no GitHub account/config, fail with operator-facing config guidance.
