@@ -4,6 +4,7 @@ coverage/
 dist/
 *.tsbuildinfo
 openclaw-*.tgz
+devplat-state
 
 .devplat/**
 !.devplat/
