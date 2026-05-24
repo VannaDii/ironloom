@@ -606,6 +606,36 @@ function resolveStatusSummaryMetadataFields(
 }
 
 /**
+ * Returns metadata fields for artifact responses.
+ */
+function resolveArtifactMetadataFields(
+  request: DiscordControlRequest,
+): Readonly<Record<string, string>> {
+  const metadata = resolveSummaryMetadata(request.summary);
+  return {
+    ...(metadata.runIntent === undefined
+      ? {}
+      : { 'Run intent': metadata.runIntent }),
+    ...(metadata.configVersion === undefined
+      ? {}
+      : { 'Config version': metadata.configVersion }),
+  };
+}
+
+/**
+ * Builds one-line interpretation text for artifact relevance.
+ */
+function resolveArtifactInterpretation(request: DiscordControlRequest): string {
+  const metadata = resolveSummaryMetadata(request.summary);
+  const context =
+    metadata.runIntent === undefined
+      ? 'current lifecycle context'
+      : `${metadata.runIntent} run context`;
+
+  return `Why this matters now: this artifact is the latest evidence for ${context}.`;
+}
+
+/**
  * Renders compact project/thread context for blocked action diagnostics.
  */
 function renderBlockedActionContextValue(
@@ -1050,9 +1080,10 @@ export function renderDiscordArtifactMessage(
       Scope: renderDiscordScopeValue(request),
       Artifact: artifactId,
       Updated: request.updatedAt,
+      ...resolveArtifactMetadataFields(request),
     },
     indicator: '📎',
-    result: 'Latest artifact is attached, linked, or summarized below.',
+    result: `${resolveArtifactInterpretation(request)} Latest artifact is attached, linked, or summarized below.`,
   });
 
   return createDiscordPayload(content, request, [

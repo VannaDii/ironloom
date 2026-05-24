@@ -618,9 +618,25 @@ describe('Discord control-plane renderer', () => {
         expect(payload.content).toContain('📎 DevPlat · Last artifact');
         expect(payload.content).toContain('Status: available');
         expect(payload.content).toContain('Artifact: artifact-1');
+        expect(payload.content).toContain('Why this matters now:');
         expect(
           payload.components?.[0]?.components.map((button) => button.label),
         ).toEqual(['Details', 'Show Status', 'Explain Failure']);
+      },
+    },
+    {
+      name: 'renders artifact metadata fields when summary includes config and intent markers',
+      inputs: {
+        request: {
+          ...request,
+          summary: 'Artifact context (intent:maintenance) (config-version:v11)',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordArtifactMessage(inputRequest),
+      assert: (payload: ReturnType<typeof renderDiscordArtifactMessage>) => {
+        expect(payload.content).toContain('Run intent: maintenance');
+        expect(payload.content).toContain('Config version: v11');
       },
     },
     {

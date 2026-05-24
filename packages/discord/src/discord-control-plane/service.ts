@@ -2,6 +2,7 @@ import {
   DEVPLAT_ACTION_PROJECT_SETTINGS,
   DEVPLAT_ACTION_PROJECT_SUMMARY,
   DEVPLAT_ACTION_OPEN_PROJECT,
+  DEVPLAT_ACTION_SHOW_LAST_ARTIFACT,
   DEVPLAT_ACTION_SHOW_STATUS,
 } from '@vannadii/devplat-core';
 import { TelemetryEventService } from '@vannadii/devplat-observability';
@@ -545,7 +546,8 @@ export class DiscordControlPlaneService {
   ): Promise<DiscordControlRequest> {
     if (
       request.action !== DEVPLAT_ACTION_SHOW_STATUS &&
-      request.action !== DEVPLAT_ACTION_PROJECT_SUMMARY
+      request.action !== DEVPLAT_ACTION_PROJECT_SUMMARY &&
+      request.action !== DEVPLAT_ACTION_SHOW_LAST_ARTIFACT
     ) {
       return request;
     }
