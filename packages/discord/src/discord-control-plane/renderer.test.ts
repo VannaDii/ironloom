@@ -352,6 +352,26 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'renders blocked spec-thread context when spec id is unavailable',
+      inputs: {
+        request: {
+          ...request,
+          workItem: {
+            threadKind: 'spec',
+            threadId: 'thread-nospec',
+            artifactId: 'artifact-nospec',
+          },
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlBlockedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlBlockedMessage>,
+      ) => {
+        expect(payload.content).toContain('Context: thread:thread-nospec');
+      },
+    },
+    {
       name: 'renders route failures with the standard refusal message',
       inputs: {
         interaction,
