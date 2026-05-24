@@ -119,6 +119,30 @@ describe('DiscordControlRequest logic', () => {
       {
         inputs: {
           interaction: {
+            id: 'interaction-007e',
+            token: 'token-7e',
+            actorId: 'user-7e',
+            channelId: 'channel-7e',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'new-project',
+            boundThreadId: 'thread-7e',
+            projectOperatorRoleId: 'role-project-operator',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(false);
+          if (!route.ok) {
+            expect(route.reason).toContain('permission denied');
+            expect(route.reason).toContain('requiredRole=project-operator');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
             id: 'interaction-002',
             token: 'token-2',
             actorId: 'user-2',

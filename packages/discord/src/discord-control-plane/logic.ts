@@ -185,8 +185,11 @@ function resolveRoleAuthorizationFailure(
   const actorRoleIds = (input.actorRoleIds ?? []).map((roleId) =>
     roleId.trim(),
   );
-  const hasRequiredRole = roleIdsByRole.some(({ roleId }) =>
-    actorRoleIds.includes(roleId ?? ''),
+  const requiredRoleIds = roleIdsByRole.flatMap(({ roleId }) =>
+    roleId === undefined ? [] : [roleId],
+  );
+  const hasRequiredRole = requiredRoleIds.some((requiredRoleId) =>
+    actorRoleIds.includes(requiredRoleId),
   );
   if (hasRequiredRole) {
     return undefined;
