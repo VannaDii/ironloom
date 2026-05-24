@@ -273,7 +273,8 @@ const commandContracts: readonly DiscordCommandContract[] = [
   },
   {
     name: DEVPLAT_ACTION_ALTERNATIVES,
-    description: 'Show three alternatives with effort and risk profile.',
+    description:
+      'Show 3 alternatives with S/M/L effort, time ranges, and typed risks.',
     type: applicationCommandType,
     action: DEVPLAT_ACTION_ALTERNATIVES,
     privileged: false,

@@ -155,7 +155,8 @@ const actionDisplays: Readonly<
     label: 'Alternatives',
     acceptedTitle: 'Alternatives requested',
     acceptedIndicator: '🟡',
-    result: 'Generating alternatives with effort and risk summaries.',
+    result:
+      'Generating 3 alternatives with S/M/L effort, time ranges, and typed risk summaries.',
     controls: [DEVPLAT_ACTION_RESEARCH, DEVPLAT_ACTION_SPEC],
   },
   [DEVPLAT_ACTION_REDIRECT]: {
