@@ -27,25 +27,25 @@ Usage rules:
 
 - [ ] Enforce kebab-case command naming.
 - [ ] Enforce named options only for new commands (no positional args).
-- [ ] Enforce dynamic role checks at action time for slash and button actions.
+- [x] Enforce dynamic role checks at action time for slash and button actions.
 - [ ] Keep non-mutating commands broadly available.
 - [ ] Keep mutating commands role-restricted.
 
 ## 4. Roles and Permissions
 
 - [ ] Configure global role mappings: `project-operator`, `spec-approver`, `merge-approver`.
-- [ ] Restrict `/new-project` to `project-operator`.
-- [ ] Restrict `/open-project` to `project-operator`.
-- [ ] Restrict `/project-settings` to `project-operator`.
+- [x] Restrict `/new-project` to `project-operator`.
+- [x] Restrict `/open-project` to `project-operator`.
+- [x] Restrict `/project-settings` to `project-operator`.
 - [ ] Restrict `/project-settings-history` detailed mode to `project-operator`.
-- [ ] Restrict `/cancel-project` to `project-operator`.
-- [ ] Restrict `/resume-project` to `project-operator`.
-- [ ] Restrict spec/slice approvals to `spec-approver`.
-- [ ] Restrict merge approvals to `merge-approver`.
+- [x] Restrict `/cancel-project` to `project-operator`.
+- [x] Restrict `/resume-project` to `project-operator`.
+- [x] Restrict spec/slice approvals to `spec-approver`.
+- [x] Restrict merge approvals to `merge-approver`.
 - [ ] Allow release approval button click by `merge-approver` or `project-operator`.
-- [ ] On permission-denied, post in-thread message.
-- [ ] Include caller, attempted action, required role, and project/thread context in denial message.
-- [ ] Persist permission-denied events as durable audit artifacts.
+- [x] On permission-denied, post in-thread message.
+- [x] Include caller, attempted action, required role, and project/thread context in denial message.
+- [x] Persist permission-denied events as durable audit artifacts.
 
 ## 5. Project Identity and Context Safety
 

@@ -487,6 +487,8 @@ describe('DiscordControlPlaneService', () => {
       commandName: 'open-project',
       boundThreadId: 'thread-4e',
       openProjectIntent: 'bugfix',
+      actorRoleIds: ['role-project-operator'],
+      projectOperatorRoleId: 'role-project-operator',
     });
 
     expect(result.allowed).toBe(false);
@@ -530,6 +532,8 @@ describe('DiscordControlPlaneService', () => {
       commandName: 'open-project',
       boundThreadId: 'thread-4f',
       openProjectIntent: 'bugfix',
+      actorRoleIds: ['role-project-operator'],
+      projectOperatorRoleId: 'role-project-operator',
     });
 
     expect(result.allowed).toBe(false);
@@ -574,6 +578,8 @@ describe('DiscordControlPlaneService', () => {
       commandName: 'open-project',
       boundThreadId: 'thread-4f-1',
       openProjectIntent: 'bugfix',
+      actorRoleIds: ['role-project-operator'],
+      projectOperatorRoleId: 'role-project-operator',
       boundSession: {
         id: 'thread-session-4f-1',
         summary: 'Implementation session',
@@ -632,6 +638,8 @@ describe('DiscordControlPlaneService', () => {
       commandName: 'open-project',
       boundThreadId: 'thread-4f-2',
       openProjectIntent: 'bugfix',
+      actorRoleIds: ['role-project-operator'],
+      projectOperatorRoleId: 'role-project-operator',
       boundSession: {
         id: 'thread-session-4f-2',
         summary: 'Implementation session',
@@ -693,6 +701,8 @@ describe('DiscordControlPlaneService', () => {
       commandName: 'open-project',
       boundThreadId: 'thread-4f-3',
       openProjectIntent: 'bugfix',
+      actorRoleIds: ['role-project-operator'],
+      projectOperatorRoleId: 'role-project-operator',
       boundSession: {
         id: 'thread-session-4f-3',
         summary: 'Implementation session',
@@ -2698,12 +2708,91 @@ describe('DiscordControlPlaneService', () => {
           expect(result.responseReceipt?.endpoint).toBe(
             '/interactions/interaction-002/token-2/callback',
           );
+          expect(result.responsePayload?.content).toContain(
+            'Reason: project/thread context mismatch: expected=thread-7 detected=thread-6,thread-7. Recovery: /open-project --repo <repo_name> --project <project_name> --intent maintenance|bugfix|new-feature',
+          );
           expect(await context.store.list('state')).not.toContain(
             'interaction-002',
           );
           expect(await context.store.list('audit')).toContain(
             'interaction-002:audit',
           );
+          const auditRecord = await context.store.read(
+            'audit',
+            'interaction-002:audit',
+          );
+          expect(auditRecord.ok).toBe(true);
+          if (auditRecord.ok) {
+            expect(auditRecord.value).toMatchObject({
+              payload: {
+                reason:
+                  'project/thread context mismatch: expected=thread-7 detected=thread-6,thread-7. Recovery: /open-project --repo <repo_name> --project <project_name> --intent maintenance|bugfix|new-feature',
+              },
+            });
+          }
+        },
+      },
+      {
+        name: 'fails closed with explicit role-denied route reason',
+        inputs: {
+          interaction: {
+            id: 'interaction-route-permission-denied-001',
+            token: 'token-route-permission-denied-1',
+            actorId: 'user-route-permission-denied-1',
+            channelId: 'thread-route-permission-denied-1',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'new-project',
+            boundThreadId: 'thread-route-permission-denied-1',
+            actorRoleIds: ['role-spec-approver'],
+            projectOperatorRoleId: 'role-project-operator',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: async () => {
+          const rootDirectory = await mkdtemp(
+            join(tmpdir(), 'devplat-discord-'),
+          );
+          const store = new FileStoreService(rootDirectory);
+          return {
+            store,
+            service: new DiscordControlPlaneService(
+              new DecisionPolicyService(),
+              new TelemetryEventService(store),
+              store,
+              createResponseTransport(),
+            ),
+          };
+        },
+        assert: async (
+          context: {
+            store: FileStoreService;
+            service: DiscordControlPlaneService;
+          },
+          inputs: {
+            interaction: DiscordOperatorInteraction;
+          },
+        ) => {
+          const result = await context.service.handleInteraction(
+            inputs.interaction,
+          );
+
+          expect(result.allowed).toBe(false);
+          expect(result.failedClosed).toBe(true);
+          expect(result.responsePayload?.content).toContain(
+            'Reason: permission denied: caller=user-route-permission-denied-1 action=new-project requiredRole=project-operator context=thread:thread-route-permission-denied-1',
+          );
+          const auditRecord = await context.store.read(
+            'audit',
+            'interaction-route-permission-denied-001:audit',
+          );
+          expect(auditRecord.ok).toBe(true);
+          if (auditRecord.ok) {
+            expect(auditRecord.value).toMatchObject({
+              payload: {
+                reason:
+                  'permission denied: caller=user-route-permission-denied-1 action=new-project requiredRole=project-operator context=thread:thread-route-permission-denied-1',
+              },
+            });
+          }
         },
       },
       {

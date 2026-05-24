@@ -434,6 +434,56 @@ describe('DiscordControlRequest logic', () => {
       {
         inputs: {
           interaction: {
+            id: 'interaction-007c',
+            token: 'token-7c',
+            actorId: 'user-7c',
+            channelId: 'channel-7c',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'new-project',
+            boundThreadId: 'thread-7c',
+            actorRoleIds: ['role-spec-approver'],
+            projectOperatorRoleId: 'role-project-operator',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(false);
+          if (!route.ok) {
+            expect(route.reason).toContain('permission denied');
+            expect(route.reason).toContain('requiredRole=project-operator');
+            expect(route.reason).toContain('context=thread:thread-7c');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-007d',
+            token: 'token-7d',
+            actorId: 'user-7d',
+            channelId: 'channel-7d',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'merge-now',
+            boundThreadId: 'thread-7d',
+            actorRoleIds: ['role-merge-approver'],
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(false);
+          if (!route.ok) {
+            expect(route.reason).toContain('permission denied');
+            expect(route.reason).toContain('missingRoleMapping=merge-approver');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
             id: 'interaction-008',
             token: 'token-8',
             actorId: 'user-8',
@@ -486,6 +536,8 @@ describe('DiscordControlRequest logic', () => {
             commandName: 'open-project',
             boundThreadId: 'thread-8c',
             openProjectIntent: 'bugfix',
+            actorRoleIds: ['role-project-operator'],
+            projectOperatorRoleId: 'role-project-operator',
           } satisfies DiscordOperatorInteraction,
         },
         mock: () => undefined,

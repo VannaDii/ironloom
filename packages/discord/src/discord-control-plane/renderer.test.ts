@@ -565,6 +565,28 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'renders route failures with an explicit denial reason',
+      inputs: {
+        interaction,
+      },
+      mock: ({
+        interaction: inputInteraction,
+      }: {
+        interaction: DiscordOperatorInteraction;
+      }) =>
+        renderDiscordRouteFailureMessage(
+          inputInteraction,
+          'permission denied: caller=operator-1 action=new-project requiredRole=project-operator context=thread:thread-1',
+        ),
+      assert: (
+        payload: ReturnType<typeof renderDiscordRouteFailureMessage>,
+      ) => {
+        expect(payload.content).toContain(
+          'Reason: permission denied: caller=operator-1 action=new-project requiredRole=project-operator context=thread:thread-1',
+        );
+      },
+    },
+    {
       name: 'renders route-failure diagnostics using normalized interaction input when received event is unavailable',
       inputs: {
         interaction: {

@@ -4,12 +4,16 @@ import {
   DEVPLAT_ACTION_APPROVE_THIS,
   DEVPLAT_ACTION_BLOCK_THIS,
   DEVPLAT_ACTION_CLAIM_THIS,
+  DEVPLAT_ACTION_CANCEL_PROJECT,
   DEVPLAT_ACTION_COMPLETE_THIS,
   DEVPLAT_ACTION_EXPLAIN_FAILURE,
   DEVPLAT_ACTION_MERGE_NOW,
+  DEVPLAT_ACTION_NEW_PROJECT,
   DEVPLAT_ACTION_REBASE_ALL_DEPENDENTS,
   DEVPLAT_ACTION_REBASE_DEPENDENTS,
+  DEVPLAT_ACTION_PROJECT_SETTINGS,
   DEVPLAT_ACTION_RELEASE_WORKTREE,
+  DEVPLAT_ACTION_RESUME_PROJECT,
   DEVPLAT_ACTION_RESUME_THIS,
   DEVPLAT_ACTION_RETRY_GATES,
   DEVPLAT_ACTION_RUN_THIS,
@@ -50,6 +54,14 @@ type DiscordComponentCustomIdContext = {
  * Supported immutable run intents for `/open-project`.
  */
 type OpenProjectIntent = 'maintenance' | 'bugfix' | 'new-feature';
+
+/**
+ * Logical operator roles used for interaction-time authorization checks.
+ */
+type DevplatOperatorRole =
+  | 'project-operator'
+  | 'spec-approver'
+  | 'merge-approver';
 
 /**
  * Human and component action tokens accepted by the operator router.
@@ -99,6 +111,91 @@ function resolveKnownAction(
   return value === undefined
     ? undefined
     : (commandActionMap.get(value) ?? resolveDiscordCommandAction(value));
+}
+
+/**
+ * Resolves role requirements for a control action in the current thread context.
+ */
+function resolveRequiredRolesForAction(
+  action: DiscordControlAction,
+  input: DiscordOperatorInteraction,
+): readonly DevplatOperatorRole[] {
+  switch (action) {
+    case DEVPLAT_ACTION_NEW_PROJECT:
+    case DEVPLAT_ACTION_OPEN_PROJECT:
+    case DEVPLAT_ACTION_PROJECT_SETTINGS:
+    case DEVPLAT_ACTION_CANCEL_PROJECT:
+    case DEVPLAT_ACTION_RESUME_PROJECT:
+      return ['project-operator'];
+    case DEVPLAT_ACTION_APPROVE_THIS:
+      return input.boundSession?.kind === 'pull-request'
+        ? ['merge-approver']
+        : ['spec-approver'];
+    case DEVPLAT_ACTION_MERGE_NOW:
+      return ['merge-approver'];
+    default:
+      return [];
+  }
+}
+
+/**
+ * Resolves the configured role id for a logical DevPlat operator role.
+ */
+function resolveConfiguredRoleId(
+  role: DevplatOperatorRole,
+  input: DiscordOperatorInteraction,
+): string | undefined {
+  switch (role) {
+    case 'project-operator':
+      return trimOptional(input.projectOperatorRoleId);
+    case 'spec-approver':
+      return trimOptional(input.specApproverRoleId);
+    case 'merge-approver':
+      return trimOptional(input.mergeApproverRoleId);
+  }
+}
+
+/**
+ * Resolves role authorization outcome for an action.
+ */
+function resolveRoleAuthorizationFailure(
+  action: DiscordControlAction,
+  input: DiscordOperatorInteraction,
+  threadId: string,
+): string | undefined {
+  const requiredRoles = resolveRequiredRolesForAction(action, input);
+  if (requiredRoles.length === 0) {
+    return undefined;
+  }
+
+  const roleIdsByRole = requiredRoles.map((role) => ({
+    role,
+    roleId: resolveConfiguredRoleId(role, input),
+  }));
+  const missingMappings = roleIdsByRole.filter(
+    ({ roleId }) => roleId === undefined,
+  );
+  if (missingMappings.length > 0) {
+    return (
+      `permission denied: caller=${input.actorId} action=${action} requiredRole=${requiredRoles.join('|')} ` +
+      `context=thread:${threadId} missingRoleMapping=${missingMappings.map(({ role }) => role).join('|')}`
+    );
+  }
+
+  const actorRoleIds = (input.actorRoleIds ?? []).map((roleId) =>
+    roleId.trim(),
+  );
+  const hasRequiredRole = roleIdsByRole.some(({ roleId }) =>
+    actorRoleIds.includes(roleId ?? ''),
+  );
+  if (hasRequiredRole) {
+    return undefined;
+  }
+
+  return (
+    `permission denied: caller=${input.actorId} action=${action} requiredRole=${requiredRoles.join('|')} ` +
+    `context=thread:${threadId}`
+  );
 }
 
 /**
@@ -543,6 +640,19 @@ export function createDiscordControlRequestFromInteraction(
   }
 
   const threadId = threadCandidates.join('');
+
+  const roleAuthorizationFailure = resolveRoleAuthorizationFailure(
+    action,
+    input,
+    threadId,
+  );
+  if (roleAuthorizationFailure !== undefined) {
+    return {
+      ok: false,
+      interactionId: input.id,
+      reason: roleAuthorizationFailure,
+    };
+  }
 
   if (
     input.boundSession !== undefined &&

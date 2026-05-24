@@ -1031,7 +1031,7 @@ export class DiscordControlPlaneService {
     input: DiscordOperatorInteraction,
     reason: string,
   ): Promise<DiscordControlResult> {
-    const responsePayload = renderDiscordRouteFailureMessage(input);
+    const responsePayload = renderDiscordRouteFailureMessage(input, reason);
     const request = createDiscordControlRequest({
       id: input.id,
       summary: reason,
@@ -1049,7 +1049,7 @@ export class DiscordControlPlaneService {
       responsePayload,
     );
     const auditReason = acknowledgement.ok
-      ? 'Discord interaction refused because thread binding was ambiguous.'
+      ? reason
       : acknowledgement.responsePostError;
     await this.telemetry.recordAudit({
       auditId: `${input.id}:audit`,

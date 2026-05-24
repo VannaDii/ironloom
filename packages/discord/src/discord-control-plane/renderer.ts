@@ -1023,6 +1023,7 @@ export function renderDiscordControlBlockedMessage(
  */
 export function renderDiscordRouteFailureMessage(
   input: DiscordOperatorInteraction,
+  reason = 'interaction must resolve to exactly one bound thread',
 ): DiscordMessagePayload {
   const request: DiscordControlRequest = {
     id: input.id,
@@ -1041,7 +1042,7 @@ export function renderDiscordRouteFailureMessage(
     fields: {
       Status: 'blocked',
       Scope: 'unresolved',
-      Reason: 'interaction must resolve to exactly one bound thread',
+      Reason: reason,
     },
     indicator: '🔴',
     result: 'Run this from the correct spec, implementation, or PR thread.',

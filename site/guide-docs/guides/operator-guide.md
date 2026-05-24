@@ -101,6 +101,12 @@ Route failures use the standard refused message and policy denials use the
 standard blocked message. Both persist audit records, and no lifecycle state is
 changed for a refused interaction beyond audit logging.
 
+Mutating slash and button actions are role-gated at interaction time using
+runtime role bindings (`project-operator`, `spec-approver`, `merge-approver`).
+When authorization fails, the refusal message includes caller id, attempted
+action, required role, and thread context, and the same reason is written to
+durable audit state.
+
 ## Recovery
 
 - re-run `npm run prepare:generated` if committed artifacts drift
