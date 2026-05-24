@@ -757,6 +757,84 @@ describe('DiscordControlPlaneService', () => {
     expect(result.failedClosed).toBe(false);
   });
 
+  it('accepts open-project intents when persisted thread intent payload is non-string', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    await store.store({
+      id: 'record-open-project-intent-thread-4g-non-string',
+      key: 'open-project-intent:thread-4g-non-string',
+      scope: 'state',
+      summary: 'Open-project immutable intent binding.',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      payload: {
+        intent: 42,
+      },
+    });
+
+    const result = await service.handleAction({
+      id: 'discord-004g-non-string',
+      summary: 'open-project (intent:maintenance)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:01.000Z',
+      actorId: 'user-4g-non-string',
+      threadId: 'thread-4g-non-string',
+      channelId: 'channel-4g-non-string',
+      action: 'open-project',
+      privileged: false,
+    });
+
+    expect(result.allowed).toBe(true);
+    expect(result.failedClosed).toBe(false);
+  });
+
+  it('accepts open-project intents when persisted thread intent payload is blank', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    await store.store({
+      id: 'record-open-project-intent-thread-4g-blank',
+      key: 'open-project-intent:thread-4g-blank',
+      scope: 'state',
+      summary: 'Open-project immutable intent binding.',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      payload: {
+        intent: '   ',
+      },
+    });
+
+    const result = await service.handleAction({
+      id: 'discord-004g-blank',
+      summary: 'open-project (intent:maintenance)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:01.000Z',
+      actorId: 'user-4g-blank',
+      threadId: 'thread-4g-blank',
+      channelId: 'channel-4g-blank',
+      action: 'open-project',
+      privileged: false,
+    });
+
+    expect(result.allowed).toBe(true);
+    expect(result.failedClosed).toBe(false);
+  });
+
   it('fails closed when open-project summary omits an intent marker', async () => {
     const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
     const store = new FileStoreService(rootDirectory);
@@ -1108,6 +1186,56 @@ describe('DiscordControlPlaneService', () => {
       'Run intent: maintenance',
     );
     expect(result.responsePayload?.content).toContain('Config version: v1');
+  });
+
+  it('ignores non-string persisted metadata values when hydrating status summaries', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+      createResponseTransport(),
+    );
+
+    await store.store({
+      id: 'record-open-project-intent-thread-4m-non-string',
+      key: 'open-project-intent:thread-4m-non-string',
+      scope: 'state',
+      summary: 'Open-project immutable intent binding.',
+      status: 'approved',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      payload: {
+        intent: 7,
+      },
+    });
+    await store.store({
+      id: 'record-project-config-version-thread-4m-non-string',
+      key: 'project-config-version:thread-4m-non-string',
+      scope: 'state',
+      summary: 'Project config version.',
+      status: 'approved',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      payload: {
+        configVersion: false,
+      },
+    });
+
+    const result = await service.handleInteraction({
+      id: 'interaction-004m-non-string',
+      token: 'token-004m-non-string',
+      actorId: 'user-4m-non-string',
+      channelId: 'channel-4m-non-string',
+      updatedAt: '2026-04-04T00:00:02.000Z',
+      commandName: 'show-status',
+      boundThreadId: 'thread-4m-non-string',
+    });
+
+    expect(result.allowed).toBe(true);
+    expect(result.responsePayload?.content).not.toContain('Run intent:');
+    expect(result.responsePayload?.content).not.toContain('Config version:');
   });
 
   describe('Discord interaction responses and thread updates', () => {
