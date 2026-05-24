@@ -64,6 +64,16 @@ type DevplatOperatorRole =
   | 'merge-approver';
 
 /**
+ * Minimum allowed project-name length for project bootstrap and reopen routes.
+ */
+const DISCORD_PROJECT_NAME_MIN_LENGTH = 3;
+
+/**
+ * Maximum allowed project-name length for project bootstrap and reopen routes.
+ */
+const DISCORD_PROJECT_NAME_MAX_LENGTH = 30;
+
+/**
  * Human and component action tokens accepted by the operator router.
  */
 const commandActionMap = new Map<string, DiscordControlAction>([
@@ -200,6 +210,55 @@ function resolveRoleAuthorizationFailure(
     `permission denied: caller=${input.actorId} action=${action} requiredRole=${requiredRoles.join('|')} ` +
     `context=thread:${threadId}`
   );
+}
+
+/**
+ * Returns a route-failure reason when a project name is outside allowed bounds.
+ */
+function resolveProjectNameLengthFailureReason(
+  action: DiscordControlAction,
+  projectName: string | undefined,
+): string | undefined {
+  if (projectName === undefined) {
+    return undefined;
+  }
+
+  const length = projectName.length;
+  if (
+    length >= DISCORD_PROJECT_NAME_MIN_LENGTH &&
+    length <= DISCORD_PROJECT_NAME_MAX_LENGTH
+  ) {
+    return undefined;
+  }
+
+  return `${action} requires --project length ${String(DISCORD_PROJECT_NAME_MIN_LENGTH)}-${String(DISCORD_PROJECT_NAME_MAX_LENGTH)} characters.`;
+}
+
+/**
+ * Returns route-failure reason when project bootstrap/reopen requirements fail.
+ */
+function resolveProjectRouteRequirementFailureReason(
+  action: DiscordControlAction,
+  input: DiscordOperatorInteraction,
+): string | undefined {
+  if (action === DEVPLAT_ACTION_OPEN_PROJECT) {
+    if (input.projectRepo === undefined || input.projectName === undefined) {
+      return 'open-project requires --repo <repo_name> and --project <project_name>.';
+    }
+    if (input.openProjectIntent === undefined) {
+      return 'open-project requires --intent maintenance|bugfix|new-feature.';
+    }
+    return resolveProjectNameLengthFailureReason(action, input.projectName);
+  }
+
+  if (action === DEVPLAT_ACTION_NEW_PROJECT) {
+    if (input.projectRepo === undefined || input.projectName === undefined) {
+      return 'new-project requires --repo <repo_name> and --project <project_name>.';
+    }
+    return resolveProjectNameLengthFailureReason(action, input.projectName);
+  }
+
+  return undefined;
 }
 
 /**
@@ -684,34 +743,14 @@ export function createDiscordControlRequestFromInteraction(
     };
   }
 
-  if (action === DEVPLAT_ACTION_OPEN_PROJECT) {
-    if (input.projectRepo === undefined || input.projectName === undefined) {
-      return {
-        ok: false,
-        interactionId: input.id,
-        reason:
-          'open-project requires --repo <repo_name> and --project <project_name>.',
-      };
-    }
-    if (input.openProjectIntent === undefined) {
-      return {
-        ok: false,
-        interactionId: input.id,
-        reason:
-          'open-project requires --intent maintenance|bugfix|new-feature.',
-      };
-    }
-  }
-
-  if (action === DEVPLAT_ACTION_NEW_PROJECT) {
-    if (input.projectRepo === undefined || input.projectName === undefined) {
-      return {
-        ok: false,
-        interactionId: input.id,
-        reason:
-          'new-project requires --repo <repo_name> and --project <project_name>.',
-      };
-    }
+  const projectRouteRequirementFailureReason =
+    resolveProjectRouteRequirementFailureReason(action, input);
+  if (projectRouteRequirementFailureReason !== undefined) {
+    return {
+      ok: false,
+      interactionId: input.id,
+      reason: projectRouteRequirementFailureReason,
+    };
   }
 
   const threadId = threadCandidates.join('');

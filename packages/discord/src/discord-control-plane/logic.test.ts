@@ -119,6 +119,63 @@ describe('DiscordControlRequest logic', () => {
       {
         inputs: {
           interaction: {
+            id: 'interaction-008i',
+            token: 'token-8i',
+            actorId: 'user-8i',
+            channelId: 'channel-8i',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'new-project',
+            boundThreadId: 'thread-8i',
+            projectRepo: 'devplat',
+            projectName: 'ab',
+            actorRoleIds: ['role-project-operator'],
+            projectOperatorRoleId: 'role-project-operator',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(false);
+          if (!route.ok) {
+            expect(route.reason).toContain(
+              'new-project requires --project length 3-30 characters.',
+            );
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-008j',
+            token: 'token-8j',
+            actorId: 'user-8j',
+            channelId: 'channel-8j',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'open-project',
+            boundThreadId: 'thread-8j',
+            projectRepo: 'devplat',
+            projectName: 'abcdefghijklmnopqrstuvwxyzabcde',
+            openProjectIntent: 'maintenance',
+            actorRoleIds: ['role-project-operator'],
+            projectOperatorRoleId: 'role-project-operator',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(false);
+          if (!route.ok) {
+            expect(route.reason).toContain(
+              'open-project requires --project length 3-30 characters.',
+            );
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
             id: 'interaction-008d',
             token: 'token-8d',
             actorId: 'user-8d',

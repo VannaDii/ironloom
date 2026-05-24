@@ -52,7 +52,7 @@ Usage rules:
 - [ ] Support multiple concurrent projects per repo.
 - [ ] Require project name on creation.
 - [ ] Enforce project name uniqueness per repo.
-- [ ] Enforce project name length 3-30 characters.
+- [x] Enforce project name length 3-30 characters.
 - [ ] Bind all project messages/threads to project context.
 - [x] Require explicit project context for all mutating actions.
 - [x] Fail closed on missing/mismatched project context.
