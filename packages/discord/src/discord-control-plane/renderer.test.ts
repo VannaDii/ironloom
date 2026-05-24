@@ -242,6 +242,42 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'ignores unterminated status metadata markers in summary text',
+      inputs: {
+        request: {
+          ...request,
+          action: 'show-status',
+          summary:
+            'Project status (intent:maintenance (config-version:v7 without closing markers',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).not.toContain('Run intent:');
+        expect(payload.content).not.toContain('Config version:');
+      },
+    },
+    {
+      name: 'ignores unterminated config-version marker when no closing parenthesis exists',
+      inputs: {
+        request: {
+          ...request,
+          action: 'show-status',
+          summary: 'Project status (config-version:v12',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).not.toContain('Config version:');
+      },
+    },
+    {
       name: 'renders policy-denied actions with the standard blocked format',
       inputs: {
         request: {
