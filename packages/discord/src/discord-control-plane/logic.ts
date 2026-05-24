@@ -332,6 +332,22 @@ function resolveOpenProjectIntentFromCallback(
   }
 }
 
+/** Resolves `/resume-project --force` from callback options. */
+function resolveResumeProjectForceFromCallback(
+  input: DiscordInteractionCallback,
+): boolean | undefined {
+  const options = input.data?.options;
+  if (options === undefined) {
+    return undefined;
+  }
+
+  const forceOption = options.find(
+    (option) => option.name.trim().toLowerCase() === 'force',
+  );
+  const forceValue = trimOptional(forceOption?.value)?.toLowerCase();
+  return forceValue === undefined ? undefined : forceValue === 'force';
+}
+
 /**
  * Creates the minimal command data snapshot used by route-failure diagnostics.
  */
@@ -517,6 +533,8 @@ export function createDiscordOperatorInteractionFromCallback(
   const summary = trimOptional(options.summary);
   const callbackIntent = resolveOpenProjectIntentFromCallback(input);
   const resolvedIntent = callbackIntent ?? options.openProjectIntent;
+  const callbackResumeForce = resolveResumeProjectForceFromCallback(input);
+  const resolvedResumeForce = callbackResumeForce ?? options.resumeProjectForce;
 
   return {
     id: input.id,
@@ -538,6 +556,9 @@ export function createDiscordOperatorInteractionFromCallback(
     ...(resolvedIntent === undefined
       ? {}
       : { openProjectIntent: resolvedIntent }),
+    ...(resolvedResumeForce === undefined
+      ? {}
+      : { resumeProjectForce: resolvedResumeForce }),
     ...(input.member?.roles === undefined
       ? {}
       : {
@@ -572,10 +593,16 @@ function createInteractionControlRequestInput(
     input.openProjectIntent !== undefined
       ? ` (intent:${input.openProjectIntent})`
       : '';
+  const resumeForceSuffix =
+    action === DEVPLAT_ACTION_RESUME_PROJECT && input.resumeProjectForce
+      ? ' (force:true)'
+      : '';
+  const summary =
+    `${input.summary?.trim() ?? action}${intentSuffix}${resumeForceSuffix}`.trim();
   if (input.boundSession === undefined) {
     return {
       id: input.id,
-      summary: `${input.summary?.trim() ?? action}${intentSuffix}`.trim(),
+      summary,
       status: 'running',
       trace: [],
       updatedAt: input.updatedAt,
@@ -589,7 +616,7 @@ function createInteractionControlRequestInput(
 
   return {
     id: input.id,
-    summary: `${input.summary?.trim() ?? action}${intentSuffix}`.trim(),
+    summary,
     status: 'running',
     trace: [],
     updatedAt: input.updatedAt,

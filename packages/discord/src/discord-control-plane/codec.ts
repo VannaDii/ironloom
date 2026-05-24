@@ -183,6 +183,7 @@ export const DiscordOperatorInteractionCodec = t.intersection([
       t.literal('bugfix'),
       t.literal('new-feature'),
     ]),
+    resumeProjectForce: t.boolean,
     privileged: t.boolean,
   }),
 ]);
@@ -248,6 +249,7 @@ export const DiscordInteractionCallbackOptionsCodec = t.partial({
     t.literal('bugfix'),
     t.literal('new-feature'),
   ]),
+  resumeProjectForce: t.boolean,
   privileged: t.boolean,
   updatedAt: IsoTimestampCodec,
 });

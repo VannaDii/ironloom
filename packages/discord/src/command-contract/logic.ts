@@ -157,6 +157,17 @@ const openProjectOptions: readonly DiscordCommandOption[] = [
 ];
 
 /**
+ * Named options exposed by `/resume-project`.
+ */
+const resumeProjectOptions: readonly DiscordCommandOption[] = [
+  createOptionalStringOption(
+    'force',
+    'Bypass resume preflight confirmation and force project resume.',
+    ['force'],
+  ),
+];
+
+/**
  * Versioned Discord slash-command contracts exposed to operators.
  */
 const commandContracts: readonly DiscordCommandContract[] = [
@@ -211,6 +222,7 @@ const commandContracts: readonly DiscordCommandContract[] = [
     type: applicationCommandType,
     action: DEVPLAT_ACTION_RESUME_PROJECT,
     privileged: true,
+    options: resumeProjectOptions,
   },
   {
     name: DEVPLAT_ACTION_RELEASE_PROJECT,

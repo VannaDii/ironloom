@@ -164,6 +164,24 @@ describe('Discord command contract logic', () => {
           ],
         });
         expect(
+          payloads.find((payload) => payload.name === 'resume-project'),
+        ).toEqual({
+          name: 'resume-project',
+          description:
+            'Run project preflight checks and resume paused project work.',
+          type: 1,
+          options: [
+            {
+              type: 3,
+              name: 'force',
+              description:
+                'Bypass resume preflight confirmation and force project resume.',
+              required: false,
+              choices: [{ name: 'force', value: 'force' }],
+            },
+          ],
+        });
+        expect(
           registry.contracts
             .filter((contract) => contract.privileged)
             .map((contract) => contract.action),

@@ -95,6 +95,13 @@ bound-thread lifecycle controls.
 | `/explain-failure`          | implementation or pull-request                   | Summarize the latest failing gate, review, or remediation state.     |
 | `/update-spec`              | spec                                             | Create a new revision of the bound spec while preserving history.    |
 
+Named-option command contracts are registered for project bootstrap and reopen
+paths:
+
+- `/new-project --repo <repo_name> --project <project_name> [--quality-strictness on|off]`
+- `/open-project --repo <repo_name> --project <project_name> --intent maintenance|bugfix|new-feature`
+- `/resume-project [--force force]`
+
 For the full research-to-PR command workflow, use the canonical
 [Commanded Delivery Flow](./operator-guide.md#commanded-delivery-flow) in the
 operator guide.

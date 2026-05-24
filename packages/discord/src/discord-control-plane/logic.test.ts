@@ -119,6 +119,32 @@ describe('DiscordControlRequest logic', () => {
       {
         inputs: {
           interaction: {
+            id: 'interaction-008d',
+            token: 'token-8d',
+            actorId: 'user-8d',
+            channelId: 'channel-8d',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'resume-project',
+            boundThreadId: 'thread-8d',
+            actorRoleIds: ['role-project-operator'],
+            projectOperatorRoleId: 'role-project-operator',
+            resumeProjectForce: true,
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.action).toBe('resume-project');
+            expect(route.request.summary).toContain('force:true');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
             id: 'interaction-007e',
             token: 'token-7e',
             actorId: 'user-7e',
@@ -988,6 +1014,64 @@ describe('DiscordControlRequest logic', () => {
             inputs.callback,
           );
           expect(interaction.openProjectIntent).toBe('new-feature');
+        },
+      },
+      {
+        name: 'extracts resume-project force flag from slash-command options',
+        inputs: {
+          callback: {
+            id: 'callback-002e',
+            token: 'token-002e',
+            channel_id: 'thread-002e',
+            data: {
+              name: 'resume-project',
+              options: [
+                {
+                  name: 'force',
+                  value: 'force',
+                },
+              ],
+            },
+            user: {
+              id: 'operator-002e',
+            },
+          },
+        },
+        mock: () => ({}),
+        assert: (context, inputs) => {
+          const interaction = createDiscordOperatorInteractionFromCallback(
+            inputs.callback,
+          );
+          expect(interaction.resumeProjectForce).toBe(true);
+        },
+      },
+      {
+        name: 'treats non-force resume-project option values as false',
+        inputs: {
+          callback: {
+            id: 'callback-002f',
+            token: 'token-002f',
+            channel_id: 'thread-002f',
+            data: {
+              name: 'resume-project',
+              options: [
+                {
+                  name: 'force',
+                  value: 'no',
+                },
+              ],
+            },
+            user: {
+              id: 'operator-002f',
+            },
+          },
+        },
+        mock: () => ({}),
+        assert: (context, inputs) => {
+          const interaction = createDiscordOperatorInteractionFromCallback(
+            inputs.callback,
+          );
+          expect(interaction.resumeProjectForce).toBe(false);
         },
       },
       {

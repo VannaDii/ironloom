@@ -509,6 +509,9 @@
             "openProjectIntent": {
               "enum": ["maintenance", "bugfix", "new-feature"]
             },
+            "resumeProjectForce": {
+              "type": "boolean"
+            },
             "privileged": {
               "type": "boolean"
             }
