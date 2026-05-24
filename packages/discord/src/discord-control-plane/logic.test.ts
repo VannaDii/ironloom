@@ -277,6 +277,32 @@ describe('DiscordControlRequest logic', () => {
       {
         inputs: {
           interaction: {
+            id: 'interaction-007h',
+            token: 'token-7h',
+            actorId: 'user-7h',
+            channelId: 'channel-7h',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'project-settings-history',
+            threadId: 'thread-7h',
+            projectSettingsHistoryDetailed: true,
+            actorRoleIds: ['role-project-operator'],
+            projectOperatorRoleId: 'role-project-operator',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.action).toBe('project-settings-history');
+            expect(route.request.summary).toContain('mode:detailed');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
             id: 'interaction-002',
             token: 'token-2',
             actorId: 'user-2',
@@ -1298,6 +1324,64 @@ describe('DiscordControlRequest logic', () => {
             inputs.callback,
           );
           expect(interaction.resumeProjectForce).toBe(false);
+        },
+      },
+      {
+        name: 'extracts detailed project-settings-history mode from slash-command options',
+        inputs: {
+          callback: {
+            id: 'callback-002h',
+            token: 'token-002h',
+            channel_id: 'thread-002h',
+            data: {
+              name: 'project-settings-history',
+              options: [
+                {
+                  name: 'mode',
+                  value: 'detailed',
+                },
+              ],
+            },
+            user: {
+              id: 'operator-002h',
+            },
+          },
+        },
+        mock: () => ({}),
+        assert: (context, inputs) => {
+          const interaction = createDiscordOperatorInteractionFromCallback(
+            inputs.callback,
+          );
+          expect(interaction.projectSettingsHistoryDetailed).toBe(true);
+        },
+      },
+      {
+        name: 'treats non-detailed project-settings-history mode as summary',
+        inputs: {
+          callback: {
+            id: 'callback-002i',
+            token: 'token-002i',
+            channel_id: 'thread-002i',
+            data: {
+              name: 'project-settings-history',
+              options: [
+                {
+                  name: 'mode',
+                  value: 'summary',
+                },
+              ],
+            },
+            user: {
+              id: 'operator-002i',
+            },
+          },
+        },
+        mock: () => ({}),
+        assert: (context, inputs) => {
+          const interaction = createDiscordOperatorInteractionFromCallback(
+            inputs.callback,
+          );
+          expect(interaction.projectSettingsHistoryDetailed).toBe(false);
         },
       },
       {
