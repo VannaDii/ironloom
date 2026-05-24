@@ -313,7 +313,7 @@ Usage rules:
 
 - [ ] Implement `/project-settings-history`.
 - [ ] Keep history append-only and immutable.
-- [ ] Detailed history mode restricted to `project-operator`.
+- [x] Detailed history mode restricted to `project-operator`.
 - [ ] Public summary mode available to all participants.
 - [ ] In public summary mode, include:
 - [ ] timestamp.
@@ -362,7 +362,7 @@ Usage rules:
 ## 24. Visibility and Redaction Model
 
 - [ ] Implement `/project-summary` read-only command for all participants.
-- [ ] Restrict `/open-project` to `project-operator` only.
+- [x] Restrict `/open-project` to `project-operator` only.
 - [ ] For non-role participants, `/project-summary` shows:
 - [ ] repo.
 - [ ] project name.
