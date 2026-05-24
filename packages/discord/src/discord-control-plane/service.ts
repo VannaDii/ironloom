@@ -25,8 +25,8 @@ import {
   describeDiscordControlRequest,
 } from './logic.js';
 import {
-  renderDiscordControlAcceptedMessage,
   renderDiscordArtifactMessage,
+  renderDiscordControlAcceptedMessage,
   renderDiscordControlBlockedMessage,
   renderDiscordInteractionCompletionMessage,
   renderDiscordInteractionThreadPostFailureCompletionMessage,
@@ -172,26 +172,18 @@ function parseConfigVersionNumber(value: string): number | undefined {
     return undefined;
   }
 
-  const numeric = Number.parseInt(trimmed.slice(1), 10);
-  return numeric;
+  return Number.parseInt(trimmed.slice(1), 10);
 }
 
 /**
- * Resolves the operator-facing response payload for a policy decision.
+ * Renders accepted control responses with artifact-specific context when needed.
  */
-function resolveDiscordDecisionPayload(
+function renderAcceptedControlMessage(
   request: DiscordControlRequest,
-  allowed: boolean,
 ): DiscordMessagePayload {
-  if (!allowed) {
-    return renderDiscordControlBlockedMessage(request);
-  }
-
-  if (request.action === DEVPLAT_ACTION_SHOW_LAST_ARTIFACT) {
-    return renderDiscordArtifactMessage(request);
-  }
-
-  return renderDiscordControlAcceptedMessage(request);
+  return request.action === DEVPLAT_ACTION_SHOW_LAST_ARTIFACT
+    ? renderDiscordArtifactMessage(request)
+    : renderDiscordControlAcceptedMessage(request);
 }
 
 /** Contract for discord control response transport. */
@@ -1219,10 +1211,9 @@ export class DiscordControlPlaneService {
       renderedRequest.action,
       renderedRequest.privileged,
     );
-    const responsePayload = resolveDiscordDecisionPayload(
-      renderedRequest,
-      decision.allowed,
-    );
+    const responsePayload = decision.allowed
+      ? renderAcceptedControlMessage(renderedRequest)
+      : renderDiscordControlBlockedMessage(renderedRequest);
     const threadPayload = responsePayload;
     const acknowledgement =
       await this.postInteractionDeferredAcknowledgement(input);
@@ -1354,10 +1345,9 @@ export class DiscordControlPlaneService {
       renderedRequest.action,
       renderedRequest.privileged,
     );
-    const responsePayload = resolveDiscordDecisionPayload(
-      renderedRequest,
-      decision.allowed,
-    );
+    const responsePayload = decision.allowed
+      ? renderAcceptedControlMessage(renderedRequest)
+      : renderDiscordControlBlockedMessage(renderedRequest);
     const result = await this.persistAction(renderedRequest, decision);
     const threadPostResult = await this.postThreadMessageAfterAcknowledgement(
       renderedRequest.threadId,

@@ -604,6 +604,9 @@ describe('DiscordInteractionWebhookService', () => {
           },
         });
         expect(result.responseBody.type).toBe(4);
+        if (result.responseBody.type !== 4) {
+          throw new Error('expected route failure to render message response');
+        }
         expect(result.responseBody.data.content).toContain(
           'Reason: project/thread context mismatch: expected=thread-b detected=thread-a,thread-b. Recovery: /open-project --repo <repo_name> --project <project_name> --intent maintenance|bugfix|new-feature',
         );
