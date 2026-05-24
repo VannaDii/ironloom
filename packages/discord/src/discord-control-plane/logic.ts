@@ -12,6 +12,7 @@ import {
   DEVPLAT_ACTION_REBASE_ALL_DEPENDENTS,
   DEVPLAT_ACTION_REBASE_DEPENDENTS,
   DEVPLAT_ACTION_PROJECT_SETTINGS,
+  DEVPLAT_ACTION_RELEASE_PROJECT,
   DEVPLAT_ACTION_RELEASE_WORKTREE,
   DEVPLAT_ACTION_RESUME_PROJECT,
   DEVPLAT_ACTION_PROJECT_SETTINGS_HISTORY,
@@ -138,6 +139,8 @@ function resolveRequiredRolesForAction(
     case DEVPLAT_ACTION_CANCEL_PROJECT:
     case DEVPLAT_ACTION_RESUME_PROJECT:
       return ['project-operator'];
+    case DEVPLAT_ACTION_RELEASE_PROJECT:
+      return ['project-operator', 'merge-approver'];
     case DEVPLAT_ACTION_PROJECT_SETTINGS_HISTORY:
       return input.projectSettingsHistoryDetailed ? ['project-operator'] : [];
     case DEVPLAT_ACTION_APPROVE_THIS:
@@ -192,7 +195,7 @@ function resolveRoleAuthorizationFailure(
     requiredRoleIds.push(roleId);
   }
 
-  if (missingMappings.length > 0) {
+  if (requiredRoleIds.length === 0 && missingMappings.length > 0) {
     return (
       `permission denied: caller=${input.actorId} action=${action} requiredRole=${requiredRoles.join('|')} ` +
       `context=thread:${threadId} missingRoleMapping=${missingMappings.join('|')}`

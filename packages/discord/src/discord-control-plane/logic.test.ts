@@ -430,6 +430,55 @@ describe('DiscordControlRequest logic', () => {
       {
         inputs: {
           interaction: {
+            id: 'interaction-010e-merge',
+            token: 'token-10e-merge',
+            actorId: 'user-10e-merge',
+            channelId: 'thread-10e-merge',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'release-project',
+            boundThreadId: 'thread-10e-merge',
+            actorRoleIds: ['role-merge-approver'],
+            mergeApproverRoleId: 'role-merge-approver',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.action).toBe('release-project');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-010e-denied',
+            token: 'token-10e-denied',
+            actorId: 'user-10e-denied',
+            channelId: 'thread-10e-denied',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'release-project',
+            boundThreadId: 'thread-10e-denied',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(false);
+          if (!route.ok) {
+            expect(route.reason).toContain('permission denied');
+            expect(route.reason).toContain(
+              'requiredRole=project-operator|merge-approver',
+            );
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
             id: 'interaction-010f',
             token: 'token-10f',
             actorId: 'user-10f',

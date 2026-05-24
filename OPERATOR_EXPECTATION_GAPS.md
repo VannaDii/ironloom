@@ -42,7 +42,7 @@ Usage rules:
 - [x] Restrict `/resume-project` to `project-operator`.
 - [x] Restrict spec/slice approvals to `spec-approver`.
 - [x] Restrict merge approvals to `merge-approver`.
-- [ ] Allow release approval button click by `merge-approver` or `project-operator`.
+- [x] Allow release approval button click by `merge-approver` or `project-operator`.
 - [x] On permission-denied, post in-thread message.
 - [x] Include caller, attempted action, required role, and project/thread context in denial message.
 - [x] Persist permission-denied events as durable audit artifacts.
