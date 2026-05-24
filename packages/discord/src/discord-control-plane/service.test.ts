@@ -427,6 +427,34 @@ describe('DiscordControlPlaneService', () => {
     expect(await store.list('audit')).toContain('discord-004b:audit');
   });
 
+  it('does not persist open-project immutable intent state when policy blocks the action', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const blocked = await service.handleAction({
+      id: 'discord-004a-blocked',
+      summary: 'open-project (intent:maintenance)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-4a-blocked',
+      threadId: 'thread-4a-blocked',
+      channelId: 'channel-4a-blocked',
+      action: 'open-project',
+      privileged: true,
+    });
+
+    expect(blocked.allowed).toBe(false);
+    expect(await store.list('state')).not.toContain(
+      'open-project-intent:thread-4a-blocked',
+    );
+  });
+
   it('fails closed on routed interactions when open-project intent changes for a thread', async () => {
     const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
     const store = new FileStoreService(rootDirectory);

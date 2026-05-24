@@ -215,7 +215,7 @@ describe('DiscordControlRequest logic', () => {
         ) => {
           expect(route.ok).toBe(true);
           if (route.ok) {
-            expect(route.request.privileged).toBe(true);
+            expect(route.request.privileged).toBe(false);
           }
         },
       },
@@ -239,7 +239,7 @@ describe('DiscordControlRequest logic', () => {
         ) => {
           expect(route.ok).toBe(true);
           if (route.ok) {
-            expect(route.request.privileged).toBe(true);
+            expect(route.request.privileged).toBe(false);
           }
         },
       },
@@ -263,7 +263,7 @@ describe('DiscordControlRequest logic', () => {
         ) => {
           expect(route.ok).toBe(true);
           if (route.ok) {
-            expect(route.request.privileged).toBe(true);
+            expect(route.request.privileged).toBe(false);
           }
         },
       },
@@ -287,7 +287,7 @@ describe('DiscordControlRequest logic', () => {
         ) => {
           expect(route.ok).toBe(true);
           if (route.ok) {
-            expect(route.request.privileged).toBe(true);
+            expect(route.request.privileged).toBe(false);
           }
         },
       },
@@ -427,7 +427,7 @@ describe('DiscordControlRequest logic', () => {
           expect(route.ok).toBe(true);
           if (route.ok) {
             expect(route.request.action).toBe('new-project');
-            expect(route.request.privileged).toBe(true);
+            expect(route.request.privileged).toBe(false);
           }
         },
       },

@@ -88,6 +88,20 @@ type DiscordInteractionCompletionResult =
     };
 
 /**
+ * Record-like payload shape used for metadata extraction.
+ */
+type UnknownRecord = {
+  readonly [key: string]: unknown;
+};
+
+/**
+ * Returns true when a value is a non-null record-like object.
+ */
+function isUnknownRecord(value: unknown): value is UnknownRecord {
+  return value !== null && typeof value === 'object';
+}
+
+/**
  * Parses an `intent:<value>` marker from a normalized request summary.
  */
 function resolveOpenProjectIntentFromSummary(
@@ -121,6 +135,30 @@ function createOpenProjectIntentStateKey(threadId: string): string {
  */
 function createProjectConfigVersionStateKey(threadId: string): string {
   return `project-config-version:${threadId}`;
+}
+
+/**
+ * Reads a trimmed string field from a record-like payload.
+ */
+function readTrimmedStringField(
+  payload: unknown,
+  fieldName: string,
+): string | undefined {
+  if (!isUnknownRecord(payload)) {
+    return undefined;
+  }
+
+  if (!(fieldName in payload)) {
+    return undefined;
+  }
+
+  const value = payload[fieldName];
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length === 0 ? undefined : trimmed;
 }
 
 /**
@@ -511,24 +549,15 @@ export class DiscordControlPlaneService {
     const intentPayload = intentState.ok
       ? intentState.value.payload
       : undefined;
-    const intent =
-      intentPayload !== undefined &&
-      typeof intentPayload === 'object' &&
-      'intent' in intentPayload &&
-      typeof intentPayload['intent'] === 'string'
-        ? intentPayload['intent'].trim()
-        : undefined;
+    const intent = readTrimmedStringField(intentPayload, 'intent');
 
     const configPayload = configVersionState.ok
       ? configVersionState.value.payload
       : undefined;
-    const configVersion =
-      configPayload !== undefined &&
-      typeof configPayload === 'object' &&
-      'configVersion' in configPayload &&
-      typeof configPayload['configVersion'] === 'string'
-        ? configPayload['configVersion'].trim()
-        : undefined;
+    const configVersion = readTrimmedStringField(
+      configPayload,
+      'configVersion',
+    );
 
     return {
       ...(intent === undefined || intent.length === 0 ? {} : { intent }),
@@ -584,12 +613,7 @@ export class DiscordControlPlaneService {
     const previous = await this.store.read('state', stateKey);
     const previousPayload = previous.ok ? previous.value.payload : undefined;
     const previousVersion =
-      previousPayload !== undefined &&
-      typeof previousPayload === 'object' &&
-      'configVersion' in previousPayload &&
-      typeof previousPayload['configVersion'] === 'string'
-        ? previousPayload['configVersion']
-        : 'v0';
+      readTrimmedStringField(previousPayload, 'configVersion') ?? 'v0';
     const nextNumber = (parseConfigVersionNumber(previousVersion) ?? 0) + 1;
     const nextVersion = `v${String(nextNumber)}`;
 
@@ -614,7 +638,10 @@ export class DiscordControlPlaneService {
    */
   private async enforceOpenProjectIntentImmutability(
     request: DiscordControlRequest,
-  ): Promise<{ ok: true } | { ok: false; reason: string }> {
+  ): Promise<
+    | { ok: true; persistIntent?: string; stateKey?: string }
+    | { ok: false; reason: string }
+  > {
     if (request.action !== DEVPLAT_ACTION_OPEN_PROJECT) {
       return { ok: true };
     }
@@ -631,32 +658,21 @@ export class DiscordControlPlaneService {
     const stateKey = createOpenProjectIntentStateKey(request.threadId);
     const previous = await this.store.read('state', stateKey);
     if (!previous.ok) {
-      await this.store.store({
-        id: `${request.id}:open-project-intent`,
-        key: stateKey,
-        scope: 'state',
-        summary: 'Open-project immutable intent binding.',
-        status: 'approved',
-        trace: request.trace,
-        updatedAt: request.updatedAt,
-        payload: {
-          threadId: request.threadId,
-          action: request.action,
-          intent: currentIntent,
-        },
-      });
-      return { ok: true };
+      return {
+        ok: true,
+        persistIntent: currentIntent,
+        stateKey,
+      };
     }
 
     const payload = previous.value.payload;
-    const intent =
-      typeof payload === 'object' &&
-      'intent' in payload &&
-      typeof payload['intent'] === 'string'
-        ? payload['intent'].trim()
-        : undefined;
+    const intent = readTrimmedStringField(payload, 'intent');
     if (intent === undefined || intent === currentIntent) {
-      return { ok: true };
+      return {
+        ok: true,
+        persistIntent: currentIntent,
+        stateKey,
+      };
     }
 
     return {
@@ -710,6 +726,27 @@ export class DiscordControlPlaneService {
       request.action,
       request.privileged,
     );
+    if (
+      request.action === DEVPLAT_ACTION_OPEN_PROJECT &&
+      decision.allowed &&
+      immutability.persistIntent !== undefined &&
+      immutability.stateKey !== undefined
+    ) {
+      await this.store.store({
+        id: `${request.id}:open-project-intent`,
+        key: immutability.stateKey,
+        scope: 'state',
+        summary: 'Open-project immutable intent binding.',
+        status: 'approved',
+        trace: request.trace,
+        updatedAt: request.updatedAt,
+        payload: {
+          threadId: request.threadId,
+          action: request.action,
+          intent: immutability.persistIntent,
+        },
+      });
+    }
 
     return this.persistAction(request, decision);
   }

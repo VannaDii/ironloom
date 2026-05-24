@@ -570,48 +570,54 @@ describe('Discord interaction Gateway runtime', () => {
         const connection = new FakeDiscordGatewayConnection();
         const fetchCalls: string[] = [];
         const originalFetch = globalThis.fetch;
-        globalThis.fetch = async (input): Promise<Response> => {
-          fetchCalls.push(String(input));
-          return new Response(JSON.stringify({ ok: true }), { status: 200 });
-        };
+        let session:
+          | ReturnType<DiscordInteractionGatewayClientService['start']>
+          | undefined;
+        try {
+          globalThis.fetch = async (input): Promise<Response> => {
+            fetchCalls.push(String(input));
+            return new Response(JSON.stringify({ ok: true }), { status: 200 });
+          };
 
-        const session = startDiscordInteractionGatewayRuntimeFromEnvironment(
-          inputs.env,
-          {
-            connectionFactory: {
-              connect: () => connection,
-            },
-            heartbeatScheduler: new NoopDiscordGatewayHeartbeatScheduler(),
-          },
-        );
-
-        connection.emitMessage(
-          JSON.stringify({
-            op: 0,
-            t: 'INTERACTION_CREATE',
-            d: {
-              id: 'interaction-runtime-roles',
-              token: 'token-runtime-roles',
-              channel_id: 'thread-runtime-roles',
-              data: {
-                name: 'show-status',
+          session = startDiscordInteractionGatewayRuntimeFromEnvironment(
+            inputs.env,
+            {
+              connectionFactory: {
+                connect: () => connection,
               },
-              member: {
-                user: {
-                  id: 'operator-runtime-roles',
+              heartbeatScheduler: new NoopDiscordGatewayHeartbeatScheduler(),
+            },
+          );
+
+          connection.emitMessage(
+            JSON.stringify({
+              op: 0,
+              t: 'INTERACTION_CREATE',
+              d: {
+                id: 'interaction-runtime-roles',
+                token: 'token-runtime-roles',
+                channel_id: 'thread-runtime-roles',
+                data: {
+                  name: 'show-status',
                 },
-                roles: ['role-project-operator'],
+                member: {
+                  user: {
+                    id: 'operator-runtime-roles',
+                  },
+                  roles: ['role-project-operator'],
+                },
               },
-            },
-          }),
-        );
-        await new Promise((resolve) => {
-          setTimeout(resolve, 0);
-        });
-        session.close();
-        globalThis.fetch = originalFetch;
+            }),
+          );
+          await new Promise((resolve) => {
+            setTimeout(resolve, 0);
+          });
 
-        return { fetchCalls, session };
+          return { fetchCalls, session };
+        } finally {
+          session?.close();
+          globalThis.fetch = originalFetch;
+        }
       },
       assert: async (context: {
         fetchCalls: string[];

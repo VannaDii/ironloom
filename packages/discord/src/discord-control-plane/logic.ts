@@ -1,10 +1,6 @@
 import {
   appendTrace,
-  DEVPLAT_ACTION_CANCEL_PROJECT,
-  DEVPLAT_ACTION_NEW_PROJECT,
   DEVPLAT_ACTION_OPEN_PROJECT,
-  DEVPLAT_ACTION_PROJECT_SETTINGS,
-  DEVPLAT_ACTION_RELEASE_PROJECT,
   DEVPLAT_ACTION_APPROVE_THIS,
   DEVPLAT_ACTION_BLOCK_THIS,
   DEVPLAT_ACTION_CLAIM_THIS,
@@ -49,14 +45,6 @@ type DiscordComponentCustomIdContext = {
   readonly action: DiscordControlAction;
   readonly threadId: string;
 };
-
-/**
- * Named operator roles used by Discord-side privilege derivation.
- */
-type DevplatOperatorRole =
-  | 'project-operator'
-  | 'spec-approver'
-  | 'merge-approver';
 
 /**
  * Supported immutable run intents for `/open-project`.
@@ -471,74 +459,13 @@ export function createDiscordOperatorInteractionFromCallback(
   };
 }
 
-/** Resolves required operator roles for an action in the current thread context. */
-function resolveRequiredRolesForAction(
-  action: DiscordControlAction,
-  input: DiscordOperatorInteraction,
-): readonly DevplatOperatorRole[] {
-  switch (action) {
-    case DEVPLAT_ACTION_NEW_PROJECT:
-    case DEVPLAT_ACTION_OPEN_PROJECT:
-    case DEVPLAT_ACTION_PROJECT_SETTINGS:
-    case DEVPLAT_ACTION_CANCEL_PROJECT:
-      return ['project-operator'];
-    case DEVPLAT_ACTION_RELEASE_PROJECT:
-      return ['project-operator', 'merge-approver'];
-    case DEVPLAT_ACTION_APPROVE_THIS:
-      return input.boundSession?.kind === 'pull-request'
-        ? ['merge-approver']
-        : ['spec-approver'];
-    case DEVPLAT_ACTION_MERGE_NOW:
-      return ['merge-approver'];
-    default:
-      return [];
-  }
-}
-
-/** Resolves the configured Discord role id for a named DevPlat operator role. */
-function resolveRoleIdForOperatorRole(
-  role: DevplatOperatorRole,
-  input: DiscordOperatorInteraction,
-): string | undefined {
-  switch (role) {
-    case 'project-operator':
-      return trimOptional(input.projectOperatorRoleId);
-    case 'spec-approver':
-      return trimOptional(input.specApproverRoleId);
-    case 'merge-approver':
-      return trimOptional(input.mergeApproverRoleId);
-  }
-}
-
-/** Returns true when the actor holds at least one required role for this action. */
-function isActionPrivilegedForInteraction(
-  action: DiscordControlAction,
-  input: DiscordOperatorInteraction,
-): boolean {
-  const requiredRoles = resolveRequiredRolesForAction(action, input);
-  if (requiredRoles.length === 0) {
-    return false;
-  }
-
-  const actorRoleIds = (input.actorRoleIds ?? []).map((roleId) =>
-    roleId.trim(),
-  );
-  return requiredRoles.some((role) => {
-    const requiredRoleId = resolveRoleIdForOperatorRole(role, input);
-    return requiredRoleId === undefined
-      ? false
-      : actorRoleIds.includes(requiredRoleId);
-  });
-}
-
 /** Creates interaction control request input. */
 function createInteractionControlRequestInput(
   input: DiscordOperatorInteraction,
   action: DiscordControlAction,
   threadId: string,
 ): DiscordControlRequest {
-  const privileged =
-    input.privileged ?? isActionPrivilegedForInteraction(action, input);
+  const privileged = input.privileged ?? false;
   const intentSuffix =
     action === DEVPLAT_ACTION_OPEN_PROJECT &&
     input.openProjectIntent !== undefined
