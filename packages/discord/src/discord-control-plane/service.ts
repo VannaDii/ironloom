@@ -172,7 +172,8 @@ function parseConfigVersionNumber(value: string): number | undefined {
     return undefined;
   }
 
-  return Number.parseInt(trimmed.slice(1), 10);
+  const parsed = Number.parseInt(trimmed.slice(1), 10);
+  return Number.isSafeInteger(parsed) ? parsed : undefined;
 }
 
 /**
