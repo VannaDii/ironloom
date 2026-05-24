@@ -470,6 +470,85 @@ describe('DiscordControlPlaneService', () => {
     expect(await store.list('audit')).toContain('interaction-004e:audit');
   });
 
+  it('fails closed when intent mismatch acknowledgement is rejected by Discord', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+      createAcknowledgementRejectingResponseTransport(),
+    );
+
+    await service.handleAction({
+      id: 'discord-004f',
+      summary: 'open-project (intent:maintenance)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-4f',
+      threadId: 'thread-4f',
+      channelId: 'channel-4f',
+      action: 'open-project',
+      privileged: false,
+    });
+
+    const result = await service.handleInteraction({
+      id: 'interaction-004f',
+      token: 'token-004f',
+      actorId: 'user-4f',
+      channelId: 'channel-4f',
+      updatedAt: '2026-04-04T00:00:01.000Z',
+      commandName: 'open-project',
+      boundThreadId: 'thread-4f',
+      openProjectIntent: 'bugfix',
+    });
+
+    expect(result.allowed).toBe(false);
+    expect(result.failedClosed).toBe(true);
+    expect(result.responsePostError).toBe(
+      'Discord interaction deferred acknowledgement returned HTTP 404.',
+    );
+    expect(result.responseReceipt?.statusCode).toBe(404);
+  });
+
+  it('accepts open-project intents when persisted thread intent payload is unavailable', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    await store.store({
+      id: 'record-open-project-intent-thread-4g',
+      key: 'open-project-intent:thread-4g',
+      scope: 'state',
+      summary: 'Open-project immutable intent binding.',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      payload: {},
+    });
+
+    const result = await service.handleAction({
+      id: 'discord-004g',
+      summary: 'open-project (intent:maintenance)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:01.000Z',
+      actorId: 'user-4g',
+      threadId: 'thread-4g',
+      channelId: 'channel-4g',
+      action: 'open-project',
+      privileged: false,
+    });
+
+    expect(result.allowed).toBe(true);
+    expect(result.failedClosed).toBe(false);
+  });
+
   it('hydrates show-status metadata from persisted project state', async () => {
     const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
     const store = new FileStoreService(rootDirectory);

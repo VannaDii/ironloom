@@ -316,6 +316,42 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'renders blocked merge role for merge-now actions',
+      inputs: {
+        request: {
+          ...request,
+          action: 'merge-now',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlBlockedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlBlockedMessage>,
+      ) => {
+        expect(payload.content).toContain('Required role: merge-approver');
+      },
+    },
+    {
+      name: 'renders blocked implementation-thread context when implementation slice is unavailable',
+      inputs: {
+        request: {
+          ...request,
+          workItem: {
+            threadKind: 'implementation',
+            threadId: 'thread-noslice',
+            artifactId: 'artifact-noslice',
+          },
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlBlockedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlBlockedMessage>,
+      ) => {
+        expect(payload.content).toContain('Context: thread:thread-noslice');
+      },
+    },
+    {
       name: 'renders route failures with the standard refusal message',
       inputs: {
         interaction,
