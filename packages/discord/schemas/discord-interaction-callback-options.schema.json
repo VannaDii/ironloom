@@ -301,6 +301,9 @@
         "projectName": {
           "type": "string"
         },
+        "newProjectQualityStrictness": {
+          "enum": ["on", "off"]
+        },
         "projectSettingsHistoryDetailed": {
           "type": "boolean"
         },

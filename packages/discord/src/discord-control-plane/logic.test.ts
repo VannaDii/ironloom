@@ -828,6 +828,7 @@ describe('DiscordControlRequest logic', () => {
             boundThreadId: 'thread-7b',
             projectRepo: 'devplat',
             projectName: 'alpha',
+            newProjectQualityStrictness: 'on',
             actorRoleIds: ['role-project-operator'],
             projectOperatorRoleId: 'role-project-operator',
           } satisfies DiscordOperatorInteraction,
@@ -840,6 +841,7 @@ describe('DiscordControlRequest logic', () => {
           if (route.ok) {
             expect(route.request.action).toBe('new-project');
             expect(route.request.privileged).toBe(false);
+            expect(route.request.summary).toContain('quality-strictness:on');
           }
         },
       },
@@ -1492,6 +1494,43 @@ describe('DiscordControlRequest logic', () => {
           );
           expect(interaction.projectRepo).toBe('devplat');
           expect(interaction.projectName).toBe('mobile-run');
+        },
+      },
+      {
+        name: 'extracts new-project quality strictness option from slash-command options',
+        inputs: {
+          callback: {
+            id: 'callback-002g2',
+            token: 'token-002g2',
+            channel_id: 'thread-002g2',
+            data: {
+              name: 'new-project',
+              options: [
+                {
+                  name: 'repo',
+                  value: 'devplat',
+                },
+                {
+                  name: 'project',
+                  value: 'mobile-run',
+                },
+                {
+                  name: 'quality-strictness',
+                  value: 'off',
+                },
+              ],
+            },
+            user: {
+              id: 'operator-002g2',
+            },
+          },
+        },
+        mock: () => ({}),
+        assert: (context, inputs) => {
+          const interaction = createDiscordOperatorInteractionFromCallback(
+            inputs.callback,
+          );
+          expect(interaction.newProjectQualityStrictness).toBe('off');
         },
       },
       {

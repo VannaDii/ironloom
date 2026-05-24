@@ -12,6 +12,7 @@ import { FileStoreService } from '@vannadii/devplat-storage';
 import {
   DISCORD_EPHEMERAL_MESSAGE_FLAG,
   DISCORD_APPLICATION_ID_ENVIRONMENT_VARIABLE,
+  DISCORD_PROJECT_CONFIG_VERSION_PATTERN,
   DISCORD_REST_SUCCESS_MAX_EXCLUSIVE_STATUS,
   DISCORD_REST_SUCCESS_MIN_STATUS,
   DISCORD_INTERACTION_CHANNEL_MESSAGE_RESPONSE_TYPE,
@@ -25,6 +26,7 @@ import {
 } from './logic.js';
 import {
   renderDiscordControlAcceptedMessage,
+  renderDiscordArtifactMessage,
   renderDiscordControlBlockedMessage,
   renderDiscordInteractionCompletionMessage,
   renderDiscordInteractionThreadPostFailureCompletionMessage,
@@ -166,12 +168,30 @@ function readTrimmedStringField(
  */
 function parseConfigVersionNumber(value: string): number | undefined {
   const trimmed = value.trim();
-  if (!trimmed.startsWith('v')) {
+  if (!DISCORD_PROJECT_CONFIG_VERSION_PATTERN.test(trimmed)) {
     return undefined;
   }
 
   const numeric = Number.parseInt(trimmed.slice(1), 10);
   return Number.isInteger(numeric) && numeric >= 1 ? numeric : undefined;
+}
+
+/**
+ * Resolves the operator-facing response payload for a policy decision.
+ */
+function resolveDiscordDecisionPayload(
+  request: DiscordControlRequest,
+  allowed: boolean,
+): DiscordMessagePayload {
+  if (!allowed) {
+    return renderDiscordControlBlockedMessage(request);
+  }
+
+  if (request.action === DEVPLAT_ACTION_SHOW_LAST_ARTIFACT) {
+    return renderDiscordArtifactMessage(request);
+  }
+
+  return renderDiscordControlAcceptedMessage(request);
 }
 
 /** Contract for discord control response transport. */
@@ -1199,9 +1219,10 @@ export class DiscordControlPlaneService {
       renderedRequest.action,
       renderedRequest.privileged,
     );
-    const responsePayload = decision.allowed
-      ? renderDiscordControlAcceptedMessage(renderedRequest)
-      : renderDiscordControlBlockedMessage(renderedRequest);
+    const responsePayload = resolveDiscordDecisionPayload(
+      renderedRequest,
+      decision.allowed,
+    );
     const threadPayload = responsePayload;
     const acknowledgement =
       await this.postInteractionDeferredAcknowledgement(input);
@@ -1277,7 +1298,7 @@ export class DiscordControlPlaneService {
     input: DiscordOperatorInteraction,
     reason: string,
   ): Promise<DiscordControlResult> {
-    const responsePayload = renderDiscordRouteFailureMessage(input);
+    const responsePayload = renderDiscordRouteFailureMessage(input, reason);
     const request = createDiscordControlRequest({
       id: input.id,
       summary: reason,
@@ -1299,8 +1320,7 @@ export class DiscordControlPlaneService {
       action: DEVPLAT_ACTION_SHOW_STATUS,
       scope: 'discord',
       outcome: 'blocked',
-      reason:
-        'Discord interaction refused because thread binding was ambiguous.',
+      reason,
       artifactIds: [],
       recordedAt: input.updatedAt,
       policyDecisionId: 'discord-fail-closed',
@@ -1334,9 +1354,10 @@ export class DiscordControlPlaneService {
       renderedRequest.action,
       renderedRequest.privileged,
     );
-    const responsePayload = decision.allowed
-      ? renderDiscordControlAcceptedMessage(renderedRequest)
-      : renderDiscordControlBlockedMessage(renderedRequest);
+    const responsePayload = resolveDiscordDecisionPayload(
+      renderedRequest,
+      decision.allowed,
+    );
     const result = await this.persistAction(renderedRequest, decision);
     const threadPostResult = await this.postThreadMessageAfterAcknowledgement(
       renderedRequest.threadId,

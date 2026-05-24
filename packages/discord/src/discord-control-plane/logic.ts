@@ -58,6 +58,11 @@ type DiscordComponentCustomIdContext = {
 type OpenProjectIntent = 'maintenance' | 'bugfix' | 'new-feature';
 
 /**
+ * Supported `/new-project --quality-strictness` option values.
+ */
+type NewProjectQualityStrictness = 'on' | 'off';
+
+/**
  * Logical operator roles used for interaction-time authorization checks.
  */
 type DevplatOperatorRole =
@@ -435,6 +440,39 @@ function resolveProjectSettingsHistoryDetailedFromCallback(
   return modeValue === 'detailed';
 }
 
+/** Resolves `/new-project --quality-strictness` from callback options. */
+function resolveNewProjectQualityStrictnessFromCallback(
+  input: DiscordInteractionCallback,
+): NewProjectQualityStrictness | undefined {
+  const strictnessValue = resolveNamedOptionFromCallback(
+    input,
+    'quality-strictness',
+  )?.toLowerCase();
+
+  if (strictnessValue === 'on') {
+    return 'on';
+  }
+
+  if (strictnessValue === 'off') {
+    return 'off';
+  }
+
+  return undefined;
+}
+
+/**
+ * Creates optional interaction fields for new-project quality strictness.
+ */
+function createNewProjectQualityStrictnessInteractionFields(
+  value: NewProjectQualityStrictness | undefined,
+): Pick<DiscordOperatorInteraction, 'newProjectQualityStrictness'> | object {
+  if (value === undefined) {
+    return {};
+  }
+
+  return { newProjectQualityStrictness: value };
+}
+
 /**
  * Creates the minimal command data snapshot used by route-failure diagnostics.
  */
@@ -630,6 +668,10 @@ export function createDiscordOperatorInteractionFromCallback(
     resolveProjectSettingsHistoryDetailedFromCallback(input);
   const resolvedSettingsHistoryDetailed =
     callbackSettingsHistoryDetailed ?? options.projectSettingsHistoryDetailed;
+  const callbackQualityStrictness =
+    resolveNewProjectQualityStrictnessFromCallback(input);
+  const resolvedQualityStrictness =
+    callbackQualityStrictness ?? options.newProjectQualityStrictness;
 
   return {
     id: input.id,
@@ -663,6 +705,9 @@ export function createDiscordOperatorInteractionFromCallback(
     ...(resolvedSettingsHistoryDetailed === undefined
       ? {}
       : { projectSettingsHistoryDetailed: resolvedSettingsHistoryDetailed }),
+    ...createNewProjectQualityStrictnessInteractionFields(
+      resolvedQualityStrictness,
+    ),
     ...(input.member?.roles === undefined
       ? {}
       : {
@@ -711,8 +756,13 @@ function createInteractionControlRequestInput(
       ? ' (mode:detailed)'
       : ' (mode:summary)';
   }
+  const qualityStrictnessSuffix =
+    action === DEVPLAT_ACTION_NEW_PROJECT &&
+    input.newProjectQualityStrictness !== undefined
+      ? ` (quality-strictness:${input.newProjectQualityStrictness})`
+      : '';
   const summary =
-    `${input.summary?.trim() ?? action}${projectContextSuffix}${intentSuffix}${resumeForceSuffix}${settingsHistoryModeSuffix}`.trim();
+    `${input.summary?.trim() ?? action}${projectContextSuffix}${intentSuffix}${resumeForceSuffix}${settingsHistoryModeSuffix}${qualityStrictnessSuffix}`.trim();
   if (input.boundSession === undefined) {
     return {
       id: input.id,

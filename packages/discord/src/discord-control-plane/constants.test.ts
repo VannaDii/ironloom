@@ -1,72 +1,56 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  DISCORD_SUMMARY_CONFIG_VERSION_PATTERN,
-  DISCORD_SUMMARY_INTENT_PATTERN,
+  DISCORD_COMPONENT_CUSTOM_ID_PREFIX,
+  DISCORD_CUSTOM_ID_MAX_LENGTH,
+  DISCORD_EPHEMERAL_MESSAGE_FLAG,
+  DISCORD_MESSAGE_CONTENT_MAX_LENGTH,
+  DISCORD_PROJECT_CONFIG_VERSION_PATTERN,
+  DISCORD_REST_SUCCESS_MAX_EXCLUSIVE_STATUS,
+  DISCORD_REST_SUCCESS_MIN_STATUS,
 } from './constants.js';
 
 type DiscordControlPlaneConstantsCase = {
   name: string;
   inputs: {
-    valid: readonly string[];
-    invalid: readonly string[];
+    prefix: string;
+    ephemeralFlag: number;
+    maxMessageLength: number;
+    maxCustomIdLength: number;
+    successMin: number;
+    successMaxExclusive: number;
+    projectConfigVersionPattern: RegExp;
   };
-  mock: () => {
-    readonly intentPattern: RegExp;
-    readonly configVersionPattern: RegExp;
-  };
+  mock: () => Record<string, never>;
   assert: (
-    context: {
-      readonly intentPattern: RegExp;
-      readonly configVersionPattern: RegExp;
-    },
-    inputs: {
-      readonly valid: readonly string[];
-      readonly invalid: readonly string[];
-    },
+    context: Record<string, never>,
+    inputs: DiscordControlPlaneConstantsCase['inputs'],
   ) => void;
 };
 
 describe('discord control-plane constants', () => {
   const cases = [
     {
-      name: 'matches valid summary metadata markers',
+      name: 'exports stable protocol bounds and wire defaults',
       inputs: {
-        valid: [
-          '(intent:maintenance)',
-          '(intent:bugfix)',
-          '(intent:new-feature)',
-          '(config-version:v7)',
-          '(config-version:2026.05.24)',
-        ],
-        invalid: ['intent:maintenance', '(intent:)', '(config-version:)'],
+        prefix: DISCORD_COMPONENT_CUSTOM_ID_PREFIX,
+        ephemeralFlag: DISCORD_EPHEMERAL_MESSAGE_FLAG,
+        maxMessageLength: DISCORD_MESSAGE_CONTENT_MAX_LENGTH,
+        maxCustomIdLength: DISCORD_CUSTOM_ID_MAX_LENGTH,
+        successMin: DISCORD_REST_SUCCESS_MIN_STATUS,
+        successMaxExclusive: DISCORD_REST_SUCCESS_MAX_EXCLUSIVE_STATUS,
+        projectConfigVersionPattern: DISCORD_PROJECT_CONFIG_VERSION_PATTERN,
       },
-      mock: () => ({
-        intentPattern: DISCORD_SUMMARY_INTENT_PATTERN,
-        configVersionPattern: DISCORD_SUMMARY_CONFIG_VERSION_PATTERN,
-      }),
+      mock: () => ({}),
       assert: (context, inputs) => {
-        expect(
-          context.intentPattern.exec(inputs.valid[0] ?? ''),
-        ).not.toBeNull();
-        expect(
-          context.intentPattern.exec(inputs.valid[1] ?? ''),
-        ).not.toBeNull();
-        expect(
-          context.intentPattern.exec(inputs.valid[2] ?? ''),
-        ).not.toBeNull();
-        expect(
-          context.configVersionPattern.exec(inputs.valid[3] ?? ''),
-        ).not.toBeNull();
-        expect(
-          context.configVersionPattern.exec(inputs.valid[4] ?? ''),
-        ).not.toBeNull();
-
-        expect(context.intentPattern.exec(inputs.invalid[0] ?? '')).toBeNull();
-        expect(context.intentPattern.exec(inputs.invalid[1] ?? '')).toBeNull();
-        expect(
-          context.configVersionPattern.exec(inputs.invalid[2] ?? ''),
-        ).toBeNull();
+        expect(inputs.prefix).toBe('devplat:v1');
+        expect(inputs.ephemeralFlag).toBe(64);
+        expect(inputs.maxMessageLength).toBe(2000);
+        expect(inputs.maxCustomIdLength).toBe(100);
+        expect(inputs.successMin).toBe(200);
+        expect(inputs.successMaxExclusive).toBe(300);
+        expect(inputs.projectConfigVersionPattern.test('v9')).toBe(true);
+        expect(inputs.projectConfigVersionPattern.test('v1junk')).toBe(false);
       },
     },
   ] satisfies DiscordControlPlaneConstantsCase[];
