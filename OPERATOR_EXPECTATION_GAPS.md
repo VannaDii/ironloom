@@ -28,7 +28,7 @@ Usage rules:
 - [ ] Enforce kebab-case command naming.
 - [x] Enforce named options only for new commands (no positional args).
 - [x] Enforce dynamic role checks at action time for slash and button actions.
-- [ ] Keep non-mutating commands broadly available.
+- [x] Keep non-mutating commands broadly available.
 - [ ] Keep mutating commands role-restricted.
 
 ## 4. Roles and Permissions

@@ -472,6 +472,52 @@ describe('DiscordControlRequest logic', () => {
       {
         inputs: {
           interaction: {
+            id: 'interaction-010k',
+            token: 'token-10k',
+            actorId: 'user-10k',
+            channelId: 'thread-10k',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'show-status',
+            threadId: 'thread-10k',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.action).toBe('show-status');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-010l',
+            token: 'token-10l',
+            actorId: 'user-10l',
+            channelId: 'thread-10l',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'project-settings-history',
+            threadId: 'thread-10l',
+            projectSettingsHistoryDetailed: false,
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.action).toBe('project-settings-history');
+            expect(route.request.summary).toContain('mode:summary');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
             id: 'interaction-010e',
             token: 'token-10e',
             actorId: 'user-10e',
