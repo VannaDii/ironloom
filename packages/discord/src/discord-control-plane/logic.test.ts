@@ -152,6 +152,8 @@ describe('DiscordControlRequest logic', () => {
             updatedAt: '2026-04-04T00:00:00.000Z',
             commandName: 'new-project',
             boundThreadId: 'thread-7e',
+            projectRepo: 'devplat',
+            projectName: 'alpha',
             projectOperatorRoleId: 'role-project-operator',
           } satisfies DiscordOperatorInteraction,
         },
@@ -161,7 +163,8 @@ describe('DiscordControlRequest logic', () => {
         ) => {
           expect(route.ok).toBe(false);
           if (!route.ok) {
-            expect(route.reason).toContain('new-project requires --repo');
+            expect(route.reason).toContain('permission denied');
+            expect(route.reason).toContain('requiredRole=project-operator');
           }
         },
       },
