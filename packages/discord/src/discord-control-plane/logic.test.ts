@@ -228,6 +228,55 @@ describe('DiscordControlRequest logic', () => {
       {
         inputs: {
           interaction: {
+            id: 'interaction-007f',
+            token: 'token-7f',
+            actorId: 'user-7f',
+            channelId: 'channel-7f',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'project-settings-history',
+            threadId: 'thread-7f',
+            projectSettingsHistoryDetailed: true,
+            projectOperatorRoleId: 'role-project-operator',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(false);
+          if (!route.ok) {
+            expect(route.reason).toContain('permission denied');
+            expect(route.reason).toContain('requiredRole=project-operator');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-007g',
+            token: 'token-7g',
+            actorId: 'user-7g',
+            channelId: 'channel-7g',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'project-settings-history',
+            threadId: 'thread-7g',
+            projectSettingsHistoryDetailed: false,
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.action).toBe('project-settings-history');
+            expect(route.request.summary).toContain('mode:summary');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
             id: 'interaction-002',
             token: 'token-2',
             actorId: 'user-2',

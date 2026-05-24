@@ -515,6 +515,9 @@
             "projectName": {
               "type": "string"
             },
+            "projectSettingsHistoryDetailed": {
+              "type": "boolean"
+            },
             "resumeProjectForce": {
               "type": "boolean"
             },

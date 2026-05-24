@@ -168,6 +168,17 @@ const resumeProjectOptions: readonly DiscordCommandOption[] = [
 ];
 
 /**
+ * Named options exposed by `/project-settings-history`.
+ */
+const projectSettingsHistoryOptions: readonly DiscordCommandOption[] = [
+  createOptionalStringOption(
+    'mode',
+    'History visibility mode: summary for everyone, detailed for project operators.',
+    ['summary', 'detailed'],
+  ),
+];
+
+/**
  * Versioned Discord slash-command contracts exposed to operators.
  */
 const commandContracts: readonly DiscordCommandContract[] = [
@@ -207,6 +218,7 @@ const commandContracts: readonly DiscordCommandContract[] = [
     type: applicationCommandType,
     action: DEVPLAT_ACTION_PROJECT_SETTINGS_HISTORY,
     privileged: false,
+    options: projectSettingsHistoryOptions,
   },
   {
     name: DEVPLAT_ACTION_CANCEL_PROJECT,

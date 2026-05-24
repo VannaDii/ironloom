@@ -14,6 +14,7 @@ import {
   DEVPLAT_ACTION_PROJECT_SETTINGS,
   DEVPLAT_ACTION_RELEASE_WORKTREE,
   DEVPLAT_ACTION_RESUME_PROJECT,
+  DEVPLAT_ACTION_PROJECT_SETTINGS_HISTORY,
   DEVPLAT_ACTION_RESUME_THIS,
   DEVPLAT_ACTION_RETRY_GATES,
   DEVPLAT_ACTION_RUN_THIS,
@@ -137,6 +138,8 @@ function resolveRequiredRolesForAction(
     case DEVPLAT_ACTION_CANCEL_PROJECT:
     case DEVPLAT_ACTION_RESUME_PROJECT:
       return ['project-operator'];
+    case DEVPLAT_ACTION_PROJECT_SETTINGS_HISTORY:
+      return input.projectSettingsHistoryDetailed ? ['project-operator'] : [];
     case DEVPLAT_ACTION_APPROVE_THIS:
       return input.boundSession?.kind === 'pull-request'
         ? ['merge-approver']
@@ -414,6 +417,21 @@ function resolveResumeProjectForceFromCallback(
   return forceValue === undefined ? undefined : forceValue === 'force';
 }
 
+/** Resolves `/project-settings-history --mode` callback option. */
+function resolveProjectSettingsHistoryDetailedFromCallback(
+  input: DiscordInteractionCallback,
+): boolean | undefined {
+  const modeValue = resolveNamedOptionFromCallback(
+    input,
+    'mode',
+  )?.toLowerCase();
+  if (modeValue === undefined) {
+    return undefined;
+  }
+
+  return modeValue === 'detailed';
+}
+
 /**
  * Creates the minimal command data snapshot used by route-failure diagnostics.
  */
@@ -605,6 +623,10 @@ export function createDiscordOperatorInteractionFromCallback(
   const resolvedProjectName = callbackProjectName ?? options.projectName;
   const callbackResumeForce = resolveResumeProjectForceFromCallback(input);
   const resolvedResumeForce = callbackResumeForce ?? options.resumeProjectForce;
+  const callbackSettingsHistoryDetailed =
+    resolveProjectSettingsHistoryDetailedFromCallback(input);
+  const resolvedSettingsHistoryDetailed =
+    callbackSettingsHistoryDetailed ?? options.projectSettingsHistoryDetailed;
 
   return {
     id: input.id,
@@ -635,6 +657,9 @@ export function createDiscordOperatorInteractionFromCallback(
     ...(resolvedResumeForce === undefined
       ? {}
       : { resumeProjectForce: resolvedResumeForce }),
+    ...(resolvedSettingsHistoryDetailed === undefined
+      ? {}
+      : { projectSettingsHistoryDetailed: resolvedSettingsHistoryDetailed }),
     ...(input.member?.roles === undefined
       ? {}
       : {
@@ -677,8 +702,14 @@ function createInteractionControlRequestInput(
     action === DEVPLAT_ACTION_RESUME_PROJECT && input.resumeProjectForce
       ? ' (force:true)'
       : '';
+  let settingsHistoryModeSuffix = '';
+  if (action === DEVPLAT_ACTION_PROJECT_SETTINGS_HISTORY) {
+    settingsHistoryModeSuffix = input.projectSettingsHistoryDetailed
+      ? ' (mode:detailed)'
+      : ' (mode:summary)';
+  }
   const summary =
-    `${input.summary?.trim() ?? action}${projectContextSuffix}${intentSuffix}${resumeForceSuffix}`.trim();
+    `${input.summary?.trim() ?? action}${projectContextSuffix}${intentSuffix}${resumeForceSuffix}${settingsHistoryModeSuffix}`.trim();
   if (input.boundSession === undefined) {
     return {
       id: input.id,

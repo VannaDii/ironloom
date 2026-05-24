@@ -37,7 +37,7 @@ Usage rules:
 - [x] Restrict `/new-project` to `project-operator`.
 - [x] Restrict `/open-project` to `project-operator`.
 - [x] Restrict `/project-settings` to `project-operator`.
-- [ ] Restrict `/project-settings-history` detailed mode to `project-operator`.
+- [x] Restrict `/project-settings-history` detailed mode to `project-operator`.
 - [x] Restrict `/cancel-project` to `project-operator`.
 - [x] Restrict `/resume-project` to `project-operator`.
 - [x] Restrict spec/slice approvals to `spec-approver`.

@@ -182,6 +182,29 @@ describe('Discord command contract logic', () => {
           ],
         });
         expect(
+          payloads.find(
+            (payload) => payload.name === 'project-settings-history',
+          ),
+        ).toEqual({
+          name: 'project-settings-history',
+          description:
+            'Show append-only settings history for the active project.',
+          type: 1,
+          options: [
+            {
+              type: 3,
+              name: 'mode',
+              description:
+                'History visibility mode: summary for everyone, detailed for project operators.',
+              required: false,
+              choices: [
+                { name: 'summary', value: 'summary' },
+                { name: 'detailed', value: 'detailed' },
+              ],
+            },
+          ],
+        });
+        expect(
           registry.contracts
             .filter((contract) => contract.privileged)
             .map((contract) => contract.action),
