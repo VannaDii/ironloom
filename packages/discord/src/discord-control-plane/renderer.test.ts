@@ -38,6 +38,22 @@ describe('Discord control-plane renderer', () => {
     'release-worktree',
     'update-spec',
   ];
+  const projectActions: readonly DiscordControlAction[] = [
+    'alternatives',
+    'cancel-project',
+    'consider',
+    'new-project',
+    'open-project',
+    'phase-contract',
+    'project-settings',
+    'project-settings-history',
+    'project-summary',
+    'redirect',
+    'release-project',
+    'research',
+    'resume-project',
+    'spec',
+  ];
   const request = {
     id: 'run-1',
     summary: 'Run implementation',
@@ -372,6 +388,67 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'renders blocked spec-thread context when spec id is available',
+      inputs: {
+        request: {
+          ...request,
+          workItem: {
+            threadKind: 'spec',
+            threadId: 'thread-spec',
+            specId: 'spec-777',
+            artifactId: 'artifact-spec',
+          },
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlBlockedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlBlockedMessage>,
+      ) => {
+        expect(payload.content).toContain(
+          'Context: spec:spec-777 thread:thread-spec',
+        );
+      },
+    },
+    {
+      name: 'renders blocked approve role for non-pull-request contexts',
+      inputs: {
+        request: {
+          ...request,
+          action: 'approve-this',
+          workItem: {
+            threadKind: 'implementation',
+            threadId: 'thread-approve-impl',
+            artifactId: 'artifact-approve-impl',
+            sliceId: 'slice-approve-impl',
+          },
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlBlockedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlBlockedMessage>,
+      ) => {
+        expect(payload.content).toContain('Required role: spec-approver');
+      },
+    },
+    {
+      name: 'omits required-role hints for actions without explicit role requirements',
+      inputs: {
+        request: {
+          ...request,
+          action: 'run-this',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlBlockedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlBlockedMessage>,
+      ) => {
+        expect(payload.content).not.toContain('Required role:');
+      },
+    },
+    {
       name: 'renders route failures with the standard refusal message',
       inputs: {
         interaction,
@@ -412,6 +489,28 @@ describe('Discord control-plane renderer', () => {
         expect(
           payload.components?.[0]?.components.map((button) => button.label),
         ).toEqual(['Details', 'Show Status']);
+      },
+    },
+    {
+      name: 'renders route-failure diagnostics using normalized interaction input when received event is unavailable',
+      inputs: {
+        interaction: {
+          ...interaction,
+          id: 'interaction-no-received-event',
+          receivedEvent: undefined,
+        } satisfies DiscordOperatorInteraction,
+      },
+      mock: ({
+        interaction: inputInteraction,
+      }: {
+        interaction: DiscordOperatorInteraction;
+      }) => renderDiscordRouteFailureMessage(inputInteraction),
+      assert: (
+        payload: ReturnType<typeof renderDiscordRouteFailureMessage>,
+      ) => {
+        expect(payload.content).toContain(
+          '"id": "interaction-no-received-event"',
+        );
       },
     },
     {
@@ -569,6 +668,23 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'renders button styles for project and planning control actions',
+      inputs: {
+        request,
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordActionComponentRows(inputRequest, projectActions),
+      assert: (
+        components: ReturnType<typeof renderDiscordActionComponentRows>,
+      ) => {
+        const renderedActionCount = components.reduce(
+          (count, row) => count + row.components.length,
+          0,
+        );
+        expect(renderedActionCount).toBe(projectActions.length);
+      },
+    },
+    {
       name: 'returns no component rows when no actions are available',
       inputs: {
         request,
@@ -662,6 +778,26 @@ describe('Discord control-plane renderer', () => {
         expect(
           payloads.map((payload) => payload.components?.length ?? 0),
         ).toEqual(allActions.map(() => 1));
+      },
+    },
+    {
+      name: 'renders accepted payload controls for project and planning actions',
+      inputs: {
+        request,
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        projectActions.map((action) =>
+          renderDiscordControlAcceptedMessage({
+            ...inputRequest,
+            action,
+          }),
+        ),
+      assert: (
+        payloads: readonly ReturnType<
+          typeof renderDiscordControlAcceptedMessage
+        >[],
+      ) => {
+        expect(payloads).toHaveLength(projectActions.length);
       },
     },
     {
