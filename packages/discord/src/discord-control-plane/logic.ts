@@ -589,10 +589,18 @@ export function createDiscordControlRequestFromInteraction(
 
   const threadCandidates = [...new Set(collectThreadCandidates(input))];
   if (threadCandidates.length !== 1) {
+    const expectedThread =
+      input.boundSession?.threadId ??
+      input.boundThreadId?.trim() ??
+      'unresolved';
+    const detectedThread =
+      threadCandidates.length === 0 ? 'unresolved' : threadCandidates.join(',');
     return {
       ok: false,
       interactionId: input.id,
-      reason: 'Discord interaction must resolve to exactly one bound thread.',
+      reason:
+        `project/thread context mismatch: expected=${expectedThread} detected=${detectedThread}. ` +
+        'Recovery: /open-project --repo <repo_name> --project <project_name> --intent maintenance|bugfix|new-feature',
     };
   }
 
@@ -608,6 +616,19 @@ export function createDiscordControlRequestFromInteraction(
   }
 
   const threadId = threadCandidates.join('');
+
+  if (
+    input.boundSession !== undefined &&
+    input.boundSession.threadId !== threadId
+  ) {
+    return {
+      ok: false,
+      interactionId: input.id,
+      reason:
+        `project/thread context mismatch: expected=${input.boundSession.threadId} detected=${threadId}. ` +
+        'Recovery: /open-project --repo <repo_name> --project <project_name> --intent maintenance|bugfix|new-feature',
+    };
+  }
 
   return {
     ok: true,

@@ -135,7 +135,8 @@ describe('DiscordControlRequest logic', () => {
         ) => {
           expect(route.ok).toBe(false);
           if (!route.ok) {
-            expect(route.reason).toContain('exactly one bound thread');
+            expect(route.reason).toContain('project/thread context mismatch');
+            expect(route.reason).toContain('Recovery: /open-project');
           }
         },
       },
@@ -202,7 +203,8 @@ describe('DiscordControlRequest logic', () => {
         ) => {
           expect(route.ok).toBe(false);
           if (!route.ok) {
-            expect(route.reason).toContain('exactly one bound thread');
+            expect(route.reason).toContain('project/thread context mismatch');
+            expect(route.reason).toContain('Recovery: /open-project');
           }
         },
       },
@@ -424,7 +426,8 @@ describe('DiscordControlRequest logic', () => {
         ) => {
           expect(route.ok).toBe(false);
           if (!route.ok) {
-            expect(route.reason).toContain('exactly one bound thread');
+            expect(route.reason).toContain('project/thread context mismatch');
+            expect(route.reason).toContain('Recovery: /open-project');
           }
         },
       },
@@ -469,7 +472,8 @@ describe('DiscordControlRequest logic', () => {
         ) => {
           expect(route.ok).toBe(false);
           if (!route.ok) {
-            expect(route.reason).toContain('exactly one bound thread');
+            expect(route.reason).toContain('project/thread context mismatch');
+            expect(route.reason).toContain('Recovery: /open-project');
           }
         },
       },
