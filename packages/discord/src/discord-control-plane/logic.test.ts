@@ -143,6 +143,109 @@ describe('DiscordControlRequest logic', () => {
       {
         inputs: {
           interaction: {
+            id: 'interaction-010b',
+            token: 'token-10b',
+            actorId: 'user-10b',
+            channelId: 'thread-11',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'show status',
+            boundThreadId: 'thread-11',
+            boundSession: {
+              id: 'thread-session-010b',
+              summary: 'Pull request session',
+              status: 'running',
+              trace: [],
+              updatedAt: '2026-04-04T00:00:00.000Z',
+              guildId: 'guild-10b',
+              channelId: 'thread-11',
+              parentChannelId: 'pull-request-channel',
+              threadId: ' thread-11 ',
+              kind: 'pull-request',
+              specId: 'spec-10b',
+              sliceId: 'slice-10b',
+              pullRequestNumber: 11,
+              artifactId: 'artifact-10b',
+            },
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(false);
+          if (!route.ok) {
+            expect(route.reason).toContain('project/thread context mismatch');
+            expect(route.reason).toContain('expected= thread-11 ');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-010c',
+            token: 'token-10c',
+            actorId: 'user-10c',
+            channelId: 'thread-10c',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'approve-this',
+            boundThreadId: 'thread-10c',
+            boundSession: {
+              id: 'thread-session-010c',
+              summary: 'Pull request session',
+              status: 'running',
+              trace: [],
+              updatedAt: '2026-04-04T00:00:00.000Z',
+              guildId: 'guild-10c',
+              channelId: 'thread-10c',
+              parentChannelId: 'pull-request-channel',
+              threadId: 'thread-10c',
+              kind: 'pull-request',
+              specId: 'spec-10c',
+              sliceId: 'slice-10c',
+              pullRequestNumber: 10,
+              artifactId: 'artifact-10c',
+            },
+            actorRoleIds: ['role-merge-approver'],
+            mergeApproverRoleId: 'role-merge-approver',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.privileged).toBe(true);
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-010d',
+            token: 'token-10d',
+            actorId: 'user-10d',
+            channelId: 'thread-10d',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'approve-this',
+            boundThreadId: 'thread-10d',
+            actorRoleIds: ['role-spec-approver'],
+            specApproverRoleId: 'role-spec-approver',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.privileged).toBe(true);
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
             id: 'interaction-003',
             token: 'token-3',
             actorId: 'user-3',
@@ -1104,6 +1207,29 @@ describe('DiscordControlRequest logic', () => {
             artifactId: 'artifact-spec',
           },
           expectedDescription: 'spec thread-spec',
+        },
+        mock: () => ({}),
+        assert: (context, inputs) => {
+          if (inputs.mode !== 'description') {
+            throw new Error('expected description inputs');
+          }
+
+          expect(describeDiscordWorkItemBinding(inputs.workItem)).toBe(
+            inputs.expectedDescription,
+          );
+        },
+      },
+      {
+        name: 'describes spec work items with explicit spec identifiers',
+        inputs: {
+          mode: 'description',
+          workItem: {
+            threadKind: 'spec',
+            threadId: 'thread-spec-identified',
+            specId: 'spec-identified',
+            artifactId: 'artifact-spec-identified',
+          },
+          expectedDescription: 'spec spec-identified in thread-spec-identified',
         },
         mock: () => ({}),
         assert: (context, inputs) => {

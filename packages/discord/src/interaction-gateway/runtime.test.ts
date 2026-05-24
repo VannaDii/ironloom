@@ -549,6 +549,80 @@ describe('Discord interaction Gateway runtime', () => {
         );
       },
     },
+    {
+      name: 'applies role bindings while handling runtime interaction callbacks',
+      inputs: {
+        env: {
+          GITHUB_OWNER: 'VannaDii',
+          GITHUB_REPO: 'devplat',
+          DEVPLAT_STORAGE_ROOT: 'devplat-state',
+          DISCORD_APPLICATION_ID: 'application-1',
+          DISCORD_PUBLIC_KEY: 'public-key-1',
+          DISCORD_BOT_TOKEN: 'bot-token-1',
+          DISCORD_GATEWAY_URL: 'wss://gateway.discord.test/?v=10&encoding=json',
+          DISCORD_GATEWAY_INTENTS: '0',
+          DISCORD_PROJECT_OPERATOR_ROLE_ID: 'role-project-operator',
+          DISCORD_SPEC_APPROVER_ROLE_ID: 'role-spec-approver',
+          DISCORD_MERGE_APPROVER_ROLE_ID: 'role-merge-approver',
+        },
+      },
+      mock: async (inputs: { env: Record<string, string> }) => {
+        const connection = new FakeDiscordGatewayConnection();
+        const fetchCalls: string[] = [];
+        const originalFetch = globalThis.fetch;
+        globalThis.fetch = async (input): Promise<Response> => {
+          fetchCalls.push(String(input));
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        };
+
+        const session = startDiscordInteractionGatewayRuntimeFromEnvironment(
+          inputs.env,
+          {
+            connectionFactory: {
+              connect: () => connection,
+            },
+            heartbeatScheduler: new NoopDiscordGatewayHeartbeatScheduler(),
+          },
+        );
+
+        connection.emitMessage(
+          JSON.stringify({
+            op: 0,
+            t: 'INTERACTION_CREATE',
+            d: {
+              id: 'interaction-runtime-roles',
+              token: 'token-runtime-roles',
+              channel_id: 'thread-runtime-roles',
+              data: {
+                name: 'show-status',
+              },
+              member: {
+                user: {
+                  id: 'operator-runtime-roles',
+                },
+                roles: ['role-project-operator'],
+              },
+            },
+          }),
+        );
+        await new Promise((resolve) => {
+          setTimeout(resolve, 0);
+        });
+        session.close();
+        globalThis.fetch = originalFetch;
+
+        return { fetchCalls, session };
+      },
+      assert: async (context: {
+        fetchCalls: string[];
+        session: ReturnType<DiscordInteractionGatewayClientService['start']>;
+      }) => {
+        expect(context.session.gatewayUrl).toBe(
+          'wss://gateway.discord.test/?v=10&encoding=json',
+        );
+        expect(context.fetchCalls.length).toBeGreaterThan(0);
+      },
+    },
   ];
 
   it.each(cases)('$name', async (testCase) => {

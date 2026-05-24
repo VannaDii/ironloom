@@ -549,6 +549,120 @@ describe('DiscordControlPlaneService', () => {
     expect(result.failedClosed).toBe(false);
   });
 
+  it('fails closed when open-project summary omits an intent marker', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const result = await service.handleAction({
+      id: 'discord-004h',
+      summary: 'open-project',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-4h',
+      threadId: 'thread-4h',
+      channelId: 'channel-4h',
+      action: 'open-project',
+      privileged: false,
+    });
+
+    expect(result.allowed).toBe(false);
+    expect(result.failedClosed).toBe(true);
+  });
+
+  it('fails closed when open-project summary contains an unterminated intent marker', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const result = await service.handleAction({
+      id: 'discord-004i',
+      summary: 'open-project (intent:maintenance',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-4i',
+      threadId: 'thread-4i',
+      channelId: 'channel-4i',
+      action: 'open-project',
+      privileged: false,
+    });
+
+    expect(result.allowed).toBe(false);
+    expect(result.failedClosed).toBe(true);
+  });
+
+  it('resets malformed persisted config versions to v1 on project settings updates', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    await service.handleAction({
+      id: 'discord-004j',
+      summary: 'open-project (intent:maintenance)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-4j',
+      threadId: 'thread-4j',
+      channelId: 'channel-4j',
+      action: 'open-project',
+      privileged: false,
+    });
+    await store.store({
+      id: 'record-project-config-thread-4j',
+      key: 'project-config-version:thread-4j',
+      scope: 'state',
+      summary: 'Project config version.',
+      status: 'approved',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:01.000Z',
+      payload: {
+        threadId: 'thread-4j',
+        action: 'project-settings',
+        configVersion: 'version-2',
+      },
+    });
+
+    const result = await service.handleAction({
+      id: 'discord-004j-settings',
+      summary: 'project settings update',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:02.000Z',
+      actorId: 'user-4j',
+      threadId: 'thread-4j',
+      channelId: 'channel-4j',
+      action: 'project-settings',
+      privileged: false,
+    });
+
+    expect(result.allowed).toBe(true);
+    const persisted = await store.read(
+      'state',
+      'project-config-version:thread-4j',
+    );
+    expect(persisted.ok).toBe(true);
+    if (persisted.ok) {
+      expect(persisted.value.payload).toMatchObject({
+        configVersion: 'v1',
+      });
+    }
+  });
+
   it('hydrates show-status metadata from persisted project state', async () => {
     const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
     const store = new FileStoreService(rootDirectory);
