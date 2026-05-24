@@ -427,6 +427,49 @@ describe('DiscordControlPlaneService', () => {
     expect(await store.list('audit')).toContain('discord-004b:audit');
   });
 
+  it('fails closed on routed interactions when open-project intent changes for a thread', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+      createResponseTransport(),
+    );
+
+    await service.handleAction({
+      id: 'discord-004e',
+      summary: 'open-project (intent:maintenance)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-4e',
+      threadId: 'thread-4e',
+      channelId: 'channel-4e',
+      action: 'open-project',
+      privileged: false,
+    });
+
+    const result = await service.handleInteraction({
+      id: 'interaction-004e',
+      token: 'token-004e',
+      actorId: 'user-4e',
+      channelId: 'channel-4e',
+      updatedAt: '2026-04-04T00:00:01.000Z',
+      commandName: 'open-project',
+      boundThreadId: 'thread-4e',
+      openProjectIntent: 'bugfix',
+    });
+
+    expect(result.allowed).toBe(false);
+    expect(result.failedClosed).toBe(true);
+    expect(result.responsePayload?.content).toContain(
+      'Reason: policy denied this action',
+    );
+    expect(result.threadReceipt?.endpoint).toBe('/channels/thread-4e/messages');
+    expect(await store.list('audit')).toContain('interaction-004e:audit');
+  });
+
   it('hydrates show-status metadata from persisted project state', async () => {
     const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
     const store = new FileStoreService(rootDirectory);

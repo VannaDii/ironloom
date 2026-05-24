@@ -273,6 +273,49 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'renders blocked project-level role and thread context without a bound work item',
+      inputs: {
+        request: {
+          ...request,
+          action: 'release-project',
+          workItem: undefined,
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlBlockedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlBlockedMessage>,
+      ) => {
+        expect(payload.content).toContain('Context: thread-1');
+        expect(payload.content).toContain(
+          'Required role: project-operator | merge-approver',
+        );
+      },
+    },
+    {
+      name: 'renders blocked approve role for pull-request contexts',
+      inputs: {
+        request: {
+          ...request,
+          action: 'approve-this',
+          workItem: {
+            threadKind: 'pull-request',
+            threadId: 'thread-pr-1',
+            artifactId: 'artifact-pr-1',
+            pullRequestNumber: 7,
+          },
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlBlockedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlBlockedMessage>,
+      ) => {
+        expect(payload.content).toContain('Context: pr:#7 thread:thread-pr-1');
+        expect(payload.content).toContain('Required role: merge-approver');
+      },
+    },
+    {
       name: 'renders route failures with the standard refusal message',
       inputs: {
         interaction,
@@ -546,6 +589,22 @@ describe('Discord control-plane renderer', () => {
         expect(
           payloads.map((payload) => payload.components?.length ?? 0),
         ).toEqual(allActions.map(() => 1));
+      },
+    },
+    {
+      name: 'renders release-project control buttons with danger style',
+      inputs: {
+        request: {
+          ...request,
+          action: 'release-project',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordActionComponentRows(inputRequest, ['release-project']),
+      assert: (
+        components: ReturnType<typeof renderDiscordActionComponentRows>,
+      ) => {
+        expect(components[0]?.components[0]?.style).toBe(4);
       },
     },
     {
