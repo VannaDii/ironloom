@@ -168,7 +168,7 @@ export class DiscordInteractionWebhookService {
     const responseBody = route.ok
       ? createDeferredWebhookResponsePayload(interaction)
       : createMessageResponsePayload(
-          renderDiscordRouteFailureMessage(interaction),
+          renderDiscordRouteFailureMessage(interaction, route.reason),
         );
 
     this.runInBackground(() =>

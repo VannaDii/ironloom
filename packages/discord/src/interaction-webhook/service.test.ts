@@ -603,6 +603,11 @@ describe('DiscordInteractionWebhookService', () => {
             ]),
           },
         });
+        if (result.responseBody.type === 4) {
+          expect(result.responseBody.data.content).toContain(
+            'Reason: project/thread context mismatch: expected=thread-b detected=thread-a,thread-b. Recovery: /open-project --repo <repo_name> --project <project_name> --intent maintenance|bugfix|new-feature',
+          );
+        }
       },
     },
     {

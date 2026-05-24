@@ -54,10 +54,10 @@ Usage rules:
 - [ ] Enforce project name uniqueness per repo.
 - [ ] Enforce project name length 3-30 characters.
 - [ ] Bind all project messages/threads to project context.
-- [ ] Require explicit project context for all mutating actions.
-- [ ] Fail closed on missing/mismatched project context.
-- [ ] Include expected and detected context in mismatch failures.
-- [ ] Include recovery suggestion: `/open-project --repo ... --project ...`.
+- [x] Require explicit project context for all mutating actions.
+- [x] Fail closed on missing/mismatched project context.
+- [x] Include expected and detected context in mismatch failures.
+- [x] Include recovery suggestion: `/open-project --repo ... --project ...`.
 
 ## 6. Lifecycle Phase Model
 
