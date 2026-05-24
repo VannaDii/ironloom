@@ -562,6 +562,30 @@ describe('DiscordControlRequest logic', () => {
       {
         inputs: {
           interaction: {
+            id: 'interaction-008g',
+            token: 'token-8g',
+            actorId: 'user-8g',
+            channelId: 'channel-8g',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'new-project',
+            boundThreadId: 'thread-8g',
+            actorRoleIds: ['role-project-operator'],
+            projectOperatorRoleId: 'role-project-operator',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(false);
+          if (!route.ok) {
+            expect(route.reason).toContain('new-project requires --repo');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
             id: 'interaction-008b',
             token: 'token-8b',
             actorId: 'user-8b',
