@@ -127,8 +127,13 @@ const actionDisplays: Readonly<
     label: 'Cancel Project',
     acceptedTitle: 'Project paused',
     acceptedIndicator: '🔴',
-    result: 'Project activity paused and cancellation summaries are posted.',
-    controls: [DEVPLAT_ACTION_RESUME_PROJECT, DEVPLAT_ACTION_PROJECT_SUMMARY],
+    result:
+      'Project activity paused and cancellation summaries are posted. Next: review /show-last-artifact and /project-summary, then use /resume-project when ready.',
+    controls: [
+      DEVPLAT_ACTION_SHOW_LAST_ARTIFACT,
+      DEVPLAT_ACTION_PROJECT_SUMMARY,
+      DEVPLAT_ACTION_RESUME_PROJECT,
+    ],
   },
   [DEVPLAT_ACTION_RESUME_PROJECT]: {
     label: 'Resume Project',
