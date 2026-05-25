@@ -868,13 +868,6 @@ function truncateSummaryMarkerToken(token: string): string {
 
   const markerValueSeparatorIndex = token.indexOf(':');
   const markerClosingParenIndex = token.lastIndexOf(')');
-  if (
-    markerValueSeparatorIndex <= 1 ||
-    markerClosingParenIndex <= markerValueSeparatorIndex
-  ) {
-    return token.slice(0, DISCORD_CONTROL_REQUEST_SUMMARY_MAX_LENGTH);
-  }
-
   const markerPrefix = token.slice(0, markerValueSeparatorIndex + 1);
   const markerSuffixToken = ')';
   const maxMarkerValueLength =
@@ -896,18 +889,21 @@ function boundSummaryMarkerSuffix(markerSuffix: string): string {
     return markerSuffix;
   }
 
-  const markerTokens = markerSuffix.match(DISCORD_SUMMARY_MARKER_TOKEN_PATTERN);
-  if (markerTokens === null || markerTokens.length === 0) {
-    return markerSuffix.slice(0, DISCORD_CONTROL_REQUEST_SUMMARY_MAX_LENGTH);
+  const markerTokens: string[] = [];
+  DISCORD_SUMMARY_MARKER_TOKEN_PATTERN.lastIndex = 0;
+  let markerMatch = DISCORD_SUMMARY_MARKER_TOKEN_PATTERN.exec(markerSuffix);
+  while (markerMatch !== null) {
+    markerTokens.push(markerMatch[0]);
+    markerMatch = DISCORD_SUMMARY_MARKER_TOKEN_PATTERN.exec(markerSuffix);
+  }
+  if (markerTokens.length === 0) {
+    markerTokens.push(markerSuffix);
   }
 
   const retainedMarkers: string[] = [];
   let retainedLength = 0;
-  for (let index = markerTokens.length - 1; index >= 0; index -= 1) {
-    const markerToken = markerTokens[index];
-    if (markerToken === undefined) {
-      continue;
-    }
+  const reversedMarkerTokens = [...markerTokens].reverse();
+  for (const markerToken of reversedMarkerTokens) {
     const separatorLength = retainedMarkers.length === 0 ? 0 : 1;
     const nextLength = retainedLength + separatorLength + markerToken.length;
     if (nextLength > DISCORD_CONTROL_REQUEST_SUMMARY_MAX_LENGTH) {
@@ -921,10 +917,7 @@ function boundSummaryMarkerSuffix(markerSuffix: string): string {
     return retainedMarkers.join(' ');
   }
 
-  const lastMarkerToken = markerTokens.at(-1);
-  if (lastMarkerToken === undefined) {
-    return '';
-  }
+  const lastMarkerToken = markerTokens[markerTokens.length - 1] ?? markerSuffix;
   return truncateSummaryMarkerToken(lastMarkerToken);
 }
 
