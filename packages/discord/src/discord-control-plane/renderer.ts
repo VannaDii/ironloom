@@ -834,6 +834,77 @@ function resolveReleaseSummaryFields(
 }
 
 /**
+ * Returns visibility-tiered fields for `/project-summary`.
+ */
+function resolveProjectSummaryVisibilityFields(
+  request: DiscordControlRequest,
+): Readonly<Record<string, string>> {
+  if (request.action !== DEVPLAT_ACTION_PROJECT_SUMMARY) {
+    return {};
+  }
+
+  const repo = resolveSummaryMarkerValue(request.summary, '(repo:');
+  const project = resolveSummaryMarkerValue(request.summary, '(project:');
+  const phase =
+    resolveSummaryMarkerValue(request.summary, '(phase:') ?? 'unknown';
+  const phaseStatus =
+    resolveSummaryMarkerValue(request.summary, '(phase-status:') ?? 'unknown';
+  const blockedStatus =
+    resolveSummaryMarkerValue(request.summary, '(blocked-status:') ?? 'unknown';
+  const pendingApprovals =
+    resolveSummaryMarkerValue(request.summary, '(pending-approvals:') ?? '0';
+  const eta = resolveSummaryMarkerValue(request.summary, '(eta:');
+  const artifactLinks = resolveSummaryMarkerValue(
+    request.summary,
+    '(artifact-links:',
+  );
+  const releasePrerequisites = resolveSummaryMarkerValue(
+    request.summary,
+    '(release-prerequisites:',
+  );
+
+  if (!request.privileged) {
+    return {
+      Repo: repo ?? 'unknown',
+      Project: project ?? 'unknown',
+      Phase: phase,
+      'Phase status': phaseStatus,
+      'Blocked status': blockedStatus,
+      'Pending approvals': pendingApprovals,
+      'Artifact links': 'restricted/unavailable',
+      ...(releasePrerequisites === undefined
+        ? {}
+        : { 'Release prerequisites': releasePrerequisites }),
+    };
+  }
+
+  const strictness =
+    resolveSummaryMarkerValue(request.summary, '(quality-strictness:') ??
+    'unknown';
+  const approvalMode =
+    resolveSummaryMarkerValue(request.summary, '(approval-mode:') ?? 'unknown';
+  const configVersion =
+    resolveSummaryMarkerValue(request.summary, '(config-version:') ?? 'unknown';
+
+  return {
+    Repo: repo ?? 'unknown',
+    Project: project ?? 'unknown',
+    Phase: phase,
+    'Phase status': phaseStatus,
+    'Blocked status': blockedStatus,
+    'Pending approvals': pendingApprovals,
+    ...(eta === undefined ? {} : { ETA: eta }),
+    'Artifact links': artifactLinks ?? 'none',
+    'Config version': configVersion,
+    'Quality strictness': strictness,
+    'Approval mode': approvalMode,
+    ...(releasePrerequisites === undefined
+      ? {}
+      : { 'Release prerequisites': releasePrerequisites }),
+  };
+}
+
+/**
  * Returns discovery-control metadata fields for redirect/consider/research.
  */
 function resolveDiscoveryControlFields(
@@ -1297,6 +1368,7 @@ export function renderDiscordControlAcceptedMessage(
       Item: renderDiscordItemValue(request),
       Actor: describeActor(request.actorId),
       ...resolveStatusSummaryMetadataFields(request),
+      ...resolveProjectSummaryVisibilityFields(request),
       ...resolveResumeProjectPreflightFields(request),
       ...resolveReleaseSummaryFields(request),
       ...resolveDiscoveryControlFields(request),

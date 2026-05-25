@@ -316,6 +316,83 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'renders project-summary with public visibility redactions for non-role participants',
+      inputs: {
+        request: {
+          ...request,
+          action: 'project-summary',
+          summary:
+            'project-summary ' +
+            '(repo:devplat) ' +
+            '(project:operator-gap-closure) ' +
+            '(phase:Slice PR Review) ' +
+            '(phase-status:blocked) ' +
+            '(blocked-status:blocked) ' +
+            '(pending-approvals:2) ' +
+            '(eta:15m) ' +
+            '(artifact-links:https://example.com/artifact) ' +
+            '(release-prerequisites:missing-merge-approval)',
+          privileged: false,
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain('Repo: devplat');
+        expect(payload.content).toContain('Project: operator-gap-closure');
+        expect(payload.content).toContain('Phase status: blocked');
+        expect(payload.content).toContain('Blocked status: blocked');
+        expect(payload.content).toContain('Pending approvals: 2');
+        expect(payload.content).toContain(
+          'Artifact links: restricted/unavailable',
+        );
+        expect(payload.content).toContain(
+          'Release prerequisites: missing-merge-approval',
+        );
+        expect(payload.content).not.toContain('ETA:');
+      },
+    },
+    {
+      name: 'renders project-summary operational fields for role participants',
+      inputs: {
+        request: {
+          ...request,
+          action: 'project-summary',
+          summary:
+            'project-summary ' +
+            '(repo:devplat) ' +
+            '(project:operator-gap-closure) ' +
+            '(phase:Slice PR Review) ' +
+            '(phase-status:in-progress) ' +
+            '(blocked-status:unblocked) ' +
+            '(pending-approvals:1) ' +
+            '(eta:10m) ' +
+            '(artifact-links:https://example.com/artifact) ' +
+            '(config-version:v5) ' +
+            '(quality-strictness:on) ' +
+            '(approval-mode:manual) ' +
+            '(release-prerequisites:all-clear)',
+          privileged: true,
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain(
+          'Artifact links: https://example.com/artifact',
+        );
+        expect(payload.content).toContain('ETA: 10m');
+        expect(payload.content).toContain('Config version: v5');
+        expect(payload.content).toContain('Quality strictness: on');
+        expect(payload.content).toContain('Approval mode: manual');
+        expect(payload.content).toContain('Release prerequisites: all-clear');
+      },
+    },
+    {
       name: 'renders project-settings-history summary mode for public visibility with redacted defaults',
       inputs: {
         request: {

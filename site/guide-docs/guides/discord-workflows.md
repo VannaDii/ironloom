@@ -113,6 +113,15 @@ Discovery control behavior is thread-scoped and durable:
 - `/spec` keeps research controls available before approval so operators can continue iterating
 - any follow-up discovery command after `/spec` invalidates the prior pending spec-approval checkpoint and requires a fresh approval checkpoint
 
+`/project-summary` visibility tiers:
+
+- non-role participants receive repo/project identity, phase, phase status,
+  blocked/unblocked status, pending approval counts, and release prerequisites
+- non-role participants do not receive ETA fields and receive redacted artifact
+  links (`restricted/unavailable`)
+- role participants receive the same baseline plus config version, quality
+  strictness, approval mode, and unredacted artifact links when available
+
 For the full research-to-PR command workflow, use the canonical
 [Commanded Delivery Flow](./operator-guide.md#commanded-delivery-flow) in the
 operator guide.

@@ -364,21 +364,21 @@ Usage rules:
 - [x] Implement `/project-summary` read-only command for all participants.
 - [x] Restrict `/open-project` to `project-operator` only.
 - [ ] For non-role participants, `/project-summary` shows:
-- [ ] repo.
-- [ ] project name.
-- [ ] current phase.
-- [ ] phase status.
-- [ ] blocked/unblocked status without blocker details.
-- [ ] pending approval counts.
-- [ ] Exclude ETA for non-role participants.
-- [ ] Redact sensitive artifact links for non-role participants.
+- [x] repo.
+- [x] project name.
+- [x] current phase.
+- [x] phase status.
+- [x] blocked/unblocked status without blocker details.
+- [x] pending approval counts.
+- [x] Exclude ETA for non-role participants.
+- [x] Redact sensitive artifact links for non-role participants.
 - [ ] Allow full continuation event reason visibility to all users.
-- [ ] Make unmet release prerequisites visible to all users.
+- [x] Make unmet release prerequisites visible to all users.
 - [ ] Make non-blocking degradation notes visible to all users.
 - [ ] For role users, include in summary:
-- [ ] current config version.
-- [ ] strictness flag state.
-- [ ] active approval mode.
+- [x] current config version.
+- [x] strictness flag state.
+- [x] active approval mode.
 - [ ] pending approval-mode impact on open PRs.
 - [ ] audit artifact links.
 
