@@ -106,6 +106,11 @@ research/project controls:
 - `/redirect --direction-prompt <text>`
 - `/consider --url <value>`
 
+Discovery control behavior is thread-scoped and durable:
+
+- each `/redirect` replaces the prior direction and records the previous value for audit traceability
+- each `/consider` appends to a queued URL list that is consumed on the next `/research` run
+
 For the full research-to-PR command workflow, use the canonical
 [Commanded Delivery Flow](./operator-guide.md#commanded-delivery-flow) in the
 operator guide.

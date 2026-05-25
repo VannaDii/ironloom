@@ -1,10 +1,13 @@
 import {
   DEVPLAT_ACTION_CANCEL_PROJECT,
+  DEVPLAT_ACTION_CONSIDER,
   DEVPLAT_ACTION_NEW_PROJECT,
   DEVPLAT_ACTION_PHASE_CONTRACT,
   DEVPLAT_ACTION_PROJECT_SETTINGS,
   DEVPLAT_ACTION_PROJECT_SUMMARY,
   DEVPLAT_ACTION_OPEN_PROJECT,
+  DEVPLAT_ACTION_REDIRECT,
+  DEVPLAT_ACTION_RESEARCH,
   DEVPLAT_ACTION_RESUME_PROJECT,
   DEVPLAT_ACTION_SHOW_LAST_ARTIFACT,
   DEVPLAT_ACTION_SHOW_STATUS,
@@ -166,6 +169,44 @@ function resolveProjectNameFromSummary(summary: string): string | undefined {
 }
 
 /**
+ * Parses the final `(direction-prompt:<value>)` marker from a summary.
+ */
+function resolveDirectionPromptFromSummary(
+  summary: string,
+): string | undefined {
+  const marker = '(direction-prompt:';
+  const markerIndex = summary.lastIndexOf(marker);
+  if (markerIndex < 0) {
+    return undefined;
+  }
+  const start = markerIndex + marker.length;
+  const end = summary.indexOf(')', start);
+  if (end < 0) {
+    return undefined;
+  }
+  const value = summary.slice(start, end).trim();
+  return value.length === 0 ? undefined : value;
+}
+
+/**
+ * Parses the final `(url:<value>)` marker from a summary.
+ */
+function resolveConsiderUrlFromSummary(summary: string): string | undefined {
+  const marker = '(url:';
+  const markerIndex = summary.lastIndexOf(marker);
+  if (markerIndex < 0) {
+    return undefined;
+  }
+  const start = markerIndex + marker.length;
+  const end = summary.indexOf(')', start);
+  if (end < 0) {
+    return undefined;
+  }
+  const value = summary.slice(start, end).trim();
+  return value.length === 0 ? undefined : value;
+}
+
+/**
  * Builds the state key that stores immutable open-project intent context.
  */
 function createOpenProjectIntentStateKey(threadId: string): string {
@@ -177,6 +218,20 @@ function createOpenProjectIntentStateKey(threadId: string): string {
  */
 function createProjectConfigVersionStateKey(threadId: string): string {
   return `project-config-version:${threadId}`;
+}
+
+/**
+ * Builds the state key that stores the current redirect direction per thread.
+ */
+function createDiscoveryDirectionStateKey(threadId: string): string {
+  return `discovery-direction:${threadId}`;
+}
+
+/**
+ * Builds the state key that stores queued `/consider` URLs for next research.
+ */
+function createDiscoveryConsiderQueueStateKey(threadId: string): string {
+  return `discovery-consider-queue:${threadId}`;
 }
 
 /**
@@ -835,6 +890,166 @@ export class DiscordControlPlaneService {
   }
 
   /**
+   * Persists thread-scoped redirect direction and returns enriched summary markers.
+   */
+  private async persistRedirectDirectionState(
+    request: DiscordControlRequest,
+  ): Promise<DiscordControlRequest> {
+    const nextDirection = resolveDirectionPromptFromSummary(request.summary);
+    if (nextDirection === undefined) {
+      return request;
+    }
+    const stateKey = createDiscoveryDirectionStateKey(request.threadId);
+    const previousDirectionState = await this.store.read('state', stateKey);
+    const previousDirection = previousDirectionState.ok
+      ? readTrimmedStringField(
+          previousDirectionState.value.payload,
+          'directionPrompt',
+        )
+      : undefined;
+
+    await this.store.store({
+      id: `${request.id}:discovery-direction`,
+      key: stateKey,
+      scope: 'state',
+      summary: 'Discovery direction state.',
+      status: 'approved',
+      trace: request.trace,
+      updatedAt: request.updatedAt,
+      payload: {
+        threadId: request.threadId,
+        action: request.action,
+        directionPrompt: nextDirection,
+        ...(previousDirection === undefined
+          ? {}
+          : { previousDirectionPrompt: previousDirection }),
+      },
+    });
+
+    const previousDirectionSuffix =
+      previousDirection === undefined
+        ? ''
+        : ` (previous-direction:${previousDirection})`;
+    return {
+      ...request,
+      summary: `${request.summary}${previousDirectionSuffix}`.trim(),
+    };
+  }
+
+  /**
+   * Persists consider queue updates and returns enriched queue-count markers.
+   */
+  private async persistConsiderQueueState(
+    request: DiscordControlRequest,
+  ): Promise<DiscordControlRequest> {
+    const queuedUrl = resolveConsiderUrlFromSummary(request.summary);
+    if (queuedUrl === undefined) {
+      return request;
+    }
+    const stateKey = createDiscoveryConsiderQueueStateKey(request.threadId);
+    const previousQueueState = await this.store.read('state', stateKey);
+    const rawQueuedUrls = previousQueueState.ok
+      ? previousQueueState.value.payload['queuedUrls']
+      : undefined;
+    const queuedUrls = Array.isArray(rawQueuedUrls)
+      ? rawQueuedUrls
+          .filter((entry) => typeof entry === 'string')
+          .map((entry) => entry.trim())
+          .filter((entry) => entry.length > 0)
+      : [];
+    const updatedQueuedUrls = [...queuedUrls, queuedUrl];
+
+    await this.store.store({
+      id: `${request.id}:discovery-consider-queue`,
+      key: stateKey,
+      scope: 'state',
+      summary: 'Discovery consider queue.',
+      status: 'approved',
+      trace: request.trace,
+      updatedAt: request.updatedAt,
+      payload: {
+        threadId: request.threadId,
+        action: request.action,
+        queuedUrls: updatedQueuedUrls,
+      },
+    });
+
+    return {
+      ...request,
+      summary:
+        `${request.summary} (queued-count:${String(updatedQueuedUrls.length)})`.trim(),
+    };
+  }
+
+  /**
+   * Flushes queued consider URLs into the next research cycle summary.
+   */
+  private async flushConsiderQueueForResearch(
+    request: DiscordControlRequest,
+  ): Promise<DiscordControlRequest> {
+    const stateKey = createDiscoveryConsiderQueueStateKey(request.threadId);
+    const queueState = await this.store.read('state', stateKey);
+    if (!queueState.ok) {
+      return request;
+    }
+    const rawQueuedUrls = queueState.value.payload['queuedUrls'];
+    const queuedUrls = Array.isArray(rawQueuedUrls)
+      ? rawQueuedUrls
+          .filter((entry) => typeof entry === 'string')
+          .map((entry) => entry.trim())
+          .filter((entry) => entry.length > 0)
+      : [];
+    await this.store.store({
+      id: `${request.id}:discovery-consider-queue-flush`,
+      key: stateKey,
+      scope: 'state',
+      summary: 'Discovery consider queue.',
+      status: 'approved',
+      trace: request.trace,
+      updatedAt: request.updatedAt,
+      payload: {
+        threadId: request.threadId,
+        action: request.action,
+        queuedUrls: [],
+      },
+    });
+
+    return {
+      ...request,
+      summary:
+        queuedUrls.length === 0
+          ? request.summary
+          : `${request.summary} (considered-urls:${queuedUrls.join('|')})`,
+    };
+  }
+
+  /**
+   * Persists discovery redirect direction and consider queue state.
+   */
+  private async persistDiscoveryResearchState(
+    request: DiscordControlRequest,
+    decision: DiscordControlActionDecision,
+  ): Promise<DiscordControlRequest> {
+    if (!decision.allowed) {
+      return request;
+    }
+
+    if (request.action === DEVPLAT_ACTION_REDIRECT) {
+      return this.persistRedirectDirectionState(request);
+    }
+
+    if (request.action === DEVPLAT_ACTION_CONSIDER) {
+      return this.persistConsiderQueueState(request);
+    }
+
+    if (request.action === DEVPLAT_ACTION_RESEARCH) {
+      return this.flushConsiderQueueForResearch(request);
+    }
+
+    return request;
+  }
+
+  /**
    * Records a blocked audit and returns a fail-closed control result.
    */
   private async failClosedWithAudit(
@@ -1112,9 +1327,13 @@ export class DiscordControlPlaneService {
         return identityFailure;
       }
     }
-    await this.persistThreadPausedState(requestWithPreflightSummary, decision);
+    const requestWithDiscoveryState = await this.persistDiscoveryResearchState(
+      requestWithPreflightSummary,
+      decision,
+    );
+    await this.persistThreadPausedState(requestWithDiscoveryState, decision);
 
-    return this.persistAction(requestWithPreflightSummary, decision);
+    return this.persistAction(requestWithDiscoveryState, decision);
   }
 
   /**

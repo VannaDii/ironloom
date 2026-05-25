@@ -2015,6 +2015,367 @@ describe('DiscordControlPlaneService', () => {
     expect(result.responsePayload?.content).toContain('Config version: v1');
   });
 
+  it('persists redirect direction with previous-direction history in summary and state', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const first = await service.handleAction({
+      id: 'discord-redirect-001',
+      summary: 'redirect (direction-prompt:focus on performance)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-redirect-1',
+      threadId: 'thread-redirect-1',
+      channelId: 'channel-redirect-1',
+      action: 'redirect',
+      privileged: false,
+    });
+    const second = await service.handleAction({
+      id: 'discord-redirect-002',
+      summary: 'redirect (direction-prompt:focus on mobile UX)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:01.000Z',
+      actorId: 'user-redirect-1',
+      threadId: 'thread-redirect-1',
+      channelId: 'channel-redirect-1',
+      action: 'redirect',
+      privileged: false,
+    });
+
+    expect(first.allowed).toBe(true);
+    expect(second.allowed).toBe(true);
+    expect(second.request.summary).toContain(
+      '(previous-direction:focus on performance)',
+    );
+    const directionState = await store.read(
+      'state',
+      'discovery-direction:thread-redirect-1',
+    );
+    expect(directionState.ok).toBe(true);
+    if (directionState.ok) {
+      expect(directionState.value.payload).toMatchObject({
+        directionPrompt: 'focus on mobile UX',
+        previousDirectionPrompt: 'focus on performance',
+      });
+    }
+  });
+
+  it('queues consider urls and flushes them on research', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const firstConsider = await service.handleAction({
+      id: 'discord-consider-001',
+      summary: 'consider (url:https-//example.com/one)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-consider-1',
+      threadId: 'thread-consider-1',
+      channelId: 'channel-consider-1',
+      action: 'consider',
+      privileged: false,
+    });
+    const secondConsider = await service.handleAction({
+      id: 'discord-consider-002',
+      summary: 'consider (url:https-//example.com/two)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:01.000Z',
+      actorId: 'user-consider-1',
+      threadId: 'thread-consider-1',
+      channelId: 'channel-consider-1',
+      action: 'consider',
+      privileged: false,
+    });
+    const research = await service.handleAction({
+      id: 'discord-research-001',
+      summary: 'research',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:02.000Z',
+      actorId: 'user-consider-1',
+      threadId: 'thread-consider-1',
+      channelId: 'channel-consider-1',
+      action: 'research',
+      privileged: false,
+    });
+
+    expect(firstConsider.allowed).toBe(true);
+    expect(secondConsider.allowed).toBe(true);
+    expect(secondConsider.request.summary).toContain('(queued-count:2)');
+    expect(research.request.summary).toContain(
+      '(considered-urls:https-//example.com/one|https-//example.com/two)',
+    );
+    const queueState = await store.read(
+      'state',
+      'discovery-consider-queue:thread-consider-1',
+    );
+    expect(queueState.ok).toBe(true);
+    if (queueState.ok) {
+      expect(queueState.value.payload).toMatchObject({
+        queuedUrls: [],
+      });
+    }
+  });
+
+  it('keeps redirect summary unchanged when direction marker is missing', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const result = await service.handleAction({
+      id: 'discord-redirect-no-marker',
+      summary: 'redirect',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-redirect-no-marker',
+      threadId: 'thread-redirect-no-marker',
+      channelId: 'channel-redirect-no-marker',
+      action: 'redirect',
+      privileged: false,
+    });
+
+    expect(result.allowed).toBe(true);
+    expect(result.request.summary).toBe('redirect');
+    const directionState = await store.read(
+      'state',
+      'discovery-direction:thread-redirect-no-marker',
+    );
+    expect(directionState.ok).toBe(false);
+  });
+
+  it('keeps consider summary unchanged when url marker is missing', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const result = await service.handleAction({
+      id: 'discord-consider-no-marker',
+      summary: 'consider',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-consider-no-marker',
+      threadId: 'thread-consider-no-marker',
+      channelId: 'channel-consider-no-marker',
+      action: 'consider',
+      privileged: false,
+    });
+
+    expect(result.allowed).toBe(true);
+    expect(result.request.summary).toBe('consider');
+    const queueState = await store.read(
+      'state',
+      'discovery-consider-queue:thread-consider-no-marker',
+    );
+    expect(queueState.ok).toBe(false);
+  });
+
+  it('keeps research summary unchanged when consider queue state is missing', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const result = await service.handleAction({
+      id: 'discord-research-no-queue',
+      summary: 'research',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-research-no-queue',
+      threadId: 'thread-research-no-queue',
+      channelId: 'channel-research-no-queue',
+      action: 'research',
+      privileged: false,
+    });
+
+    expect(result.allowed).toBe(true);
+    expect(result.request.summary).toBe('research');
+  });
+
+  it('keeps redirect summary unchanged when direction marker is unterminated', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const result = await service.handleAction({
+      id: 'discord-redirect-unterminated',
+      summary: 'redirect (direction-prompt:focus on reliability',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-redirect-unterminated',
+      threadId: 'thread-redirect-unterminated',
+      channelId: 'channel-redirect-unterminated',
+      action: 'redirect',
+      privileged: false,
+    });
+
+    expect(result.allowed).toBe(true);
+    expect(result.request.summary).toBe(
+      'redirect (direction-prompt:focus on reliability',
+    );
+  });
+
+  it('keeps consider summary unchanged when url marker is unterminated', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const result = await service.handleAction({
+      id: 'discord-consider-unterminated',
+      summary: 'consider (url:https-//example.com/ops',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-consider-unterminated',
+      threadId: 'thread-consider-unterminated',
+      channelId: 'channel-consider-unterminated',
+      action: 'consider',
+      privileged: false,
+    });
+
+    expect(result.allowed).toBe(true);
+    expect(result.request.summary).toBe(
+      'consider (url:https-//example.com/ops',
+    );
+  });
+
+  it('keeps redirect summary unchanged when direction marker value is blank', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const result = await service.handleAction({
+      id: 'discord-redirect-empty-value',
+      summary: 'redirect (direction-prompt: )',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-redirect-empty-value',
+      threadId: 'thread-redirect-empty-value',
+      channelId: 'channel-redirect-empty-value',
+      action: 'redirect',
+      privileged: false,
+    });
+
+    expect(result.allowed).toBe(true);
+    expect(result.request.summary).toBe('redirect (direction-prompt: )');
+  });
+
+  it('keeps consider summary unchanged when url marker value is blank', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const result = await service.handleAction({
+      id: 'discord-consider-empty-value',
+      summary: 'consider (url: )',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-consider-empty-value',
+      threadId: 'thread-consider-empty-value',
+      channelId: 'channel-consider-empty-value',
+      action: 'consider',
+      privileged: false,
+    });
+
+    expect(result.allowed).toBe(true);
+    expect(result.request.summary).toBe('consider (url: )');
+  });
+
+  it('handles research queue records with non-array queuedUrls payloads', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    await store.store({
+      id: 'record-discovery-consider-invalid-queue',
+      key: 'discovery-consider-queue:thread-research-invalid-queue',
+      scope: 'state',
+      summary: 'Discovery consider queue.',
+      status: 'approved',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      payload: {
+        queuedUrls: 'not-an-array',
+      },
+    });
+
+    const result = await service.handleAction({
+      id: 'discord-research-invalid-queue',
+      summary: 'research',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:01.000Z',
+      actorId: 'user-research-invalid-queue',
+      threadId: 'thread-research-invalid-queue',
+      channelId: 'channel-research-invalid-queue',
+      action: 'research',
+      privileged: false,
+    });
+
+    expect(result.allowed).toBe(true);
+    expect(result.request.summary).toBe('research');
+    const queueState = await store.read(
+      'state',
+      'discovery-consider-queue:thread-research-invalid-queue',
+    );
+    expect(queueState.ok).toBe(true);
+    if (queueState.ok) {
+      expect(queueState.value.payload).toMatchObject({
+        queuedUrls: [],
+      });
+    }
+  });
+
   it('renders show-last-artifact interactions with artifact interpretation text', async () => {
     const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
     const store = new FileStoreService(rootDirectory);

@@ -94,13 +94,13 @@ Usage rules:
 
 ## 8. Discovery and Research Controls
 
-- [ ] Implement `/redirect <direction_prompt>` in discovery flow.
-- [ ] Ensure `/redirect` replaces previous direction (not append).
-- [ ] Persist previous direction in audit history.
-- [ ] Post concise in-thread direction-change summary.
-- [ ] Implement `/consider <url>`.
-- [ ] Allow any URL for `/consider`.
-- [ ] Queue `/consider` inputs for next research update (not immediate inline fetch summary).
+- [x] Implement `/redirect <direction_prompt>` in discovery flow.
+- [x] Ensure `/redirect` replaces previous direction (not append).
+- [x] Persist previous direction in audit history.
+- [x] Post concise in-thread direction-change summary.
+- [x] Implement `/consider <url>`.
+- [x] Allow any URL for `/consider`.
+- [x] Queue `/consider` inputs for next research update (not immediate inline fetch summary).
 - [x] Implement `/alts` aliasing `/alternatives`.
 - [x] Return exactly 3 alternatives by default.
 - [x] Include effort estimates in S/M/L.

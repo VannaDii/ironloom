@@ -109,12 +109,16 @@ export class FileStoreService {
           buildStorageIndexPath(indexName, normalized.key),
         );
         await mkdir(resolve(indexPath, '..'), { recursive: true });
-        await writeFile(
-          indexPath,
-          `${JSON.stringify(createStoredRecordIndexEntry(normalized), null, 2)}\n`,
-          'utf8',
-        );
+        const indexHandle = await open(indexPath, 'wx');
         createdIndexPaths.push(indexPath);
+        try {
+          await indexHandle.writeFile(
+            `${JSON.stringify(createStoredRecordIndexEntry(normalized), null, 2)}\n`,
+            'utf8',
+          );
+        } finally {
+          await indexHandle.close();
+        }
       }
       return {
         ok: true,

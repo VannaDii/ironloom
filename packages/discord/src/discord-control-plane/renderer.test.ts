@@ -1039,6 +1039,70 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'renders redirect accepted metadata with previous direction when provided',
+      inputs: {
+        request: {
+          ...request,
+          action: 'redirect',
+          summary:
+            'redirect (direction-prompt:focus on mobile operator workflows) (previous-direction:stabilize CI first)',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain(
+          'Direction: focus on mobile operator workflows',
+        );
+        expect(payload.content).toContain(
+          'Previous direction: stabilize CI first',
+        );
+      },
+    },
+    {
+      name: 'renders consider accepted metadata with queued count',
+      inputs: {
+        request: {
+          ...request,
+          action: 'consider',
+          summary:
+            'consider (url:https-//example.com/ops-playbook) (queued-count:3)',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain(
+          'URL: https-//example.com/ops-playbook',
+        );
+        expect(payload.content).toContain('Queued items: 3');
+      },
+    },
+    {
+      name: 'renders research accepted metadata when queued urls are flushed into the run',
+      inputs: {
+        request: {
+          ...request,
+          action: 'research',
+          summary:
+            'research (considered-urls:https-//example.com/one|https-//example.com/two)',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain(
+          'Queued URLs used: https-//example.com/one|https-//example.com/two',
+        );
+      },
+    },
+    {
       name: 'renders exactly three alternatives with effort and risk defaults',
       inputs: {
         request: {

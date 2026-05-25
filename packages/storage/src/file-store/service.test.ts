@@ -123,6 +123,71 @@ describe('FileStoreService', () => {
       },
     },
     {
+      name: 'fails create-only store-if-absent when an index entry already exists',
+      inputs: {
+        mode: 'store-if-absent',
+        record: {
+          id: 'storage-if-absent-index-eexist',
+          key: 'if-absent-index-eexist',
+          scope: 'state',
+          summary: 'Store once with existing index entry',
+          status: 'complete',
+          trace: [],
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          indexes: ['task'],
+          payload: { state: 'index-eexist' },
+        },
+      },
+      mock: async () => {
+        const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-storage-'));
+        await mkdir(resolve(rootDirectory, 'indexes', 'task'), {
+          recursive: true,
+        });
+        await writeFile(
+          resolve(
+            rootDirectory,
+            'indexes',
+            'task',
+            'if-absent-index-eexist.json',
+          ),
+          '{"id":"previous"}\n',
+          'utf8',
+        );
+        return {
+          rootDirectory,
+          service: new FileStoreService(rootDirectory),
+        };
+      },
+      assert: async (context, inputs) => {
+        if (inputs.mode !== 'store-if-absent') {
+          throw new Error('expected store-if-absent inputs');
+        }
+        const stored = await context.service.storeIfAbsent(inputs.record);
+        expect(stored.ok).toBe(false);
+        await expect(
+          readFile(
+            resolve(
+              context.rootDirectory,
+              'state',
+              'if-absent-index-eexist.json',
+            ),
+            'utf8',
+          ),
+        ).rejects.toThrow();
+        await expect(
+          readFile(
+            resolve(
+              context.rootDirectory,
+              'indexes',
+              'task',
+              'if-absent-index-eexist.json',
+            ),
+            'utf8',
+          ),
+        ).resolves.toContain('"id":"previous"');
+      },
+    },
+    {
       name: 'writes and reads file-backed records inside the storage root',
       inputs: {
         mode: 'store-read',

@@ -793,6 +793,57 @@ function resolveReleaseSummaryFields(
 }
 
 /**
+ * Returns discovery-control metadata fields for redirect/consider/research.
+ */
+function resolveDiscoveryControlFields(
+  request: DiscordControlRequest,
+): Readonly<Record<string, string>> {
+  if (request.action === DEVPLAT_ACTION_REDIRECT) {
+    const direction = resolveSummaryMarkerValue(
+      request.summary,
+      '(direction-prompt:',
+    );
+    const previousDirection = resolveSummaryMarkerValue(
+      request.summary,
+      '(previous-direction:',
+    );
+    return {
+      Direction: direction ?? 'unavailable',
+      ...(previousDirection === undefined
+        ? {}
+        : { 'Previous direction': previousDirection }),
+    };
+  }
+
+  if (request.action === DEVPLAT_ACTION_CONSIDER) {
+    const url = resolveSummaryMarkerValue(request.summary, '(url:');
+    const queuedCount = resolveSummaryMarkerValue(
+      request.summary,
+      '(queued-count:',
+    );
+    return {
+      URL: url ?? 'unavailable',
+      'Queued items': queuedCount ?? 'unknown',
+    };
+  }
+
+  if (request.action === DEVPLAT_ACTION_RESEARCH) {
+    const consideredUrls = resolveSummaryMarkerValue(
+      request.summary,
+      '(considered-urls:',
+    );
+    if (consideredUrls === undefined) {
+      return {};
+    }
+    return {
+      'Queued URLs used': consideredUrls,
+    };
+  }
+
+  return {};
+}
+
+/**
  * Returns canonical alternatives fields with exactly three options.
  */
 function resolveAlternativesFields(
@@ -1149,6 +1200,7 @@ export function renderDiscordControlAcceptedMessage(
       ...resolveStatusSummaryMetadataFields(request),
       ...resolveResumeProjectPreflightFields(request),
       ...resolveReleaseSummaryFields(request),
+      ...resolveDiscoveryControlFields(request),
       ...resolveAlternativesFields(request),
     },
     indicator: display.acceptedIndicator,
