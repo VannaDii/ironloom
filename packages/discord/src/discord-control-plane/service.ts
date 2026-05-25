@@ -11,6 +11,7 @@ import {
   DEVPLAT_ACTION_PAUSE_THIS,
   DEVPLAT_ACTION_PHASE_CONTRACT,
   DEVPLAT_ACTION_PROJECT_SETTINGS,
+  DEVPLAT_ACTION_PROJECT_SETTINGS_HISTORY,
   DEVPLAT_ACTION_PROJECT_SUMMARY,
   DEVPLAT_ACTION_OPEN_PROJECT,
   DEVPLAT_ACTION_REDIRECT,
@@ -55,6 +56,7 @@ import {
   renderDiscordRouteFailureMessage,
 } from './renderer.js';
 import type {
+  DiscordControlAction,
   DiscordControlRequest,
   DiscordControlResult,
   DiscordMessagePayload,
@@ -241,6 +243,22 @@ function createProjectConfigVersionStateKey(threadId: string): string {
 function createProjectPhaseStateKey(threadId: string): string {
   return `project-phase:${threadId}`;
 }
+
+/**
+ * Commands that remain available independent of lifecycle phase state.
+ */
+const phaseAgnosticAllowedActions: readonly DiscordControlAction[] = [
+  DEVPLAT_ACTION_NEW_PROJECT,
+  DEVPLAT_ACTION_OPEN_PROJECT,
+  DEVPLAT_ACTION_PROJECT_SETTINGS,
+  DEVPLAT_ACTION_PROJECT_SETTINGS_HISTORY,
+  DEVPLAT_ACTION_CANCEL_PROJECT,
+  DEVPLAT_ACTION_RESUME_PROJECT,
+  DEVPLAT_ACTION_SHOW_STATUS,
+  DEVPLAT_ACTION_SHOW_LAST_ARTIFACT,
+  DEVPLAT_ACTION_PROJECT_SUMMARY,
+  DEVPLAT_ACTION_PHASE_CONTRACT,
+];
 
 /**
  * Builds the state key that stores the current redirect direction per thread.
@@ -835,6 +853,117 @@ export class DiscordControlPlaneService {
       reason:
         `resume preflight requires second confirmation: issues=${preflightIssues.join('|')}. ` +
         'Run /resume-project --force to acknowledge and continue.',
+    };
+  }
+
+  /**
+   * Returns the phase-allowed command surface for thread-level lifecycle gating.
+   */
+  private resolveAllowedActionsForPhase(
+    phase: string,
+  ): readonly DiscordControlAction[] {
+    switch (phase) {
+      case 'Spec Draft':
+        return [
+          ...phaseAgnosticAllowedActions,
+          DEVPLAT_ACTION_RESEARCH,
+          DEVPLAT_ACTION_REDIRECT,
+          DEVPLAT_ACTION_CONSIDER,
+          DEVPLAT_ACTION_ALTERNATIVES,
+          DEVPLAT_ACTION_SPEC,
+          DEVPLAT_ACTION_CANCEL_PROJECT,
+        ];
+      case 'Spec Refinement/Approval':
+        return [
+          ...phaseAgnosticAllowedActions,
+          DEVPLAT_ACTION_RESEARCH,
+          DEVPLAT_ACTION_REDIRECT,
+          DEVPLAT_ACTION_CONSIDER,
+          DEVPLAT_ACTION_ALTERNATIVES,
+          DEVPLAT_ACTION_SPEC,
+          DEVPLAT_ACTION_APPROVE_THIS,
+          DEVPLAT_ACTION_CANCEL_PROJECT,
+        ];
+      case 'Slicing':
+        return [
+          ...phaseAgnosticAllowedActions,
+          DEVPLAT_ACTION_APPROVE_THIS,
+          DEVPLAT_ACTION_RUN_THIS,
+          DEVPLAT_ACTION_CANCEL_PROJECT,
+        ];
+      case 'Slice Implementation':
+        return [
+          ...phaseAgnosticAllowedActions,
+          DEVPLAT_ACTION_RUN_THIS,
+          DEVPLAT_ACTION_CLAIM_THIS,
+          DEVPLAT_ACTION_COMPLETE_THIS,
+          DEVPLAT_ACTION_BLOCK_THIS,
+          DEVPLAT_ACTION_PAUSE_THIS,
+          DEVPLAT_ACTION_RESUME_THIS,
+          DEVPLAT_ACTION_RETRY_GATES,
+          DEVPLAT_ACTION_APPROVE_THIS,
+          DEVPLAT_ACTION_CANCEL_PROJECT,
+        ];
+      case 'Slice PR Review':
+        return [
+          ...phaseAgnosticAllowedActions,
+          DEVPLAT_ACTION_APPROVE_THIS,
+          DEVPLAT_ACTION_MERGE_NOW,
+          DEVPLAT_ACTION_REBASE_ALL_DEPENDENTS,
+          DEVPLAT_ACTION_SYNC_WORKTREE,
+          DEVPLAT_ACTION_RELEASE_WORKTREE,
+          DEVPLAT_ACTION_CANCEL_PROJECT,
+        ];
+      case 'Slice PR Merge':
+        return [
+          ...phaseAgnosticAllowedActions,
+          DEVPLAT_ACTION_MERGE_NOW,
+          DEVPLAT_ACTION_REBASE_ALL_DEPENDENTS,
+          DEVPLAT_ACTION_SYNC_WORKTREE,
+          DEVPLAT_ACTION_RELEASE_WORKTREE,
+          DEVPLAT_ACTION_RELEASE_PROJECT,
+          DEVPLAT_ACTION_CANCEL_PROJECT,
+        ];
+      case 'Next Slice or Release':
+        return [
+          ...phaseAgnosticAllowedActions,
+          DEVPLAT_ACTION_RUN_THIS,
+          DEVPLAT_ACTION_RELEASE_PROJECT,
+          DEVPLAT_ACTION_SPEC,
+          DEVPLAT_ACTION_RESEARCH,
+          DEVPLAT_ACTION_CANCEL_PROJECT,
+        ];
+      default:
+        return phaseAgnosticAllowedActions;
+    }
+  }
+
+  /**
+   * Enforces phase-appropriate command usage when lifecycle phase is known.
+   */
+  private async enforcePhaseActionCompatibility(
+    request: DiscordControlRequest,
+  ): Promise<{ ok: true } | { ok: false; reason: string }> {
+    const phaseState = await this.store.read(
+      'state',
+      createProjectPhaseStateKey(request.threadId),
+    );
+    if (!phaseState.ok) {
+      return { ok: true };
+    }
+    const phase = readTrimmedStringField(phaseState.value.payload, 'phase');
+    if (phase === undefined) {
+      return { ok: true };
+    }
+    const allowedActions = this.resolveAllowedActionsForPhase(phase);
+    if (allowedActions.includes(request.action)) {
+      return { ok: true };
+    }
+    return {
+      ok: false,
+      reason:
+        `action ${request.action} is not allowed in phase ${phase}. ` +
+        'Use /phase-contract to view allowed commands for this thread.',
     };
   }
 
@@ -1487,6 +1616,15 @@ export class DiscordControlPlaneService {
         request,
         'project thread is paused: run /resume-project to continue mutating actions.',
         'thread-paused',
+      );
+    }
+    const phaseCompatibility =
+      await this.enforcePhaseActionCompatibility(request);
+    if (!phaseCompatibility.ok) {
+      return this.failClosedWithAudit(
+        request,
+        phaseCompatibility.reason,
+        'phase-action-mismatch',
       );
     }
     const resumePreflight = await this.enforceResumeProjectPreflight(request);
