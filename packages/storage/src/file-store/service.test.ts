@@ -205,6 +205,49 @@ describe('FileStoreService', () => {
       },
     },
     {
+      name: 'writes index entries for store-if-absent records',
+      inputs: {
+        mode: 'store-if-absent',
+        record: {
+          id: 'storage-if-absent-002',
+          key: 'if-absent-002',
+          scope: 'state',
+          summary: 'Store once with index',
+          status: 'complete',
+          trace: [],
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          indexes: ['task'],
+          payload: { state: 'once-indexed' },
+        },
+      },
+      mock: async () => {
+        const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-storage-'));
+        return {
+          rootDirectory,
+          service: new FileStoreService(rootDirectory),
+        };
+      },
+      assert: async (context, inputs) => {
+        if (inputs.mode !== 'store-if-absent') {
+          throw new Error('expected store-if-absent inputs');
+        }
+        const stored = await context.service.storeIfAbsent(inputs.record);
+        const indexContents = JSON.parse(
+          await readFile(
+            resolve(
+              context.rootDirectory,
+              'indexes',
+              'task',
+              'if-absent-002.json',
+            ),
+            'utf8',
+          ),
+        );
+        expect(stored.ok).toBe(true);
+        expect(indexContents.key).toBe('if-absent-002');
+      },
+    },
+    {
       name: 'reads and lists secondary index entries without direct path access',
       inputs: {
         mode: 'index-lookup',
