@@ -960,6 +960,8 @@ describe('Discord control-plane renderer', () => {
         request: {
           ...request,
           action: 'resume-project',
+          summary:
+            'resume-project (preflight:forced repo-access:unknown branch-state:unknown pr-status:unknown gate-health:unknown blocker-inventory:unknown issues:thread-not-paused)',
         },
       },
       mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
@@ -971,6 +973,11 @@ describe('Discord control-plane renderer', () => {
           'If issues are detected, a second confirmation is required.',
         );
         expect(payload.content).toContain('/resume-project --force');
+        expect(payload.content).toContain('Preflight: forced');
+        expect(payload.content).toContain(
+          'Checks: repo-access:unknown, branch-state:unknown, pr-status:unknown, gate-health:unknown, blocker-inventory:unknown',
+        );
+        expect(payload.content).toContain('Issues: thread-not-paused');
       },
     },
     {

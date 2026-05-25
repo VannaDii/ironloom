@@ -636,6 +636,60 @@ function resolveStatusSummaryMetadataFields(
 }
 
 /**
+ * Parses resume-project preflight markers from summary metadata.
+ */
+function resolveResumeProjectPreflightFields(
+  request: DiscordControlRequest,
+): Readonly<Record<string, string>> {
+  if (request.action !== DEVPLAT_ACTION_RESUME_PROJECT) {
+    return {};
+  }
+
+  const markerPrefix = '(preflight:';
+  const markerStart = request.summary.lastIndexOf(markerPrefix);
+  if (markerStart < 0) {
+    return {};
+  }
+
+  const markerValueStart = markerStart + markerPrefix.length;
+  const markerValueEnd = request.summary.indexOf(')', markerValueStart);
+  if (markerValueEnd < 0) {
+    return {};
+  }
+
+  const markerValue = request.summary.slice(markerValueStart, markerValueEnd);
+  const tokens = markerValue
+    .split(' ')
+    .map((token) => token.trim())
+    .filter((token) => token.length > 0);
+
+  let mode: string | undefined;
+  let checks: string | undefined;
+  let issues: string | undefined;
+  for (const token of tokens) {
+    const separatorIndex = token.indexOf(':');
+    if (separatorIndex <= 0) {
+      mode = token;
+      continue;
+    }
+    const key = token.slice(0, separatorIndex);
+    const value = token.slice(separatorIndex + 1);
+    if (key === 'issues') {
+      issues = value;
+      continue;
+    }
+    checks =
+      checks === undefined ? `${key}:${value}` : `${checks}, ${key}:${value}`;
+  }
+
+  return {
+    ...(mode === undefined ? {} : { Preflight: mode }),
+    ...(checks === undefined ? {} : { Checks: checks }),
+    ...(issues === undefined ? {} : { Issues: issues }),
+  };
+}
+
+/**
  * Returns metadata fields for artifact responses.
  */
 function resolveArtifactMetadataFields(
@@ -990,6 +1044,7 @@ export function renderDiscordControlAcceptedMessage(
       Item: renderDiscordItemValue(request),
       Actor: describeActor(request.actorId),
       ...resolveStatusSummaryMetadataFields(request),
+      ...resolveResumeProjectPreflightFields(request),
     },
     indicator: display.acceptedIndicator,
     result: display.result,
