@@ -654,6 +654,51 @@ describe('DiscordControlPlaneService', () => {
     expect(unblockedMutation.failedClosed).toBe(false);
   });
 
+  it('requires force confirmation when resume-project preflight detects issues', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const blockedResume = await service.handleAction({
+      id: 'discord-004-resume-project-preflight-blocked',
+      summary: 'resume-project',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-resume-project-preflight-blocked',
+      threadId: 'thread-resume-project-preflight-blocked',
+      channelId: 'channel-resume-project-preflight-blocked',
+      action: 'resume-project',
+      privileged: false,
+    });
+
+    expect(blockedResume.allowed).toBe(false);
+    expect(blockedResume.failedClosed).toBe(true);
+
+    const forcedResume = await service.handleAction({
+      id: 'discord-004-resume-project-preflight-forced',
+      summary: 'resume-project (force:true)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:01.000Z',
+      actorId: 'user-resume-project-preflight-forced',
+      threadId: 'thread-resume-project-preflight-blocked',
+      channelId: 'channel-resume-project-preflight-blocked',
+      action: 'resume-project',
+      privileged: false,
+    });
+
+    expect(forcedResume.allowed).toBe(true);
+    expect(forcedResume.failedClosed).toBe(false);
+    expect(forcedResume.request.summary).toContain(
+      'preflight:forced issues:thread-not-paused',
+    );
+  });
+
   it('enforces new-project uniqueness per repo across thread contexts', async () => {
     const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
     const store = new FileStoreService(rootDirectory);

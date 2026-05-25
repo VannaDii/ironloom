@@ -195,6 +195,13 @@ function createThreadPauseStateKey(threadId: string): string {
   return `project-thread-paused:${threadId}`;
 }
 
+/**
+ * Resolves true when a normalized summary includes the `(force:true)` marker.
+ */
+function resolveForceResumeFromSummary(summary: string): boolean {
+  return summary.includes('(force:true)');
+}
+
 /** Detects duplicate-write errors returned by the file-store layer. */
 function isAlreadyExistsStoreError(error: string): boolean {
   const normalized = error.toLowerCase();
@@ -669,6 +676,39 @@ export class DiscordControlPlaneService {
   }
 
   /**
+   * Runs resume preflight and enforces second confirmation when issues are detected.
+   */
+  private async enforceResumeProjectPreflight(
+    request: DiscordControlRequest,
+  ): Promise<
+    { ok: true; summarySuffix: string } | { ok: false; reason: string }
+  > {
+    if (request.action !== DEVPLAT_ACTION_RESUME_PROJECT) {
+      return { ok: true, summarySuffix: '' };
+    }
+    const threadPaused = await this.resolveThreadPausedState(request.threadId);
+    const preflightIssues: string[] = [];
+    if (!threadPaused) {
+      preflightIssues.push('thread-not-paused');
+    }
+    if (preflightIssues.length === 0) {
+      return { ok: true, summarySuffix: ' (preflight:ready)' };
+    }
+    if (resolveForceResumeFromSummary(request.summary)) {
+      return {
+        ok: true,
+        summarySuffix: ` (preflight:forced issues:${preflightIssues.join('|')})`,
+      };
+    }
+    return {
+      ok: false,
+      reason:
+        `resume preflight requires second confirmation: issues=${preflightIssues.join('|')}. ` +
+        'Run /resume-project --force to acknowledge and continue.',
+    };
+  }
+
+  /**
    * Reads persisted project metadata used by status and summary responses.
    */
   private async resolveThreadProjectMetadata(
@@ -978,11 +1018,28 @@ export class DiscordControlPlaneService {
         'thread-paused',
       );
     }
-    const identityUniqueness =
-      await this.enforceNewProjectIdentityUniqueness(request);
-    if (!identityUniqueness.ok) {
+    const resumePreflight = await this.enforceResumeProjectPreflight(request);
+    if (!resumePreflight.ok) {
       return this.failClosedWithAudit(
         request,
+        resumePreflight.reason,
+        'resume-preflight-blocked',
+      );
+    }
+    const requestWithPreflightSummary =
+      resumePreflight.summarySuffix.length === 0
+        ? request
+        : {
+            ...request,
+            summary:
+              `${request.summary}${resumePreflight.summarySuffix}`.trim(),
+          };
+    const identityUniqueness = await this.enforceNewProjectIdentityUniqueness(
+      requestWithPreflightSummary,
+    );
+    if (!identityUniqueness.ok) {
+      return this.failClosedWithAudit(
+        requestWithPreflightSummary,
         identityUniqueness.reason,
         'duplicate-project-identity',
       );
@@ -1002,24 +1059,24 @@ export class DiscordControlPlaneService {
         trace: request.trace,
         updatedAt: request.updatedAt,
         payload: {
-          threadId: request.threadId,
-          action: request.action,
+          threadId: requestWithPreflightSummary.threadId,
+          action: requestWithPreflightSummary.action,
           intent: immutability.persistIntent,
         },
       });
     }
     if (decision.allowed) {
       const identityFailure = await this.persistNewProjectIdentityReservation(
-        request,
+        requestWithPreflightSummary,
         identityUniqueness,
       );
       if (identityFailure !== undefined) {
         return identityFailure;
       }
     }
-    await this.persistThreadPausedState(request, decision);
+    await this.persistThreadPausedState(requestWithPreflightSummary, decision);
 
-    return this.persistAction(request, decision);
+    return this.persistAction(requestWithPreflightSummary, decision);
   }
 
   /**
