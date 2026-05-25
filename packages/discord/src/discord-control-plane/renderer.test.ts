@@ -955,6 +955,25 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'renders resume-project accepted message with second-confirmation guidance',
+      inputs: {
+        request: {
+          ...request,
+          action: 'resume-project',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain(
+          'If issues are detected, a second confirmation is required.',
+        );
+        expect(payload.content).toContain('/resume-project --force');
+      },
+    },
+    {
       name: 'renders release-project control buttons with danger style',
       inputs: {
         request: {
