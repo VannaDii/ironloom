@@ -3106,6 +3106,100 @@ describe('DiscordControlPlaneService', () => {
     expect(result.failedClosed).toBe(false);
   });
 
+  it.each([
+    {
+      name: 'allows run-this in Slicing Refinement/Approval phase',
+      phase: 'Slicing Refinement/Approval',
+      action: 'run-this',
+      summary: 'run-this',
+      threadId: 'thread-phase-slicing-refinement',
+    },
+    {
+      name: 'allows spec re-entry in Slicing phase',
+      phase: 'Slicing',
+      action: 'spec',
+      summary: 'spec',
+      threadId: 'thread-phase-slicing-spec',
+    },
+    {
+      name: 'allows merge-now in Slice PR Creation phase',
+      phase: 'Slice PR Creation',
+      action: 'merge-now',
+      summary: 'merge-now',
+      threadId: 'thread-phase-pr-creation',
+    },
+    {
+      name: 'allows merge-now in Slice Approval Request phase',
+      phase: 'Slice Approval Request',
+      action: 'merge-now',
+      summary: 'merge-now',
+      threadId: 'thread-phase-approval-request',
+    },
+    {
+      name: 'allows release-project in Completion phase',
+      phase: 'Completion',
+      action: 'release-project',
+      summary: 'release-project',
+      threadId: 'thread-phase-completion',
+    },
+    {
+      name: 'allows spec re-entry in Slice PR Merge phase',
+      phase: 'Slice PR Merge',
+      action: 'spec',
+      summary: 'spec',
+      threadId: 'thread-phase-reentry-spec',
+    },
+    {
+      name: 'allows research re-entry in Slice PR Review phase',
+      phase: 'Slice PR Review',
+      action: 'research',
+      summary: 'research',
+      threadId: 'thread-phase-reentry-research',
+    },
+  ])('$name', async ({ phase, action, summary, threadId }) => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    class AlwaysAllowDecisionPolicyService extends DecisionPolicyService {
+      public override evaluateControlAction() {
+        return { id: 'policy-allow-all', allowed: true, trace: [] };
+      }
+    }
+    const service = new DiscordControlPlaneService(
+      new AlwaysAllowDecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+    await store.store({
+      id: `record-phase-${threadId}`,
+      key: `project-phase:${threadId}`,
+      scope: 'state',
+      summary: 'Project lifecycle phase.',
+      status: 'approved',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:07.300Z',
+      payload: {
+        threadId,
+        phase,
+      },
+    });
+
+    const result = await service.handleAction({
+      id: `discord-phase-${threadId}`,
+      summary,
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:08.300Z',
+      actorId: 'user-phase',
+      threadId,
+      channelId: `channel-${threadId}`,
+      action,
+      privileged: false,
+    });
+
+    expect(result.allowed).toBe(true);
+    expect(result.failedClosed).toBe(false);
+  });
+
   it('allows actions when lifecycle phase payload is missing', async () => {
     const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
     const store = new FileStoreService(rootDirectory);

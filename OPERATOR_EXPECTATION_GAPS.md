@@ -124,7 +124,7 @@ Usage rules:
 
 ## 10. Spec/Research Re-entry and Global Pause
 
-- [ ] Allow `/spec` from later phases.
+- [x] Allow `/spec` from later phases.
 - [ ] On `/spec` from later phase, globally pause active work.
 - [ ] Allow `/research` from any project-bound thread.
 - [ ] On `/research` re-entry, globally pause active implementation/PR activity.

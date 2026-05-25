@@ -1043,6 +1043,8 @@ export class DiscordControlPlaneService {
       case 'Slicing Refinement/Approval':
         return [
           ...phaseAgnosticAllowedActions,
+          DEVPLAT_ACTION_SPEC,
+          DEVPLAT_ACTION_RESEARCH,
           DEVPLAT_ACTION_APPROVE_THIS,
           DEVPLAT_ACTION_RUN_THIS,
           DEVPLAT_ACTION_CANCEL_PROJECT,
@@ -1050,6 +1052,8 @@ export class DiscordControlPlaneService {
       case 'Slice Implementation':
         return [
           ...phaseAgnosticAllowedActions,
+          DEVPLAT_ACTION_SPEC,
+          DEVPLAT_ACTION_RESEARCH,
           DEVPLAT_ACTION_RUN_THIS,
           DEVPLAT_ACTION_CLAIM_THIS,
           DEVPLAT_ACTION_COMPLETE_THIS,
@@ -1065,6 +1069,8 @@ export class DiscordControlPlaneService {
       case 'Slice Approval Request':
         return [
           ...phaseAgnosticAllowedActions,
+          DEVPLAT_ACTION_SPEC,
+          DEVPLAT_ACTION_RESEARCH,
           DEVPLAT_ACTION_APPROVE_THIS,
           DEVPLAT_ACTION_MERGE_NOW,
           DEVPLAT_ACTION_REBASE_ALL_DEPENDENTS,
@@ -1075,6 +1081,8 @@ export class DiscordControlPlaneService {
       case 'Slice PR Merge':
         return [
           ...phaseAgnosticAllowedActions,
+          DEVPLAT_ACTION_SPEC,
+          DEVPLAT_ACTION_RESEARCH,
           DEVPLAT_ACTION_MERGE_NOW,
           DEVPLAT_ACTION_REBASE_ALL_DEPENDENTS,
           DEVPLAT_ACTION_SYNC_WORKTREE,
