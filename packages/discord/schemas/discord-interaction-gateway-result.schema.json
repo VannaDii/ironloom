@@ -392,6 +392,9 @@
                 },
                 "completionPostError": {
                   "type": "string"
+                },
+                "blockedReason": {
+                  "type": "string"
                 }
               },
               "required": [

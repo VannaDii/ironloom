@@ -105,6 +105,12 @@ describe('FileStoreService', () => {
         expect(second.ok).toBe(false);
         await expect(
           readFile(
+            resolve(context.rootDirectory, 'state', 'atomic-key.json'),
+            'utf8',
+          ),
+        ).resolves.toContain('"id": "storage-atomic-001"');
+        await expect(
+          readFile(
             resolve(
               context.rootDirectory,
               'indexes',

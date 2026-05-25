@@ -344,6 +344,7 @@ export const DiscordControlResultCodec = t.intersection([
     responsePostError: t.string,
     threadPostError: t.string,
     completionPostError: t.string,
+    blockedReason: t.string,
   }),
 ]);
 

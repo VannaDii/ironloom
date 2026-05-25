@@ -2347,6 +2347,54 @@ describe('DiscordControlPlaneService', () => {
           );
         },
       },
+      {
+        name: 'renders concrete fail-closed reasons for routed interaction preflight blocks',
+        inputs: {
+          interaction: {
+            id: 'interaction-failclosed-reason-001',
+            token: 'token-failclosed-reason-1',
+            actorId: 'user-failclosed-reason-1',
+            channelId: 'channel-failclosed-reason-1',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'resume-project',
+            threadId: 'thread-failclosed-reason-1',
+            projectOperatorRoleId: 'role-project-operator',
+            actorRoleIds: ['role-project-operator'],
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: async () => {
+          const rootDirectory = await mkdtemp(
+            join(tmpdir(), 'devplat-discord-'),
+          );
+          const store = new FileStoreService(rootDirectory);
+          return {
+            store,
+            service: new DiscordControlPlaneService(
+              new DecisionPolicyService(),
+              new TelemetryEventService(store),
+              store,
+              createResponseTransport(),
+            ),
+          };
+        },
+        assert: async (
+          context: {
+            store: FileStoreService;
+            service: DiscordControlPlaneService;
+          },
+          inputs: { interaction: DiscordOperatorInteraction },
+        ) => {
+          const result = await context.service.handleInteraction(
+            inputs.interaction,
+          );
+
+          expect(result.allowed).toBe(false);
+          expect(result.failedClosed).toBe(true);
+          expect(result.responsePayload?.content).toContain(
+            'resume preflight requires second confirmation',
+          );
+        },
+      },
     ];
 
     it.each(cases)('$name', async (testCase) => {
@@ -2934,6 +2982,62 @@ describe('DiscordControlPlaneService', () => {
           );
           expect(await context.store.list('state')).toContain(
             'interaction-acknowledged-blocked-001',
+          );
+        },
+      },
+      {
+        name: 'renders concrete fail-closed reasons after acknowledged webhook processing',
+        inputs: {
+          interaction: {
+            id: 'interaction-acknowledged-failclosed-reason-001',
+            token: 'token-acknowledged-failclosed-reason-1',
+            actorId: 'user-acknowledged-failclosed-reason-1',
+            channelId: 'channel-acknowledged-failclosed-reason-1',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'resume-project',
+            threadId: 'thread-acknowledged-failclosed-reason-1',
+            projectOperatorRoleId: 'role-project-operator',
+            actorRoleIds: ['role-project-operator'],
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: async () => {
+          const rootDirectory = await mkdtemp(
+            join(tmpdir(), 'devplat-discord-'),
+          );
+          const events: string[] = [];
+          const store = new ObservedFileStoreService(rootDirectory, events);
+          return {
+            events,
+            store,
+            service: new DiscordControlPlaneService(
+              new DecisionPolicyService(),
+              new TelemetryEventService(store),
+              store,
+              createObservedResponseTransport(events),
+            ),
+          };
+        },
+        assert: async (
+          context: {
+            events: string[];
+            store: FileStoreService;
+            service: DiscordControlPlaneService;
+          },
+          inputs: {
+            interaction: DiscordOperatorInteraction;
+          },
+        ) => {
+          const result = await context.service.handleAcknowledgedInteraction(
+            inputs.interaction,
+          );
+
+          expect(result.allowed).toBe(false);
+          expect(result.failedClosed).toBe(true);
+          expect(result.responsePayload?.content).toContain(
+            'resume preflight requires second confirmation',
+          );
+          expect(context.events).toContain(
+            'thread-message:thread-acknowledged-failclosed-reason-1',
           );
         },
       },

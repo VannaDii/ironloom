@@ -871,6 +871,7 @@ export class DiscordControlPlaneService {
         allowed: false,
         persistedKey: request.id,
         failedClosed: true,
+        blockedReason: reason,
       },
       request,
     );
@@ -1508,9 +1509,17 @@ export class DiscordControlPlaneService {
     const renderedRequest = await this.hydrateRequestSummaryMetadata(
       result.request,
     );
-    const responsePayload = result.allowed
-      ? renderAcceptedControlMessage(renderedRequest)
-      : renderDiscordControlBlockedMessage(renderedRequest);
+    let responsePayload: DiscordMessagePayload;
+    if (result.allowed) {
+      responsePayload = renderAcceptedControlMessage(renderedRequest);
+    } else if (result.failedClosed) {
+      responsePayload = renderDiscordControlBlockedMessage(
+        renderedRequest,
+        result.blockedReason,
+      );
+    } else {
+      responsePayload = renderDiscordControlBlockedMessage(renderedRequest);
+    }
     const threadPayload = responsePayload;
     const threadPostResult = await this.postThreadMessageAfterAcknowledgement(
       result.request.threadId,
@@ -1594,6 +1603,7 @@ export class DiscordControlPlaneService {
         persistedKey: request.id,
         failedClosed: true,
         responsePayload,
+        blockedReason: reason,
         responseReceipt,
         ...(threadPostResult.ok
           ? { threadReceipt: threadPostResult.threadReceipt }
@@ -1670,9 +1680,17 @@ export class DiscordControlPlaneService {
     const renderedRequest = await this.hydrateRequestSummaryMetadata(
       result.request,
     );
-    const responsePayload = result.allowed
-      ? renderAcceptedControlMessage(renderedRequest)
-      : renderDiscordControlBlockedMessage(renderedRequest);
+    let responsePayload: DiscordMessagePayload;
+    if (result.allowed) {
+      responsePayload = renderAcceptedControlMessage(renderedRequest);
+    } else if (result.failedClosed) {
+      responsePayload = renderDiscordControlBlockedMessage(
+        renderedRequest,
+        result.blockedReason,
+      );
+    } else {
+      responsePayload = renderDiscordControlBlockedMessage(renderedRequest);
+    }
     const threadPostResult = await this.postThreadMessageAfterAcknowledgement(
       result.request.threadId,
       responsePayload,

@@ -89,9 +89,11 @@ export class FileStoreService {
       this.rootDirectory,
       buildStoragePath(normalized.scope, normalized.key),
     );
+    let createdPrimaryRecord = false;
     try {
       await mkdir(resolve(filePath, '..'), { recursive: true });
       const handle = await open(filePath, 'wx');
+      createdPrimaryRecord = true;
       try {
         await handle.writeFile(
           `${JSON.stringify(normalized, null, 2)}\n`,
@@ -119,10 +121,12 @@ export class FileStoreService {
         value: normalized,
       };
     } catch (error) {
-      try {
-        await unlink(filePath);
-      } catch {
-        // Best-effort cleanup for partially persisted create-only writes.
+      if (createdPrimaryRecord) {
+        try {
+          await unlink(filePath);
+        } catch {
+          // Best-effort cleanup for partially persisted create-only writes.
+        }
       }
       return {
         ok: false,
