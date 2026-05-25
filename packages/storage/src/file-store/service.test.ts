@@ -81,6 +81,7 @@ describe('FileStoreService', () => {
           status: 'complete',
           trace: [],
           updatedAt: '2026-04-04T00:00:00.000Z',
+          indexes: ['task'],
           payload: { state: 'atomic' },
         },
       },
@@ -102,6 +103,17 @@ describe('FileStoreService', () => {
         });
         expect(first.ok).toBe(true);
         expect(second.ok).toBe(false);
+        await expect(
+          readFile(
+            resolve(
+              context.rootDirectory,
+              'indexes',
+              'task',
+              'atomic-key.json',
+            ),
+            'utf8',
+          ),
+        ).resolves.toContain('"key": "atomic-key"');
       },
     },
     {
