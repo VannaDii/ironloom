@@ -862,10 +862,6 @@ function sanitizeStorageMarkerValue(value: string): string {
 
 /** Truncates a free-form summary prefix while preserving structured suffix markers. */
 function truncateSummaryMarkerToken(token: string): string {
-  if (token.length <= DISCORD_CONTROL_REQUEST_SUMMARY_MAX_LENGTH) {
-    return token;
-  }
-
   const markerValueSeparatorIndex = token.indexOf(':');
   const markerClosingParenIndex = token.lastIndexOf(')');
   const markerPrefix = token.slice(0, markerValueSeparatorIndex + 1);
@@ -878,8 +874,10 @@ function truncateSummaryMarkerToken(token: string): string {
     markerValueSeparatorIndex + 1,
     markerClosingParenIndex,
   );
-  const boundedMarkerValue =
-    maxMarkerValueLength <= 0 ? '' : markerValue.slice(0, maxMarkerValueLength);
+  const boundedMarkerValue = markerValue.slice(
+    0,
+    Math.max(0, maxMarkerValueLength),
+  );
   return `${markerPrefix}${boundedMarkerValue}${markerSuffixToken}`;
 }
 
@@ -889,16 +887,19 @@ function boundSummaryMarkerSuffix(markerSuffix: string): string {
     return markerSuffix;
   }
 
-  const markerTokens: string[] = [];
+  const markerTokensRaw: string[] = [markerSuffix];
+  let matchedMarkerToken = false;
   DISCORD_SUMMARY_MARKER_TOKEN_PATTERN.lastIndex = 0;
   let markerMatch = DISCORD_SUMMARY_MARKER_TOKEN_PATTERN.exec(markerSuffix);
   while (markerMatch !== null) {
-    markerTokens.push(markerMatch[0]);
+    if (!matchedMarkerToken) {
+      markerTokensRaw.length = 0;
+      matchedMarkerToken = true;
+    }
+    markerTokensRaw.push(markerMatch[0]);
     markerMatch = DISCORD_SUMMARY_MARKER_TOKEN_PATTERN.exec(markerSuffix);
   }
-  if (markerTokens.length === 0) {
-    markerTokens.push(markerSuffix);
-  }
+  const markerTokens = markerTokensRaw;
 
   const retainedMarkers: string[] = [];
   let retainedLength = 0;
@@ -917,7 +918,10 @@ function boundSummaryMarkerSuffix(markerSuffix: string): string {
     return retainedMarkers.join(' ');
   }
 
-  const lastMarkerToken = markerTokens[markerTokens.length - 1] ?? markerSuffix;
+  const lastMarkerToken = markerTokens.reduce(
+    (_previous, token) => token,
+    markerSuffix,
+  );
   return truncateSummaryMarkerToken(lastMarkerToken);
 }
 
