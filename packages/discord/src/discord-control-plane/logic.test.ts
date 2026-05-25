@@ -653,10 +653,9 @@ describe('DiscordControlRequest logic', () => {
         assert: (
           route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
         ) => {
-          expect(route.ok).toBe(false);
-          if (!route.ok) {
-            expect(route.reason).toContain('permission denied');
-            expect(route.reason).toContain('missingRoleMapping=merge-approver');
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.action).toBe('release-project');
           }
         },
       },
@@ -678,12 +677,9 @@ describe('DiscordControlRequest logic', () => {
         assert: (
           route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
         ) => {
-          expect(route.ok).toBe(false);
-          if (!route.ok) {
-            expect(route.reason).toContain('permission denied');
-            expect(route.reason).toContain(
-              'missingRoleMapping=project-operator',
-            );
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.action).toBe('release-project');
           }
         },
       },
@@ -731,13 +727,34 @@ describe('DiscordControlRequest logic', () => {
         assert: (
           route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
         ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.action).toBe('release-project');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-010e-denied-partial-mapping',
+            token: 'token-10e-denied-partial-mapping',
+            actorId: 'user-10e-denied-partial-mapping',
+            channelId: 'thread-10e-denied-partial-mapping',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'release-project',
+            boundThreadId: 'thread-10e-denied-partial-mapping',
+            actorRoleIds: ['role-other'],
+            projectOperatorRoleId: 'role-project-operator',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
           expect(route.ok).toBe(false);
           if (!route.ok) {
             expect(route.reason).toContain('permission denied');
-            expect(route.reason).toContain(
-              'requiredRole=project-operator|merge-approver',
-            );
-            expect(route.reason).not.toContain('missingRoleMapping=');
+            expect(route.reason).toContain('missingRoleMapping=merge-approver');
           }
         },
       },
@@ -1068,10 +1085,9 @@ describe('DiscordControlRequest logic', () => {
         assert: (
           route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
         ) => {
-          expect(route.ok).toBe(false);
-          if (!route.ok) {
-            expect(route.reason).toContain('permission denied');
-            expect(route.reason).toContain('missingRoleMapping=merge-approver');
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.action).toBe('release-project');
           }
         },
       },

@@ -206,7 +206,7 @@ function resolveRoleAuthorizationFailure(
     requiredRoleIds.push(roleId);
   }
 
-  if (missingMappings.length > 0) {
+  if (requiredRoleIds.length === 0 && missingMappings.length > 0) {
     return (
       `permission denied: caller=${input.actorId} action=${action} requiredRole=${requiredRoles.join('|')} ` +
       `context=thread:${threadId} missingRoleMapping=${missingMappings.join('|')}`
@@ -216,16 +216,20 @@ function resolveRoleAuthorizationFailure(
   const actorRoleIds = (input.actorRoleIds ?? []).map((roleId) =>
     roleId.trim(),
   );
-  const hasRequiredRole = requiredRoleIds.every((requiredRoleId) =>
+  const hasRequiredRole = requiredRoleIds.some((requiredRoleId) =>
     actorRoleIds.includes(requiredRoleId),
   );
   if (hasRequiredRole) {
     return undefined;
   }
 
+  const missingRoleMappingSuffix =
+    missingMappings.length === 0
+      ? ''
+      : ` missingRoleMapping=${missingMappings.join('|')}`;
   return (
     `permission denied: caller=${input.actorId} action=${action} requiredRole=${requiredRoles.join('|')} ` +
-    `context=thread:${threadId}`
+    `context=thread:${threadId}${missingRoleMappingSuffix}`
   );
 }
 
