@@ -274,6 +274,54 @@ describe('DiscordControlRequest logic', () => {
       {
         inputs: {
           interaction: {
+            id: 'interaction-007cancel-deny',
+            token: 'token-007cancel-deny',
+            actorId: 'user-007cancel-deny',
+            channelId: 'channel-007cancel-deny',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'cancel',
+            threadId: 'thread-007cancel-deny',
+            projectOperatorRoleId: 'role-project-operator',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(false);
+          if (!route.ok) {
+            expect(route.reason).toContain('permission denied');
+            expect(route.reason).toContain('requiredRole=project-operator');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-007cancel-allow',
+            token: 'token-007cancel-allow',
+            actorId: 'user-007cancel-allow',
+            channelId: 'channel-007cancel-allow',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'cancel',
+            threadId: 'thread-007cancel-allow',
+            actorRoleIds: ['role-project-operator'],
+            projectOperatorRoleId: 'role-project-operator',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.action).toBe('cancel-project');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
             id: 'interaction-007e',
             token: 'token-7e',
             actorId: 'user-7e',

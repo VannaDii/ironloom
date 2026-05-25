@@ -107,8 +107,8 @@ Usage rules:
 - [ ] Include effort estimates in time ranges.
 - [ ] Include risk level per alternative.
 - [ ] Include risk types per alternative: technical, product, security, dependency, operational.
-- [ ] Implement `/cancel` for current thread only.
-- [ ] Restrict `/cancel` to `project-operator`.
+- [x] Implement `/cancel` for current thread only.
+- [x] Restrict `/cancel` to `project-operator`.
 - [ ] On thread cancel, post next recommended actions and links to last artifacts.
 - [ ] Implement `/spec` availability in discovery.
 - [ ] Implement `/research` availability in discovery.

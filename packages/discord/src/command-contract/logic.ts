@@ -249,6 +249,13 @@ const commandContracts: readonly DiscordCommandContract[] = [
     privileged: true,
   },
   {
+    name: 'cancel',
+    description: 'Alias for /cancel-project in the current thread context.',
+    type: applicationCommandType,
+    action: DEVPLAT_ACTION_CANCEL_PROJECT,
+    privileged: true,
+  },
+  {
     name: DEVPLAT_ACTION_RESUME_PROJECT,
     description: 'Run project preflight checks and resume paused project work.',
     type: applicationCommandType,

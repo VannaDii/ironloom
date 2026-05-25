@@ -40,6 +40,7 @@ describe('Discord command contract logic', () => {
           'project-settings',
           'project-settings-history',
           'cancel-project',
+          'cancel',
           'resume-project',
           'release-project',
           'phase-contract',
@@ -253,6 +254,7 @@ describe('Discord command contract logic', () => {
           'open-project',
           'project-settings',
           'cancel-project',
+          'cancel-project',
           'resume-project',
           'release-project',
           'approve-this',
@@ -268,6 +270,24 @@ describe('Discord command contract logic', () => {
         mode: 'resolve',
         commandName: 'rebase-dependents',
         expectedAction: 'rebase-all-dependents',
+      },
+      mock: () => ({}),
+      assert: (context, inputs) => {
+        if (inputs.mode !== 'resolve') {
+          throw new Error('expected resolve inputs');
+        }
+
+        expect(resolveDiscordCommandAction(inputs.commandName)).toBe(
+          inputs.expectedAction,
+        );
+      },
+    },
+    {
+      name: 'maps cancel alias to the cancel-project action',
+      inputs: {
+        mode: 'resolve',
+        commandName: 'cancel',
+        expectedAction: 'cancel-project',
       },
       mock: () => ({}),
       assert: (context, inputs) => {
