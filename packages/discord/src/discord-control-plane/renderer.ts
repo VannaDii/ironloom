@@ -141,7 +141,7 @@ const actionDisplays: Readonly<
     acceptedTitle: 'Project resume requested',
     acceptedIndicator: '🟡',
     result:
-      'Global preflight is running before project resume. If issues are detected, a second confirmation is required. Use /resume-project --force to acknowledge and continue.',
+      'Global preflight is running before project resume. If issues are detected, a second confirmation is required. Use /resume-project --force force to acknowledge and continue.',
     controls: [DEVPLAT_ACTION_PROJECT_SUMMARY, DEVPLAT_ACTION_SHOW_STATUS],
   },
   [DEVPLAT_ACTION_RELEASE_PROJECT]: {
@@ -195,8 +195,6 @@ const actionDisplays: Readonly<
     controls: [
       DEVPLAT_ACTION_APPROVE_THIS,
       DEVPLAT_ACTION_RESEARCH,
-      DEVPLAT_ACTION_REDIRECT,
-      DEVPLAT_ACTION_CONSIDER,
       DEVPLAT_ACTION_ALTERNATIVES,
       DEVPLAT_ACTION_SHOW_STATUS,
     ],

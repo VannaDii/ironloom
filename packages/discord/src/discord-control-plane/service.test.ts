@@ -165,6 +165,23 @@ class RejectingIdentityReservationStore extends FileStoreService {
   }
 }
 
+/** Test store that simulates identity-read failures before reservation checks. */
+class FailingProjectIdentityReadStore extends FileStoreService {
+  public constructor(rootDirectory: string) {
+    super(rootDirectory);
+  }
+
+  public override async read(scope: string, key: string) {
+    if (scope === 'state' && key.startsWith('project-identity:')) {
+      return {
+        ok: false as const,
+        error: 'EACCES: permission denied',
+      };
+    }
+    return super.read(scope, key);
+  }
+}
+
 /**
  * Creates a transport that records response ordering for interaction tests.
  */
@@ -1081,6 +1098,35 @@ describe('DiscordControlPlaneService', () => {
     );
     expect(await store.list('state')).not.toContain(
       'project-identity:devplat:alpha',
+    );
+  });
+
+  it('fails closed when new-project identity verification cannot read existing state', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FailingProjectIdentityReadStore(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const result = await service.handleAction({
+      id: 'discord-004-new-project-identity-read-failure',
+      summary: 'new-project (repo:devplat) (project:alpha)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-new-project-identity-read-failure',
+      threadId: 'thread-new-project-identity-read-failure',
+      channelId: 'channel-new-project-identity-read-failure',
+      action: 'new-project',
+      privileged: false,
+    });
+
+    expect(result.allowed).toBe(false);
+    expect(result.failedClosed).toBe(true);
+    expect(result.blockedReason).toContain(
+      'unable to verify immutable new-project identity',
     );
   });
 

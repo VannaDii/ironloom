@@ -1007,7 +1007,7 @@ export class DiscordControlPlaneService {
       ok: false,
       reason:
         `resume preflight requires second confirmation: issues=${preflightIssues.join('|')}. ` +
-        'Run /resume-project --force to acknowledge and continue.',
+        'Run /resume-project --force force to acknowledge and continue.',
     };
   }
 
@@ -1772,6 +1772,14 @@ export class DiscordControlPlaneService {
     const stateKey = createProjectIdentityStateKey(repo, project);
     const previous = await this.store.read('state', stateKey);
     if (!previous.ok) {
+      if (!isMissingStoreError(previous.error)) {
+        return {
+          ok: false,
+          reason:
+            'unable to verify immutable new-project identity for this thread. ' +
+            'Use /show-status and retry after storage recovers.',
+        };
+      }
       return {
         ok: true,
         persistRepo: repo,

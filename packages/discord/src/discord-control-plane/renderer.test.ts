@@ -1123,7 +1123,7 @@ describe('Discord control-plane renderer', () => {
         expect(payload.content).toContain(
           'If issues are detected, a second confirmation is required.',
         );
-        expect(payload.content).toContain('/resume-project --force');
+        expect(payload.content).toContain('/resume-project --force force');
         expect(payload.content).toContain('Preflight: forced');
         expect(payload.content).toContain(
           'Checks: repo-access:unknown, branch-state:unknown, pr-status:unknown, gate-health:unknown, blocker-inventory:unknown',
@@ -1206,14 +1206,7 @@ describe('Discord control-plane renderer', () => {
           payload.components?.flatMap((row) =>
             row.components.map((button) => button.label),
           ),
-        ).toEqual([
-          'Approve',
-          'Research',
-          'Redirect',
-          'Consider',
-          'Alternatives',
-          'Show Status',
-        ]);
+        ).toEqual(['Approve', 'Research', 'Alternatives', 'Show Status']);
       },
     },
     {
