@@ -182,15 +182,15 @@ Usage rules:
 
 ## 14. Project-Level Cancel and Resume
 
-- [ ] Implement `/cancel-project`.
+- [x] Implement `/cancel-project`.
 - [ ] On `/cancel-project`, immediately pause all activity.
 - [ ] Post cancellation summary per phase thread.
-- [ ] Implement `/resume-project`.
+- [x] Implement `/resume-project`.
 - [ ] On `/resume-project`, run global preflight (repo access, branch state, PR status, gate health, blocker inventory).
 - [ ] Post single resume readiness report.
 - [ ] If preflight has issues, require second confirmation.
 - [ ] Support second confirmation via button.
-- [ ] Support second confirmation via `/resume-project --force` fallback.
+- [x] Support second confirmation via `/resume-project --force` fallback.
 - [ ] Restrict force resume to `project-operator`.
 - [ ] On force resume, notify impacted roles automatically.
 - [ ] On resume, restart from latest durable artifact checkpoints.
@@ -497,7 +497,7 @@ Usage rules:
 - [ ] `/project-settings`.
 - [ ] `/project-settings-history`.
 - [x] `/cancel-project`.
-- [ ] `/resume-project`.
+- [x] `/resume-project`.
 - [ ] `/release-project`.
 - [ ] `/phase-contract`.
 - [x] `/alternatives` and `/alts` alias.
