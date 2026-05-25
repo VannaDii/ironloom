@@ -583,15 +583,18 @@ function renderDiscordItemValue(request: DiscordControlRequest): string {
 function resolveSummaryMetadata(summary: string): {
   readonly runIntent?: string;
   readonly configVersion?: string;
+  readonly phase?: string;
 } {
   const runIntent = resolveSummaryMarkerValue(summary, '(intent:');
   const configVersion = resolveSummaryMarkerValue(summary, '(config-version:');
+  const phase = resolveSummaryMarkerValue(summary, '(phase:');
 
   return {
     ...(runIntent === undefined || runIntent.length === 0 ? {} : { runIntent }),
     ...(configVersion === undefined || configVersion.length === 0
       ? {}
       : { configVersion }),
+    ...(phase === undefined || phase.length === 0 ? {} : { phase }),
   };
 }
 
@@ -639,6 +642,7 @@ function resolveStatusSummaryMetadataFields(
     ...(metadata.configVersion === undefined
       ? {}
       : { 'Config version': metadata.configVersion }),
+    ...(metadata.phase === undefined ? {} : { Phase: metadata.phase }),
   };
 }
 

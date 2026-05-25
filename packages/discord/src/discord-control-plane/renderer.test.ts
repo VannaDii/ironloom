@@ -237,7 +237,8 @@ describe('Discord control-plane renderer', () => {
         request: {
           ...request,
           action: 'show-status',
-          summary: 'Project status (intent:maintenance) (config-version:v7)',
+          summary:
+            'Project status (intent:maintenance) (config-version:v7) (phase:Spec Draft)',
         },
       },
       mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
@@ -247,6 +248,7 @@ describe('Discord control-plane renderer', () => {
       ) => {
         expect(payload.content).toContain('Run intent: maintenance');
         expect(payload.content).toContain('Config version: v7');
+        expect(payload.content).toContain('Phase: Spec Draft');
       },
     },
     {

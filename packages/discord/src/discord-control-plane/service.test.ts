@@ -2060,6 +2060,191 @@ describe('DiscordControlPlaneService', () => {
       'Run intent: maintenance',
     );
     expect(result.responsePayload?.content).toContain('Config version: v1');
+    expect(result.responsePayload?.content).toContain('Phase: Spec Draft');
+  });
+
+  it('persists lifecycle phase for spec actions', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    class AlwaysAllowDecisionPolicyService extends DecisionPolicyService {
+      public override evaluateControlAction() {
+        return {
+          id: 'policy-allow-all',
+          allowed: true,
+          trace: [],
+        };
+      }
+    }
+    const service = new DiscordControlPlaneService(
+      new AlwaysAllowDecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const result = await service.handleAction({
+      id: 'discord-phase-spec',
+      summary: 'spec',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-phase',
+      threadId: 'thread-phase',
+      channelId: 'channel-phase',
+      action: 'spec',
+      privileged: false,
+    });
+    expect(result.allowed).toBe(true);
+    const phaseState = await store.read('state', 'project-phase:thread-phase');
+    expect(phaseState.ok).toBe(true);
+    if (phaseState.ok) {
+      expect(phaseState.value.payload['phase']).toBe(
+        'Spec Refinement/Approval',
+      );
+    }
+  });
+
+  it('persists lifecycle phase for approve-this without work-item context', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    class AlwaysAllowDecisionPolicyService extends DecisionPolicyService {
+      public override evaluateControlAction() {
+        return { id: 'policy-allow-all', allowed: true, trace: [] };
+      }
+    }
+    const service = new DiscordControlPlaneService(
+      new AlwaysAllowDecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    await service.handleAction({
+      id: 'discord-phase-approve-spec',
+      summary: 'approve-this',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:01.000Z',
+      actorId: 'user-phase',
+      threadId: 'thread-phase',
+      channelId: 'channel-phase',
+      action: 'approve-this',
+      privileged: false,
+    });
+    const phaseState = await store.read('state', 'project-phase:thread-phase');
+    expect(phaseState.ok).toBe(true);
+    if (phaseState.ok) {
+      expect(phaseState.value.payload['phase']).toBe('Slicing');
+    }
+  });
+
+  it('persists lifecycle phase for approve-this implementation contexts', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    class AlwaysAllowDecisionPolicyService extends DecisionPolicyService {
+      public override evaluateControlAction() {
+        return { id: 'policy-allow-all', allowed: true, trace: [] };
+      }
+    }
+    const service = new DiscordControlPlaneService(
+      new AlwaysAllowDecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    await service.handleAction({
+      id: 'discord-phase-approve-impl',
+      summary: 'approve-this',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:02.000Z',
+      actorId: 'user-phase',
+      threadId: 'thread-phase',
+      channelId: 'channel-phase',
+      action: 'approve-this',
+      privileged: false,
+      workItem: {
+        threadKind: 'implementation',
+        threadId: 'thread-phase',
+        artifactId: 'artifact-phase',
+        sliceId: 'slice-phase',
+      },
+    });
+    const phaseState = await store.read('state', 'project-phase:thread-phase');
+    expect(phaseState.ok).toBe(true);
+    if (phaseState.ok) {
+      expect(phaseState.value.payload['phase']).toBe('Slice Implementation');
+    }
+  });
+
+  it('persists lifecycle phase for approve-this pull-request contexts', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    class AlwaysAllowDecisionPolicyService extends DecisionPolicyService {
+      public override evaluateControlAction() {
+        return { id: 'policy-allow-all', allowed: true, trace: [] };
+      }
+    }
+    const service = new DiscordControlPlaneService(
+      new AlwaysAllowDecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    await service.handleAction({
+      id: 'discord-phase-approve-pr',
+      summary: 'approve-this',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:03.000Z',
+      actorId: 'user-phase',
+      threadId: 'thread-phase',
+      channelId: 'channel-phase',
+      action: 'approve-this',
+      privileged: false,
+      workItem: {
+        threadKind: 'pull-request',
+        threadId: 'thread-phase',
+        artifactId: 'artifact-phase-pr',
+        pullRequestNumber: 81,
+      },
+    });
+    const phaseState = await store.read('state', 'project-phase:thread-phase');
+    expect(phaseState.ok).toBe(true);
+    if (phaseState.ok) {
+      expect(phaseState.value.payload['phase']).toBe('Slice PR Merge');
+    }
+  });
+
+  it('persists lifecycle phase for release-project actions', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    class AlwaysAllowDecisionPolicyService extends DecisionPolicyService {
+      public override evaluateControlAction() {
+        return { id: 'policy-allow-all', allowed: true, trace: [] };
+      }
+    }
+    const service = new DiscordControlPlaneService(
+      new AlwaysAllowDecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    await service.handleAction({
+      id: 'discord-phase-release',
+      summary: 'release-project',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:04.000Z',
+      actorId: 'user-phase',
+      threadId: 'thread-phase',
+      channelId: 'channel-phase',
+      action: 'release-project',
+      privileged: false,
+    });
+    const phaseState = await store.read('state', 'project-phase:thread-phase');
+    expect(phaseState.ok).toBe(true);
+    if (phaseState.ok) {
+      expect(phaseState.value.payload['phase']).toBe('Next Slice or Release');
+    }
   });
 
   it('accepts discovery-thread spec interactions without a bound work session', async () => {

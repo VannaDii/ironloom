@@ -1,5 +1,6 @@
 import {
   DEVPLAT_ACTION_ALTERNATIVES,
+  DEVPLAT_ACTION_APPROVE_THIS,
   DEVPLAT_ACTION_CANCEL_PROJECT,
   DEVPLAT_ACTION_CONSIDER,
   DEVPLAT_ACTION_NEW_PROJECT,
@@ -9,6 +10,7 @@ import {
   DEVPLAT_ACTION_OPEN_PROJECT,
   DEVPLAT_ACTION_REDIRECT,
   DEVPLAT_ACTION_RESEARCH,
+  DEVPLAT_ACTION_RELEASE_PROJECT,
   DEVPLAT_ACTION_RESUME_PROJECT,
   DEVPLAT_ACTION_SHOW_LAST_ARTIFACT,
   DEVPLAT_ACTION_SHOW_STATUS,
@@ -220,6 +222,13 @@ function createOpenProjectIntentStateKey(threadId: string): string {
  */
 function createProjectConfigVersionStateKey(threadId: string): string {
   return `project-config-version:${threadId}`;
+}
+
+/**
+ * Builds the state key that stores the current lifecycle phase for a thread scope.
+ */
+function createProjectPhaseStateKey(threadId: string): string {
+  return `project-phase:${threadId}`;
 }
 
 /**
@@ -823,10 +832,11 @@ export class DiscordControlPlaneService {
    */
   private async resolveThreadProjectMetadata(
     threadId: string,
-  ): Promise<{ intent?: string; configVersion?: string }> {
-    const [intentState, configVersionState] = await Promise.all([
+  ): Promise<{ intent?: string; configVersion?: string; phase?: string }> {
+    const [intentState, configVersionState, phaseState] = await Promise.all([
       this.store.read('state', createOpenProjectIntentStateKey(threadId)),
       this.store.read('state', createProjectConfigVersionStateKey(threadId)),
+      this.store.read('state', createProjectPhaseStateKey(threadId)),
     ]);
 
     const intentPayload = intentState.ok
@@ -841,12 +851,15 @@ export class DiscordControlPlaneService {
       configPayload,
       'configVersion',
     );
+    const phasePayload = phaseState.ok ? phaseState.value.payload : undefined;
+    const phase = readTrimmedStringField(phasePayload, 'phase');
 
     return {
       ...(intent === undefined || intent.length === 0 ? {} : { intent }),
       ...(configVersion === undefined || configVersion.length === 0
         ? {}
         : { configVersion }),
+      ...(phase === undefined || phase.length === 0 ? {} : { phase }),
     };
   }
 
@@ -871,10 +884,13 @@ export class DiscordControlPlaneService {
       metadata.configVersion === undefined
         ? ''
         : ` (config-version:${metadata.configVersion})`;
+    const phaseMarker =
+      metadata.phase === undefined ? '' : ` (phase:${metadata.phase})`;
 
     return {
       ...request,
-      summary: `${request.summary}${intentMarker}${configMarker}`.trim(),
+      summary:
+        `${request.summary}${intentMarker}${configMarker}${phaseMarker}`.trim(),
     };
   }
 
@@ -1147,6 +1163,70 @@ export class DiscordControlPlaneService {
       ...request,
       summary: `${request.summary} (stale-spec-approval:cleared)`,
     };
+  }
+
+  /**
+   * Resolves lifecycle phase label for a persisted control action.
+   */
+  private resolveLifecyclePhaseForAction(
+    request: DiscordControlRequest,
+  ): string | undefined {
+    if (
+      request.action === DEVPLAT_ACTION_NEW_PROJECT ||
+      request.action === DEVPLAT_ACTION_OPEN_PROJECT ||
+      request.action === DEVPLAT_ACTION_RESEARCH ||
+      request.action === DEVPLAT_ACTION_REDIRECT ||
+      request.action === DEVPLAT_ACTION_CONSIDER ||
+      request.action === DEVPLAT_ACTION_ALTERNATIVES
+    ) {
+      return 'Spec Draft';
+    }
+    if (request.action === DEVPLAT_ACTION_SPEC) {
+      return 'Spec Refinement/Approval';
+    }
+    if (request.action === DEVPLAT_ACTION_RELEASE_PROJECT) {
+      return 'Next Slice or Release';
+    }
+    if (request.action === DEVPLAT_ACTION_APPROVE_THIS) {
+      if (request.workItem?.threadKind === 'pull-request') {
+        return 'Slice PR Merge';
+      }
+      if (request.workItem?.threadKind === 'implementation') {
+        return 'Slice Implementation';
+      }
+      return 'Slicing';
+    }
+    return undefined;
+  }
+
+  /**
+   * Persists thread-scoped lifecycle phase transitions for status/reporting.
+   */
+  private async persistLifecyclePhaseState(
+    request: DiscordControlRequest,
+    decision: DiscordControlActionDecision,
+  ): Promise<void> {
+    if (!decision.allowed) {
+      return;
+    }
+    const phase = this.resolveLifecyclePhaseForAction(request);
+    if (phase === undefined) {
+      return;
+    }
+    await this.store.store({
+      id: `${request.id}:project-phase`,
+      key: createProjectPhaseStateKey(request.threadId),
+      scope: 'state',
+      summary: 'Project lifecycle phase.',
+      status: 'approved',
+      trace: request.trace,
+      updatedAt: request.updatedAt,
+      payload: {
+        threadId: request.threadId,
+        action: request.action,
+        phase,
+      },
+    });
   }
 
   /**
@@ -1442,6 +1522,10 @@ export class DiscordControlPlaneService {
         requestWithDiscoveryState,
         decision,
       );
+    await this.persistLifecyclePhaseState(
+      requestWithSpecApprovalLifecycle,
+      decision,
+    );
     await this.persistThreadPausedState(
       requestWithSpecApprovalLifecycle,
       decision,
