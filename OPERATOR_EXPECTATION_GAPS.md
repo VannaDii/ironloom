@@ -110,8 +110,8 @@ Usage rules:
 - [x] Implement `/cancel` for current thread only.
 - [x] Restrict `/cancel` to `project-operator`.
 - [x] On thread cancel, post next recommended actions and links to last artifacts.
-- [ ] Implement `/spec` availability in discovery.
-- [ ] Implement `/research` availability in discovery.
+- [x] Implement `/spec` availability in discovery.
+- [x] Implement `/research` availability in discovery.
 
 ## 9. Spec Trigger and Approval UX
 

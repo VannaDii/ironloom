@@ -2015,6 +2015,64 @@ describe('DiscordControlPlaneService', () => {
     expect(result.responsePayload?.content).toContain('Config version: v1');
   });
 
+  it('accepts discovery-thread spec interactions without a bound work session', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+      createResponseTransport(),
+    );
+
+    const result = await service.handleInteraction({
+      id: 'interaction-spec-discovery-001',
+      token: 'token-spec-discovery-001',
+      actorId: 'user-spec-discovery-001',
+      channelId: 'channel-spec-discovery-001',
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      commandName: 'spec',
+      boundThreadId: 'thread-spec-discovery-001',
+    });
+
+    expect(result.allowed).toBe(true);
+    expect(result.failedClosed).toBe(false);
+    expect(result.request.action).toBe('spec');
+    expect(result.request.workItem).toBeUndefined();
+    expect(result.threadReceipt?.endpoint).toBe(
+      '/channels/thread-spec-discovery-001/messages',
+    );
+  });
+
+  it('accepts discovery-thread research interactions without a bound work session', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+      createResponseTransport(),
+    );
+
+    const result = await service.handleInteraction({
+      id: 'interaction-research-discovery-001',
+      token: 'token-research-discovery-001',
+      actorId: 'user-research-discovery-001',
+      channelId: 'channel-research-discovery-001',
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      commandName: 'research',
+      boundThreadId: 'thread-research-discovery-001',
+    });
+
+    expect(result.allowed).toBe(true);
+    expect(result.failedClosed).toBe(false);
+    expect(result.request.action).toBe('research');
+    expect(result.request.workItem).toBeUndefined();
+    expect(result.threadReceipt?.endpoint).toBe(
+      '/channels/thread-research-discovery-001/messages',
+    );
+  });
+
   it('persists redirect direction with previous-direction history in summary and state', async () => {
     const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
     const store = new FileStoreService(rootDirectory);

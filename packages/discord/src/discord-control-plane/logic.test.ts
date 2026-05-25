@@ -119,6 +119,52 @@ describe('DiscordControlRequest logic', () => {
       {
         inputs: {
           interaction: {
+            id: 'interaction-008o-spec-discovery',
+            token: 'token-8o-spec-discovery',
+            actorId: 'user-8o-spec-discovery',
+            channelId: 'channel-8o-spec-discovery',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'spec',
+            boundThreadId: 'thread-8o-spec-discovery',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.action).toBe('spec');
+            expect(route.request.threadId).toBe('thread-8o-spec-discovery');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-008p-research-discovery',
+            token: 'token-8p-research-discovery',
+            actorId: 'user-8p-research-discovery',
+            channelId: 'channel-8p-research-discovery',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'research',
+            boundThreadId: 'thread-8p-research-discovery',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.action).toBe('research');
+            expect(route.request.threadId).toBe('thread-8p-research-discovery');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
             id: 'interaction-009b',
             token: 'token-9b',
             actorId: 'user-9b',
