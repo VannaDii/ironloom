@@ -311,8 +311,8 @@ Usage rules:
 
 ## 21. Settings History
 
-- [ ] Implement `/project-settings-history`.
-- [ ] Keep history append-only and immutable.
+- [x] Implement `/project-settings-history`.
+- [x] Keep history append-only and immutable.
 - [x] Detailed history mode restricted to `project-operator`.
 - [x] Public summary mode available to all participants.
 - [ ] In public summary mode, include:
