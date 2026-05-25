@@ -981,6 +981,64 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'omits resume preflight metadata when marker is malformed',
+      inputs: {
+        request: {
+          ...request,
+          action: 'resume-project',
+          summary:
+            'resume-project (preflight:forced repo-access:unknown issues:thread-not-paused',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).not.toContain('Preflight:');
+        expect(payload.content).not.toContain('Checks:');
+        expect(payload.content).not.toContain('Issues:');
+      },
+    },
+    {
+      name: 'renders resume preflight checks without a mode token when omitted',
+      inputs: {
+        request: {
+          ...request,
+          action: 'resume-project',
+          summary: 'resume-project (preflight: repo-access:ok issues:none)',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).not.toContain('Preflight:');
+        expect(payload.content).toContain('Checks: repo-access:ok');
+        expect(payload.content).toContain('Issues: none');
+      },
+    },
+    {
+      name: 'renders resume preflight mode when checks and issues are absent',
+      inputs: {
+        request: {
+          ...request,
+          action: 'resume-project',
+          summary: 'resume-project (preflight:ready)',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain('Preflight: ready');
+        expect(payload.content).not.toContain('Checks:');
+        expect(payload.content).not.toContain('Issues:');
+      },
+    },
+    {
       name: 'renders release-project control buttons with danger style',
       inputs: {
         request: {
