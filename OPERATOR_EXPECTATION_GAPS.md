@@ -116,8 +116,8 @@ Usage rules:
 ## 9. Spec Trigger and Approval UX
 
 - [ ] On `/spec`, post research summary with `Approve` action.
-- [ ] Keep research commands available before approval.
-- [ ] If additional research command used, remove stale prior approval button.
+- [x] Keep research commands available before approval.
+- [x] If additional research command used, remove stale prior approval button.
 - [ ] On approval button failure/expiry, provide `/approve-this` fallback in-thread.
 - [ ] Restrict fallback `/approve-this` with same `spec-approver` permission and identical audit semantics.
 - [ ] On approval, start speccing/workstream immediately.

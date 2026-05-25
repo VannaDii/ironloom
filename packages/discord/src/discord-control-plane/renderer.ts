@@ -191,7 +191,14 @@ const actionDisplays: Readonly<
     acceptedTitle: 'Spec requested',
     acceptedIndicator: '🟡',
     result: 'Preparing spec summary and approval checkpoint.',
-    controls: [DEVPLAT_ACTION_APPROVE_THIS, DEVPLAT_ACTION_SHOW_STATUS],
+    controls: [
+      DEVPLAT_ACTION_APPROVE_THIS,
+      DEVPLAT_ACTION_RESEARCH,
+      DEVPLAT_ACTION_REDIRECT,
+      DEVPLAT_ACTION_CONSIDER,
+      DEVPLAT_ACTION_ALTERNATIVES,
+      DEVPLAT_ACTION_SHOW_STATUS,
+    ],
   },
   [DEVPLAT_ACTION_APPROVE_THIS]: {
     label: 'Approve',
@@ -832,11 +839,21 @@ function resolveDiscoveryControlFields(
       request.summary,
       '(considered-urls:',
     );
-    if (consideredUrls === undefined) {
-      return {};
-    }
+    const staleSpecApproval = resolveSummaryMarkerValue(
+      request.summary,
+      '(stale-spec-approval:',
+    );
     return {
-      'Queued URLs used': consideredUrls,
+      ...(consideredUrls === undefined
+        ? {}
+        : {
+            'Queued URLs used': consideredUrls,
+          }),
+      ...(staleSpecApproval === undefined
+        ? {}
+        : {
+            'Prior spec approval checkpoint': staleSpecApproval,
+          }),
     };
   }
 

@@ -110,6 +110,8 @@ Discovery control behavior is thread-scoped and durable:
 
 - each `/redirect` replaces the prior direction and records the previous value for audit traceability
 - each `/consider` appends to a queued URL list that is consumed on the next `/research` run
+- `/spec` keeps research controls available before approval so operators can continue iterating
+- any follow-up discovery command after `/spec` invalidates the prior pending spec-approval checkpoint and requires a fresh approval checkpoint
 
 For the full research-to-PR command workflow, use the canonical
 [Commanded Delivery Flow](./operator-guide.md#commanded-delivery-flow) in the

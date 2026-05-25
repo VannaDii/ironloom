@@ -2189,6 +2189,97 @@ describe('DiscordControlPlaneService', () => {
     }
   });
 
+  it('marks spec approval as pending and clears stale checkpoint after new research input', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const spec = await service.handleAction({
+      id: 'discord-spec-checkpoint-001',
+      summary: 'spec',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-spec-checkpoint-1',
+      threadId: 'thread-spec-checkpoint-1',
+      channelId: 'channel-spec-checkpoint-1',
+      action: 'spec',
+      privileged: false,
+    });
+    const research = await service.handleAction({
+      id: 'discord-research-checkpoint-001',
+      summary: 'research',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:01.000Z',
+      actorId: 'user-spec-checkpoint-1',
+      threadId: 'thread-spec-checkpoint-1',
+      channelId: 'channel-spec-checkpoint-1',
+      action: 'research',
+      privileged: false,
+    });
+
+    expect(spec.allowed).toBe(true);
+    expect(spec.request.summary).toContain('(spec-approval:pending)');
+    expect(research.allowed).toBe(true);
+    expect(research.request.summary).toContain('(stale-spec-approval:cleared)');
+
+    const checkpointState = await store.read(
+      'state',
+      'spec-approval-checkpoint:thread-spec-checkpoint-1',
+    );
+    expect(checkpointState.ok).toBe(true);
+    if (checkpointState.ok) {
+      expect(checkpointState.value.payload).toMatchObject({
+        pending: false,
+        clearedByAction: 'research',
+      });
+    }
+  });
+
+  it('keeps discovery summaries unchanged when spec approval checkpoint is already cleared', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    await store.store({
+      id: 'record-spec-approval-checkpoint-cleared',
+      key: 'spec-approval-checkpoint:thread-spec-checkpoint-cleared',
+      scope: 'state',
+      summary: 'Spec approval checkpoint state.',
+      status: 'approved',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      payload: {
+        pending: false,
+      },
+    });
+
+    const research = await service.handleAction({
+      id: 'discord-research-checkpoint-cleared',
+      summary: 'research',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:01.000Z',
+      actorId: 'user-spec-checkpoint-cleared',
+      threadId: 'thread-spec-checkpoint-cleared',
+      channelId: 'channel-spec-checkpoint-cleared',
+      action: 'research',
+      privileged: false,
+    });
+
+    expect(research.allowed).toBe(true);
+    expect(research.request.summary).toBe('research');
+  });
+
   it('keeps redirect summary unchanged when direction marker is missing', async () => {
     const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
     const store = new FileStoreService(rootDirectory);

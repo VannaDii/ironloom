@@ -1,4 +1,5 @@
 import {
+  DEVPLAT_ACTION_ALTERNATIVES,
   DEVPLAT_ACTION_CANCEL_PROJECT,
   DEVPLAT_ACTION_CONSIDER,
   DEVPLAT_ACTION_NEW_PROJECT,
@@ -11,6 +12,7 @@ import {
   DEVPLAT_ACTION_RESUME_PROJECT,
   DEVPLAT_ACTION_SHOW_LAST_ARTIFACT,
   DEVPLAT_ACTION_SHOW_STATUS,
+  DEVPLAT_ACTION_SPEC,
 } from '@vannadii/devplat-core';
 import { TelemetryEventService } from '@vannadii/devplat-observability';
 import { DecisionPolicyService } from '@vannadii/devplat-policy';
@@ -232,6 +234,13 @@ function createDiscoveryDirectionStateKey(threadId: string): string {
  */
 function createDiscoveryConsiderQueueStateKey(threadId: string): string {
   return `discovery-consider-queue:${threadId}`;
+}
+
+/**
+ * Builds the state key that stores pending spec-approval checkpoint status.
+ */
+function createSpecApprovalCheckpointStateKey(threadId: string): string {
+  return `spec-approval-checkpoint:${threadId}`;
 }
 
 /**
@@ -1050,6 +1059,79 @@ export class DiscordControlPlaneService {
   }
 
   /**
+   * Persists spec-approval checkpoint state and clears stale checkpoints on new research inputs.
+   */
+  private async persistSpecApprovalLifecycleState(
+    request: DiscordControlRequest,
+    decision: DiscordControlActionDecision,
+  ): Promise<DiscordControlRequest> {
+    if (!decision.allowed) {
+      return request;
+    }
+
+    const stateKey = createSpecApprovalCheckpointStateKey(request.threadId);
+    if (request.action === DEVPLAT_ACTION_SPEC) {
+      await this.store.store({
+        id: `${request.id}:spec-approval-checkpoint`,
+        key: stateKey,
+        scope: 'state',
+        summary: 'Spec approval checkpoint state.',
+        status: 'approved',
+        trace: request.trace,
+        updatedAt: request.updatedAt,
+        payload: {
+          threadId: request.threadId,
+          action: request.action,
+          pending: true,
+        },
+      });
+      return {
+        ...request,
+        summary: `${request.summary} (spec-approval:pending)`,
+      };
+    }
+
+    if (
+      request.action !== DEVPLAT_ACTION_RESEARCH &&
+      request.action !== DEVPLAT_ACTION_REDIRECT &&
+      request.action !== DEVPLAT_ACTION_CONSIDER &&
+      request.action !== DEVPLAT_ACTION_ALTERNATIVES
+    ) {
+      return request;
+    }
+
+    const checkpointState = await this.store.read('state', stateKey);
+    if (!checkpointState.ok) {
+      return request;
+    }
+
+    if (checkpointState.value.payload['pending'] !== true) {
+      return request;
+    }
+
+    await this.store.store({
+      id: `${request.id}:spec-approval-checkpoint-clear`,
+      key: stateKey,
+      scope: 'state',
+      summary: 'Spec approval checkpoint state.',
+      status: 'approved',
+      trace: request.trace,
+      updatedAt: request.updatedAt,
+      payload: {
+        threadId: request.threadId,
+        action: request.action,
+        pending: false,
+        clearedByAction: request.action,
+      },
+    });
+
+    return {
+      ...request,
+      summary: `${request.summary} (stale-spec-approval:cleared)`,
+    };
+  }
+
+  /**
    * Records a blocked audit and returns a fail-closed control result.
    */
   private async failClosedWithAudit(
@@ -1331,9 +1413,17 @@ export class DiscordControlPlaneService {
       requestWithPreflightSummary,
       decision,
     );
-    await this.persistThreadPausedState(requestWithDiscoveryState, decision);
+    const requestWithSpecApprovalLifecycle =
+      await this.persistSpecApprovalLifecycleState(
+        requestWithDiscoveryState,
+        decision,
+      );
+    await this.persistThreadPausedState(
+      requestWithSpecApprovalLifecycle,
+      decision,
+    );
 
-    return this.persistAction(requestWithDiscoveryState, decision);
+    return this.persistAction(requestWithSpecApprovalLifecycle, decision);
   }
 
   /**

@@ -1039,6 +1039,33 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'renders spec accepted controls while keeping research commands available pre-approval',
+      inputs: {
+        request: {
+          ...request,
+          action: 'spec',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(
+          payload.components?.flatMap((row) =>
+            row.components.map((button) => button.label),
+          ),
+        ).toEqual([
+          'Approve',
+          'Research',
+          'Redirect',
+          'Consider',
+          'Alternatives',
+          'Show Status',
+        ]);
+      },
+    },
+    {
       name: 'renders redirect accepted metadata with previous direction when provided',
       inputs: {
         request: {
@@ -1099,6 +1126,25 @@ describe('Discord control-plane renderer', () => {
       ) => {
         expect(payload.content).toContain(
           'Queued URLs used: https-//example.com/one|https-//example.com/two',
+        );
+      },
+    },
+    {
+      name: 'renders research metadata when stale spec approval checkpoint is cleared',
+      inputs: {
+        request: {
+          ...request,
+          action: 'research',
+          summary: 'research (stale-spec-approval:cleared)',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain(
+          'Prior spec approval checkpoint: cleared',
         );
       },
     },
