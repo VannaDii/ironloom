@@ -297,6 +297,16 @@ function createProjectSettingsHistoryStateKey(threadId: string): string {
 }
 
 /**
+ * Builds an append-only state key for immutable project settings-history entries.
+ */
+function createProjectSettingsHistoryEntryStateKey(
+  threadId: string,
+  requestId: string,
+): string {
+  return `project-settings-history-entry:${threadId}:${requestId}`;
+}
+
+/**
  * Builds the state key that stores the current lifecycle phase for a thread scope.
  */
 function createProjectPhaseStateKey(threadId: string): string {
@@ -1275,6 +1285,31 @@ export class DiscordControlPlaneService {
       effectiveValuesSummary: 'sensitive values redacted',
       effectiveValuesDetailed: 'unavailable',
     };
+    const historyPayload = {
+      threadId: request.threadId,
+      action: request.action,
+      configVersion,
+      changedAt: request.updatedAt,
+      changedBy: summaryMetadata.changedBy,
+      changedKeys: summaryMetadata.changedKeys,
+      effectiveValuesSummary: summaryMetadata.effectiveValuesSummary,
+      effectiveValuesDetailed: summaryMetadata.effectiveValuesDetailed,
+    };
+
+    await this.store.store({
+      id: `${request.id}:project-settings-history-entry`,
+      key: createProjectSettingsHistoryEntryStateKey(
+        request.threadId,
+        request.id,
+      ),
+      scope: 'state',
+      summary: 'Project settings history immutable entry.',
+      status: 'approved',
+      trace: request.trace,
+      updatedAt: request.updatedAt,
+      payload: historyPayload,
+    });
+
     await this.store.store({
       id: `${request.id}:project-settings-history`,
       key: createProjectSettingsHistoryStateKey(request.threadId),
@@ -1283,16 +1318,7 @@ export class DiscordControlPlaneService {
       status: 'approved',
       trace: request.trace,
       updatedAt: request.updatedAt,
-      payload: {
-        threadId: request.threadId,
-        action: request.action,
-        configVersion,
-        changedAt: request.updatedAt,
-        changedBy: summaryMetadata.changedBy,
-        changedKeys: summaryMetadata.changedKeys,
-        effectiveValuesSummary: summaryMetadata.effectiveValuesSummary,
-        effectiveValuesDetailed: summaryMetadata.effectiveValuesDetailed,
-      },
+      payload: historyPayload,
     });
   }
 

@@ -2161,6 +2161,71 @@ describe('DiscordControlPlaneService', () => {
     }
   });
 
+  it('persists append-only immutable settings-history entries per update', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const firstRequestId = 'discord-004j-history-append-1';
+    const secondRequestId = 'discord-004j-history-append-2';
+    const threadId = 'thread-4j-history-append';
+
+    await service.handleAction({
+      id: firstRequestId,
+      summary: 'project-settings',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:02.000Z',
+      actorId: 'user-4j-history-append',
+      threadId,
+      channelId: 'channel-4j-history-append',
+      action: 'project-settings',
+      privileged: false,
+    });
+
+    await service.handleAction({
+      id: secondRequestId,
+      summary: 'project-settings',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:03.000Z',
+      actorId: 'user-4j-history-append',
+      threadId,
+      channelId: 'channel-4j-history-append',
+      action: 'project-settings',
+      privileged: false,
+    });
+
+    const firstPersisted = await store.read(
+      'state',
+      `project-settings-history-entry:${threadId}:${firstRequestId}`,
+    );
+    const secondPersisted = await store.read(
+      'state',
+      `project-settings-history-entry:${threadId}:${secondRequestId}`,
+    );
+    expect(firstPersisted.ok).toBe(true);
+    expect(secondPersisted.ok).toBe(true);
+    if (firstPersisted.ok) {
+      expect(firstPersisted.value.payload).toMatchObject({
+        threadId,
+        configVersion: 'v1',
+        changedAt: '2026-04-04T00:00:02.000Z',
+      });
+    }
+    if (secondPersisted.ok) {
+      expect(secondPersisted.value.payload).toMatchObject({
+        threadId,
+        configVersion: 'v2',
+        changedAt: '2026-04-04T00:00:03.000Z',
+      });
+    }
+  });
+
   it('hydrates project-settings-history responses from persisted history metadata', async () => {
     const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
     const store = new FileStoreService(rootDirectory);
