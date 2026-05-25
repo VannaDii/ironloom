@@ -720,6 +720,36 @@ function resolveArtifactInterpretation(request: DiscordControlRequest): string {
 }
 
 /**
+ * Returns canonical release-summary fields for release-project confirmations.
+ */
+function resolveReleaseSummaryFields(
+  request: DiscordControlRequest,
+): Readonly<Record<string, string>> {
+  if (request.action !== DEVPLAT_ACTION_RELEASE_PROJECT) {
+    return {};
+  }
+
+  const repo = resolveSummaryMarkerValue(request.summary, '(repo:');
+  const branch = resolveSummaryMarkerValue(request.summary, '(branch:');
+
+  return {
+    Repo: repo ?? 'unknown',
+    Branch: branch ?? 'unknown',
+    'Merged PR links': 'none recorded',
+    'Spec link': 'unavailable',
+    'Slice list/status': 'unavailable',
+    'Gate results': 'unavailable',
+    'Unresolved risks': 'none reported',
+    'Follow-up recommendations': 'none',
+    'Asset links': 'none published',
+    'Blocker incidents': 'current-run:unknown lifetime:unknown',
+    'Stall incidents': 'current-run:unknown lifetime:unknown',
+    'Contract degradation incidents': 'current-run:unknown lifetime:unknown',
+    'Incident links': 'restricted/unavailable',
+  };
+}
+
+/**
  * Renders compact project/thread context for blocked action diagnostics.
  */
 function renderBlockedActionContextValue(
@@ -1045,6 +1075,7 @@ export function renderDiscordControlAcceptedMessage(
       Actor: describeActor(request.actorId),
       ...resolveStatusSummaryMetadataFields(request),
       ...resolveResumeProjectPreflightFields(request),
+      ...resolveReleaseSummaryFields(request),
     },
     indicator: display.acceptedIndicator,
     result: display.result,

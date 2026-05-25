@@ -1039,6 +1039,35 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'renders canonical release summary fields for release-project confirmations',
+      inputs: {
+        request: {
+          ...request,
+          action: 'release-project',
+          summary: 'release-project (repo:devplat) (branch:main)',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain('Repo: devplat');
+        expect(payload.content).toContain('Branch: main');
+        expect(payload.content).toContain('Merged PR links:');
+        expect(payload.content).toContain('Spec link:');
+        expect(payload.content).toContain('Slice list/status:');
+        expect(payload.content).toContain('Gate results:');
+        expect(payload.content).toContain('Unresolved risks:');
+        expect(payload.content).toContain('Follow-up recommendations:');
+        expect(payload.content).toContain('Asset links:');
+        expect(payload.content).toContain('Blocker incidents:');
+        expect(payload.content).toContain('Stall incidents:');
+        expect(payload.content).toContain('Contract degradation incidents:');
+        expect(payload.content).toContain('Incident links:');
+      },
+    },
+    {
       name: 'renders release-project control buttons with danger style',
       inputs: {
         request: {
