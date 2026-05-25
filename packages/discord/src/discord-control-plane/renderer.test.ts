@@ -269,6 +269,82 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'renders project-settings-history summary mode for public visibility with redacted defaults',
+      inputs: {
+        request: {
+          ...request,
+          action: 'project-settings-history',
+          summary: 'project-settings-history (mode:summary)',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain('Mode: summary');
+        expect(payload.content).toContain('Visibility: all participants');
+        expect(payload.content).toContain('Timestamp: unavailable');
+        expect(payload.content).toContain('Actor: unavailable');
+        expect(payload.content).toContain('Changed setting keys: unavailable');
+        expect(payload.content).toContain(
+          'New effective values: sensitive values redacted',
+        );
+      },
+    },
+    {
+      name: 'renders project-settings-history detailed mode with operator-only visibility',
+      inputs: {
+        request: {
+          ...request,
+          action: 'project-settings-history',
+          summary:
+            'project-settings-history (mode:detailed) (changed-at:2026-05-25T00:00:00.000Z) (changed-by:operator-1) (changed-keys:approval-mode,max-parallel-slices) (effective-values:approval-mode=manual,max-parallel-slices=3)',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain('Mode: detailed');
+        expect(payload.content).toContain('Visibility: project-operator only');
+        expect(payload.content).toContain(
+          'Changed at: 2026-05-25T00:00:00.000Z',
+        );
+        expect(payload.content).toContain('Changed by: operator-1');
+        expect(payload.content).toContain(
+          'Changed keys: approval-mode,max-parallel-slices',
+        );
+        expect(payload.content).toContain(
+          'Effective values: approval-mode=manual,max-parallel-slices=3',
+        );
+      },
+    },
+    {
+      name: 'renders project-settings-history detailed mode fallback defaults when markers are missing',
+      inputs: {
+        request: {
+          ...request,
+          action: 'project-settings-history',
+          summary: 'project-settings-history (mode:detailed)',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain('Mode: detailed');
+        expect(payload.content).toContain('Changed at: unknown');
+        expect(payload.content).toContain('Changed by: unknown');
+        expect(payload.content).toContain('Changed keys: unknown');
+        expect(payload.content).toContain(
+          'Effective values: see detailed artifact',
+        );
+      },
+    },
+    {
       name: 'ignores unterminated status metadata markers in summary text',
       inputs: {
         request: {

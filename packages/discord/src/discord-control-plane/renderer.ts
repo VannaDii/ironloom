@@ -891,6 +891,51 @@ function resolveAlternativesFields(
 }
 
 /**
+ * Returns settings-history fields with public-summary redaction defaults.
+ */
+function resolveProjectSettingsHistoryFields(
+  request: DiscordControlRequest,
+): Readonly<Record<string, string>> {
+  if (request.action !== DEVPLAT_ACTION_PROJECT_SETTINGS_HISTORY) {
+    return {};
+  }
+
+  const mode =
+    resolveSummaryMarkerValue(request.summary, '(mode:')?.toLowerCase() ??
+    'summary';
+  const changedAt = resolveSummaryMarkerValue(request.summary, '(changed-at:');
+  const changedBy = resolveSummaryMarkerValue(request.summary, '(changed-by:');
+  const changedKeys = resolveSummaryMarkerValue(
+    request.summary,
+    '(changed-keys:',
+  );
+  const effectiveValues = resolveSummaryMarkerValue(
+    request.summary,
+    '(effective-values:',
+  );
+
+  if (mode === 'detailed') {
+    return {
+      Mode: 'detailed',
+      Visibility: 'project-operator only',
+      'Changed at': changedAt ?? 'unknown',
+      'Changed by': changedBy ?? 'unknown',
+      'Changed keys': changedKeys ?? 'unknown',
+      'Effective values': effectiveValues ?? 'see detailed artifact',
+    };
+  }
+
+  return {
+    Mode: 'summary',
+    Visibility: 'all participants',
+    Timestamp: changedAt ?? 'unavailable',
+    Actor: changedBy ?? 'unavailable',
+    'Changed setting keys': changedKeys ?? 'unavailable',
+    'New effective values': effectiveValues ?? 'sensitive values redacted',
+  };
+}
+
+/**
  * Renders compact project/thread context for blocked action diagnostics.
  */
 function renderBlockedActionContextValue(
@@ -1219,6 +1264,7 @@ export function renderDiscordControlAcceptedMessage(
       ...resolveReleaseSummaryFields(request),
       ...resolveDiscoveryControlFields(request),
       ...resolveAlternativesFields(request),
+      ...resolveProjectSettingsHistoryFields(request),
     },
     indicator: display.acceptedIndicator,
     result: display.result,
