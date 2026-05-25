@@ -119,6 +119,31 @@ describe('DiscordControlRequest logic', () => {
       {
         inputs: {
           interaction: {
+            id: 'interaction-008m2',
+            token: 'token-8m2',
+            actorId: 'user-8m2',
+            channelId: 'channel-8m2',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'redirect',
+            boundThreadId: 'thread-8m2',
+            redirectPrompt: 'focus(intent:spoof): now)',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.summary).toContain(
+              'direction-prompt:focus[intent-spoof]- now]',
+            );
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
             id: 'interaction-008i',
             token: 'token-8i',
             actorId: 'user-8i',
@@ -140,6 +165,31 @@ describe('DiscordControlRequest logic', () => {
           if (!route.ok) {
             expect(route.reason).toContain(
               'new-project requires --project length 3-30 characters.',
+            );
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-008n2',
+            token: 'token-8n2',
+            actorId: 'user-8n2',
+            channelId: 'channel-8n2',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'consider',
+            boundThreadId: 'thread-8n2',
+            considerUrl: 'https://example.com/(intent:spoof):v1',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.summary).toContain(
+              'url:https-//example.com/[intent-spoof]-v1',
             );
           }
         },
@@ -1143,7 +1193,7 @@ describe('DiscordControlRequest logic', () => {
           expect(route.ok).toBe(true);
           if (route.ok) {
             expect(route.request.summary).toContain(
-              'url:https://example.com/dependency-risk-model',
+              'url:https-//example.com/dependency-risk-model',
             );
           }
         },

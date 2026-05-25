@@ -242,6 +242,25 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'prefers the last status metadata markers when summary has duplicates',
+      inputs: {
+        request: {
+          ...request,
+          action: 'show-status',
+          summary:
+            'Project status (intent:maintenance) text (intent:bugfix) (config-version:v1) (config-version:v7)',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain('Run intent: bugfix');
+        expect(payload.content).toContain('Config version: v7');
+      },
+    },
+    {
       name: 'ignores unterminated status metadata markers in summary text',
       inputs: {
         request: {

@@ -585,7 +585,7 @@ function resolveSummaryMarkerValue(
   summary: string,
   markerPrefix: string,
 ): string | undefined {
-  const markerStart = summary.indexOf(markerPrefix);
+  const markerStart = summary.lastIndexOf(markerPrefix);
 
   if (markerStart < 0) {
     return undefined;

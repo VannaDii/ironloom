@@ -811,11 +811,11 @@ function createInteractionControlRequestInput(
       : '';
   const redirectPromptSuffix =
     action === DEVPLAT_ACTION_REDIRECT && input.redirectPrompt !== undefined
-      ? ` (direction-prompt:${input.redirectPrompt})`
+      ? ` (direction-prompt:${sanitizeSummaryMarkerValue(input.redirectPrompt)})`
       : '';
   const considerUrlSuffix =
     action === DEVPLAT_ACTION_CONSIDER && input.considerUrl !== undefined
-      ? ` (url:${input.considerUrl})`
+      ? ` (url:${sanitizeSummaryMarkerValue(input.considerUrl)})`
       : '';
   const summary =
     `${input.summary?.trim() ?? action}${projectContextSuffix}${intentSuffix}${resumeForceSuffix}${settingsHistoryModeSuffix}${qualityStrictnessSuffix}${redirectPromptSuffix}${considerUrlSuffix}`.trim();
