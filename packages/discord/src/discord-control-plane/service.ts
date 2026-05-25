@@ -1,20 +1,31 @@
 import {
   DEVPLAT_ACTION_ALTERNATIVES,
   DEVPLAT_ACTION_APPROVE_THIS,
+  DEVPLAT_ACTION_BLOCK_THIS,
   DEVPLAT_ACTION_CANCEL_PROJECT,
+  DEVPLAT_ACTION_CLAIM_THIS,
+  DEVPLAT_ACTION_COMPLETE_THIS,
   DEVPLAT_ACTION_CONSIDER,
+  DEVPLAT_ACTION_MERGE_NOW,
   DEVPLAT_ACTION_NEW_PROJECT,
+  DEVPLAT_ACTION_PAUSE_THIS,
   DEVPLAT_ACTION_PHASE_CONTRACT,
   DEVPLAT_ACTION_PROJECT_SETTINGS,
   DEVPLAT_ACTION_PROJECT_SUMMARY,
   DEVPLAT_ACTION_OPEN_PROJECT,
   DEVPLAT_ACTION_REDIRECT,
+  DEVPLAT_ACTION_RELEASE_WORKTREE,
   DEVPLAT_ACTION_RESEARCH,
+  DEVPLAT_ACTION_REBASE_ALL_DEPENDENTS,
   DEVPLAT_ACTION_RELEASE_PROJECT,
   DEVPLAT_ACTION_RESUME_PROJECT,
+  DEVPLAT_ACTION_RESUME_THIS,
+  DEVPLAT_ACTION_RETRY_GATES,
+  DEVPLAT_ACTION_RUN_THIS,
   DEVPLAT_ACTION_SHOW_LAST_ARTIFACT,
   DEVPLAT_ACTION_SHOW_STATUS,
   DEVPLAT_ACTION_SPEC,
+  DEVPLAT_ACTION_SYNC_WORKTREE,
 } from '@vannadii/devplat-core';
 import { TelemetryEventService } from '@vannadii/devplat-observability';
 import { DecisionPolicyService } from '@vannadii/devplat-policy';
@@ -1186,6 +1197,27 @@ export class DiscordControlPlaneService {
     }
     if (request.action === DEVPLAT_ACTION_RELEASE_PROJECT) {
       return 'Next Slice or Release';
+    }
+    if (
+      request.action === DEVPLAT_ACTION_RUN_THIS ||
+      request.action === DEVPLAT_ACTION_CLAIM_THIS ||
+      request.action === DEVPLAT_ACTION_COMPLETE_THIS ||
+      request.action === DEVPLAT_ACTION_BLOCK_THIS ||
+      request.action === DEVPLAT_ACTION_PAUSE_THIS ||
+      request.action === DEVPLAT_ACTION_RESUME_THIS ||
+      request.action === DEVPLAT_ACTION_RETRY_GATES
+    ) {
+      return request.workItem?.threadKind === 'pull-request'
+        ? 'Slice PR Review'
+        : 'Slice Implementation';
+    }
+    if (
+      request.action === DEVPLAT_ACTION_MERGE_NOW ||
+      request.action === DEVPLAT_ACTION_REBASE_ALL_DEPENDENTS ||
+      request.action === DEVPLAT_ACTION_SYNC_WORKTREE ||
+      request.action === DEVPLAT_ACTION_RELEASE_WORKTREE
+    ) {
+      return 'Slice PR Merge';
     }
     if (request.action === DEVPLAT_ACTION_APPROVE_THIS) {
       if (request.workItem?.threadKind === 'pull-request') {

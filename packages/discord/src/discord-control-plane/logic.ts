@@ -120,13 +120,24 @@ const commandActionMap = new Map<string, DiscordControlAction>([
 ]);
 
 /**
+ * Cached Discord command contracts used for routing-time metadata lookups.
+ */
+const commandContracts = createDiscordCommandContractRegistry().contracts;
+
+/**
  * Maps command names to privileged-policy flags from the command contract registry.
  */
 const commandPrivilegedMap = new Map<string, boolean>(
-  createDiscordCommandContractRegistry().contracts.map((contract) => [
-    contract.name,
-    contract.privileged,
-  ]),
+  commandContracts.map((contract) => [contract.name, contract.privileged]),
+);
+
+/**
+ * Tracks action tokens that are privileged by contract for component interactions.
+ */
+const privilegedActionSet = new Set<DiscordControlAction>(
+  commandContracts
+    .filter((contract) => contract.privileged)
+    .map((contract) => contract.action),
 );
 
 /**
@@ -134,12 +145,13 @@ const commandPrivilegedMap = new Map<string, boolean>(
  */
 function resolveInteractionPrivileged(
   input: DiscordOperatorInteraction,
+  action: DiscordControlAction,
 ): boolean {
   if (input.privileged !== undefined) {
     return input.privileged;
   }
   if (input.commandName === undefined) {
-    return false;
+    return privilegedActionSet.has(action);
   }
   return commandPrivilegedMap.get(input.commandName) ?? false;
 }
@@ -841,7 +853,7 @@ function createInteractionControlRequestInput(
   action: DiscordControlAction,
   threadId: string,
 ): DiscordControlRequest {
-  const privileged = resolveInteractionPrivileged(input);
+  const privileged = resolveInteractionPrivileged(input, action);
   const intentSuffix =
     action === DEVPLAT_ACTION_OPEN_PROJECT &&
     input.openProjectIntent !== undefined

@@ -692,6 +692,31 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'renders thread-context mismatch failures with thread recovery guidance',
+      inputs: {
+        interaction,
+      },
+      mock: ({
+        interaction: inputInteraction,
+      }: {
+        interaction: DiscordOperatorInteraction;
+      }) =>
+        renderDiscordRouteFailureMessage(
+          inputInteraction,
+          'project/thread context mismatch: expected=thread-1 detected=thread-2',
+        ),
+      assert: (
+        payload: ReturnType<typeof renderDiscordRouteFailureMessage>,
+      ) => {
+        expect(payload.content).toContain(
+          'Reason: project/thread context mismatch: expected=thread-1 detected=thread-2',
+        );
+        expect(payload.content).toContain(
+          '→ Run this from the correct spec, implementation, or PR thread.',
+        );
+      },
+    },
+    {
       name: 'renders route-failure diagnostics using normalized interaction input when received event is unavailable',
       inputs: {
         interaction: {

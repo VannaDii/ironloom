@@ -1005,6 +1005,33 @@ describe('DiscordControlRequest logic', () => {
           if (route.ok) {
             expect(route.request.action).toBe('retry-gates');
             expect(route.request.threadId).toBe('thread-3');
+            expect(route.request.privileged).toBe(false);
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-003b',
+            token: 'token-3b',
+            actorId: 'user-3b',
+            channelId: 'channel-3b',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            customId: 'devplat:approve-this',
+            boundThreadId: 'thread-3b',
+            actorRoleIds: ['role-spec-approver'],
+            specApproverRoleId: 'role-spec-approver',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.action).toBe('approve-this');
+            expect(route.request.threadId).toBe('thread-3b');
+            expect(route.request.privileged).toBe(true);
           }
         },
       },

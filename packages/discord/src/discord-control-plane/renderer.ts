@@ -1329,7 +1329,8 @@ export function renderDiscordRouteFailureMessage(
   } satisfies DiscordControlRequest;
   const isThreadRoutingFailure =
     reason.includes('must resolve to exactly one bound thread') ||
-    reason.includes('bound session thread mismatch');
+    reason.includes('bound session thread mismatch') ||
+    reason.includes('project/thread context mismatch');
   const content = renderDiscordMessageContent({
     actionLabel: 'Action refused',
     fields: {
