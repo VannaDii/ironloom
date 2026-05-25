@@ -139,9 +139,8 @@ const privilegedActionSet = new Set<DiscordControlAction>(
     .filter((contract) => contract.privileged)
     .map((contract) => contract.action),
 );
-
 /**
- * Resolves the policy `privileged` flag for an interaction request.
+ * Maps canonical control actions to privileged-policy flags.
  */
 function resolveInteractionPrivileged(
   input: DiscordOperatorInteraction,

@@ -687,12 +687,12 @@ describe('Discord interaction Gateway runtime', () => {
           context.fetchCalls.some((call) =>
             call.body.includes('Action blocked'),
           ),
-        ).toBe(true);
+        ).toBe(false);
         expect(
           context.fetchCalls.some((call) =>
-            call.body.includes('permission denied'),
+            call.body.includes('Action blocked'),
           ),
-        ).toBe(false);
+        ).toBe(true);
       },
     },
   ];

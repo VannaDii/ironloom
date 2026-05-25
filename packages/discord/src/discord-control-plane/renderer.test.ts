@@ -689,6 +689,34 @@ describe('Discord control-plane renderer', () => {
         expect(payload.content).toContain(
           'Reason: permission denied: caller=operator-1 action=new-project requiredRole=project-operator context=thread:thread-1',
         );
+        expect(payload.content).toContain(
+          '→ Review the reason and retry with correct permissions/options or thread context.',
+        );
+      },
+    },
+    {
+      name: 'renders thread-context recovery for project/thread mismatch route failures',
+      inputs: {
+        interaction,
+      },
+      mock: ({
+        interaction: inputInteraction,
+      }: {
+        interaction: DiscordOperatorInteraction;
+      }) =>
+        renderDiscordRouteFailureMessage(
+          inputInteraction,
+          'project/thread context mismatch: expected=thread-1 detected=thread-2,thread-3',
+        ),
+      assert: (
+        payload: ReturnType<typeof renderDiscordRouteFailureMessage>,
+      ) => {
+        expect(payload.content).toContain(
+          'Reason: project/thread context mismatch: expected=thread-1 detected=thread-2,thread-3',
+        );
+        expect(payload.content).toContain(
+          '→ Run this from the correct spec, implementation, or PR thread.',
+        );
       },
     },
     {

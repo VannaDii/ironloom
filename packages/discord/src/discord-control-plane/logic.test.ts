@@ -899,6 +899,30 @@ describe('DiscordControlRequest logic', () => {
       {
         inputs: {
           interaction: {
+            id: 'interaction-010f-component',
+            token: 'token-10f-component',
+            actorId: 'user-10f-component',
+            channelId: 'thread-10f-component',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            customId: 'devplat:v1:merge-now:thread-10f-component',
+            actorRoleIds: ['role-merge-approver'],
+            mergeApproverRoleId: 'role-merge-approver',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.action).toBe('merge-now');
+            expect(route.request.privileged).toBe(true);
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
             id: 'interaction-010d',
             token: 'token-10d',
             actorId: 'user-10d',
