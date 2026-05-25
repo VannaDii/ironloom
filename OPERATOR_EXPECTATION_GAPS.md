@@ -183,7 +183,7 @@ Usage rules:
 ## 14. Project-Level Cancel and Resume
 
 - [x] Implement `/cancel-project`.
-- [ ] On `/cancel-project`, immediately pause all activity.
+- [x] On `/cancel-project`, immediately pause all activity.
 - [ ] Post cancellation summary per phase thread.
 - [x] Implement `/resume-project`.
 - [ ] On `/resume-project`, run global preflight (repo access, branch state, PR status, gate health, blocker inventory).
