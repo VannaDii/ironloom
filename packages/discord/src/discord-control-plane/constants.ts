@@ -120,6 +120,11 @@ export const DISCORD_PROJECT_NAME_MAX_LENGTH = 30;
 export const DISCORD_CONTROL_REQUEST_SUMMARY_MAX_LENGTH = 1000;
 
 /**
+ * Extracts parenthesized summary marker tokens from bounded control summaries.
+ */
+export const DISCORD_SUMMARY_MARKER_TOKEN_PATTERN = /\([^()]*\)/gu;
+
+/**
  * Pattern for validating base64url marker tokens embedded in control summaries.
  */
 export const DISCORD_BASE64URL_MARKER_PATTERN = /^[A-Za-z0-9_-]+$/u;

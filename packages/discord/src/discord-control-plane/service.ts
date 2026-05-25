@@ -2354,15 +2354,18 @@ export class DiscordControlPlaneService {
     const acknowledgement =
       await this.postInteractionDeferredAcknowledgement(input);
     if (!acknowledgement.ok) {
+      const acknowledgementPolicyDecisionId = immutability.ok
+        ? 'discord-interaction-deferred'
+        : 'discord-fail-closed';
       await this.recordInteractionResponseFailure(
         request,
-        'discord-fail-closed',
+        acknowledgementPolicyDecisionId,
         acknowledgement.responsePostError,
         acknowledgement.responseReceipt,
       );
       const acknowledgementFailureResult = {
         request,
-        policyDecisionId: 'discord-fail-closed',
+        policyDecisionId: acknowledgementPolicyDecisionId,
         allowed: false,
         persistedKey: request.id,
         failedClosed: true,

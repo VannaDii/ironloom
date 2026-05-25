@@ -101,7 +101,34 @@ describe('DiscordControlRequest logic', () => {
     expect(route.ok).toBe(true);
     if (route.ok) {
       expect(route.request.summary.length).toBeLessThanOrEqual(1000);
-      expect(route.request.summary.startsWith('(repo:')).toBe(true);
+      expect(route.request.summary).toContain('(project:alpha)');
+      expect(route.request.summary).not.toContain('(repo:');
+    }
+  });
+
+  it('preserves full consider url marker when prefix truncation is required', () => {
+    const longPrefix = 'z'.repeat(1400);
+    const consideredUrl =
+      'https://example.com/path/to/resource?query=alpha&feature=phase-reentry';
+    const route = createDiscordControlRequestFromInteraction({
+      id: 'interaction-summary-truncate-005',
+      token: 'token-summary-truncate-005',
+      actorId: 'user-summary-truncate-005',
+      channelId: 'channel-summary-truncate-005',
+      threadId: 'thread-summary-truncate-005',
+      boundThreadId: 'thread-summary-truncate-005',
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      commandName: 'consider',
+      summary: longPrefix,
+      considerUrl: consideredUrl,
+    });
+
+    expect(route.ok).toBe(true);
+    if (route.ok) {
+      expect(route.request.summary).toContain(
+        `(url64:${Buffer.from(consideredUrl, 'utf8').toString('base64url')})`,
+      );
+      expect(route.request.summary.length).toBeLessThanOrEqual(1000);
     }
   });
 

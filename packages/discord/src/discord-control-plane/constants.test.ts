@@ -7,6 +7,7 @@ import {
   DISCORD_EPHEMERAL_MESSAGE_FLAG,
   DISCORD_MESSAGE_CONTENT_MAX_LENGTH,
   DISCORD_PROJECT_CONFIG_VERSION_PATTERN,
+  DISCORD_SUMMARY_MARKER_TOKEN_PATTERN,
   DISCORD_REST_SUCCESS_MAX_EXCLUSIVE_STATUS,
   DISCORD_REST_SUCCESS_MIN_STATUS,
 } from './constants.js';
@@ -22,6 +23,7 @@ type DiscordControlPlaneConstantsCase = {
     successMaxExclusive: number;
     projectConfigVersionPattern: RegExp;
     base64urlMarkerPattern: RegExp;
+    summaryMarkerTokenPattern: RegExp;
   };
   mock: () => Record<string, never>;
   assert: (
@@ -43,6 +45,7 @@ describe('discord control-plane constants', () => {
         successMaxExclusive: DISCORD_REST_SUCCESS_MAX_EXCLUSIVE_STATUS,
         projectConfigVersionPattern: DISCORD_PROJECT_CONFIG_VERSION_PATTERN,
         base64urlMarkerPattern: DISCORD_BASE64URL_MARKER_PATTERN,
+        summaryMarkerTokenPattern: DISCORD_SUMMARY_MARKER_TOKEN_PATTERN,
       },
       mock: () => ({}),
       assert: (context, inputs) => {
@@ -58,6 +61,11 @@ describe('discord control-plane constants', () => {
         expect(inputs.base64urlMarkerPattern.test('invalid+/token')).toBe(
           false,
         );
+        expect(
+          '(repo:devplat) (project:alpha)'.match(
+            inputs.summaryMarkerTokenPattern,
+          ),
+        ).toEqual(['(repo:devplat)', '(project:alpha)']);
       },
     },
   ] satisfies DiscordControlPlaneConstantsCase[];

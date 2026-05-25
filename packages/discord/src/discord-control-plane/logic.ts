@@ -38,6 +38,7 @@ import {
   DISCORD_CONTROL_REQUEST_SUMMARY_MAX_LENGTH,
   DISCORD_PROJECT_NAME_MAX_LENGTH,
   DISCORD_PROJECT_NAME_MIN_LENGTH,
+  DISCORD_SUMMARY_MARKER_TOKEN_PATTERN,
 } from './constants.js';
 import type {
   DiscordControlAction,
@@ -860,6 +861,74 @@ function sanitizeStorageMarkerValue(value: string): string {
 }
 
 /** Truncates a free-form summary prefix while preserving structured suffix markers. */
+function truncateSummaryMarkerToken(token: string): string {
+  if (token.length <= DISCORD_CONTROL_REQUEST_SUMMARY_MAX_LENGTH) {
+    return token;
+  }
+
+  const markerValueSeparatorIndex = token.indexOf(':');
+  const markerClosingParenIndex = token.lastIndexOf(')');
+  if (
+    markerValueSeparatorIndex <= 1 ||
+    markerClosingParenIndex <= markerValueSeparatorIndex
+  ) {
+    return token.slice(0, DISCORD_CONTROL_REQUEST_SUMMARY_MAX_LENGTH);
+  }
+
+  const markerPrefix = token.slice(0, markerValueSeparatorIndex + 1);
+  const markerSuffixToken = ')';
+  const maxMarkerValueLength =
+    DISCORD_CONTROL_REQUEST_SUMMARY_MAX_LENGTH -
+    markerPrefix.length -
+    markerSuffixToken.length;
+  const markerValue = token.slice(
+    markerValueSeparatorIndex + 1,
+    markerClosingParenIndex,
+  );
+  const boundedMarkerValue =
+    maxMarkerValueLength <= 0 ? '' : markerValue.slice(0, maxMarkerValueLength);
+  return `${markerPrefix}${boundedMarkerValue}${markerSuffixToken}`;
+}
+
+/** Keeps complete marker tokens and prefers right-most markers when suffix exceeds bounds. */
+function boundSummaryMarkerSuffix(markerSuffix: string): string {
+  if (markerSuffix.length <= DISCORD_CONTROL_REQUEST_SUMMARY_MAX_LENGTH) {
+    return markerSuffix;
+  }
+
+  const markerTokens = markerSuffix.match(DISCORD_SUMMARY_MARKER_TOKEN_PATTERN);
+  if (markerTokens === null || markerTokens.length === 0) {
+    return markerSuffix.slice(0, DISCORD_CONTROL_REQUEST_SUMMARY_MAX_LENGTH);
+  }
+
+  const retainedMarkers: string[] = [];
+  let retainedLength = 0;
+  for (let index = markerTokens.length - 1; index >= 0; index -= 1) {
+    const markerToken = markerTokens[index];
+    if (markerToken === undefined) {
+      continue;
+    }
+    const separatorLength = retainedMarkers.length === 0 ? 0 : 1;
+    const nextLength = retainedLength + separatorLength + markerToken.length;
+    if (nextLength > DISCORD_CONTROL_REQUEST_SUMMARY_MAX_LENGTH) {
+      continue;
+    }
+    retainedMarkers.unshift(markerToken);
+    retainedLength = nextLength;
+  }
+
+  if (retainedMarkers.length > 0) {
+    return retainedMarkers.join(' ');
+  }
+
+  const lastMarkerToken = markerTokens.at(-1);
+  if (lastMarkerToken === undefined) {
+    return '';
+  }
+  return truncateSummaryMarkerToken(lastMarkerToken);
+}
+
+/** Composes a bounded summary from a free-form prefix and structured marker suffix. */
 function composeBoundedControlRequestSummary(
   prefix: string,
   markerSuffix: string,
@@ -873,21 +942,19 @@ function composeBoundedControlRequestSummary(
   }
 
   const separator = normalizedPrefix.length === 0 ? '' : ' ';
-  const reservedLength = normalizedSuffix.length + separator.length;
-  if (reservedLength >= DISCORD_CONTROL_REQUEST_SUMMARY_MAX_LENGTH) {
-    return normalizedSuffix.slice(
-      0,
-      DISCORD_CONTROL_REQUEST_SUMMARY_MAX_LENGTH,
-    );
-  }
+  const boundedSuffix = boundSummaryMarkerSuffix(normalizedSuffix);
 
+  const boundedReservedLength = boundedSuffix.length + separator.length;
+  if (boundedReservedLength >= DISCORD_CONTROL_REQUEST_SUMMARY_MAX_LENGTH) {
+    return boundedSuffix;
+  }
   const maxPrefixLength =
-    DISCORD_CONTROL_REQUEST_SUMMARY_MAX_LENGTH - reservedLength;
+    DISCORD_CONTROL_REQUEST_SUMMARY_MAX_LENGTH - boundedReservedLength;
   const boundedPrefix =
     normalizedPrefix.length <= maxPrefixLength
       ? normalizedPrefix
       : normalizedPrefix.slice(0, maxPrefixLength);
-  return `${boundedPrefix}${separator}${normalizedSuffix}`.trim();
+  return `${boundedPrefix}${separator}${boundedSuffix}`.trim();
 }
 
 /** Builds structured summary markers for interaction-routed control requests. */
