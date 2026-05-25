@@ -3474,6 +3474,69 @@ describe('DiscordControlPlaneService', () => {
     }
   });
 
+  it('uses request redirect and consider fields when summary markers are absent', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const redirect = await service.handleAction({
+      id: 'discord-redirect-field-001',
+      summary: 'redirect',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-redirect-field-1',
+      threadId: 'thread-redirect-field-1',
+      channelId: 'channel-redirect-field-1',
+      action: 'redirect',
+      privileged: false,
+      redirectPrompt: 'bias for reversible changes',
+    });
+    const consider = await service.handleAction({
+      id: 'discord-consider-field-001',
+      summary: 'consider',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:01.000Z',
+      actorId: 'user-redirect-field-1',
+      threadId: 'thread-redirect-field-1',
+      channelId: 'channel-redirect-field-1',
+      action: 'consider',
+      privileged: false,
+      considerUrl: 'https://example.com/field-consider',
+    });
+
+    expect(redirect.allowed).toBe(true);
+    expect(consider.allowed).toBe(true);
+    expect(consider.request.summary).toContain('(queued-count:1)');
+
+    const directionState = await store.read(
+      'state',
+      'discovery-direction:thread-redirect-field-1',
+    );
+    expect(directionState.ok).toBe(true);
+    if (directionState.ok) {
+      expect(directionState.value.payload['directionPrompt']).toBe(
+        'bias for reversible changes',
+      );
+    }
+
+    const queueState = await store.read(
+      'state',
+      'discovery-consider-queue:thread-redirect-field-1',
+    );
+    expect(queueState.ok).toBe(true);
+    if (queueState.ok) {
+      expect(queueState.value.payload['queuedUrls']).toEqual([
+        'https://example.com/field-consider',
+      ]);
+    }
+  });
+
   it('marks spec approval as pending and clears stale checkpoint after new research input', async () => {
     const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
     const store = new FileStoreService(rootDirectory);

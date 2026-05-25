@@ -890,6 +890,68 @@ function composeBoundedControlRequestSummary(
   return `${boundedPrefix}${separator}${normalizedSuffix}`.trim();
 }
 
+/** Builds structured summary markers for interaction-routed control requests. */
+function composeInteractionMarkerSuffix(
+  input: DiscordOperatorInteraction,
+  action: DiscordControlAction,
+): string {
+  const markers: string[] = [];
+  if (input.projectRepo !== undefined && input.projectName !== undefined) {
+    markers.push(`(repo:${sanitizeStorageMarkerValue(input.projectRepo)})`);
+    markers.push(`(project:${sanitizeStorageMarkerValue(input.projectName)})`);
+  }
+  if (
+    action === DEVPLAT_ACTION_OPEN_PROJECT &&
+    input.openProjectIntent !== undefined
+  ) {
+    markers.push(`(intent:${input.openProjectIntent})`);
+  }
+  if (action === DEVPLAT_ACTION_RESUME_PROJECT && input.resumeProjectForce) {
+    markers.push('(force:true)');
+  }
+  if (action === DEVPLAT_ACTION_PROJECT_SETTINGS_HISTORY) {
+    markers.push(
+      input.projectSettingsHistoryDetailed
+        ? '(mode:detailed)'
+        : '(mode:summary)',
+    );
+  }
+  if (
+    action === DEVPLAT_ACTION_NEW_PROJECT &&
+    input.newProjectQualityStrictness !== undefined
+  ) {
+    markers.push(`(quality-strictness:${input.newProjectQualityStrictness})`);
+  }
+  if (
+    action === DEVPLAT_ACTION_REDIRECT &&
+    input.redirectPrompt !== undefined
+  ) {
+    markers.push(
+      `(direction-prompt:${sanitizeSummaryMarkerValue(input.redirectPrompt)})`,
+    );
+  }
+  if (action === DEVPLAT_ACTION_CONSIDER && input.considerUrl !== undefined) {
+    markers.push(`(url64:${encodeSummaryMarkerValue(input.considerUrl)})`);
+  }
+
+  return markers.join(' ');
+}
+
+/** Creates optional out-of-band request fields for marker-sensitive payloads. */
+function createInteractionMarkerPayloadFields(
+  input: DiscordOperatorInteraction,
+  action: DiscordControlAction,
+): Pick<DiscordControlRequest, 'redirectPrompt' | 'considerUrl'> | object {
+  return {
+    ...(action === DEVPLAT_ACTION_REDIRECT && input.redirectPrompt !== undefined
+      ? { redirectPrompt: input.redirectPrompt }
+      : {}),
+    ...(action === DEVPLAT_ACTION_CONSIDER && input.considerUrl !== undefined
+      ? { considerUrl: input.considerUrl }
+      : {}),
+  };
+}
+
 /** Creates interaction control request input. */
 function createInteractionControlRequestInput(
   input: DiscordOperatorInteraction,
@@ -897,60 +959,16 @@ function createInteractionControlRequestInput(
   threadId: string,
 ): DiscordControlRequest {
   const privileged = resolveInteractionPrivileged(input, action);
-  const intentSuffix =
-    action === DEVPLAT_ACTION_OPEN_PROJECT &&
-    input.openProjectIntent !== undefined
-      ? ` (intent:${input.openProjectIntent})`
-      : '';
-  const projectContextSuffix =
-    input.projectRepo === undefined || input.projectName === undefined
-      ? ''
-      : ` (repo:${sanitizeStorageMarkerValue(input.projectRepo)}) (project:${sanitizeStorageMarkerValue(input.projectName)})`;
-  const resumeForceSuffix =
-    action === DEVPLAT_ACTION_RESUME_PROJECT && input.resumeProjectForce
-      ? ' (force:true)'
-      : '';
-  let settingsHistoryModeSuffix = '';
-  if (action === DEVPLAT_ACTION_PROJECT_SETTINGS_HISTORY) {
-    settingsHistoryModeSuffix = input.projectSettingsHistoryDetailed
-      ? ' (mode:detailed)'
-      : ' (mode:summary)';
-  }
-  const qualityStrictnessSuffix =
-    action === DEVPLAT_ACTION_NEW_PROJECT &&
-    input.newProjectQualityStrictness !== undefined
-      ? ` (quality-strictness:${input.newProjectQualityStrictness})`
-      : '';
-  const redirectPromptSuffix =
-    action === DEVPLAT_ACTION_REDIRECT && input.redirectPrompt !== undefined
-      ? ` (direction-prompt:${sanitizeSummaryMarkerValue(input.redirectPrompt)})`
-      : '';
-  const considerUrlSuffix =
-    action === DEVPLAT_ACTION_CONSIDER && input.considerUrl !== undefined
-      ? ` (url64:${encodeSummaryMarkerValue(input.considerUrl)})`
-      : '';
-  const markerSuffix =
-    `${projectContextSuffix}${intentSuffix}${resumeForceSuffix}${settingsHistoryModeSuffix}${qualityStrictnessSuffix}${redirectPromptSuffix}${considerUrlSuffix}`.trim();
+  const markerSuffix = composeInteractionMarkerSuffix(input, action);
   const summary = composeBoundedControlRequestSummary(
     input.summary?.trim() ?? action,
     markerSuffix,
   );
-  if (input.boundSession === undefined) {
-    return {
-      id: input.id,
-      summary,
-      status: 'running',
-      trace: [],
-      updatedAt: input.updatedAt,
-      actorId: input.actorId,
-      threadId,
-      channelId: input.channelId,
-      action,
-      privileged,
-    };
-  }
-
-  return {
+  const markerPayloadFields = createInteractionMarkerPayloadFields(
+    input,
+    action,
+  );
+  const baseRequest: DiscordControlRequest = {
     id: input.id,
     summary,
     status: 'running',
@@ -961,6 +979,14 @@ function createInteractionControlRequestInput(
     channelId: input.channelId,
     action,
     privileged,
+    ...markerPayloadFields,
+  };
+  if (input.boundSession === undefined) {
+    return baseRequest;
+  }
+
+  return {
+    ...baseRequest,
     workItem: createDiscordWorkItemBinding(input.boundSession),
   };
 }

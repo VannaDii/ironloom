@@ -154,6 +154,12 @@
                       },
                       "required": ["threadKind", "threadId", "artifactId"],
                       "additionalProperties": false
+                    },
+                    "redirectPrompt": {
+                      "type": "string"
+                    },
+                    "considerUrl": {
+                      "type": "string"
                     }
                   },
                   "required": [

@@ -148,6 +148,52 @@ describe('DiscordControlRequest logic', () => {
     }
   });
 
+  it('preserves redirect payload out-of-band when summary markers are truncated', () => {
+    const route = createDiscordControlRequestFromInteraction({
+      id: 'interaction-summary-truncate-redirect-001',
+      token: 'token-summary-truncate-redirect-001',
+      actorId: 'user-summary-truncate-redirect-001',
+      channelId: 'channel-summary-truncate-redirect-001',
+      threadId: 'thread-summary-truncate-redirect-001',
+      boundThreadId: 'thread-summary-truncate-redirect-001',
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      commandName: 'redirect',
+      summary: 'z'.repeat(2000),
+      redirectPrompt: 'prioritize incremental migration and rollback safety',
+    });
+
+    expect(route.ok).toBe(true);
+    if (route.ok) {
+      expect(route.request.summary.length).toBeLessThanOrEqual(1000);
+      expect(route.request.redirectPrompt).toBe(
+        'prioritize incremental migration and rollback safety',
+      );
+    }
+  });
+
+  it('preserves consider URL out-of-band when summary markers are truncated', () => {
+    const route = createDiscordControlRequestFromInteraction({
+      id: 'interaction-summary-truncate-consider-001',
+      token: 'token-summary-truncate-consider-001',
+      actorId: 'user-summary-truncate-consider-001',
+      channelId: 'channel-summary-truncate-consider-001',
+      threadId: 'thread-summary-truncate-consider-001',
+      boundThreadId: 'thread-summary-truncate-consider-001',
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      commandName: 'consider',
+      summary: 'z'.repeat(2000),
+      considerUrl: 'https://example.com/some/very/long/path?with=query&x=1',
+    });
+
+    expect(route.ok).toBe(true);
+    if (route.ok) {
+      expect(route.request.summary.length).toBeLessThanOrEqual(1000);
+      expect(route.request.considerUrl).toBe(
+        'https://example.com/some/very/long/path?with=query&x=1',
+      );
+    }
+  });
+
   it('accepts diagnostic and lifecycle control actions used in daily operation', () => {
     const request = createDiscordControlRequest({
       id: 'discord-003',

@@ -105,6 +105,8 @@ export const DiscordControlRequestCodec = t.intersection([
   }),
   t.partial({
     workItem: DiscordWorkItemBindingCodec,
+    redirectPrompt: t.string,
+    considerUrl: t.string,
   }),
 ]);
 

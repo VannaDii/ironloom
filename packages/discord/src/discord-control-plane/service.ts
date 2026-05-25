@@ -1340,7 +1340,9 @@ export class DiscordControlPlaneService {
   private async persistRedirectDirectionState(
     request: DiscordControlRequest,
   ): Promise<DiscordControlRequest> {
-    const nextDirection = resolveDirectionPromptFromSummary(request.summary);
+    const nextDirection =
+      request.redirectPrompt ??
+      resolveDirectionPromptFromSummary(request.summary);
     if (nextDirection === undefined) {
       return request;
     }
@@ -1387,7 +1389,8 @@ export class DiscordControlPlaneService {
   private async persistConsiderQueueState(
     request: DiscordControlRequest,
   ): Promise<DiscordControlRequest> {
-    const queuedUrl = resolveConsiderUrlFromSummary(request.summary);
+    const queuedUrl =
+      request.considerUrl ?? resolveConsiderUrlFromSummary(request.summary);
     if (queuedUrl === undefined) {
       return request;
     }
@@ -2353,9 +2356,7 @@ export class DiscordControlPlaneService {
     if (!acknowledgement.ok) {
       await this.recordInteractionResponseFailure(
         request,
-        immutability.ok
-          ? 'discord-interaction-deferred'
-          : 'discord-fail-closed',
+        'discord-fail-closed',
         acknowledgement.responsePostError,
         acknowledgement.responseReceipt,
       );
