@@ -271,6 +271,26 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'treats blank status metadata markers as missing values',
+      inputs: {
+        request: {
+          ...request,
+          action: 'show-status',
+          summary:
+            'Project status (intent:   ) (config-version:   ) (phase:   )',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).not.toContain('Run intent:');
+        expect(payload.content).not.toContain('Config version:');
+        expect(payload.content).not.toContain('Phase:');
+      },
+    },
+    {
       name: 'renders project-settings-history summary mode for public visibility with redacted defaults',
       inputs: {
         request: {
@@ -1461,6 +1481,24 @@ describe('Discord control-plane renderer', () => {
         expect(payload.content).toContain(
           'Incident links: https://example.invalid/incidents',
         );
+      },
+    },
+    {
+      name: 'renders canonical release summary defaults when release markers are blank',
+      inputs: {
+        request: {
+          ...request,
+          action: 'release-project',
+          summary: 'release-project (repo:   ) (branch:   )',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain('Repo: unknown');
+        expect(payload.content).toContain('Branch: unknown');
       },
     },
     {

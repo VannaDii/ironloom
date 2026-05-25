@@ -54,6 +54,100 @@ describe('DiscordControlRequest logic', () => {
     ).toThrow('thread');
   });
 
+  it('preserves structured marker suffixes when long summaries are truncated', () => {
+    const longPrefix = 'x'.repeat(1400);
+    const route = createDiscordControlRequestFromInteraction({
+      id: 'interaction-summary-truncate-001',
+      token: 'token-summary-truncate-001',
+      actorId: 'user-summary-truncate-001',
+      channelId: 'channel-summary-truncate-001',
+      threadId: 'thread-summary-truncate-001',
+      boundThreadId: 'thread-summary-truncate-001',
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      commandName: 'new-project',
+      summary: longPrefix,
+      projectRepo: 'devplat',
+      projectName: 'alpha',
+      actorRoleIds: ['role-project-operator'],
+      projectOperatorRoleId: 'role-project-operator',
+    });
+
+    expect(route.ok).toBe(true);
+    if (route.ok) {
+      expect(route.request.summary).toContain('(repo:devplat)');
+      expect(route.request.summary).toContain('(project:alpha)');
+      expect(route.request.summary.length).toBeLessThanOrEqual(1000);
+    }
+  });
+
+  it('bounds oversized marker suffixes when they exceed summary max length', () => {
+    const oversizedRepo = 'r'.repeat(1200);
+    const route = createDiscordControlRequestFromInteraction({
+      id: 'interaction-summary-truncate-002',
+      token: 'token-summary-truncate-002',
+      actorId: 'user-summary-truncate-002',
+      channelId: 'channel-summary-truncate-002',
+      threadId: 'thread-summary-truncate-002',
+      boundThreadId: 'thread-summary-truncate-002',
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      commandName: 'new-project',
+      summary: 'new-project',
+      projectRepo: oversizedRepo,
+      projectName: 'alpha',
+      actorRoleIds: ['role-project-operator'],
+      projectOperatorRoleId: 'role-project-operator',
+    });
+
+    expect(route.ok).toBe(true);
+    if (route.ok) {
+      expect(route.request.summary.length).toBeLessThanOrEqual(1000);
+      expect(route.request.summary.startsWith('(repo:')).toBe(true);
+    }
+  });
+
+  it('truncates markerless summaries at max length', () => {
+    const route = createDiscordControlRequestFromInteraction({
+      id: 'interaction-summary-truncate-003',
+      token: 'token-summary-truncate-003',
+      actorId: 'user-summary-truncate-003',
+      channelId: 'channel-summary-truncate-003',
+      threadId: 'thread-summary-truncate-003',
+      boundThreadId: 'thread-summary-truncate-003',
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      commandName: 'show-status',
+      summary: 'y'.repeat(1400),
+    });
+
+    expect(route.ok).toBe(true);
+    if (route.ok) {
+      expect(route.request.summary.length).toBe(1000);
+    }
+  });
+
+  it('omits separator when prefix is blank and marker suffix is present', () => {
+    const route = createDiscordControlRequestFromInteraction({
+      id: 'interaction-summary-truncate-004',
+      token: 'token-summary-truncate-004',
+      actorId: 'user-summary-truncate-004',
+      channelId: 'channel-summary-truncate-004',
+      threadId: 'thread-summary-truncate-004',
+      boundThreadId: 'thread-summary-truncate-004',
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      commandName: 'new-project',
+      summary: '   ',
+      projectRepo: 'devplat',
+      projectName: 'alpha',
+      actorRoleIds: ['role-project-operator'],
+      projectOperatorRoleId: 'role-project-operator',
+    });
+
+    expect(route.ok).toBe(true);
+    if (route.ok) {
+      expect(route.request.summary.startsWith(' (repo:')).toBe(false);
+      expect(route.request.summary.startsWith('(repo:')).toBe(true);
+    }
+  });
+
   it('accepts diagnostic and lifecycle control actions used in daily operation', () => {
     const request = createDiscordControlRequest({
       id: 'discord-003',

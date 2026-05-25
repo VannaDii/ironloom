@@ -619,7 +619,8 @@ function resolveSummaryMarkerValue(
     return undefined;
   }
 
-  return summary.slice(valueStart, valueEnd).trim();
+  const value = summary.slice(valueStart, valueEnd).trim();
+  return value.length === 0 ? undefined : value;
 }
 
 /**

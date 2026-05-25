@@ -845,12 +845,35 @@ function sanitizeStorageMarkerValue(value: string): string {
     .trim();
 }
 
-/** Truncates persisted control summaries to a Discord-safe length. */
-function truncateControlRequestSummary(value: string): string {
-  if (value.length <= DISCORD_CONTROL_REQUEST_SUMMARY_MAX_LENGTH) {
-    return value;
+/** Truncates a free-form summary prefix while preserving structured suffix markers. */
+function composeBoundedControlRequestSummary(
+  prefix: string,
+  markerSuffix: string,
+): string {
+  const normalizedPrefix = prefix.trim();
+  const normalizedSuffix = markerSuffix.trim();
+  if (normalizedSuffix.length === 0) {
+    return normalizedPrefix.length <= DISCORD_CONTROL_REQUEST_SUMMARY_MAX_LENGTH
+      ? normalizedPrefix
+      : normalizedPrefix.slice(0, DISCORD_CONTROL_REQUEST_SUMMARY_MAX_LENGTH);
   }
-  return value.slice(0, DISCORD_CONTROL_REQUEST_SUMMARY_MAX_LENGTH);
+
+  const separator = normalizedPrefix.length === 0 ? '' : ' ';
+  const reservedLength = normalizedSuffix.length + separator.length;
+  if (reservedLength >= DISCORD_CONTROL_REQUEST_SUMMARY_MAX_LENGTH) {
+    return normalizedSuffix.slice(
+      0,
+      DISCORD_CONTROL_REQUEST_SUMMARY_MAX_LENGTH,
+    );
+  }
+
+  const maxPrefixLength =
+    DISCORD_CONTROL_REQUEST_SUMMARY_MAX_LENGTH - reservedLength;
+  const boundedPrefix =
+    normalizedPrefix.length <= maxPrefixLength
+      ? normalizedPrefix
+      : normalizedPrefix.slice(0, maxPrefixLength);
+  return `${boundedPrefix}${separator}${normalizedSuffix}`.trim();
 }
 
 /** Creates interaction control request input. */
@@ -892,8 +915,11 @@ function createInteractionControlRequestInput(
     action === DEVPLAT_ACTION_CONSIDER && input.considerUrl !== undefined
       ? ` (url64:${encodeSummaryMarkerValue(input.considerUrl)})`
       : '';
-  const summary = truncateControlRequestSummary(
-    `${input.summary?.trim() ?? action}${projectContextSuffix}${intentSuffix}${resumeForceSuffix}${settingsHistoryModeSuffix}${qualityStrictnessSuffix}${redirectPromptSuffix}${considerUrlSuffix}`.trim(),
+  const markerSuffix =
+    `${projectContextSuffix}${intentSuffix}${resumeForceSuffix}${settingsHistoryModeSuffix}${qualityStrictnessSuffix}${redirectPromptSuffix}${considerUrlSuffix}`.trim();
+  const summary = composeBoundedControlRequestSummary(
+    input.summary?.trim() ?? action,
+    markerSuffix,
   );
   if (input.boundSession === undefined) {
     return {

@@ -1762,7 +1762,11 @@ export class DiscordControlPlaneService {
     const repo = resolveProjectRepoFromSummary(request.summary);
     const project = resolveProjectNameFromSummary(request.summary);
     if (repo === undefined || project === undefined) {
-      return { ok: true };
+      return {
+        ok: false,
+        reason:
+          'new-project requires immutable repo/project identity markers for uniqueness enforcement.',
+      };
     }
 
     const stateKey = createProjectIdentityStateKey(repo, project);

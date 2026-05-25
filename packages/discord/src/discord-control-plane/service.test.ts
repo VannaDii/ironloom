@@ -1052,7 +1052,7 @@ describe('DiscordControlPlaneService', () => {
     expect(result.blockedReason).not.toContain(rootDirectory);
   });
 
-  it('allows new-project when project identity markers are incomplete in summary', async () => {
+  it('fails closed when new-project identity markers are incomplete in summary', async () => {
     const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
     const store = new FileStoreService(rootDirectory);
     const service = new DiscordControlPlaneService(
@@ -1074,8 +1074,11 @@ describe('DiscordControlPlaneService', () => {
       privileged: false,
     });
 
-    expect(result.allowed).toBe(true);
-    expect(result.failedClosed).toBe(false);
+    expect(result.allowed).toBe(false);
+    expect(result.failedClosed).toBe(true);
+    expect(result.blockedReason).toContain(
+      'new-project requires immutable repo/project identity markers',
+    );
     expect(await store.list('state')).not.toContain(
       'project-identity:devplat:alpha',
     );
@@ -1201,7 +1204,7 @@ describe('DiscordControlPlaneService', () => {
     expect(result.failedClosed).toBe(true);
   });
 
-  it('allows new-project when repo marker is missing from summary', async () => {
+  it('fails closed when repo marker is missing from new-project summary', async () => {
     const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
     const store = new FileStoreService(rootDirectory);
     const service = new DiscordControlPlaneService(
@@ -1223,11 +1226,11 @@ describe('DiscordControlPlaneService', () => {
       privileged: false,
     });
 
-    expect(result.allowed).toBe(true);
-    expect(result.failedClosed).toBe(false);
+    expect(result.allowed).toBe(false);
+    expect(result.failedClosed).toBe(true);
   });
 
-  it('allows new-project when repo marker is unterminated in summary', async () => {
+  it('fails closed when repo marker is unterminated in new-project summary', async () => {
     const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
     const store = new FileStoreService(rootDirectory);
     const service = new DiscordControlPlaneService(
@@ -1249,11 +1252,11 @@ describe('DiscordControlPlaneService', () => {
       privileged: false,
     });
 
-    expect(result.allowed).toBe(true);
-    expect(result.failedClosed).toBe(false);
+    expect(result.allowed).toBe(false);
+    expect(result.failedClosed).toBe(true);
   });
 
-  it('allows new-project when project marker is missing from summary', async () => {
+  it('fails closed when project marker is missing from new-project summary', async () => {
     const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
     const store = new FileStoreService(rootDirectory);
     const service = new DiscordControlPlaneService(
@@ -1275,11 +1278,11 @@ describe('DiscordControlPlaneService', () => {
       privileged: false,
     });
 
-    expect(result.allowed).toBe(true);
-    expect(result.failedClosed).toBe(false);
+    expect(result.allowed).toBe(false);
+    expect(result.failedClosed).toBe(true);
   });
 
-  it('allows new-project when repo marker value is blank in summary', async () => {
+  it('fails closed when repo marker value is blank in new-project summary', async () => {
     const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
     const store = new FileStoreService(rootDirectory);
     const service = new DiscordControlPlaneService(
@@ -1301,11 +1304,11 @@ describe('DiscordControlPlaneService', () => {
       privileged: false,
     });
 
-    expect(result.allowed).toBe(true);
-    expect(result.failedClosed).toBe(false);
+    expect(result.allowed).toBe(false);
+    expect(result.failedClosed).toBe(true);
   });
 
-  it('allows new-project when project marker value is blank in summary', async () => {
+  it('fails closed when project marker value is blank in new-project summary', async () => {
     const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
     const store = new FileStoreService(rootDirectory);
     const service = new DiscordControlPlaneService(
@@ -1327,8 +1330,8 @@ describe('DiscordControlPlaneService', () => {
       privileged: false,
     });
 
-    expect(result.allowed).toBe(true);
-    expect(result.failedClosed).toBe(false);
+    expect(result.allowed).toBe(false);
+    expect(result.failedClosed).toBe(true);
   });
 
   it('fails closed on routed interactions when open-project intent changes for a thread', async () => {
