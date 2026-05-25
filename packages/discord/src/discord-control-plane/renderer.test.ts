@@ -1068,6 +1068,65 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'renders canonical release summary values from explicit release markers',
+      inputs: {
+        request: {
+          ...request,
+          action: 'release-project',
+          summary:
+            'release-project ' +
+            '(repo:devplat) ' +
+            '(branch:main) ' +
+            '(merged-pr-links:https://github.com/VannaDii/devplat/pull/81) ' +
+            '(spec-link:https://github.com/VannaDii/devplat/blob/main/spec.md) ' +
+            '(slice-list-status:slice-a:merged|slice-b:queued) ' +
+            '(gate-results:unit:pass|lint:pass) ' +
+            '(unresolved-risks:dependency-drift) ' +
+            '(follow-up-recommendations:monitor-rollout) ' +
+            '(asset-links:https://example.invalid/release.tgz) ' +
+            '(blocker-incidents:current-run:0|lifetime:3) ' +
+            '(stall-incidents:current-run:1|lifetime:5) ' +
+            '(contract-degradation-incidents:current-run:0|lifetime:2) ' +
+            '(incident-links:https://example.invalid/incidents)',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain(
+          'Merged PR links: https://github.com/VannaDii/devplat/pull/81',
+        );
+        expect(payload.content).toContain(
+          'Spec link: https://github.com/VannaDii/devplat/blob/main/spec.md',
+        );
+        expect(payload.content).toContain(
+          'Slice list/status: slice-a:merged|slice-b:queued',
+        );
+        expect(payload.content).toContain('Gate results: unit:pass|lint:pass');
+        expect(payload.content).toContain('Unresolved risks: dependency-drift');
+        expect(payload.content).toContain(
+          'Follow-up recommendations: monitor-rollout',
+        );
+        expect(payload.content).toContain(
+          'Asset links: https://example.invalid/release.tgz',
+        );
+        expect(payload.content).toContain(
+          'Blocker incidents: current-run:0|lifetime:3',
+        );
+        expect(payload.content).toContain(
+          'Stall incidents: current-run:1|lifetime:5',
+        );
+        expect(payload.content).toContain(
+          'Contract degradation incidents: current-run:0|lifetime:2',
+        );
+        expect(payload.content).toContain(
+          'Incident links: https://example.invalid/incidents',
+        );
+      },
+    },
+    {
       name: 'renders release-project control buttons with danger style',
       inputs: {
         request: {

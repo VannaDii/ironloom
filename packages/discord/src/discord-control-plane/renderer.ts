@@ -731,21 +731,64 @@ function resolveReleaseSummaryFields(
 
   const repo = resolveSummaryMarkerValue(request.summary, '(repo:');
   const branch = resolveSummaryMarkerValue(request.summary, '(branch:');
+  const mergedPullRequestLinks = resolveSummaryMarkerValue(
+    request.summary,
+    '(merged-pr-links:',
+  );
+  const specLink = resolveSummaryMarkerValue(request.summary, '(spec-link:');
+  const sliceListStatus = resolveSummaryMarkerValue(
+    request.summary,
+    '(slice-list-status:',
+  );
+  const gateResults = resolveSummaryMarkerValue(
+    request.summary,
+    '(gate-results:',
+  );
+  const unresolvedRisks = resolveSummaryMarkerValue(
+    request.summary,
+    '(unresolved-risks:',
+  );
+  const followUpRecommendations = resolveSummaryMarkerValue(
+    request.summary,
+    '(follow-up-recommendations:',
+  );
+  const assetLinks = resolveSummaryMarkerValue(
+    request.summary,
+    '(asset-links:',
+  );
+  const blockerIncidents = resolveSummaryMarkerValue(
+    request.summary,
+    '(blocker-incidents:',
+  );
+  const stallIncidents = resolveSummaryMarkerValue(
+    request.summary,
+    '(stall-incidents:',
+  );
+  const contractDegradationIncidents = resolveSummaryMarkerValue(
+    request.summary,
+    '(contract-degradation-incidents:',
+  );
+  const incidentLinks = resolveSummaryMarkerValue(
+    request.summary,
+    '(incident-links:',
+  );
 
   return {
     Repo: repo ?? 'unknown',
     Branch: branch ?? 'unknown',
-    'Merged PR links': 'none recorded',
-    'Spec link': 'unavailable',
-    'Slice list/status': 'unavailable',
-    'Gate results': 'unavailable',
-    'Unresolved risks': 'none reported',
-    'Follow-up recommendations': 'none',
-    'Asset links': 'none published',
-    'Blocker incidents': 'current-run:unknown lifetime:unknown',
-    'Stall incidents': 'current-run:unknown lifetime:unknown',
-    'Contract degradation incidents': 'current-run:unknown lifetime:unknown',
-    'Incident links': 'restricted/unavailable',
+    'Merged PR links': mergedPullRequestLinks ?? 'none recorded',
+    'Spec link': specLink ?? 'unavailable',
+    'Slice list/status': sliceListStatus ?? 'unavailable',
+    'Gate results': gateResults ?? 'unavailable',
+    'Unresolved risks': unresolvedRisks ?? 'none reported',
+    'Follow-up recommendations': followUpRecommendations ?? 'none',
+    'Asset links': assetLinks ?? 'none published',
+    'Blocker incidents':
+      blockerIncidents ?? 'current-run:unknown lifetime:unknown',
+    'Stall incidents': stallIncidents ?? 'current-run:unknown lifetime:unknown',
+    'Contract degradation incidents':
+      contractDegradationIncidents ?? 'current-run:unknown lifetime:unknown',
+    'Incident links': incidentLinks ?? 'restricted/unavailable',
   };
 }
 
