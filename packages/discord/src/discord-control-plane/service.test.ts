@@ -2010,6 +2010,180 @@ describe('DiscordControlPlaneService', () => {
     }
   });
 
+  it('persists latest settings-history metadata after project-settings updates', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const result = await service.handleAction({
+      id: 'discord-004j-history-state',
+      summary: 'project-settings',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:02.000Z',
+      actorId: 'user-4j-history-state',
+      threadId: 'thread-4j-history-state',
+      channelId: 'channel-4j-history-state',
+      action: 'project-settings',
+      privileged: false,
+    });
+
+    expect(result.allowed).toBe(true);
+    const persisted = await store.read(
+      'state',
+      'project-settings-history:thread-4j-history-state',
+    );
+    expect(persisted.ok).toBe(true);
+    if (persisted.ok) {
+      expect(persisted.value.payload).toMatchObject({
+        threadId: 'thread-4j-history-state',
+        changedAt: '2026-04-04T00:00:02.000Z',
+        changedBy: 'user-4j-history-state',
+        changedKeys: 'unknown',
+        effectiveValuesSummary: 'sensitive values redacted',
+        effectiveValuesDetailed: 'unavailable',
+      });
+    }
+  });
+
+  it('hydrates project-settings-history responses from persisted history metadata', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+      createResponseTransport(),
+    );
+
+    await service.handleAction({
+      id: 'discord-004j-history-hydrate-settings',
+      summary: 'project-settings',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:02.000Z',
+      actorId: 'user-4j-history-hydrate',
+      threadId: 'thread-4j-history-hydrate',
+      channelId: 'channel-4j-history-hydrate',
+      action: 'project-settings',
+      privileged: false,
+    });
+
+    const summaryResult = await service.handleInteraction({
+      id: 'interaction-004j-history-summary',
+      token: 'token-004j-history-summary',
+      actorId: 'user-4j-history-hydrate',
+      channelId: 'channel-4j-history-hydrate',
+      updatedAt: '2026-04-04T00:00:03.000Z',
+      commandName: 'project-settings-history',
+      boundThreadId: 'thread-4j-history-hydrate',
+      projectSettingsHistoryDetailed: false,
+    });
+    expect(summaryResult.allowed).toBe(true);
+    expect(summaryResult.responsePayload?.content).toContain(
+      'Changed setting keys: unknown',
+    );
+    expect(summaryResult.responsePayload?.content).toContain(
+      'New effective values: sensitive values redacted',
+    );
+
+    const detailedResult = await service.handleInteraction({
+      id: 'interaction-004j-history-detailed',
+      token: 'token-004j-history-detailed',
+      actorId: 'user-4j-history-hydrate',
+      channelId: 'channel-4j-history-hydrate',
+      updatedAt: '2026-04-04T00:00:04.000Z',
+      commandName: 'project-settings-history',
+      boundThreadId: 'thread-4j-history-hydrate',
+      projectSettingsHistoryDetailed: true,
+      actorRoleIds: ['role-project-operator'],
+      projectOperatorRoleId: 'role-project-operator',
+    });
+    expect(detailedResult.allowed).toBe(true);
+    expect(detailedResult.responsePayload?.content).toContain(
+      'Changed by: user-4j-history-hydrate',
+    );
+    expect(detailedResult.responsePayload?.content).toContain(
+      'Effective values: unavailable',
+    );
+  });
+
+  it('keeps project-settings-history summary unchanged when no history state exists', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+      createResponseTransport(),
+    );
+
+    const result = await service.handleInteraction({
+      id: 'interaction-004j-history-missing',
+      token: 'token-004j-history-missing',
+      actorId: 'user-4j-history-missing',
+      channelId: 'channel-4j-history-missing',
+      updatedAt: '2026-04-04T00:00:05.000Z',
+      commandName: 'project-settings-history',
+      boundThreadId: 'thread-4j-history-missing',
+      projectSettingsHistoryDetailed: false,
+    });
+
+    expect(result.allowed).toBe(true);
+    expect(result.responsePayload?.content).toContain('Timestamp: unavailable');
+    expect(result.responsePayload?.content).toContain('Actor: unavailable');
+  });
+
+  it('keeps project-settings-history summary unchanged when persisted markers are invalid', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+      createResponseTransport(),
+    );
+
+    await store.store({
+      id: 'record-project-history-invalid-markers',
+      key: 'project-settings-history:thread-4j-history-invalid',
+      scope: 'state',
+      summary: 'Project settings history metadata.',
+      status: 'approved',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:05.000Z',
+      payload: {
+        changedAt: 42,
+        changedBy: null,
+        changedKeys: ['approval-mode'],
+        effectiveValuesSummary: false,
+        effectiveValuesDetailed: { key: 'value' },
+      },
+    });
+
+    const result = await service.handleInteraction({
+      id: 'interaction-004j-history-invalid',
+      token: 'token-004j-history-invalid',
+      actorId: 'user-4j-history-invalid',
+      channelId: 'channel-4j-history-invalid',
+      updatedAt: '2026-04-04T00:00:06.000Z',
+      commandName: 'project-settings-history',
+      boundThreadId: 'thread-4j-history-invalid',
+      projectSettingsHistoryDetailed: true,
+      actorRoleIds: ['role-project-operator'],
+      projectOperatorRoleId: 'role-project-operator',
+    });
+
+    expect(result.allowed).toBe(true);
+    expect(result.responsePayload?.content).toContain('Changed at: unknown');
+    expect(result.responsePayload?.content).toContain('Changed by: unknown');
+    expect(result.responsePayload?.content).toContain('Changed keys: unknown');
+  });
+
   it('hydrates show-status metadata from persisted project state', async () => {
     const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
     const store = new FileStoreService(rootDirectory);

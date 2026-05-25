@@ -314,12 +314,12 @@ Usage rules:
 - [ ] Implement `/project-settings-history`.
 - [ ] Keep history append-only and immutable.
 - [x] Detailed history mode restricted to `project-operator`.
-- [ ] Public summary mode available to all participants.
+- [x] Public summary mode available to all participants.
 - [ ] In public summary mode, include:
-- [ ] timestamp.
-- [ ] actor.
-- [ ] changed setting keys.
-- [ ] new effective values with sensitive values redacted.
+- [x] timestamp.
+- [x] actor.
+- [x] changed setting keys.
+- [x] new effective values with sensitive values redacted.
 
 ## 22. Messaging Format and Content
 

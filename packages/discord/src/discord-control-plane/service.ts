@@ -238,6 +238,13 @@ function createProjectConfigVersionStateKey(threadId: string): string {
 }
 
 /**
+ * Builds the state key that stores latest project settings-history metadata.
+ */
+function createProjectSettingsHistoryStateKey(threadId: string): string {
+  return `project-settings-history:${threadId}`;
+}
+
+/**
  * Builds the state key that stores the current lifecycle phase for a thread scope.
  */
 function createProjectPhaseStateKey(threadId: string): string {
@@ -345,6 +352,86 @@ function resolveStoreErrorCode(error: string): string | undefined {
     return 'ENOSPC';
   }
   return undefined;
+}
+
+/**
+ * Structured settings-history metadata stored after successful settings changes.
+ */
+type ProjectSettingsHistoryMetadata = {
+  readonly changedBy: string;
+  readonly changedKeys: string;
+  readonly effectiveValuesSummary: string;
+  readonly effectiveValuesDetailed: string;
+};
+
+/**
+ * Hydrated settings-history markers extracted from persisted state.
+ */
+type HydratedProjectSettingsHistoryMarkers = {
+  readonly changedAt?: string;
+  readonly changedBy?: string;
+  readonly changedKeys?: string;
+  readonly effectiveValuesSummary?: string;
+  readonly effectiveValuesDetailed?: string;
+};
+
+/**
+ * Reads persisted settings-history markers for a thread scope.
+ */
+function resolveProjectSettingsHistoryMarkersFromPayload(
+  payload: UnknownRecord,
+): HydratedProjectSettingsHistoryMarkers {
+  const changedAt = readTrimmedStringField(payload, 'changedAt');
+  const changedBy = readTrimmedStringField(payload, 'changedBy');
+  const changedKeys = readTrimmedStringField(payload, 'changedKeys');
+  const effectiveValuesSummary = readTrimmedStringField(
+    payload,
+    'effectiveValuesSummary',
+  );
+  const effectiveValuesDetailed = readTrimmedStringField(
+    payload,
+    'effectiveValuesDetailed',
+  );
+  return {
+    ...(changedAt === undefined ? {} : { changedAt }),
+    ...(changedBy === undefined ? {} : { changedBy }),
+    ...(changedKeys === undefined ? {} : { changedKeys }),
+    ...(effectiveValuesSummary === undefined ? {} : { effectiveValuesSummary }),
+    ...(effectiveValuesDetailed === undefined
+      ? {}
+      : { effectiveValuesDetailed }),
+  };
+}
+
+/**
+ * Appends settings-history markers to a control summary when available.
+ */
+function appendProjectSettingsHistoryMarkers(
+  summary: string,
+  markers: HydratedProjectSettingsHistoryMarkers,
+  mode: 'summary' | 'detailed',
+): string {
+  const suffixes: string[] = [];
+  if (markers.changedAt !== undefined) {
+    suffixes.push(`(changed-at:${markers.changedAt})`);
+  }
+  if (markers.changedBy !== undefined) {
+    suffixes.push(`(changed-by:${markers.changedBy})`);
+  }
+  if (markers.changedKeys !== undefined) {
+    suffixes.push(`(changed-keys:${markers.changedKeys})`);
+  }
+  const effectiveValues =
+    mode === 'detailed'
+      ? markers.effectiveValuesDetailed
+      : markers.effectiveValuesSummary;
+  if (effectiveValues !== undefined) {
+    suffixes.push(`(effective-values:${effectiveValues})`);
+  }
+  if (suffixes.length === 0) {
+    return summary;
+  }
+  return `${summary} ${suffixes.join(' ')}`.trim();
 }
 
 /**
@@ -1009,6 +1096,33 @@ export class DiscordControlPlaneService {
   private async hydrateRequestSummaryMetadata(
     request: DiscordControlRequest,
   ): Promise<DiscordControlRequest> {
+    if (request.action === DEVPLAT_ACTION_PROJECT_SETTINGS_HISTORY) {
+      const settingsHistoryState = await this.store.read(
+        'state',
+        createProjectSettingsHistoryStateKey(request.threadId),
+      );
+      if (!settingsHistoryState.ok) {
+        return request;
+      }
+      const markers = resolveProjectSettingsHistoryMarkersFromPayload(
+        settingsHistoryState.value.payload,
+      );
+      const historyMode: 'summary' | 'detailed' = request.summary.includes(
+        '(mode:detailed)',
+      )
+        ? 'detailed'
+        : 'summary';
+
+      return {
+        ...request,
+        summary: appendProjectSettingsHistoryMarkers(
+          request.summary,
+          markers,
+          historyMode,
+        ),
+      };
+    }
+
     if (
       request.action !== DEVPLAT_ACTION_SHOW_STATUS &&
       request.action !== DEVPLAT_ACTION_PROJECT_SUMMARY &&
@@ -1040,12 +1154,12 @@ export class DiscordControlPlaneService {
   private async persistProjectConfigVersion(
     request: DiscordControlRequest,
     decision: DiscordControlActionDecision,
-  ): Promise<void> {
+  ): Promise<string | undefined> {
     if (
       request.action !== DEVPLAT_ACTION_PROJECT_SETTINGS ||
       !decision.allowed
     ) {
-      return;
+      return undefined;
     }
 
     const stateKey = createProjectConfigVersionStateKey(request.threadId);
@@ -1068,6 +1182,50 @@ export class DiscordControlPlaneService {
         threadId: request.threadId,
         action: request.action,
         configVersion: nextVersion,
+      },
+    });
+    return nextVersion;
+  }
+
+  /**
+   * Persists latest settings-history metadata after successful settings updates.
+   */
+  private async persistProjectSettingsHistoryState(
+    request: DiscordControlRequest,
+    decision: DiscordControlActionDecision,
+    configVersion: string | undefined,
+  ): Promise<void> {
+    if (
+      request.action !== DEVPLAT_ACTION_PROJECT_SETTINGS ||
+      !decision.allowed ||
+      configVersion === undefined
+    ) {
+      return;
+    }
+
+    const summaryMetadata: ProjectSettingsHistoryMetadata = {
+      changedBy: request.actorId,
+      changedKeys: 'unknown',
+      effectiveValuesSummary: 'sensitive values redacted',
+      effectiveValuesDetailed: 'unavailable',
+    };
+    await this.store.store({
+      id: `${request.id}:project-settings-history`,
+      key: createProjectSettingsHistoryStateKey(request.threadId),
+      scope: 'state',
+      summary: 'Project settings history metadata.',
+      status: 'approved',
+      trace: request.trace,
+      updatedAt: request.updatedAt,
+      payload: {
+        threadId: request.threadId,
+        action: request.action,
+        configVersion,
+        changedAt: request.updatedAt,
+        changedBy: summaryMetadata.changedBy,
+        changedKeys: summaryMetadata.changedKeys,
+        effectiveValuesSummary: summaryMetadata.effectiveValuesSummary,
+        effectiveValuesDetailed: summaryMetadata.effectiveValuesDetailed,
       },
     });
   }
@@ -1785,7 +1943,15 @@ export class DiscordControlPlaneService {
       policyDecisionId: decision.id,
       details,
     });
-    await this.persistProjectConfigVersion(request, decision);
+    const configVersion = await this.persistProjectConfigVersion(
+      request,
+      decision,
+    );
+    await this.persistProjectSettingsHistoryState(
+      request,
+      decision,
+      configVersion,
+    );
 
     const result = {
       request,
