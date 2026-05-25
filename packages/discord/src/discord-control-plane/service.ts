@@ -1,8 +1,11 @@
 import {
+  DEVPLAT_ACTION_CANCEL_PROJECT,
   DEVPLAT_ACTION_NEW_PROJECT,
+  DEVPLAT_ACTION_PHASE_CONTRACT,
   DEVPLAT_ACTION_PROJECT_SETTINGS,
   DEVPLAT_ACTION_PROJECT_SUMMARY,
   DEVPLAT_ACTION_OPEN_PROJECT,
+  DEVPLAT_ACTION_RESUME_PROJECT,
   DEVPLAT_ACTION_SHOW_LAST_ARTIFACT,
   DEVPLAT_ACTION_SHOW_STATUS,
 } from '@vannadii/devplat-core';
@@ -183,6 +186,13 @@ function createProjectIdentityStateKey(repo: string, project: string): string {
   return `project-identity:${repo.trim().toLowerCase()}:${project
     .trim()
     .toLowerCase()}`;
+}
+
+/**
+ * Builds the state key that tracks pause state for a thread-scoped project run.
+ */
+function createThreadPauseStateKey(threadId: string): string {
+  return `project-thread-paused:${threadId}`;
 }
 
 /** Detects duplicate-write errors returned by the file-store layer. */
@@ -597,6 +607,68 @@ export class DiscordControlPlaneService {
   }
 
   /**
+   * Returns whether thread-scoped project execution is currently paused.
+   */
+  private async resolveThreadPausedState(threadId: string): Promise<boolean> {
+    const pausedState = await this.store.read(
+      'state',
+      createThreadPauseStateKey(threadId),
+    );
+    if (!pausedState.ok) {
+      return false;
+    }
+    const paused = pausedState.value.payload['paused'];
+    return paused === true;
+  }
+
+  /**
+   * Persists pause-state transitions for cancel/resume project controls.
+   */
+  private async persistThreadPausedState(
+    request: DiscordControlRequest,
+    decision: DiscordControlActionDecision,
+  ): Promise<void> {
+    if (
+      !decision.allowed ||
+      (request.action !== DEVPLAT_ACTION_CANCEL_PROJECT &&
+        request.action !== DEVPLAT_ACTION_RESUME_PROJECT)
+    ) {
+      return;
+    }
+    const paused = request.action === DEVPLAT_ACTION_CANCEL_PROJECT;
+    await this.store.store({
+      id: `${request.id}:project-thread-paused`,
+      key: createThreadPauseStateKey(request.threadId),
+      scope: 'state',
+      summary: 'Thread-scoped project pause state.',
+      status: 'approved',
+      trace: request.trace,
+      updatedAt: request.updatedAt,
+      payload: {
+        threadId: request.threadId,
+        action: request.action,
+        paused,
+      },
+    });
+  }
+
+  /**
+   * Returns true when an action can execute while the thread is paused.
+   */
+  private isActionAllowedWhileThreadPaused(
+    action: DiscordControlRequest['action'],
+  ): boolean {
+    return (
+      action === DEVPLAT_ACTION_SHOW_STATUS ||
+      action === DEVPLAT_ACTION_SHOW_LAST_ARTIFACT ||
+      action === DEVPLAT_ACTION_PROJECT_SUMMARY ||
+      action === DEVPLAT_ACTION_PHASE_CONTRACT ||
+      action === DEVPLAT_ACTION_RESUME_PROJECT ||
+      action === DEVPLAT_ACTION_CANCEL_PROJECT
+    );
+  }
+
+  /**
    * Reads persisted project metadata used by status and summary responses.
    */
   private async resolveThreadProjectMetadata(
@@ -895,6 +967,17 @@ export class DiscordControlPlaneService {
       request.action,
       request.privileged,
     );
+    const threadPaused = await this.resolveThreadPausedState(request.threadId);
+    if (
+      threadPaused &&
+      !this.isActionAllowedWhileThreadPaused(request.action)
+    ) {
+      return this.failClosedWithAudit(
+        request,
+        'project thread is paused: run /resume-project to continue mutating actions.',
+        'thread-paused',
+      );
+    }
     const identityUniqueness =
       await this.enforceNewProjectIdentityUniqueness(request);
     if (!identityUniqueness.ok) {
@@ -934,6 +1017,7 @@ export class DiscordControlPlaneService {
         return identityFailure;
       }
     }
+    await this.persistThreadPausedState(request, decision);
 
     return this.persistAction(request, decision);
   }

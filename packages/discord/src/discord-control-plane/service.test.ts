@@ -541,6 +541,89 @@ describe('DiscordControlPlaneService', () => {
     );
   });
 
+  it('pauses mutating actions after cancel-project until resume-project', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const cancelResult = await service.handleAction({
+      id: 'discord-004-cancel-project-pause',
+      summary: 'cancel-project',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-cancel-project-pause',
+      threadId: 'thread-cancel-project-pause',
+      channelId: 'channel-cancel-project-pause',
+      action: 'cancel-project',
+      privileged: false,
+    });
+    expect(cancelResult.allowed).toBe(true);
+
+    const blockedMutation = await service.handleAction({
+      id: 'discord-004-cancel-project-mutation-blocked',
+      summary: 'project-settings',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:01.000Z',
+      actorId: 'user-cancel-project-mutation-blocked',
+      threadId: 'thread-cancel-project-pause',
+      channelId: 'channel-cancel-project-pause',
+      action: 'project-settings',
+      privileged: false,
+    });
+    expect(blockedMutation.allowed).toBe(false);
+    expect(blockedMutation.failedClosed).toBe(true);
+
+    const allowedReadOnly = await service.handleAction({
+      id: 'discord-004-cancel-project-read-only',
+      summary: 'show-status',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:02.000Z',
+      actorId: 'user-cancel-project-read-only',
+      threadId: 'thread-cancel-project-pause',
+      channelId: 'channel-cancel-project-pause',
+      action: 'show-status',
+      privileged: false,
+    });
+    expect(allowedReadOnly.allowed).toBe(true);
+    expect(allowedReadOnly.failedClosed).toBe(false);
+
+    const resumeResult = await service.handleAction({
+      id: 'discord-004-resume-project-unpause',
+      summary: 'resume-project',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:03.000Z',
+      actorId: 'user-resume-project-unpause',
+      threadId: 'thread-cancel-project-pause',
+      channelId: 'channel-cancel-project-pause',
+      action: 'resume-project',
+      privileged: false,
+    });
+    expect(resumeResult.allowed).toBe(true);
+
+    const unblockedMutation = await service.handleAction({
+      id: 'discord-004-resume-project-mutation-restored',
+      summary: 'project-settings',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:04.000Z',
+      actorId: 'user-resume-project-mutation-restored',
+      threadId: 'thread-cancel-project-pause',
+      channelId: 'channel-cancel-project-pause',
+      action: 'project-settings',
+      privileged: false,
+    });
+    expect(unblockedMutation.allowed).toBe(true);
+    expect(unblockedMutation.failedClosed).toBe(false);
+  });
+
   it('enforces new-project uniqueness per repo across thread contexts', async () => {
     const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
     const store = new FileStoreService(rootDirectory);
