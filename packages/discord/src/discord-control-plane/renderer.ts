@@ -460,6 +460,7 @@ function isSensitiveDiscordEventField(fieldName: string): boolean {
     normalized === 'publickey' ||
     normalized === 'privatekey' ||
     normalized.endsWith('roleid') ||
+    normalized.endsWith('roleids') ||
     normalized.endsWith('token') ||
     normalized.endsWith('secret') ||
     normalized.endsWith('password') ||
