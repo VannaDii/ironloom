@@ -804,7 +804,7 @@ export function createDiscordOperatorInteractionFromCallback(
   };
 }
 
-/** Creates interaction control request input. */
+/** Sanitizes summary marker values to avoid marker-injection ambiguity. */
 function sanitizeSummaryMarkerValue(value: string): string {
   return value
     .split('(')

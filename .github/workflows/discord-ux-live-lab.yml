@@ -94,8 +94,19 @@ jobs:
 
       - name: Upload Discord UX Artifacts
         if: always()
+        run: |
+          archive_path="${RUNNER_TEMP}/discord-ux-live-lab.tar.gz"
+          if [[ -d "$RUNNER_TEMP/discord-ux-live-lab" ]]; then
+            tar -C "$RUNNER_TEMP" -czf "$archive_path" "discord-ux-live-lab"
+          else
+            mkdir -p "$RUNNER_TEMP/discord-ux-live-lab"
+            tar -C "$RUNNER_TEMP" -czf "$archive_path" "discord-ux-live-lab"
+          fi
+
+      - name: Upload Discord UX Artifact Bundle
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: discord-ux-live-lab-${{ github.run_id }}-${{ github.run_attempt }}
           retention-days: 14
-          path: ${{ runner.temp }}/discord-ux-live-lab
+          path: ${{ runner.temp }}/discord-ux-live-lab.tar.gz
