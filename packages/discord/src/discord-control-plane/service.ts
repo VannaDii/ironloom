@@ -1,8 +1,11 @@
 import {
+  DEVPLAT_ACTION_CANCEL_PROJECT,
   DEVPLAT_ACTION_NEW_PROJECT,
+  DEVPLAT_ACTION_PHASE_CONTRACT,
   DEVPLAT_ACTION_PROJECT_SETTINGS,
   DEVPLAT_ACTION_PROJECT_SUMMARY,
   DEVPLAT_ACTION_OPEN_PROJECT,
+  DEVPLAT_ACTION_RESUME_PROJECT,
   DEVPLAT_ACTION_SHOW_LAST_ARTIFACT,
   DEVPLAT_ACTION_SHOW_STATUS,
 } from '@vannadii/devplat-core';
@@ -183,6 +186,13 @@ function createProjectIdentityStateKey(repo: string, project: string): string {
   return `project-identity:${repo.trim().toLowerCase()}:${project
     .trim()
     .toLowerCase()}`;
+}
+
+/**
+ * Builds the state key that tracks pause state for a thread-scoped project run.
+ */
+function createThreadPauseStateKey(threadId: string): string {
+  return `project-thread-paused:${threadId}`;
 }
 
 /** Detects duplicate-write errors returned by the file-store layer. */
@@ -597,6 +607,68 @@ export class DiscordControlPlaneService {
   }
 
   /**
+   * Returns whether thread-scoped project execution is currently paused.
+   */
+  private async resolveThreadPausedState(threadId: string): Promise<boolean> {
+    const pausedState = await this.store.read(
+      'state',
+      createThreadPauseStateKey(threadId),
+    );
+    if (!pausedState.ok) {
+      return false;
+    }
+    const paused = pausedState.value.payload['paused'];
+    return paused === true;
+  }
+
+  /**
+   * Persists pause-state transitions for cancel/resume project controls.
+   */
+  private async persistThreadPausedState(
+    request: DiscordControlRequest,
+    decision: DiscordControlActionDecision,
+  ): Promise<void> {
+    if (
+      !decision.allowed ||
+      (request.action !== DEVPLAT_ACTION_CANCEL_PROJECT &&
+        request.action !== DEVPLAT_ACTION_RESUME_PROJECT)
+    ) {
+      return;
+    }
+    const paused = request.action === DEVPLAT_ACTION_CANCEL_PROJECT;
+    await this.store.store({
+      id: `${request.id}:project-thread-paused`,
+      key: createThreadPauseStateKey(request.threadId),
+      scope: 'state',
+      summary: 'Thread-scoped project pause state.',
+      status: 'approved',
+      trace: request.trace,
+      updatedAt: request.updatedAt,
+      payload: {
+        threadId: request.threadId,
+        action: request.action,
+        paused,
+      },
+    });
+  }
+
+  /**
+   * Returns true when an action can execute while the thread is paused.
+   */
+  private isActionAllowedWhileThreadPaused(
+    action: DiscordControlRequest['action'],
+  ): boolean {
+    return (
+      action === DEVPLAT_ACTION_SHOW_STATUS ||
+      action === DEVPLAT_ACTION_SHOW_LAST_ARTIFACT ||
+      action === DEVPLAT_ACTION_PROJECT_SUMMARY ||
+      action === DEVPLAT_ACTION_PHASE_CONTRACT ||
+      action === DEVPLAT_ACTION_RESUME_PROJECT ||
+      action === DEVPLAT_ACTION_CANCEL_PROJECT
+    );
+  }
+
+  /**
    * Reads persisted project metadata used by status and summary responses.
    */
   private async resolveThreadProjectMetadata(
@@ -695,6 +767,48 @@ export class DiscordControlPlaneService {
   }
 
   /**
+   * Records a blocked audit and returns a fail-closed control result.
+   */
+  private async failClosedWithAudit(
+    request: DiscordControlRequest,
+    reason: string,
+    resultStatus: string,
+  ): Promise<DiscordControlResult> {
+    await this.telemetry.recordAudit({
+      auditId: `${request.id}:audit`,
+      runId: request.id,
+      eventId: request.id,
+      actorId: request.actorId,
+      action: request.action,
+      scope: 'discord',
+      outcome: 'blocked',
+      reason,
+      artifactIds:
+        request.workItem?.artifactId === undefined
+          ? []
+          : [request.workItem.artifactId],
+      recordedAt: request.updatedAt,
+      policyDecisionId: 'discord-fail-closed',
+      details: {
+        threadId: request.threadId,
+        channelId: request.channelId,
+        resultStatus,
+        correlationId: request.id,
+      },
+    });
+    return createDiscordControlResultWithOptionalWorkItem(
+      {
+        request,
+        policyDecisionId: 'discord-fail-closed',
+        allowed: false,
+        persistedKey: request.id,
+        failedClosed: true,
+      },
+      request,
+    );
+  }
+
+  /**
    * Enforces immutable `/open-project --intent` context for a thread scope.
    */
   private async enforceOpenProjectIntentImmutability(
@@ -782,67 +896,16 @@ export class DiscordControlPlaneService {
     if (boundThreadId === request.threadId) {
       return { ok: true };
     }
-    if (boundThreadId === undefined) {
-      return {
-        ok: true,
-        persistRepo: repo,
-        persistProject: project,
-        stateKey,
-      };
-    }
-
     return {
       ok: false,
-      reason: `new-project identity already exists: repo=${repo} project=${project} boundThread=${boundThreadId}.`,
+      reason: `new-project identity already exists: repo=${repo} project=${project} boundThread=${boundThreadId ?? 'unknown'}.`,
     };
   }
 
   /**
-   * Records a blocked audit and returns a fail-closed control result.
+   * Persists a `/new-project` identity reservation with atomic create semantics.
    */
-  private async failClosedWithAudit(
-    request: DiscordControlRequest,
-    reason: string,
-    resultStatus: string,
-  ): Promise<DiscordControlResult> {
-    await this.telemetry.recordAudit({
-      auditId: `${request.id}:audit`,
-      runId: request.id,
-      eventId: request.id,
-      actorId: request.actorId,
-      action: request.action,
-      scope: 'discord',
-      outcome: 'blocked',
-      reason,
-      artifactIds:
-        request.workItem?.artifactId === undefined
-          ? []
-          : [request.workItem.artifactId],
-      recordedAt: request.updatedAt,
-      policyDecisionId: 'discord-fail-closed',
-      details: {
-        threadId: request.threadId,
-        channelId: request.channelId,
-        resultStatus,
-        correlationId: request.id,
-      },
-    });
-    return createDiscordControlResultWithOptionalWorkItem(
-      {
-        request,
-        policyDecisionId: 'discord-fail-closed',
-        allowed: false,
-        persistedKey: request.id,
-        failedClosed: true,
-      },
-      request,
-    );
-  }
-
-  /**
-   * Persists `/new-project` identity reservation with create-only semantics.
-   */
-  private async reserveNewProjectIdentity(
+  private async persistNewProjectIdentityReservation(
     request: DiscordControlRequest,
     identityUniqueness: {
       readonly persistRepo?: string;
@@ -858,7 +921,7 @@ export class DiscordControlPlaneService {
     ) {
       return undefined;
     }
-    const reservation = await this.store.storeIfAbsent({
+    const identityReservation = await this.store.storeIfAbsent({
       id: identityUniqueness.stateKey,
       key: identityUniqueness.stateKey,
       scope: 'state',
@@ -873,12 +936,12 @@ export class DiscordControlPlaneService {
         action: request.action,
       },
     });
-    if (reservation.ok) {
+    if (identityReservation.ok) {
       return undefined;
     }
-    const fallbackReason = isAlreadyExistsStoreError(reservation.error)
+    const fallbackReason = isAlreadyExistsStoreError(identityReservation.error)
       ? `new-project identity already exists: repo=${identityUniqueness.persistRepo} project=${identityUniqueness.persistProject}.`
-      : `new-project identity reservation failed: ${reservation.error}`;
+      : `new-project identity reservation failed: ${identityReservation.error}`;
     return this.failClosedWithAudit(
       request,
       fallbackReason,
@@ -904,6 +967,17 @@ export class DiscordControlPlaneService {
       request.action,
       request.privileged,
     );
+    const threadPaused = await this.resolveThreadPausedState(request.threadId);
+    if (
+      threadPaused &&
+      !this.isActionAllowedWhileThreadPaused(request.action)
+    ) {
+      return this.failClosedWithAudit(
+        request,
+        'project thread is paused: run /resume-project to continue mutating actions.',
+        'thread-paused',
+      );
+    }
     const identityUniqueness =
       await this.enforceNewProjectIdentityUniqueness(request);
     if (!identityUniqueness.ok) {
@@ -935,14 +1009,15 @@ export class DiscordControlPlaneService {
       });
     }
     if (decision.allowed) {
-      const reservationFailure = await this.reserveNewProjectIdentity(
+      const identityFailure = await this.persistNewProjectIdentityReservation(
         request,
         identityUniqueness,
       );
-      if (reservationFailure !== undefined) {
-        return reservationFailure;
+      if (identityFailure !== undefined) {
+        return identityFailure;
       }
     }
+    await this.persistThreadPausedState(request, decision);
 
     return this.persistAction(request, decision);
   }
