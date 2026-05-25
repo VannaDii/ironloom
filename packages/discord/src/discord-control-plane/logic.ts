@@ -30,7 +30,12 @@ import {
 } from '@vannadii/devplat-core';
 
 import { resolveDiscordCommandAction } from '../command-contract/logic.js';
-import { DISCORD_COMPONENT_CUSTOM_ID_PREFIX } from './constants.js';
+import {
+  DISCORD_COMPONENT_CUSTOM_ID_PREFIX,
+  DISCORD_CONTROL_REQUEST_SUMMARY_MAX_LENGTH,
+  DISCORD_PROJECT_NAME_MAX_LENGTH,
+  DISCORD_PROJECT_NAME_MIN_LENGTH,
+} from './constants.js';
 import type {
   DiscordControlAction,
   DiscordControlRequest,
@@ -71,20 +76,6 @@ type DevplatOperatorRole =
   | 'project-operator'
   | 'spec-approver'
   | 'merge-approver';
-
-/**
- * Minimum allowed project-name length for project bootstrap and reopen routes.
- */
-const DISCORD_PROJECT_NAME_MIN_LENGTH = 3;
-
-/**
- * Maximum allowed project-name length for project bootstrap and reopen routes.
- */
-const DISCORD_PROJECT_NAME_MAX_LENGTH = 30;
-/**
- * Upper bound for persisted Discord control request summaries.
- */
-const DISCORD_CONTROL_REQUEST_SUMMARY_MAX_LENGTH = 1000;
 
 /**
  * Human and component action tokens accepted by the operator router.

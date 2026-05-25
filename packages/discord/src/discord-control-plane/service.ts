@@ -1022,6 +1022,15 @@ export class DiscordControlPlaneService {
     input: DiscordControlRequest,
   ): Promise<DiscordControlResult> {
     const request = this.execute(input);
+    return this.handleNormalizedAction(request);
+  }
+
+  /**
+   * Handles a normalized control request through the shared enforcement pipeline.
+   */
+  private async handleNormalizedAction(
+    request: DiscordControlRequest,
+  ): Promise<DiscordControlResult> {
     const immutability =
       await this.enforceOpenProjectIntentImmutability(request);
     if (!immutability.ok) {
@@ -1451,130 +1460,32 @@ export class DiscordControlPlaneService {
   }
 
   /**
-   * Handles routed interaction failure when open-project intent is not immutable.
-   */
-  private async handleRoutedIntentImmutabilityFailure(
-    input: DiscordOperatorInteraction,
-    request: DiscordControlRequest,
-    reason: string,
-  ): Promise<DiscordControlResult> {
-    const responsePayload = renderDiscordControlBlockedMessage(request, reason);
-    const acknowledgement =
-      await this.postInteractionDeferredAcknowledgement(input);
-    if (!acknowledgement.ok) {
-      await this.recordInteractionResponseFailure(
-        request,
-        'discord-fail-closed',
-        acknowledgement.responsePostError,
-        acknowledgement.responseReceipt,
-      );
-      return createDiscordControlResultWithOptionalWorkItem(
-        {
-          request,
-          policyDecisionId: 'discord-fail-closed',
-          allowed: false,
-          persistedKey: request.id,
-          failedClosed: true,
-          responsePayload,
-          responsePostError: acknowledgement.responsePostError,
-          ...(acknowledgement.responseReceipt === undefined
-            ? {}
-            : { responseReceipt: acknowledgement.responseReceipt }),
-        },
-        request,
-      );
-    }
-
-    await this.telemetry.recordAudit({
-      auditId: `${request.id}:audit`,
-      runId: request.id,
-      eventId: request.id,
-      actorId: request.actorId,
-      action: request.action,
-      scope: 'discord',
-      outcome: 'blocked',
-      reason,
-      artifactIds:
-        request.workItem?.artifactId === undefined
-          ? []
-          : [request.workItem.artifactId],
-      recordedAt: request.updatedAt,
-      policyDecisionId: 'discord-fail-closed',
-      details: {
-        threadId: request.threadId,
-        channelId: request.channelId,
-        resultStatus: 'intent-mismatch',
-        correlationId: request.id,
-      },
-    });
-    const threadPostResult = await this.postThreadMessageAfterAcknowledgement(
-      request.threadId,
-      responsePayload,
-    );
-    return createDiscordControlResultWithOptionalWorkItem(
-      {
-        request,
-        policyDecisionId: 'discord-fail-closed',
-        allowed: false,
-        persistedKey: request.id,
-        failedClosed: true,
-        responsePayload,
-        responseReceipt: acknowledgement.responseReceipt,
-        ...(threadPostResult.ok
-          ? { threadReceipt: threadPostResult.threadReceipt }
-          : {
-              ...(threadPostResult.threadReceipt === undefined
-                ? {}
-                : { threadReceipt: threadPostResult.threadReceipt }),
-              threadPostError: threadPostResult.threadPostError,
-            }),
-      },
-      request,
-    );
-  }
-
-  /**
    * Handles a routed interaction after thread context has resolved.
    */
   private async handleRoutedInteraction(
     input: DiscordOperatorInteraction,
     request: DiscordControlRequest,
   ): Promise<DiscordControlResult> {
-    const renderedRequest = await this.hydrateRequestSummaryMetadata(request);
     const immutability =
-      await this.enforceOpenProjectIntentImmutability(renderedRequest);
-    if (!immutability.ok) {
-      return this.handleRoutedIntentImmutabilityFailure(
-        input,
-        renderedRequest,
-        immutability.reason,
-      );
-    }
-
-    const decision = this.policy.evaluateControlAction(
-      renderedRequest.action,
-      renderedRequest.privileged,
-    );
-    const responsePayload = decision.allowed
-      ? renderAcceptedControlMessage(renderedRequest)
-      : renderDiscordControlBlockedMessage(renderedRequest);
-    const threadPayload = responsePayload;
+      await this.enforceOpenProjectIntentImmutability(request);
     const acknowledgement =
       await this.postInteractionDeferredAcknowledgement(input);
     if (!acknowledgement.ok) {
       await this.recordInteractionResponseFailure(
-        renderedRequest,
-        decision.id,
+        request,
+        immutability.ok
+          ? 'discord-interaction-deferred'
+          : 'discord-fail-closed',
         acknowledgement.responsePostError,
         acknowledgement.responseReceipt,
       );
-      const result = {
-        request: renderedRequest,
-        policyDecisionId: decision.id,
+      const acknowledgementFailureResult = {
+        request,
+        policyDecisionId: 'discord-fail-closed',
         allowed: false,
-        persistedKey: renderedRequest.id,
+        persistedKey: request.id,
         failedClosed: true,
-        responsePayload,
+        responsePayload: renderDiscordControlBlockedMessage(request),
         responsePostError: acknowledgement.responsePostError,
         ...(acknowledgement.responseReceipt === undefined
           ? {}
@@ -1582,13 +1493,27 @@ export class DiscordControlPlaneService {
       };
 
       return createDiscordControlResultWithOptionalWorkItem(
-        result,
-        renderedRequest,
+        acknowledgementFailureResult,
+        request,
       );
     }
-    const result = await this.persistAction(renderedRequest, decision);
+    if (!immutability.ok) {
+      return this.handleDeferredIntentImmutabilityFailure(
+        request,
+        immutability.reason,
+        acknowledgement.responseReceipt,
+      );
+    }
+    const result = await this.handleNormalizedAction(request);
+    const renderedRequest = await this.hydrateRequestSummaryMetadata(
+      result.request,
+    );
+    const responsePayload = result.allowed
+      ? renderAcceptedControlMessage(renderedRequest)
+      : renderDiscordControlBlockedMessage(renderedRequest);
+    const threadPayload = responsePayload;
     const threadPostResult = await this.postThreadMessageAfterAcknowledgement(
-      renderedRequest.threadId,
+      result.request.threadId,
       threadPayload,
     );
     let completionProjection: Partial<
@@ -1624,6 +1549,63 @@ export class DiscordControlPlaneService {
           }),
       ...completionProjection,
     };
+  }
+
+  /**
+   * Handles immutable-intent fail-closed outcomes after interaction acknowledgement.
+   */
+  private async handleDeferredIntentImmutabilityFailure(
+    request: DiscordControlRequest,
+    reason: string,
+    responseReceipt: DiscordResponseReceipt,
+  ): Promise<DiscordControlResult> {
+    const responsePayload = renderDiscordControlBlockedMessage(request, reason);
+    await this.telemetry.recordAudit({
+      auditId: `${request.id}:audit`,
+      runId: request.id,
+      eventId: request.id,
+      actorId: request.actorId,
+      action: request.action,
+      scope: 'discord',
+      outcome: 'blocked',
+      reason,
+      artifactIds:
+        request.workItem?.artifactId === undefined
+          ? []
+          : [request.workItem.artifactId],
+      recordedAt: request.updatedAt,
+      policyDecisionId: 'discord-fail-closed',
+      details: {
+        threadId: request.threadId,
+        channelId: request.channelId,
+        resultStatus: 'intent-mismatch',
+        correlationId: request.id,
+      },
+    });
+    const threadPostResult = await this.postThreadMessageAfterAcknowledgement(
+      request.threadId,
+      responsePayload,
+    );
+    return createDiscordControlResultWithOptionalWorkItem(
+      {
+        request,
+        policyDecisionId: 'discord-fail-closed',
+        allowed: false,
+        persistedKey: request.id,
+        failedClosed: true,
+        responsePayload,
+        responseReceipt,
+        ...(threadPostResult.ok
+          ? { threadReceipt: threadPostResult.threadReceipt }
+          : {
+              ...(threadPostResult.threadReceipt === undefined
+                ? {}
+                : { threadReceipt: threadPostResult.threadReceipt }),
+              threadPostError: threadPostResult.threadPostError,
+            }),
+      },
+      request,
+    );
   }
 
   /**
@@ -1684,17 +1666,15 @@ export class DiscordControlPlaneService {
     input: DiscordOperatorInteraction,
     request: DiscordControlRequest,
   ): Promise<DiscordControlResult> {
-    const renderedRequest = await this.hydrateRequestSummaryMetadata(request);
-    const decision = this.policy.evaluateControlAction(
-      renderedRequest.action,
-      renderedRequest.privileged,
+    const result = await this.handleNormalizedAction(request);
+    const renderedRequest = await this.hydrateRequestSummaryMetadata(
+      result.request,
     );
-    const responsePayload = decision.allowed
+    const responsePayload = result.allowed
       ? renderAcceptedControlMessage(renderedRequest)
       : renderDiscordControlBlockedMessage(renderedRequest);
-    const result = await this.persistAction(renderedRequest, decision);
     const threadPostResult = await this.postThreadMessageAfterAcknowledgement(
-      renderedRequest.threadId,
+      result.request.threadId,
       responsePayload,
     );
     let completionProjection: Partial<
@@ -1702,9 +1682,9 @@ export class DiscordControlPlaneService {
     > = {};
     if (!isDiscordComponentInteraction(input)) {
       const completionPayload = threadPostResult.ok
-        ? renderDiscordInteractionCompletionMessage(renderedRequest)
+        ? renderDiscordInteractionCompletionMessage(result.request)
         : renderDiscordInteractionThreadPostFailureCompletionMessage(
-            renderedRequest,
+            result.request,
             threadPostResult.threadPostError,
           );
       const completionResult = await this.postInteractionCompletion(

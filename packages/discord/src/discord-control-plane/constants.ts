@@ -103,3 +103,18 @@ export const DISCORD_REST_SUCCESS_MAX_EXCLUSIVE_STATUS = 300;
  * Pattern for strict `v<integer>` project config-version markers.
  */
 export const DISCORD_PROJECT_CONFIG_VERSION_PATTERN = /^v[1-9]\d*$/u;
+
+/**
+ * Minimum allowed project-name length for project bootstrap and reopen routes.
+ */
+export const DISCORD_PROJECT_NAME_MIN_LENGTH = 3;
+
+/**
+ * Maximum allowed project-name length for project bootstrap and reopen routes.
+ */
+export const DISCORD_PROJECT_NAME_MAX_LENGTH = 30;
+
+/**
+ * Upper bound for persisted Discord control request summaries.
+ */
+export const DISCORD_CONTROL_REQUEST_SUMMARY_MAX_LENGTH = 1000;

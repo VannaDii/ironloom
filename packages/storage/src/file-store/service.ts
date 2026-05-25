@@ -1,4 +1,11 @@
-import { mkdir, open, readFile, readdir, writeFile } from 'node:fs/promises';
+import {
+  mkdir,
+  open,
+  readFile,
+  readdir,
+  unlink,
+  writeFile,
+} from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 import { decodeWithCodec, type DevplatResult } from '@vannadii/devplat-core';
@@ -112,6 +119,11 @@ export class FileStoreService {
         value: normalized,
       };
     } catch (error) {
+      try {
+        await unlink(filePath);
+      } catch {
+        // Best-effort cleanup for partially persisted create-only writes.
+      }
       return {
         ok: false,
         error: String(error),
