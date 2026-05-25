@@ -109,7 +109,7 @@ Usage rules:
 - [ ] Include risk types per alternative: technical, product, security, dependency, operational.
 - [x] Implement `/cancel` for current thread only.
 - [x] Restrict `/cancel` to `project-operator`.
-- [ ] On thread cancel, post next recommended actions and links to last artifacts.
+- [x] On thread cancel, post next recommended actions and links to last artifacts.
 - [ ] Implement `/spec` availability in discovery.
 - [ ] Implement `/research` availability in discovery.
 

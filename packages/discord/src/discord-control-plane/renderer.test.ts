@@ -915,6 +915,30 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'renders cancel-project accepted message with next-step and artifact follow-up controls',
+      inputs: {
+        request: {
+          ...request,
+          action: 'cancel-project',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain(
+          'Project activity paused and cancellation summaries are posted.',
+        );
+        expect(payload.content).toContain('/show-last-artifact');
+        expect(payload.content).toContain('/project-summary');
+        expect(payload.content).toContain('/resume-project');
+        expect(
+          payload.components?.[0]?.components.map((button) => button.label),
+        ).toEqual(['Details', 'Project Summary', 'Resume Project']);
+      },
+    },
+    {
       name: 'renders release-project control buttons with danger style',
       inputs: {
         request: {
