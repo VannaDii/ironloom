@@ -44,6 +44,16 @@ Discord then drives discovery (`/research`, `/spec`, `/alternatives`,
 `/redirect`, `/consider`) and bound spec/implementation/pull-request threads.
 Missing or ambiguous bindings must fail closed.
 
+Project-level controls remain available in the project-management thread during
+that lifecycle:
+
+- `/project-summary` for read-only lifecycle status and release readiness
+- `/project-settings` and `/project-settings-history [--mode ...]` for settings
+  updates and append-only history
+- `/cancel-project` (or `/cancel` alias) to pause project activity
+- `/resume-project [--force force]` for guarded resume
+- `/release-project` to request release orchestration
+
 ```mermaid
 flowchart TD
   Intake["Operator requests a repository change"]

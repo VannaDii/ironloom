@@ -485,9 +485,9 @@ Usage rules:
 
 ## 34. Documentation Update Requirements (while implementing)
 
-- [ ] Update [operator-guide.md](/workspace/devplat/site/guide-docs/guides/operator-guide.md) as each checklist area lands.
-- [ ] Update [discord-workflows.md](/workspace/devplat/site/guide-docs/guides/discord-workflows.md) for new commands, role model, and thread contracts.
-- [ ] Update [user-guide.md](/workspace/devplat/site/guide-docs/guides/user-guide.md) for Discord-only bootstrap and project lifecycle usage.
+- [x] Update [operator-guide.md](/workspace/devplat/site/guide-docs/guides/operator-guide.md) as each checklist area lands.
+- [x] Update [discord-workflows.md](/workspace/devplat/site/guide-docs/guides/discord-workflows.md) for new commands, role model, and thread contracts.
+- [x] Update [user-guide.md](/workspace/devplat/site/guide-docs/guides/user-guide.md) for Discord-only bootstrap and project lifecycle usage.
 - [ ] Update [live-test-lab.md](/workspace/devplat/site/guide-docs/guides/live-test-lab.md) only where behavior overlaps with production operator controls.
 - [ ] Update command reference docs to named-option format and kebab-case conventions.
 - [ ] Keep docs aligned with final command set:
@@ -496,15 +496,15 @@ Usage rules:
 - [ ] `/project-summary`.
 - [ ] `/project-settings`.
 - [ ] `/project-settings-history`.
-- [ ] `/cancel-project`.
+- [x] `/cancel-project`.
 - [ ] `/resume-project`.
 - [ ] `/release-project`.
 - [ ] `/phase-contract`.
-- [ ] `/alternatives` and `/alts` alias.
-- [ ] `/redirect`.
-- [ ] `/consider`.
-- [ ] `/research`.
-- [ ] `/spec`.
+- [x] `/alternatives` and `/alts` alias.
+- [x] `/redirect`.
+- [x] `/consider`.
+- [x] `/research`.
+- [x] `/spec`.
 - [ ] Ensure docs describe role checks for both slash commands and button actions.
 - [ ] Ensure docs reflect visibility tiers for role and non-role participants.
 - [ ] Ensure docs include release summary requirements and operational health section.

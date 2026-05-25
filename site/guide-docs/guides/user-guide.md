@@ -126,8 +126,12 @@ npm run test:openclaw:live-lab:local
 Expected operator-visible results:
 
 - slash command contracts are registered for the configured guild
-- the registered commands match the documented `/run-this`, `/retry-gates`,
-  `/merge-now`, status, artifact, and remediation controls
+- the registered commands match the documented project bootstrap and lifecycle
+  surface: `/new-project`, `/open-project`, `/project-summary`,
+  `/project-settings`, `/project-settings-history`, `/cancel-project` and
+  `/cancel`, `/resume-project`, `/release-project`, `/phase-contract`,
+  `/alternatives` and `/alts`, `/redirect`, `/consider`, `/research`, `/spec`,
+  plus bound-thread execution controls
 - simulated or real interaction callbacks resolve a bound thread context
 - ambiguous or missing bindings fail closed
 - status, audit, and last-artifact responses are posted to the intended thread
