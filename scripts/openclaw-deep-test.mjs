@@ -1156,7 +1156,7 @@ export function createDeepScenario(runtimeEnv) {
         action: 'release-worktree',
         privileged: false,
       },
-      { allowed: false, policyDecisionId: 'policy-release-worktree' },
+      { allowed: false, policyDecisionId: 'discord-fail-closed' },
       'control',
     ),
     createStep(
