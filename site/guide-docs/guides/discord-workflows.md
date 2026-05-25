@@ -69,6 +69,7 @@ bound-thread lifecycle controls.
 | `/project-settings`         | project-management                               | Update project runtime settings and approval mode.                   |
 | `/project-settings-history` | project-management                               | Show append-only settings history (public or detailed by role).      |
 | `/cancel-project`           | project-management                               | Pause all project activity and post per-phase cancellation status.   |
+| `/cancel`                   | project-management                               | Alias for `/cancel-project` in the current thread context.           |
 | `/resume-project`           | project-management                               | Run global preflight and resume paused project activity.             |
 | `/release-project`          | project-management                               | Request release orchestration and approval.                          |
 | `/phase-contract`           | spec, implementation, or pull-request            | Show authoritative allowed actions, lock markers, and role gates.    |
@@ -95,12 +96,15 @@ bound-thread lifecycle controls.
 | `/explain-failure`          | implementation or pull-request                   | Summarize the latest failing gate, review, or remediation state.     |
 | `/update-spec`              | spec                                             | Create a new revision of the bound spec while preserving history.    |
 
-Named-option command contracts are registered for project bootstrap and reopen
-paths:
+Named-option command contracts are registered for bootstrap, reopen, and
+research/project controls:
 
 - `/new-project --repo <repo_name> --project <project_name> [--quality-strictness on|off]`
 - `/open-project --repo <repo_name> --project <project_name> --intent maintenance|bugfix|new-feature`
 - `/resume-project [--force force]`
+- `/project-settings-history [--mode summary|detailed]`
+- `/redirect --direction-prompt <text>`
+- `/consider --url <value>`
 
 For the full research-to-PR command workflow, use the canonical
 [Commanded Delivery Flow](./operator-guide.md#commanded-delivery-flow) in the
