@@ -1109,7 +1109,7 @@ export class DiscordControlPlaneService {
           ok: false,
           reason:
             'unable to verify lifecycle phase compatibility for this thread. ' +
-            'Use /show-status and retry after storage recovers.',
+            'Retry after storage recovers.',
         };
       }
       return { ok: true };
