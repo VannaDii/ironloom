@@ -793,6 +793,36 @@ function resolveReleaseSummaryFields(
 }
 
 /**
+ * Returns canonical alternatives fields with exactly three options.
+ */
+function resolveAlternativesFields(
+  request: DiscordControlRequest,
+): Readonly<Record<string, string>> {
+  if (request.action !== DEVPLAT_ACTION_ALTERNATIVES) {
+    return {};
+  }
+
+  const alternativeOne = resolveSummaryMarkerValue(request.summary, '(alt-1:');
+  const alternativeTwo = resolveSummaryMarkerValue(request.summary, '(alt-2:');
+  const alternativeThree = resolveSummaryMarkerValue(
+    request.summary,
+    '(alt-3:',
+  );
+
+  return {
+    'Alternative 1':
+      alternativeOne ??
+      'Plan: Stabilize current architecture first · Effort: S (1-2 days) · Risk: Low [technical, dependency]',
+    'Alternative 2':
+      alternativeTwo ??
+      'Plan: Deliver balanced feature increment · Effort: M (3-5 days) · Risk: Medium [product, operational]',
+    'Alternative 3':
+      alternativeThree ??
+      'Plan: Expand for long-term scalability · Effort: L (1-2 weeks) · Risk: High [security, technical, dependency]',
+  };
+}
+
+/**
  * Renders compact project/thread context for blocked action diagnostics.
  */
 function renderBlockedActionContextValue(
@@ -1119,6 +1149,7 @@ export function renderDiscordControlAcceptedMessage(
       ...resolveStatusSummaryMetadataFields(request),
       ...resolveResumeProjectPreflightFields(request),
       ...resolveReleaseSummaryFields(request),
+      ...resolveAlternativesFields(request),
     },
     indicator: display.acceptedIndicator,
     result: display.result,

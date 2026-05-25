@@ -1039,6 +1039,65 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'renders exactly three alternatives with effort and risk defaults',
+      inputs: {
+        request: {
+          ...request,
+          action: 'alternatives',
+          summary: 'alternatives',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain('Alternative 1:');
+        expect(payload.content).toContain('Alternative 2:');
+        expect(payload.content).toContain('Alternative 3:');
+        expect(payload.content).toContain('Effort: S (1-2 days)');
+        expect(payload.content).toContain('Effort: M (3-5 days)');
+        expect(payload.content).toContain('Effort: L (1-2 weeks)');
+        expect(payload.content).toContain('Risk: Low');
+        expect(payload.content).toContain('Risk: Medium');
+        expect(payload.content).toContain('Risk: High');
+        expect(payload.content).toContain('[technical');
+        expect(payload.content).toContain('[product');
+        expect(payload.content).toContain('[security');
+        expect(payload.content).toContain('dependency]');
+        expect(payload.content).toContain('operational]');
+      },
+    },
+    {
+      name: 'renders explicit alternatives markers when provided',
+      inputs: {
+        request: {
+          ...request,
+          action: 'alternatives',
+          summary:
+            'alternatives ' +
+            '(alt-1:Plan A · Effort: S 1-2d · Risk: Low [technical]) ' +
+            '(alt-2:Plan B · Effort: M 3-5d · Risk: Medium [product, dependency]) ' +
+            '(alt-3:Plan C · Effort: L 1-2w · Risk: High [security, operational])',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain(
+          'Alternative 1: Plan A · Effort: S 1-2d · Risk: Low [technical]',
+        );
+        expect(payload.content).toContain(
+          'Alternative 2: Plan B · Effort: M 3-5d · Risk: Medium [product, dependency]',
+        );
+        expect(payload.content).toContain(
+          'Alternative 3: Plan C · Effort: L 1-2w · Risk: High [security, operational]',
+        );
+      },
+    },
+    {
       name: 'renders canonical release summary fields for release-project confirmations',
       inputs: {
         request: {

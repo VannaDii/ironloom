@@ -924,19 +924,6 @@ export function createDiscordControlRequestFromInteraction(
     };
   }
 
-  if (
-    input.boundSession !== undefined &&
-    input.boundSession.threadId !== threadId
-  ) {
-    return {
-      ok: false,
-      interactionId: input.id,
-      reason:
-        `project/thread context mismatch: expected=${input.boundSession.threadId} detected=${threadId}. ` +
-        'Recovery: /open-project --repo <repo_name> --project <project_name> --intent maintenance|bugfix|new-feature',
-    };
-  }
-
   return {
     ok: true,
     request: createDiscordControlRequest(

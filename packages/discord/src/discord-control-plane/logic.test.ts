@@ -119,6 +119,50 @@ describe('DiscordControlRequest logic', () => {
       {
         inputs: {
           interaction: {
+            id: 'interaction-009b',
+            token: 'token-9b',
+            actorId: 'user-9b',
+            channelId: 'channel-9b',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'show status',
+            boundSession: {
+              id: 'thread-session-009b',
+              summary: 'Implementation session',
+              status: 'running',
+              trace: [],
+              updatedAt: '2026-04-04T00:00:00.000Z',
+              guildId: 'guild-9b',
+              channelId: 'thread-9b',
+              parentChannelId: 'implementation-channel',
+              threadId: '  thread-9b  ',
+              kind: 'implementation',
+              specId: 'spec-9b',
+              sliceId: 'slice-9b',
+              pullRequestNumber: null,
+              artifactId: 'artifact-9b',
+            },
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.threadId).toBe('thread-9b');
+            expect(route.request.workItem).toMatchObject({
+              threadKind: 'implementation',
+              threadId: '  thread-9b  ',
+              specId: 'spec-9b',
+              sliceId: 'slice-9b',
+              artifactId: 'artifact-9b',
+            });
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
             id: 'interaction-008m2',
             token: 'token-8m2',
             actorId: 'user-8m2',
@@ -498,10 +542,9 @@ describe('DiscordControlRequest logic', () => {
         assert: (
           route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
         ) => {
-          expect(route.ok).toBe(false);
-          if (!route.ok) {
-            expect(route.reason).toContain('project/thread context mismatch');
-            expect(route.reason).toContain('expected= thread-11 ');
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.threadId).toBe('thread-11');
           }
         },
       },

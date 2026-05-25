@@ -102,11 +102,11 @@ Usage rules:
 - [ ] Allow any URL for `/consider`.
 - [ ] Queue `/consider` inputs for next research update (not immediate inline fetch summary).
 - [x] Implement `/alts` aliasing `/alternatives`.
-- [ ] Return exactly 3 alternatives by default.
-- [ ] Include effort estimates in S/M/L.
-- [ ] Include effort estimates in time ranges.
-- [ ] Include risk level per alternative.
-- [ ] Include risk types per alternative: technical, product, security, dependency, operational.
+- [x] Return exactly 3 alternatives by default.
+- [x] Include effort estimates in S/M/L.
+- [x] Include effort estimates in time ranges.
+- [x] Include risk level per alternative.
+- [x] Include risk types per alternative: technical, product, security, dependency, operational.
 - [x] Implement `/cancel` for current thread only.
 - [x] Restrict `/cancel` to `project-operator`.
 - [x] On thread cancel, post next recommended actions and links to last artifacts.
