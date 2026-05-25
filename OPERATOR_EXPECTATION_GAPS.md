@@ -64,11 +64,11 @@ Usage rules:
 - [ ] Implement and expose phase: Spec Draft.
 - [ ] Implement and expose phase: Spec Refinement/Approval.
 - [ ] Implement and expose phase: Slicing.
-- [ ] Implement and expose phase: Slicing Refinement/Approval.
+- [x] Implement and expose phase: Slicing Refinement/Approval.
 - [ ] Implement and expose phase: Slice Implementation.
-- [ ] Implement and expose phase: Slice PR Creation.
+- [x] Implement and expose phase: Slice PR Creation.
 - [ ] Implement and expose phase: Slice PR Review.
-- [ ] Implement and expose phase: Slice Approval Request.
+- [x] Implement and expose phase: Slice Approval Request.
 - [ ] Implement and expose phase: Slice PR Merge.
 - [ ] Implement and expose phase: Next Slice or Release.
 - [ ] Implement and expose phase: Completion message with links/activity summary.

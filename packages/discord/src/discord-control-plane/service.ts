@@ -1040,6 +1040,7 @@ export class DiscordControlPlaneService {
           DEVPLAT_ACTION_CANCEL_PROJECT,
         ];
       case 'Slicing':
+      case 'Slicing Refinement/Approval':
         return [
           ...phaseAgnosticAllowedActions,
           DEVPLAT_ACTION_APPROVE_THIS,
@@ -1060,6 +1061,8 @@ export class DiscordControlPlaneService {
           DEVPLAT_ACTION_CANCEL_PROJECT,
         ];
       case 'Slice PR Review':
+      case 'Slice PR Creation':
+      case 'Slice Approval Request':
         return [
           ...phaseAgnosticAllowedActions,
           DEVPLAT_ACTION_APPROVE_THIS,
@@ -1080,6 +1083,7 @@ export class DiscordControlPlaneService {
           DEVPLAT_ACTION_CANCEL_PROJECT,
         ];
       case 'Next Slice or Release':
+      case 'Completion':
         return [
           ...phaseAgnosticAllowedActions,
           DEVPLAT_ACTION_RUN_THIS,
