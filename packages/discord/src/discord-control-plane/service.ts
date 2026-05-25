@@ -202,6 +202,25 @@ function resolveForceResumeFromSummary(summary: string): boolean {
   return summary.includes('(force:true)');
 }
 
+/**
+ * Creates a standardized resume-preflight summary marker.
+ */
+function createResumeProjectPreflightSummarySuffix(
+  mode: 'ready' | 'forced',
+  issues: readonly string[],
+): string {
+  const issuesMarker = issues.length === 0 ? 'none' : issues.join('|');
+  return (
+    ` (preflight:${mode}` +
+    ` repo-access:unknown` +
+    ` branch-state:unknown` +
+    ` pr-status:unknown` +
+    ` gate-health:unknown` +
+    ` blocker-inventory:unknown` +
+    ` issues:${issuesMarker})`
+  );
+}
+
 /** Detects duplicate-write errors returned by the file-store layer. */
 function isAlreadyExistsStoreError(error: string): boolean {
   const normalized = error.toLowerCase();
@@ -692,12 +711,21 @@ export class DiscordControlPlaneService {
       preflightIssues.push('thread-not-paused');
     }
     if (preflightIssues.length === 0) {
-      return { ok: true, summarySuffix: ' (preflight:ready)' };
+      return {
+        ok: true,
+        summarySuffix: createResumeProjectPreflightSummarySuffix(
+          'ready',
+          preflightIssues,
+        ),
+      };
     }
     if (resolveForceResumeFromSummary(request.summary)) {
       return {
         ok: true,
-        summarySuffix: ` (preflight:forced issues:${preflightIssues.join('|')})`,
+        summarySuffix: createResumeProjectPreflightSummarySuffix(
+          'forced',
+          preflightIssues,
+        ),
       };
     }
     return {

@@ -637,6 +637,13 @@ describe('DiscordControlPlaneService', () => {
       privileged: false,
     });
     expect(resumeResult.allowed).toBe(true);
+    expect(resumeResult.request.summary).toContain('preflight:ready');
+    expect(resumeResult.request.summary).toContain('repo-access:unknown');
+    expect(resumeResult.request.summary).toContain('branch-state:unknown');
+    expect(resumeResult.request.summary).toContain('pr-status:unknown');
+    expect(resumeResult.request.summary).toContain('gate-health:unknown');
+    expect(resumeResult.request.summary).toContain('blocker-inventory:unknown');
+    expect(resumeResult.request.summary).toContain('issues:none');
 
     const unblockedMutation = await service.handleAction({
       id: 'discord-004-resume-project-mutation-restored',
@@ -694,9 +701,13 @@ describe('DiscordControlPlaneService', () => {
 
     expect(forcedResume.allowed).toBe(true);
     expect(forcedResume.failedClosed).toBe(false);
-    expect(forcedResume.request.summary).toContain(
-      'preflight:forced issues:thread-not-paused',
-    );
+    expect(forcedResume.request.summary).toContain('preflight:forced');
+    expect(forcedResume.request.summary).toContain('repo-access:unknown');
+    expect(forcedResume.request.summary).toContain('branch-state:unknown');
+    expect(forcedResume.request.summary).toContain('pr-status:unknown');
+    expect(forcedResume.request.summary).toContain('gate-health:unknown');
+    expect(forcedResume.request.summary).toContain('blocker-inventory:unknown');
+    expect(forcedResume.request.summary).toContain('issues:thread-not-paused');
   });
 
   it('enforces new-project uniqueness per repo across thread contexts', async () => {
