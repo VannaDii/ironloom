@@ -340,6 +340,59 @@ describe('FileStoreService', () => {
       },
     },
     {
+      name: 'rolls back created index entries when a later store-if-absent index write fails',
+      inputs: {
+        mode: 'store-if-absent',
+        record: {
+          id: 'storage-if-absent-004',
+          key: 'if-absent-004',
+          scope: 'state',
+          summary: 'Store once with partial index failure',
+          status: 'complete',
+          trace: [],
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          indexes: ['task', 'pull-request'],
+          payload: { state: 'once-partial-index-fail' },
+        },
+      },
+      mock: async () => {
+        const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-storage-'));
+        await mkdir(resolve(rootDirectory, 'indexes'), { recursive: true });
+        await writeFile(
+          resolve(rootDirectory, 'indexes', 'pull-request'),
+          'blocked',
+        );
+        return {
+          rootDirectory,
+          service: new FileStoreService(rootDirectory),
+        };
+      },
+      assert: async (context, inputs) => {
+        if (inputs.mode !== 'store-if-absent') {
+          throw new Error('expected store-if-absent inputs');
+        }
+        const stored = await context.service.storeIfAbsent(inputs.record);
+        expect(stored.ok).toBe(false);
+        await expect(
+          readFile(
+            resolve(context.rootDirectory, 'state', 'if-absent-004.json'),
+            'utf8',
+          ),
+        ).rejects.toThrow();
+        await expect(
+          readFile(
+            resolve(
+              context.rootDirectory,
+              'indexes',
+              'task',
+              'if-absent-004.json',
+            ),
+            'utf8',
+          ),
+        ).rejects.toThrow();
+      },
+    },
+    {
       name: 'reads and lists secondary index entries without direct path access',
       inputs: {
         mode: 'index-lookup',

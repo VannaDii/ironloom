@@ -90,6 +90,7 @@ export class FileStoreService {
       buildStoragePath(normalized.scope, normalized.key),
     );
     let createdPrimaryRecord = false;
+    const createdIndexPaths: string[] = [];
     try {
       await mkdir(resolve(filePath, '..'), { recursive: true });
       const handle = await open(filePath, 'wx');
@@ -102,25 +103,31 @@ export class FileStoreService {
       } finally {
         await handle.close();
       }
-      await Promise.all(
-        (normalized.indexes ?? []).map(async (indexName) => {
-          const indexPath = resolve(
-            this.rootDirectory,
-            buildStorageIndexPath(indexName, normalized.key),
-          );
-          await mkdir(resolve(indexPath, '..'), { recursive: true });
-          await writeFile(
-            indexPath,
-            `${JSON.stringify(createStoredRecordIndexEntry(normalized), null, 2)}\n`,
-            'utf8',
-          );
-        }),
-      );
+      for (const indexName of normalized.indexes ?? []) {
+        const indexPath = resolve(
+          this.rootDirectory,
+          buildStorageIndexPath(indexName, normalized.key),
+        );
+        await mkdir(resolve(indexPath, '..'), { recursive: true });
+        await writeFile(
+          indexPath,
+          `${JSON.stringify(createStoredRecordIndexEntry(normalized), null, 2)}\n`,
+          'utf8',
+        );
+        createdIndexPaths.push(indexPath);
+      }
       return {
         ok: true,
         value: normalized,
       };
     } catch (error) {
+      for (const indexPath of createdIndexPaths) {
+        try {
+          await unlink(indexPath);
+        } catch {
+          // Best-effort cleanup for partially persisted create-only indexes.
+        }
+      }
       if (createdPrimaryRecord) {
         try {
           await unlink(filePath);
