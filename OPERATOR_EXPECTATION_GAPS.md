@@ -49,9 +49,9 @@ Usage rules:
 
 ## 5. Project Identity and Context Safety
 
-- [ ] Support multiple concurrent projects per repo.
-- [ ] Require project name on creation.
-- [ ] Enforce project name uniqueness per repo.
+- [x] Support multiple concurrent projects per repo.
+- [x] Require project name on creation.
+- [x] Enforce project name uniqueness per repo.
 - [x] Enforce project name length 3-30 characters.
 - [ ] Bind all project messages/threads to project context.
 - [x] Require explicit project context for all mutating actions.
@@ -101,7 +101,7 @@ Usage rules:
 - [ ] Implement `/consider <url>`.
 - [ ] Allow any URL for `/consider`.
 - [ ] Queue `/consider` inputs for next research update (not immediate inline fetch summary).
-- [ ] Implement `/alts` aliasing `/alternatives`.
+- [x] Implement `/alts` aliasing `/alternatives`.
 - [ ] Return exactly 3 alternatives by default.
 - [ ] Include effort estimates in S/M/L.
 - [ ] Include effort estimates in time ranges.

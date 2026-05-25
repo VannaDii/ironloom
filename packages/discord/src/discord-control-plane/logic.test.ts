@@ -252,6 +252,28 @@ describe('DiscordControlRequest logic', () => {
       {
         inputs: {
           interaction: {
+            id: 'interaction-007alts',
+            token: 'token-7alts',
+            actorId: 'user-7alts',
+            channelId: 'channel-7alts',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'alts',
+            threadId: 'thread-7alts',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.action).toBe('alternatives');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
             id: 'interaction-007e',
             token: 'token-7e',
             actorId: 'user-7e',
