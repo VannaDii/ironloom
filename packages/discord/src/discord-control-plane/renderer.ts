@@ -44,6 +44,7 @@ import {
   DISCORD_CUSTOM_ID_MAX_LENGTH,
   DISCORD_EPHEMERAL_MESSAGE_FLAG,
   DISCORD_MESSAGE_CONTENT_MAX_LENGTH,
+  DISCORD_MESSAGE_CONTENT_TRUNCATED_MARKER,
   DISCORD_ROUTE_FAILURE_EVENT_LABEL,
   DISCORD_ROUTE_FAILURE_REDACTED_VALUE,
   DISCORD_ROUTE_FAILURE_TRUNCATED_MARKER,
@@ -424,7 +425,7 @@ function describeActor(actorId: string): string {
 function renderDiscordMessageContent(
   input: DiscordMessageContentInput,
 ): string {
-  return [
+  const content = [
     `${input.indicator} DevPlat · ${input.actionLabel}`,
     '',
     ...Object.entries(input.fields).map(
@@ -432,6 +433,17 @@ function renderDiscordMessageContent(
     ),
     `→ ${input.result}`,
   ].join('\n');
+
+  if (content.length <= DISCORD_MESSAGE_CONTENT_MAX_LENGTH) {
+    return content;
+  }
+
+  const maxBodyLength =
+    DISCORD_MESSAGE_CONTENT_MAX_LENGTH -
+    DISCORD_MESSAGE_CONTENT_TRUNCATED_MARKER.length -
+    1;
+  const boundedBody = content.slice(0, Math.max(0, maxBodyLength)).trimEnd();
+  return `${boundedBody}\n${DISCORD_MESSAGE_CONTENT_TRUNCATED_MARKER}`;
 }
 
 /**

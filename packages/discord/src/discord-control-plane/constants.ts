@@ -70,6 +70,11 @@ export const DISCORD_CUSTOM_ID_MAX_LENGTH = 100;
 export const DISCORD_MESSAGE_CONTENT_MAX_LENGTH = 2000;
 
 /**
+ * Marker appended when Discord message content is truncated to satisfy length limits.
+ */
+export const DISCORD_MESSAGE_CONTENT_TRUNCATED_MARKER = '(content truncated)';
+
+/**
  * Label used before Discord route-failure event diagnostics.
  */
 export const DISCORD_ROUTE_FAILURE_EVENT_LABEL = 'Received event:';

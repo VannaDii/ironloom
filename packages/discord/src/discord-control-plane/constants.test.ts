@@ -6,6 +6,7 @@ import {
   DISCORD_CUSTOM_ID_MAX_LENGTH,
   DISCORD_EPHEMERAL_MESSAGE_FLAG,
   DISCORD_MESSAGE_CONTENT_MAX_LENGTH,
+  DISCORD_MESSAGE_CONTENT_TRUNCATED_MARKER,
   DISCORD_PROJECT_CONFIG_VERSION_PATTERN,
   DISCORD_SUMMARY_MARKER_TOKEN_PATTERN,
   DISCORD_REST_SUCCESS_MAX_EXCLUSIVE_STATUS,
@@ -18,6 +19,7 @@ type DiscordControlPlaneConstantsCase = {
     prefix: string;
     ephemeralFlag: number;
     maxMessageLength: number;
+    truncatedMarker: string;
     maxCustomIdLength: number;
     successMin: number;
     successMaxExclusive: number;
@@ -40,6 +42,7 @@ describe('discord control-plane constants', () => {
         prefix: DISCORD_COMPONENT_CUSTOM_ID_PREFIX,
         ephemeralFlag: DISCORD_EPHEMERAL_MESSAGE_FLAG,
         maxMessageLength: DISCORD_MESSAGE_CONTENT_MAX_LENGTH,
+        truncatedMarker: DISCORD_MESSAGE_CONTENT_TRUNCATED_MARKER,
         maxCustomIdLength: DISCORD_CUSTOM_ID_MAX_LENGTH,
         successMin: DISCORD_REST_SUCCESS_MIN_STATUS,
         successMaxExclusive: DISCORD_REST_SUCCESS_MAX_EXCLUSIVE_STATUS,
@@ -52,6 +55,7 @@ describe('discord control-plane constants', () => {
         expect(inputs.prefix).toBe('devplat:v1');
         expect(inputs.ephemeralFlag).toBe(64);
         expect(inputs.maxMessageLength).toBe(2000);
+        expect(inputs.truncatedMarker).toBe('(content truncated)');
         expect(inputs.maxCustomIdLength).toBe(100);
         expect(inputs.successMin).toBe(200);
         expect(inputs.successMaxExclusive).toBe(300);

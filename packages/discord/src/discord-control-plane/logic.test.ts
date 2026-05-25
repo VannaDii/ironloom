@@ -1512,6 +1512,8 @@ describe('DiscordControlRequest logic', () => {
           expect(route.ok).toBe(true);
           if (route.ok) {
             expect(route.request.summary.length).toBeLessThanOrEqual(1000);
+            expect(route.request.summary).toContain('(direction-prompt:');
+            expect(route.request.summary.endsWith(')')).toBe(true);
           }
         },
       },

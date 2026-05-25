@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { DISCORD_MESSAGE_CONTENT_MAX_LENGTH } from './constants.js';
+import {
+  DISCORD_MESSAGE_CONTENT_MAX_LENGTH,
+  DISCORD_MESSAGE_CONTENT_TRUNCATED_MARKER,
+} from './constants.js';
 import {
   assertDiscordButtonLabelFits,
   renderDiscordActionComponentRows,
@@ -229,6 +232,28 @@ describe('Discord control-plane renderer', () => {
         expect(
           payload.components?.[0]?.components.map((button) => button.label),
         ).toEqual(['Details', 'Show Status', 'Pause']);
+      },
+    },
+    {
+      name: 'truncates oversized accepted message content to discord limits',
+      inputs: {
+        request: {
+          ...request,
+          action: 'redirect',
+          summary: `redirect (direction-prompt:${'x'.repeat(5000)})`,
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content.length).toBeLessThanOrEqual(
+          DISCORD_MESSAGE_CONTENT_MAX_LENGTH,
+        );
+        expect(payload.content).toContain(
+          DISCORD_MESSAGE_CONTENT_TRUNCATED_MARKER,
+        );
       },
     },
     {
