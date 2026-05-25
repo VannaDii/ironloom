@@ -70,6 +70,41 @@ type FileStoreServiceCase = {
 describe('FileStoreService', () => {
   const cases = [
     {
+      name: 'creates records atomically when key is absent and rejects duplicates',
+      inputs: {
+        mode: 'store-if-absent',
+        record: {
+          id: 'storage-atomic-001',
+          key: 'atomic-key',
+          scope: 'state',
+          summary: 'Atomic record',
+          status: 'complete',
+          trace: [],
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          payload: { state: 'atomic' },
+        },
+      },
+      mock: async () => {
+        const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-storage-'));
+        return {
+          rootDirectory,
+          service: new FileStoreService(rootDirectory),
+        };
+      },
+      assert: async (context, inputs) => {
+        if (inputs.mode !== 'store-if-absent') {
+          throw new Error('expected store-if-absent inputs');
+        }
+        const first = await context.service.storeIfAbsent(inputs.record);
+        const second = await context.service.storeIfAbsent({
+          ...inputs.record,
+          id: 'storage-atomic-002',
+        });
+        expect(first.ok).toBe(true);
+        expect(second.ok).toBe(false);
+      },
+    },
+    {
       name: 'writes and reads file-backed records inside the storage root',
       inputs: {
         mode: 'store-read',

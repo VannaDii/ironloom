@@ -117,6 +117,36 @@ class FailingProjectIdentityReservationStore extends FileStoreService {
 }
 
 /**
+ * Test store that rejects atomic identity reservation writes.
+ */
+class RejectingIdentityReservationStore extends FileStoreService {
+  /**
+   * Creates a store rooted at a temporary directory.
+   */
+  public constructor(
+    rootDirectory: string,
+    private readonly rejectionMessage: string,
+  ) {
+    super(rootDirectory);
+  }
+
+  /**
+   * Rejects project-identity create-only writes with a deterministic failure.
+   */
+  public override async storeIfAbsent<TPayload extends object>(
+    record: StoredRecord<TPayload>,
+  ) {
+    if (record.key.startsWith('project-identity:')) {
+      return {
+        ok: false as const,
+        error: this.rejectionMessage,
+      };
+    }
+    return super.storeIfAbsent(record);
+  }
+}
+
+/**
  * Creates a transport that records response ordering for interaction tests.
  */
 function createObservedResponseTransport(
@@ -776,6 +806,75 @@ describe('DiscordControlPlaneService', () => {
 
     expect(retry.allowed).toBe(true);
     expect(retry.failedClosed).toBe(false);
+  });
+
+  it('fails closed when legacy project identity records omit thread binding', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    await store.store({
+      id: 'legacy-project-identity',
+      key: 'project-identity:devplat:legacy',
+      scope: 'state',
+      summary: 'Legacy project identity reservation.',
+      status: 'approved',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      payload: {
+        repo: 'devplat',
+        project: 'legacy',
+      },
+    });
+
+    const result = await service.handleAction({
+      id: 'discord-004-new-project-legacy-identity',
+      summary: 'new-project (repo:devplat) (project:legacy)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:01.000Z',
+      actorId: 'user-new-project-legacy-identity',
+      threadId: 'thread-new-project-legacy-identity',
+      channelId: 'channel-new-project-legacy-identity',
+      action: 'new-project',
+      privileged: false,
+    });
+
+    expect(result.allowed).toBe(false);
+    expect(result.failedClosed).toBe(true);
+  });
+
+  it('fails closed when identity reservation write fails for non-duplicate reasons', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new RejectingIdentityReservationStore(
+      rootDirectory,
+      'disk unavailable',
+    );
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const result = await service.handleAction({
+      id: 'discord-004-new-project-identity-write-failure',
+      summary: 'new-project (repo:devplat) (project:write-failure)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-new-project-identity-write-failure',
+      threadId: 'thread-new-project-identity-write-failure',
+      channelId: 'channel-new-project-identity-write-failure',
+      action: 'new-project',
+      privileged: false,
+    });
+
+    expect(result.allowed).toBe(false);
+    expect(result.failedClosed).toBe(true);
   });
 
   it('allows new-project when project identity markers are incomplete in summary', async () => {

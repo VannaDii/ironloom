@@ -72,7 +72,7 @@ export class FileStoreService {
   }
 
   /**
-   * Persists a normalized record only if the key is absent.
+   * Persists a normalized record only when the target storage path does not exist.
    */
   public async storeIfAbsent<TPayload extends object>(
     record: StoredRecord<TPayload>,
@@ -82,14 +82,17 @@ export class FileStoreService {
       this.rootDirectory,
       buildStoragePath(normalized.scope, normalized.key),
     );
-    await mkdir(resolve(filePath, '..'), { recursive: true });
     try {
+      await mkdir(resolve(filePath, '..'), { recursive: true });
       const handle = await open(filePath, 'wx');
-      await handle.writeFile(
-        `${JSON.stringify(normalized, null, 2)}\n`,
-        'utf8',
-      );
-      await handle.close();
+      try {
+        await handle.writeFile(
+          `${JSON.stringify(normalized, null, 2)}\n`,
+          'utf8',
+        );
+      } finally {
+        await handle.close();
+      }
       await Promise.all(
         (normalized.indexes ?? []).map(async (indexName) => {
           const indexPath = resolve(
@@ -104,11 +107,14 @@ export class FileStoreService {
           );
         }),
       );
-      return { ok: true, value: normalized };
+      return {
+        ok: true,
+        value: normalized,
+      };
     } catch (error) {
       return {
         ok: false,
-        error: String(error),
+        error: error instanceof Error ? error.message : String(error),
       };
     }
   }
