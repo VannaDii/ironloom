@@ -585,7 +585,7 @@ describe('DiscordControlRequest logic', () => {
         ) => {
           expect(route.ok).toBe(true);
           if (route.ok) {
-            expect(route.request.privileged).toBe(false);
+            expect(route.request.action).toBe('approve-this');
           }
         },
       },
@@ -653,9 +653,10 @@ describe('DiscordControlRequest logic', () => {
         assert: (
           route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
         ) => {
-          expect(route.ok).toBe(true);
-          if (route.ok) {
-            expect(route.request.privileged).toBe(false);
+          expect(route.ok).toBe(false);
+          if (!route.ok) {
+            expect(route.reason).toContain('permission denied');
+            expect(route.reason).toContain('missingRoleMapping=merge-approver');
           }
         },
       },
@@ -677,9 +678,12 @@ describe('DiscordControlRequest logic', () => {
         assert: (
           route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
         ) => {
-          expect(route.ok).toBe(true);
-          if (route.ok) {
-            expect(route.request.action).toBe('release-project');
+          expect(route.ok).toBe(false);
+          if (!route.ok) {
+            expect(route.reason).toContain('permission denied');
+            expect(route.reason).toContain(
+              'missingRoleMapping=project-operator',
+            );
           }
         },
       },
@@ -705,6 +709,35 @@ describe('DiscordControlRequest logic', () => {
             expect(route.reason).toContain(
               'requiredRole=project-operator|merge-approver',
             );
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-010e-denied-configured',
+            token: 'token-10e-denied-configured',
+            actorId: 'user-10e-denied-configured',
+            channelId: 'thread-10e-denied-configured',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'release-project',
+            boundThreadId: 'thread-10e-denied-configured',
+            actorRoleIds: ['role-project-operator'],
+            projectOperatorRoleId: 'role-project-operator',
+            mergeApproverRoleId: 'role-merge-approver',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(false);
+          if (!route.ok) {
+            expect(route.reason).toContain('permission denied');
+            expect(route.reason).toContain(
+              'requiredRole=project-operator|merge-approver',
+            );
+            expect(route.reason).not.toContain('missingRoleMapping=');
           }
         },
       },
@@ -1020,6 +1053,31 @@ describe('DiscordControlRequest logic', () => {
       {
         inputs: {
           interaction: {
+            id: 'interaction-007d2',
+            token: 'token-7d2',
+            actorId: 'user-7d2',
+            channelId: 'channel-7d2',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'release-project',
+            threadId: 'thread-7d2',
+            actorRoleIds: ['role-project-operator'],
+            projectOperatorRoleId: 'role-project-operator',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(false);
+          if (!route.ok) {
+            expect(route.reason).toContain('permission denied');
+            expect(route.reason).toContain('missingRoleMapping=merge-approver');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
             id: 'interaction-008',
             token: 'token-8',
             actorId: 'user-8',
@@ -1036,6 +1094,56 @@ describe('DiscordControlRequest logic', () => {
           expect(route.ok).toBe(false);
           if (!route.ok) {
             expect(route.reason).toContain('not recognized');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-008o',
+            token: 'token-8o',
+            actorId: 'user-8o',
+            channelId: 'channel-8o',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'new-project',
+            boundThreadId: 'thread-8o',
+            projectRepo: 'owner/repo',
+            projectName: '..alpha\\beta',
+            actorRoleIds: ['role-project-operator'],
+            projectOperatorRoleId: 'role-project-operator',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.summary).toContain('repo:owner-repo');
+            expect(route.request.summary).toContain('project:--alpha-beta');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-008p',
+            token: 'token-8p',
+            actorId: 'user-8p',
+            channelId: 'channel-8p',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'redirect',
+            boundThreadId: 'thread-8p',
+            redirectPrompt: `focus ${'x'.repeat(1500)}`,
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.summary.length).toBeLessThanOrEqual(1000);
           }
         },
       },

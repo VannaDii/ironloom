@@ -81,6 +81,10 @@ const DISCORD_PROJECT_NAME_MIN_LENGTH = 3;
  * Maximum allowed project-name length for project bootstrap and reopen routes.
  */
 const DISCORD_PROJECT_NAME_MAX_LENGTH = 30;
+/**
+ * Upper bound for persisted Discord control request summaries.
+ */
+const DISCORD_CONTROL_REQUEST_SUMMARY_MAX_LENGTH = 1000;
 
 /**
  * Human and component action tokens accepted by the operator router.
@@ -202,7 +206,7 @@ function resolveRoleAuthorizationFailure(
     requiredRoleIds.push(roleId);
   }
 
-  if (requiredRoleIds.length === 0 && missingMappings.length > 0) {
+  if (missingMappings.length > 0) {
     return (
       `permission denied: caller=${input.actorId} action=${action} requiredRole=${requiredRoles.join('|')} ` +
       `context=thread:${threadId} missingRoleMapping=${missingMappings.join('|')}`
@@ -212,7 +216,7 @@ function resolveRoleAuthorizationFailure(
   const actorRoleIds = (input.actorRoleIds ?? []).map((roleId) =>
     roleId.trim(),
   );
-  const hasRequiredRole = requiredRoleIds.some((requiredRoleId) =>
+  const hasRequiredRole = requiredRoleIds.every((requiredRoleId) =>
     actorRoleIds.includes(requiredRoleId),
   );
   if (hasRequiredRole) {
@@ -778,6 +782,26 @@ function sanitizeSummaryMarkerValue(value: string): string {
     .trim();
 }
 
+/** Sanitizes repo/project markers to keep persisted identity keys path-safe. */
+function sanitizeStorageMarkerValue(value: string): string {
+  return sanitizeSummaryMarkerValue(value)
+    .split('/')
+    .join('-')
+    .split('\\')
+    .join('-')
+    .split('..')
+    .join('--')
+    .trim();
+}
+
+/** Truncates persisted control summaries to a Discord-safe length. */
+function truncateControlRequestSummary(value: string): string {
+  if (value.length <= DISCORD_CONTROL_REQUEST_SUMMARY_MAX_LENGTH) {
+    return value;
+  }
+  return value.slice(0, DISCORD_CONTROL_REQUEST_SUMMARY_MAX_LENGTH);
+}
+
 /** Creates interaction control request input. */
 function createInteractionControlRequestInput(
   input: DiscordOperatorInteraction,
@@ -793,7 +817,7 @@ function createInteractionControlRequestInput(
   const projectContextSuffix =
     input.projectRepo === undefined || input.projectName === undefined
       ? ''
-      : ` (repo:${sanitizeSummaryMarkerValue(input.projectRepo)}) (project:${sanitizeSummaryMarkerValue(input.projectName)})`;
+      : ` (repo:${sanitizeStorageMarkerValue(input.projectRepo)}) (project:${sanitizeStorageMarkerValue(input.projectName)})`;
   const resumeForceSuffix =
     action === DEVPLAT_ACTION_RESUME_PROJECT && input.resumeProjectForce
       ? ' (force:true)'
@@ -817,8 +841,9 @@ function createInteractionControlRequestInput(
     action === DEVPLAT_ACTION_CONSIDER && input.considerUrl !== undefined
       ? ` (url:${sanitizeSummaryMarkerValue(input.considerUrl)})`
       : '';
-  const summary =
-    `${input.summary?.trim() ?? action}${projectContextSuffix}${intentSuffix}${resumeForceSuffix}${settingsHistoryModeSuffix}${qualityStrictnessSuffix}${redirectPromptSuffix}${considerUrlSuffix}`.trim();
+  const summary = truncateControlRequestSummary(
+    `${input.summary?.trim() ?? action}${projectContextSuffix}${intentSuffix}${resumeForceSuffix}${settingsHistoryModeSuffix}${qualityStrictnessSuffix}${redirectPromptSuffix}${considerUrlSuffix}`.trim(),
+  );
   if (input.boundSession === undefined) {
     return {
       id: input.id,

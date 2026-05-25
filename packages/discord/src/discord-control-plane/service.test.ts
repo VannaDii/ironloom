@@ -79,6 +79,43 @@ class ObservedFileStoreService extends FileStoreService {
   }
 }
 
+class RejectingProjectIdentityReservationStore extends FileStoreService {
+  public constructor(rootDirectory: string) {
+    super(rootDirectory);
+  }
+
+  public override async storeIfAbsent<TPayload extends object>(
+    record: StoredRecord<TPayload>,
+  ) {
+    if (record.key.startsWith('project-identity:')) {
+      return {
+        ok: false as const,
+        error: 'EEXIST: file already exists',
+      };
+    }
+    return super.storeIfAbsent(record);
+  }
+}
+
+/** Test store that simulates non-EEXIST write failures for identity reservations. */
+class FailingProjectIdentityReservationStore extends FileStoreService {
+  public constructor(rootDirectory: string) {
+    super(rootDirectory);
+  }
+
+  public override async storeIfAbsent<TPayload extends object>(
+    record: StoredRecord<TPayload>,
+  ) {
+    if (record.key.startsWith('project-identity:')) {
+      return {
+        ok: false as const,
+        error: 'EACCES: permission denied',
+      };
+    }
+    return super.storeIfAbsent(record);
+  }
+}
+
 /**
  * Creates a transport that records response ordering for interaction tests.
  */
@@ -713,6 +750,98 @@ describe('DiscordControlPlaneService', () => {
     expect(await store.list('state')).not.toContain(
       'project-identity:devplat:alpha',
     );
+  });
+
+  it('fails closed when project identity reservation collides at write time', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new RejectingProjectIdentityReservationStore(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const result = await service.handleAction({
+      id: 'discord-004-new-project-write-collision',
+      summary: 'new-project (repo:devplat) (project:alpha)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-new-project-write-collision',
+      threadId: 'thread-new-project-write-collision',
+      channelId: 'channel-new-project-write-collision',
+      action: 'new-project',
+      privileged: false,
+    });
+
+    expect(result.allowed).toBe(false);
+    expect(result.failedClosed).toBe(true);
+  });
+
+  it('fails closed when project identity reservation write fails unexpectedly', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FailingProjectIdentityReservationStore(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const result = await service.handleAction({
+      id: 'discord-004-new-project-write-failure',
+      summary: 'new-project (repo:devplat) (project:alpha)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-new-project-write-failure',
+      threadId: 'thread-new-project-write-failure',
+      channelId: 'channel-new-project-write-failure',
+      action: 'new-project',
+      privileged: false,
+    });
+
+    expect(result.allowed).toBe(false);
+    expect(result.failedClosed).toBe(true);
+  });
+
+  it('fails closed when project identity exists without a bound thread marker', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    await store.store({
+      id: 'seed-identity-missing-thread',
+      key: 'project-identity:devplat:alpha',
+      scope: 'state',
+      summary: 'Project identity reservation.',
+      status: 'approved',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      payload: {
+        repo: 'devplat',
+        project: 'alpha',
+      },
+    });
+
+    const result = await service.handleAction({
+      id: 'discord-004-new-project-existing-identity-no-thread',
+      summary: 'new-project (repo:devplat) (project:alpha)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:01.000Z',
+      actorId: 'user-new-project-existing-identity-no-thread',
+      threadId: 'thread-new-project-existing-identity-no-thread',
+      channelId: 'channel-new-project-existing-identity-no-thread',
+      action: 'new-project',
+      privileged: false,
+    });
+
+    expect(result.allowed).toBe(false);
+    expect(result.failedClosed).toBe(true);
   });
 
   it('allows new-project when repo marker is missing from summary', async () => {

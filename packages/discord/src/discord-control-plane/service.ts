@@ -185,6 +185,12 @@ function createProjectIdentityStateKey(repo: string, project: string): string {
     .toLowerCase()}`;
 }
 
+/** Detects duplicate-write errors returned by the file-store layer. */
+function isAlreadyExistsStoreError(error: string): boolean {
+  const normalized = error.toLowerCase();
+  return normalized.includes('eexist') || normalized.includes('already exists');
+}
+
 /**
  * Reads a trimmed string field from a record-like payload.
  */
@@ -689,6 +695,48 @@ export class DiscordControlPlaneService {
   }
 
   /**
+   * Records a blocked audit and returns a fail-closed control result.
+   */
+  private async failClosedWithAudit(
+    request: DiscordControlRequest,
+    reason: string,
+    resultStatus: string,
+  ): Promise<DiscordControlResult> {
+    await this.telemetry.recordAudit({
+      auditId: `${request.id}:audit`,
+      runId: request.id,
+      eventId: request.id,
+      actorId: request.actorId,
+      action: request.action,
+      scope: 'discord',
+      outcome: 'blocked',
+      reason,
+      artifactIds:
+        request.workItem?.artifactId === undefined
+          ? []
+          : [request.workItem.artifactId],
+      recordedAt: request.updatedAt,
+      policyDecisionId: 'discord-fail-closed',
+      details: {
+        threadId: request.threadId,
+        channelId: request.channelId,
+        resultStatus,
+        correlationId: request.id,
+      },
+    });
+    return createDiscordControlResultWithOptionalWorkItem(
+      {
+        request,
+        policyDecisionId: 'discord-fail-closed',
+        allowed: false,
+        persistedKey: request.id,
+        failedClosed: true,
+      },
+      request,
+    );
+  }
+
+  /**
    * Enforces immutable `/open-project --intent` context for a thread scope.
    */
   private async enforceOpenProjectIntentImmutability(
@@ -773,19 +821,60 @@ export class DiscordControlPlaneService {
 
     const payload = previous.value.payload;
     const boundThreadId = readTrimmedStringField(payload, 'threadId');
-    if (boundThreadId === undefined || boundThreadId === request.threadId) {
-      return {
-        ok: true,
-        persistRepo: repo,
-        persistProject: project,
-        stateKey,
-      };
+    if (boundThreadId === request.threadId) {
+      return { ok: true };
     }
-
     return {
       ok: false,
-      reason: `new-project identity already exists: repo=${repo} project=${project} boundThread=${boundThreadId}.`,
+      reason: `new-project identity already exists: repo=${repo} project=${project} boundThread=${boundThreadId ?? 'unknown'}.`,
     };
+  }
+
+  /**
+   * Persists a `/new-project` identity reservation with atomic create semantics.
+   */
+  private async persistNewProjectIdentityReservation(
+    request: DiscordControlRequest,
+    identityUniqueness: {
+      readonly persistRepo?: string;
+      readonly persistProject?: string;
+      readonly stateKey?: string;
+    },
+  ): Promise<DiscordControlResult | undefined> {
+    if (
+      request.action !== DEVPLAT_ACTION_NEW_PROJECT ||
+      identityUniqueness.persistRepo === undefined ||
+      identityUniqueness.persistProject === undefined ||
+      identityUniqueness.stateKey === undefined
+    ) {
+      return undefined;
+    }
+    const identityReservation = await this.store.storeIfAbsent({
+      id: `${request.id}:project-identity`,
+      key: identityUniqueness.stateKey,
+      scope: 'state',
+      summary: 'Project identity reservation.',
+      status: 'approved',
+      trace: request.trace,
+      updatedAt: request.updatedAt,
+      payload: {
+        repo: identityUniqueness.persistRepo,
+        project: identityUniqueness.persistProject,
+        threadId: request.threadId,
+        action: request.action,
+      },
+    });
+    if (identityReservation.ok) {
+      return undefined;
+    }
+    const fallbackReason = isAlreadyExistsStoreError(identityReservation.error)
+      ? `new-project identity already exists: repo=${identityUniqueness.persistRepo} project=${identityUniqueness.persistProject}.`
+      : `new-project identity reservation failed: ${identityReservation.error}`;
+    return this.failClosedWithAudit(
+      request,
+      fallbackReason,
+      'duplicate-project-identity',
+    );
   }
 
   /** Handle action. */
@@ -796,37 +885,10 @@ export class DiscordControlPlaneService {
     const immutability =
       await this.enforceOpenProjectIntentImmutability(request);
     if (!immutability.ok) {
-      await this.telemetry.recordAudit({
-        auditId: `${request.id}:audit`,
-        runId: request.id,
-        eventId: request.id,
-        actorId: request.actorId,
-        action: request.action,
-        scope: 'discord',
-        outcome: 'blocked',
-        reason: immutability.reason,
-        artifactIds:
-          request.workItem?.artifactId === undefined
-            ? []
-            : [request.workItem.artifactId],
-        recordedAt: request.updatedAt,
-        policyDecisionId: 'discord-fail-closed',
-        details: {
-          threadId: request.threadId,
-          channelId: request.channelId,
-          resultStatus: 'intent-mismatch',
-          correlationId: request.id,
-        },
-      });
-      return createDiscordControlResultWithOptionalWorkItem(
-        {
-          request,
-          policyDecisionId: 'discord-fail-closed',
-          allowed: false,
-          persistedKey: request.id,
-          failedClosed: true,
-        },
+      return this.failClosedWithAudit(
         request,
+        immutability.reason,
+        'intent-mismatch',
       );
     }
     const decision = this.policy.evaluateControlAction(
@@ -836,37 +898,10 @@ export class DiscordControlPlaneService {
     const identityUniqueness =
       await this.enforceNewProjectIdentityUniqueness(request);
     if (!identityUniqueness.ok) {
-      await this.telemetry.recordAudit({
-        auditId: `${request.id}:audit`,
-        runId: request.id,
-        eventId: request.id,
-        actorId: request.actorId,
-        action: request.action,
-        scope: 'discord',
-        outcome: 'blocked',
-        reason: identityUniqueness.reason,
-        artifactIds:
-          request.workItem?.artifactId === undefined
-            ? []
-            : [request.workItem.artifactId],
-        recordedAt: request.updatedAt,
-        policyDecisionId: 'discord-fail-closed',
-        details: {
-          threadId: request.threadId,
-          channelId: request.channelId,
-          resultStatus: 'duplicate-project-identity',
-          correlationId: request.id,
-        },
-      });
-      return createDiscordControlResultWithOptionalWorkItem(
-        {
-          request,
-          policyDecisionId: 'discord-fail-closed',
-          allowed: false,
-          persistedKey: request.id,
-          failedClosed: true,
-        },
+      return this.failClosedWithAudit(
         request,
+        identityUniqueness.reason,
+        'duplicate-project-identity',
       );
     }
     if (
@@ -890,28 +925,14 @@ export class DiscordControlPlaneService {
         },
       });
     }
-    if (
-      request.action === DEVPLAT_ACTION_NEW_PROJECT &&
-      decision.allowed &&
-      identityUniqueness.persistRepo !== undefined &&
-      identityUniqueness.persistProject !== undefined &&
-      identityUniqueness.stateKey !== undefined
-    ) {
-      await this.store.store({
-        id: `${request.id}:project-identity`,
-        key: identityUniqueness.stateKey,
-        scope: 'state',
-        summary: 'Project identity reservation.',
-        status: 'approved',
-        trace: request.trace,
-        updatedAt: request.updatedAt,
-        payload: {
-          repo: identityUniqueness.persistRepo,
-          project: identityUniqueness.persistProject,
-          threadId: request.threadId,
-          action: request.action,
-        },
-      });
+    if (decision.allowed) {
+      const identityFailure = await this.persistNewProjectIdentityReservation(
+        request,
+        identityUniqueness,
+      );
+      if (identityFailure !== undefined) {
+        return identityFailure;
+      }
     }
 
     return this.persistAction(request, decision);

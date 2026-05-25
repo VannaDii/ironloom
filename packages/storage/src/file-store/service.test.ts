@@ -46,6 +46,10 @@ type FileStoreServiceInputs =
   | {
       mode: 'unsafe-key';
       record: StoredRecord<FileStorePayload>;
+    }
+  | {
+      mode: 'store-if-absent';
+      record: StoredRecord<FileStorePayload>;
     };
 
 type FileStoreServiceContext = {
@@ -166,6 +170,38 @@ describe('FileStoreService', () => {
         ).resolves.toMatchObject({
           ok: false,
         });
+      },
+    },
+    {
+      name: 'stores once with store-if-absent and fails subsequent writes',
+      inputs: {
+        mode: 'store-if-absent',
+        record: {
+          id: 'storage-if-absent-001',
+          key: 'if-absent-001',
+          scope: 'state',
+          summary: 'Store once',
+          status: 'complete',
+          trace: [],
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          payload: { state: 'once' },
+        },
+      },
+      mock: async () => {
+        const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-storage-'));
+        return {
+          rootDirectory,
+          service: new FileStoreService(rootDirectory),
+        };
+      },
+      assert: async (context, inputs) => {
+        if (inputs.mode !== 'store-if-absent') {
+          throw new Error('expected store-if-absent inputs');
+        }
+        const first = await context.service.storeIfAbsent(inputs.record);
+        const second = await context.service.storeIfAbsent(inputs.record);
+        expect(first.ok).toBe(true);
+        expect(second.ok).toBe(false);
       },
     },
     {

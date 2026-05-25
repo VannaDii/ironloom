@@ -1,4 +1,4 @@
-import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { mkdir, open, readFile, readdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 import { decodeWithCodec, type DevplatResult } from '@vannadii/devplat-core';
@@ -69,6 +69,48 @@ export class FileStoreService {
       }),
     );
     return normalized;
+  }
+
+  /**
+   * Persists a normalized record only if the key is absent.
+   */
+  public async storeIfAbsent<TPayload extends object>(
+    record: StoredRecord<TPayload>,
+  ): Promise<DevplatResult<StoredRecord<TPayload>>> {
+    const normalized = createStoredRecord(record);
+    const filePath = resolve(
+      this.rootDirectory,
+      buildStoragePath(normalized.scope, normalized.key),
+    );
+    await mkdir(resolve(filePath, '..'), { recursive: true });
+    try {
+      const handle = await open(filePath, 'wx');
+      await handle.writeFile(
+        `${JSON.stringify(normalized, null, 2)}\n`,
+        'utf8',
+      );
+      await handle.close();
+      await Promise.all(
+        (normalized.indexes ?? []).map(async (indexName) => {
+          const indexPath = resolve(
+            this.rootDirectory,
+            buildStorageIndexPath(indexName, normalized.key),
+          );
+          await mkdir(resolve(indexPath, '..'), { recursive: true });
+          await writeFile(
+            indexPath,
+            `${JSON.stringify(createStoredRecordIndexEntry(normalized), null, 2)}\n`,
+            'utf8',
+          );
+        }),
+      );
+      return { ok: true, value: normalized };
+    } catch (error) {
+      return {
+        ok: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
   }
 
   /**
