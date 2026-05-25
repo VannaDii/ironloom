@@ -105,7 +105,13 @@ describe('Discord control-plane renderer', () => {
     db_secret: 'db-secret-sensitive',
     password: 'password-sensitive',
     apiKey: 'api-key-sensitive',
+    actorRoleIds: ['role-sensitive-1'],
+    projectOperatorRoleId: 'role-sensitive-project',
+    mergeApproverRoleId: 'role-sensitive-merge',
     items: [{ token: 'token-array-sensitive' }, 'literal-event-value'],
+    member: {
+      roles: ['role-sensitive-member'],
+    },
     data: {
       name: 'run this',
       custom_id: 'devplat:v1:thread-sensitive:run-this',
@@ -654,6 +660,14 @@ describe('Discord control-plane renderer', () => {
         expect(payload.content).toContain('"password": "[redacted]"');
         expect(payload.content).toContain('"apiKey": "[redacted]"');
         expect(payload.content).toContain('"nestedApiKey": "[redacted]"');
+        expect(payload.content).toContain('"actorRoleIds": "[redacted]"');
+        expect(payload.content).toContain(
+          '"projectOperatorRoleId": "[redacted]"',
+        );
+        expect(payload.content).toContain(
+          '"mergeApproverRoleId": "[redacted]"',
+        );
+        expect(payload.content).toContain('"roles": "[redacted]"');
         expect(payload.content).toContain('"literal-event-value"');
       },
     },
