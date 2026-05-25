@@ -156,7 +156,7 @@ const actionDisplays: Readonly<
     acceptedTitle: 'Alternatives requested',
     acceptedIndicator: '🟡',
     result:
-      'Generating 3 alternatives with S/M/L effort, time ranges, and typed risk summaries.',
+      'Generating 3 alternatives with S/M/L effort, time ranges, and risk types: technical, product, security, dependency, operational.',
     controls: [DEVPLAT_ACTION_RESEARCH, DEVPLAT_ACTION_SPEC],
   },
   [DEVPLAT_ACTION_REDIRECT]: {
