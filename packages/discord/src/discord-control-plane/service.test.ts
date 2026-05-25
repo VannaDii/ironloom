@@ -1,4 +1,4 @@
-import { mkdtemp } from 'node:fs/promises';
+import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -727,6 +727,78 @@ describe('DiscordControlPlaneService', () => {
     expect(forcedResume.request.summary).toContain('gate-health:unknown');
     expect(forcedResume.request.summary).toContain('blocker-inventory:unknown');
     expect(forcedResume.request.summary).toContain('issues:thread-not-paused');
+  });
+
+  it('fails closed when thread pause state is unreadable', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    await mkdir(join(rootDirectory, 'state'), { recursive: true });
+    await writeFile(
+      join(
+        rootDirectory,
+        'state',
+        'project-thread-paused:thread-4g-corrupt.json',
+      ),
+      '{invalid',
+      'utf8',
+    );
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const result = await service.handleAction({
+      id: 'discord-004g-corrupt',
+      summary: 'run implementation',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-4g-corrupt',
+      threadId: 'thread-4g-corrupt',
+      channelId: 'channel-4g-corrupt',
+      action: 'run-this',
+      privileged: false,
+    });
+
+    expect(result.allowed).toBe(false);
+    expect(result.failedClosed).toBe(true);
+    expect(result.blockedReason).toContain('project thread is paused');
+  });
+
+  it('fails closed when lifecycle phase state is unreadable', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    await mkdir(join(rootDirectory, 'state'), { recursive: true });
+    await writeFile(
+      join(rootDirectory, 'state', 'project-phase:thread-4phase-corrupt.json'),
+      '{invalid',
+      'utf8',
+    );
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const result = await service.handleAction({
+      id: 'discord-004phase-corrupt',
+      summary: 'run implementation',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-4phase-corrupt',
+      threadId: 'thread-4phase-corrupt',
+      channelId: 'channel-4phase-corrupt',
+      action: 'run-this',
+      privileged: false,
+    });
+
+    expect(result.allowed).toBe(false);
+    expect(result.failedClosed).toBe(true);
+    expect(result.blockedReason).toContain(
+      'unable to verify lifecycle phase compatibility',
+    );
   });
 
   it('enforces new-project uniqueness per repo across thread contexts', async () => {
@@ -1796,6 +1868,45 @@ describe('DiscordControlPlaneService', () => {
 
     expect(result.allowed).toBe(false);
     expect(result.failedClosed).toBe(true);
+  });
+
+  it('fails closed when immutable open-project intent state is unreadable', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    await mkdir(join(rootDirectory, 'state'), { recursive: true });
+    await writeFile(
+      join(
+        rootDirectory,
+        'state',
+        'open-project-intent:thread-4i-corrupt.json',
+      ),
+      '{invalid',
+      'utf8',
+    );
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const result = await service.handleAction({
+      id: 'discord-004i-corrupt',
+      summary: 'open-project (intent:maintenance)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-4i-corrupt',
+      threadId: 'thread-4i-corrupt',
+      channelId: 'channel-4i-corrupt',
+      action: 'open-project',
+      privileged: false,
+    });
+
+    expect(result.allowed).toBe(false);
+    expect(result.failedClosed).toBe(true);
+    expect(result.blockedReason).toContain(
+      'unable to verify immutable open-project intent',
+    );
   });
 
   it('resets malformed persisted config versions to v1 on project settings updates', async () => {

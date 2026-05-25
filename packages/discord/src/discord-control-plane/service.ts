@@ -388,6 +388,12 @@ function isAlreadyExistsStoreError(error: string): boolean {
   return normalized.includes('eexist') || normalized.includes('already exists');
 }
 
+/** Detects missing-record errors returned by the file-store layer. */
+function isMissingStoreError(error: string): boolean {
+  const normalized = error.toLowerCase();
+  return normalized.includes('enoent') || normalized.includes('no such file');
+}
+
 /** Extracts a short storage error code token when available. */
 function resolveStoreErrorCode(error: string): string | undefined {
   const normalized = error.toLowerCase();
@@ -900,7 +906,7 @@ export class DiscordControlPlaneService {
       createThreadPauseStateKey(threadId),
     );
     if (!pausedState.ok) {
-      return false;
+      return !isMissingStoreError(pausedState.error);
     }
     const paused = pausedState.value.payload['paused'];
     return paused === true;
@@ -1088,6 +1094,14 @@ export class DiscordControlPlaneService {
       createProjectPhaseStateKey(request.threadId),
     );
     if (!phaseState.ok) {
+      if (!isMissingStoreError(phaseState.error)) {
+        return {
+          ok: false,
+          reason:
+            'unable to verify lifecycle phase compatibility for this thread. ' +
+            'Use /show-status and retry after storage recovers.',
+        };
+      }
       return { ok: true };
     }
     const phase = readTrimmedStringField(phaseState.value.payload, 'phase');
@@ -1670,6 +1684,14 @@ export class DiscordControlPlaneService {
     const stateKey = createOpenProjectIntentStateKey(request.threadId);
     const previous = await this.store.read('state', stateKey);
     if (!previous.ok) {
+      if (!isMissingStoreError(previous.error)) {
+        return {
+          ok: false,
+          reason:
+            'unable to verify immutable open-project intent for this thread. ' +
+            'Use /show-status and retry after storage recovers.',
+        };
+      }
       return {
         ok: true,
         persistIntent: currentIntent,
