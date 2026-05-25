@@ -878,6 +878,7 @@ function resolveDiscoveryControlFields(
         ? {}
         : {
             'Prior spec approval checkpoint': staleSpecApproval,
+            'Approval fallback': '/approve-this',
           }),
     };
   }

@@ -1313,6 +1313,7 @@ describe('Discord control-plane renderer', () => {
         expect(payload.content).toContain(
           'Prior spec approval checkpoint: cleared',
         );
+        expect(payload.content).toContain('Approval fallback: /approve-this');
       },
     },
     {
