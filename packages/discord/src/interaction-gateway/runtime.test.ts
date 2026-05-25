@@ -685,7 +685,7 @@ describe('Discord interaction Gateway runtime', () => {
         expect(context.fetchCalls.length).toBeGreaterThan(0);
         expect(
           context.fetchCalls.some((call) =>
-            call.body.includes('Project bootstrap started'),
+            call.body.includes('Action blocked'),
           ),
         ).toBe(true);
         expect(

@@ -116,6 +116,25 @@ class FailingProjectIdentityReservationStore extends FileStoreService {
   }
 }
 
+/** Test store that simulates no-space failures for identity reservations. */
+class NoSpaceProjectIdentityReservationStore extends FileStoreService {
+  public constructor(rootDirectory: string) {
+    super(rootDirectory);
+  }
+
+  public override async storeIfAbsent<TPayload extends object>(
+    record: StoredRecord<TPayload>,
+  ) {
+    if (record.key.startsWith('project-identity:')) {
+      return {
+        ok: false as const,
+        error: 'ENOSPC: no space left on device',
+      };
+    }
+    return super.storeIfAbsent(record);
+  }
+}
+
 /**
  * Test store that rejects atomic identity reservation writes.
  */
@@ -931,6 +950,34 @@ describe('DiscordControlPlaneService', () => {
 
     expect(result.allowed).toBe(false);
     expect(result.failedClosed).toBe(true);
+  });
+
+  it('surfaces sanitized no-space identity reservation failures with an error code', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new NoSpaceProjectIdentityReservationStore(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const result = await service.handleAction({
+      id: 'discord-new-project-enospc-001',
+      summary: 'new-project (repo:devplat) (project:project-enospc)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-new-project-enospc-1',
+      threadId: 'thread-new-project-enospc-1',
+      channelId: 'channel-new-project-enospc-1',
+      action: 'new-project',
+      privileged: false,
+    });
+
+    expect(result.allowed).toBe(false);
+    expect(result.failedClosed).toBe(true);
+    expect(result.blockedReason).toContain('code=ENOSPC');
+    expect(result.blockedReason).not.toContain(rootDirectory);
   });
 
   it('allows new-project when project identity markers are incomplete in summary', async () => {

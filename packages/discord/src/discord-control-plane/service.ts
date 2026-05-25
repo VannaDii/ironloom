@@ -291,6 +291,24 @@ function isAlreadyExistsStoreError(error: string): boolean {
   return normalized.includes('eexist') || normalized.includes('already exists');
 }
 
+/** Extracts a short storage error code token when available. */
+function resolveStoreErrorCode(error: string): string | undefined {
+  const normalized = error.toLowerCase();
+  if (normalized.includes('eexist') || normalized.includes('already exists')) {
+    return 'EEXIST';
+  }
+  if (
+    normalized.includes('eacces') ||
+    normalized.includes('permission denied')
+  ) {
+    return 'EACCES';
+  }
+  if (normalized.includes('enospc') || normalized.includes('no space left')) {
+    return 'ENOSPC';
+  }
+  return undefined;
+}
+
 /**
  * Reads a trimmed string field from a record-like payload.
  */
@@ -1305,9 +1323,15 @@ export class DiscordControlPlaneService {
     if (identityReservation.ok) {
       return undefined;
     }
-    const fallbackReason = isAlreadyExistsStoreError(identityReservation.error)
-      ? `new-project identity already exists: repo=${identityUniqueness.persistRepo} project=${identityUniqueness.persistProject}.`
-      : `new-project identity reservation failed: ${identityReservation.error}`;
+    const errorCode = resolveStoreErrorCode(identityReservation.error);
+    let fallbackReason = `new-project identity reservation failed: repo=${identityUniqueness.persistRepo} project=${identityUniqueness.persistProject}.`;
+    if (isAlreadyExistsStoreError(identityReservation.error)) {
+      fallbackReason = `new-project identity already exists: repo=${identityUniqueness.persistRepo} project=${identityUniqueness.persistProject}.`;
+    } else if (errorCode !== undefined) {
+      fallbackReason =
+        `new-project identity reservation failed: repo=${identityUniqueness.persistRepo} ` +
+        `project=${identityUniqueness.persistProject} code=${errorCode}.`;
+    }
     return this.failClosedWithAudit(
       request,
       fallbackReason,

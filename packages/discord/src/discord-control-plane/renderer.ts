@@ -1323,6 +1323,9 @@ export function renderDiscordRouteFailureMessage(
     action: DEVPLAT_ACTION_SHOW_STATUS,
     privileged: false,
   } satisfies DiscordControlRequest;
+  const isThreadRoutingFailure =
+    reason.includes('must resolve to exactly one bound thread') ||
+    reason.includes('bound session thread mismatch');
   const content = renderDiscordMessageContent({
     actionLabel: 'Action refused',
     fields: {
@@ -1331,7 +1334,9 @@ export function renderDiscordRouteFailureMessage(
       Reason: reason,
     },
     indicator: '🔴',
-    result: 'Run this from the correct spec, implementation, or PR thread.',
+    result: isThreadRoutingFailure
+      ? 'Run this from the correct spec, implementation, or PR thread.'
+      : 'Review the reason and retry with correct permissions/options or thread context.',
   });
   const diagnosticSeparator = '\n\n';
   const diagnostic = renderDiscordReceivedEventDiagnostic(

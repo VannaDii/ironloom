@@ -119,6 +119,31 @@ describe('DiscordControlRequest logic', () => {
       {
         inputs: {
           interaction: {
+            id: 'interaction-008m3',
+            token: 'token-8m3',
+            actorId: 'user-8m3',
+            channelId: 'channel-8m3',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'consider',
+            boundThreadId: 'thread-8m3',
+            considerUrl: 'https://example.com/a|b\ninjected',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.summary).toContain(
+              'url:https-//example.com/a/b injected',
+            );
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
             id: 'interaction-008o-spec-discovery',
             token: 'token-8o-spec-discovery',
             actorId: 'user-8o-spec-discovery',
@@ -867,7 +892,7 @@ describe('DiscordControlRequest logic', () => {
         ) => {
           expect(route.ok).toBe(true);
           if (route.ok) {
-            expect(route.request.privileged).toBe(false);
+            expect(route.request.privileged).toBe(true);
           }
         },
       },
@@ -891,7 +916,7 @@ describe('DiscordControlRequest logic', () => {
         ) => {
           expect(route.ok).toBe(true);
           if (route.ok) {
-            expect(route.request.privileged).toBe(false);
+            expect(route.request.privileged).toBe(true);
           }
         },
       },
@@ -1099,7 +1124,7 @@ describe('DiscordControlRequest logic', () => {
           expect(route.ok).toBe(true);
           if (route.ok) {
             expect(route.request.action).toBe('new-project');
-            expect(route.request.privileged).toBe(false);
+            expect(route.request.privileged).toBe(true);
             expect(route.request.summary).toContain('quality-strictness:on');
           }
         },

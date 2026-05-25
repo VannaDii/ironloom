@@ -123,6 +123,48 @@ describe('FileStoreService', () => {
       },
     },
     {
+      name: 'returns a normalized string error when create-only serialization throws a non-Error value',
+      inputs: {
+        mode: 'store-if-absent',
+        record: {
+          id: 'storage-atomic-string-error',
+          key: 'atomic-string-error',
+          scope: 'state',
+          summary: 'Atomic record string error',
+          status: 'complete',
+          trace: [],
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          payload: { state: 'atomic' },
+        },
+      },
+      mock: async () => {
+        const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-storage-'));
+        return {
+          rootDirectory,
+          service: new FileStoreService(rootDirectory),
+        };
+      },
+      assert: async (context, inputs) => {
+        if (inputs.mode !== 'store-if-absent') {
+          throw new Error('expected store-if-absent inputs');
+        }
+        const stringifySpy = vi
+          .spyOn(JSON, 'stringify')
+          .mockImplementationOnce(() => {
+            throw 'serialization-failed';
+          });
+        try {
+          const stored = await context.service.storeIfAbsent(inputs.record);
+          expect(stored.ok).toBe(false);
+          if (!stored.ok) {
+            expect(stored.error).toBe('serialization-failed');
+          }
+        } finally {
+          stringifySpy.mockRestore();
+        }
+      },
+    },
+    {
       name: 'fails create-only store-if-absent when an index entry already exists',
       inputs: {
         mode: 'store-if-absent',

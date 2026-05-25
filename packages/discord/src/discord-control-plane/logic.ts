@@ -29,7 +29,10 @@ import {
   DEVPLAT_ACTION_PAUSE_THIS,
 } from '@vannadii/devplat-core';
 
-import { resolveDiscordCommandAction } from '../command-contract/logic.js';
+import {
+  createDiscordCommandContractRegistry,
+  resolveDiscordCommandAction,
+} from '../command-contract/logic.js';
 import {
   DISCORD_COMPONENT_CUSTOM_ID_PREFIX,
   DISCORD_CONTROL_REQUEST_SUMMARY_MAX_LENGTH,
@@ -115,6 +118,31 @@ const commandActionMap = new Map<string, DiscordControlAction>([
   ['update spec', DEVPLAT_ACTION_UPDATE_SPEC],
   [DEVPLAT_ACTION_UPDATE_SPEC, DEVPLAT_ACTION_UPDATE_SPEC],
 ]);
+
+/**
+ * Maps command names to privileged-policy flags from the command contract registry.
+ */
+const commandPrivilegedMap = new Map<string, boolean>(
+  createDiscordCommandContractRegistry().contracts.map((contract) => [
+    contract.name,
+    contract.privileged,
+  ]),
+);
+
+/**
+ * Resolves the policy `privileged` flag for an interaction request.
+ */
+function resolveInteractionPrivileged(
+  input: DiscordOperatorInteraction,
+): boolean {
+  if (input.privileged !== undefined) {
+    return input.privileged;
+  }
+  if (input.commandName === undefined) {
+    return false;
+  }
+  return commandPrivilegedMap.get(input.commandName) ?? false;
+}
 
 /**
  * Resolves a known action token into a control action.
@@ -774,6 +802,16 @@ function sanitizeSummaryMarkerValue(value: string): string {
     .join(']')
     .split(':')
     .join('-')
+    .split('|')
+    .join('/')
+    .split('\r')
+    .join(' ')
+    .split('\n')
+    .join(' ')
+    .split('\t')
+    .join(' ')
+    .split('`')
+    .join("'")
     .trim();
 }
 
@@ -803,7 +841,7 @@ function createInteractionControlRequestInput(
   action: DiscordControlAction,
   threadId: string,
 ): DiscordControlRequest {
-  const privileged = input.privileged ?? false;
+  const privileged = resolveInteractionPrivileged(input);
   const intentSuffix =
     action === DEVPLAT_ACTION_OPEN_PROJECT &&
     input.openProjectIntent !== undefined
