@@ -114,7 +114,7 @@ export class FileStoreService {
     } catch (error) {
       return {
         ok: false,
-        error: error instanceof Error ? error.message : String(error),
+        error: String(error),
       };
     }
   }
