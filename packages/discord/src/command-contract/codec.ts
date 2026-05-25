@@ -15,13 +15,17 @@ export const DiscordCommandOptionChoiceCodec = t.type({
 });
 
 /** Codec for a slash-command string option. */
-export const DiscordCommandOptionCodec = t.type({
-  type: DiscordCommandOptionTypeCodec,
-  name: t.string,
-  description: t.string,
-  required: t.boolean,
-  choices: t.readonlyArray(DiscordCommandOptionChoiceCodec),
-});
+export const DiscordCommandOptionCodec = t.intersection([
+  t.type({
+    type: DiscordCommandOptionTypeCodec,
+    name: t.string,
+    description: t.string,
+    required: t.boolean,
+  }),
+  t.partial({
+    choices: t.readonlyArray(DiscordCommandOptionChoiceCodec),
+  }),
+]);
 
 /** Codec for discord command contract. */
 export const DiscordCommandContractCodec = t.intersection([

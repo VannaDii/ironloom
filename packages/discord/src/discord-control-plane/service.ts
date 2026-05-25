@@ -1,4 +1,5 @@
 import {
+  DEVPLAT_ACTION_NEW_PROJECT,
   DEVPLAT_ACTION_PROJECT_SETTINGS,
   DEVPLAT_ACTION_PROJECT_SUMMARY,
   DEVPLAT_ACTION_OPEN_PROJECT,
@@ -126,6 +127,42 @@ function resolveOpenProjectIntentFromSummary(
 }
 
 /**
+ * Parses the final `(repo:<value>)` marker from a normalized request summary.
+ */
+function resolveProjectRepoFromSummary(summary: string): string | undefined {
+  const marker = '(repo:';
+  const markerIndex = summary.lastIndexOf(marker);
+  if (markerIndex < 0) {
+    return undefined;
+  }
+  const start = markerIndex + marker.length;
+  const end = summary.indexOf(')', start);
+  if (end < 0) {
+    return undefined;
+  }
+  const repo = summary.slice(start, end).trim();
+  return repo.length === 0 ? undefined : repo;
+}
+
+/**
+ * Parses the final `(project:<value>)` marker from a normalized request summary.
+ */
+function resolveProjectNameFromSummary(summary: string): string | undefined {
+  const marker = '(project:';
+  const markerIndex = summary.lastIndexOf(marker);
+  if (markerIndex < 0) {
+    return undefined;
+  }
+  const start = markerIndex + marker.length;
+  const end = summary.indexOf(')', start);
+  if (end < 0) {
+    return undefined;
+  }
+  const project = summary.slice(start, end).trim();
+  return project.length === 0 ? undefined : project;
+}
+
+/**
  * Builds the state key that stores immutable open-project intent context.
  */
 function createOpenProjectIntentStateKey(threadId: string): string {
@@ -137,6 +174,15 @@ function createOpenProjectIntentStateKey(threadId: string): string {
  */
 function createProjectConfigVersionStateKey(threadId: string): string {
   return `project-config-version:${threadId}`;
+}
+
+/**
+ * Builds the state key that reserves a unique project identity within a repo.
+ */
+function createProjectIdentityStateKey(repo: string, project: string): string {
+  return `project-identity:${repo.trim().toLowerCase()}:${project
+    .trim()
+    .toLowerCase()}`;
 }
 
 /**
@@ -690,6 +736,58 @@ export class DiscordControlPlaneService {
     };
   }
 
+  /**
+   * Enforces project-name uniqueness per repo for `/new-project`.
+   */
+  private async enforceNewProjectIdentityUniqueness(
+    request: DiscordControlRequest,
+  ): Promise<
+    | {
+        ok: true;
+        persistRepo?: string;
+        persistProject?: string;
+        stateKey?: string;
+      }
+    | { ok: false; reason: string }
+  > {
+    if (request.action !== DEVPLAT_ACTION_NEW_PROJECT) {
+      return { ok: true };
+    }
+
+    const repo = resolveProjectRepoFromSummary(request.summary);
+    const project = resolveProjectNameFromSummary(request.summary);
+    if (repo === undefined || project === undefined) {
+      return { ok: true };
+    }
+
+    const stateKey = createProjectIdentityStateKey(repo, project);
+    const previous = await this.store.read('state', stateKey);
+    if (!previous.ok) {
+      return {
+        ok: true,
+        persistRepo: repo,
+        persistProject: project,
+        stateKey,
+      };
+    }
+
+    const payload = previous.value.payload;
+    const boundThreadId = readTrimmedStringField(payload, 'threadId');
+    if (boundThreadId === undefined || boundThreadId === request.threadId) {
+      return {
+        ok: true,
+        persistRepo: repo,
+        persistProject: project,
+        stateKey,
+      };
+    }
+
+    return {
+      ok: false,
+      reason: `new-project identity already exists: repo=${repo} project=${project} boundThread=${boundThreadId}.`,
+    };
+  }
+
   /** Handle action. */
   public async handleAction(
     input: DiscordControlRequest,
@@ -735,6 +833,42 @@ export class DiscordControlPlaneService {
       request.action,
       request.privileged,
     );
+    const identityUniqueness =
+      await this.enforceNewProjectIdentityUniqueness(request);
+    if (!identityUniqueness.ok) {
+      await this.telemetry.recordAudit({
+        auditId: `${request.id}:audit`,
+        runId: request.id,
+        eventId: request.id,
+        actorId: request.actorId,
+        action: request.action,
+        scope: 'discord',
+        outcome: 'blocked',
+        reason: identityUniqueness.reason,
+        artifactIds:
+          request.workItem?.artifactId === undefined
+            ? []
+            : [request.workItem.artifactId],
+        recordedAt: request.updatedAt,
+        policyDecisionId: 'discord-fail-closed',
+        details: {
+          threadId: request.threadId,
+          channelId: request.channelId,
+          resultStatus: 'duplicate-project-identity',
+          correlationId: request.id,
+        },
+      });
+      return createDiscordControlResultWithOptionalWorkItem(
+        {
+          request,
+          policyDecisionId: 'discord-fail-closed',
+          allowed: false,
+          persistedKey: request.id,
+          failedClosed: true,
+        },
+        request,
+      );
+    }
     if (
       request.action === DEVPLAT_ACTION_OPEN_PROJECT &&
       decision.allowed &&
@@ -753,6 +887,29 @@ export class DiscordControlPlaneService {
           threadId: request.threadId,
           action: request.action,
           intent: immutability.persistIntent,
+        },
+      });
+    }
+    if (
+      request.action === DEVPLAT_ACTION_NEW_PROJECT &&
+      decision.allowed &&
+      identityUniqueness.persistRepo !== undefined &&
+      identityUniqueness.persistProject !== undefined &&
+      identityUniqueness.stateKey !== undefined
+    ) {
+      await this.store.store({
+        id: `${request.id}:project-identity`,
+        key: identityUniqueness.stateKey,
+        scope: 'state',
+        summary: 'Project identity reservation.',
+        status: 'approved',
+        trace: request.trace,
+        updatedAt: request.updatedAt,
+        payload: {
+          repo: identityUniqueness.persistRepo,
+          project: identityUniqueness.persistProject,
+          threadId: request.threadId,
+          action: request.action,
         },
       });
     }

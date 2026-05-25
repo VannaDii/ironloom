@@ -20,6 +20,21 @@ describe('Discord command contract codec', () => {
               privileged: false,
             },
             {
+              name: 'redirect',
+              description: 'Redirect command.',
+              type: 1,
+              action: 'redirect',
+              privileged: false,
+              options: [
+                {
+                  type: 3,
+                  name: 'direction-prompt',
+                  description: 'Replacement direction prompt.',
+                  required: true,
+                },
+              ],
+            },
+            {
               name: 'open-project',
               description: 'Open project command.',
               type: 1,

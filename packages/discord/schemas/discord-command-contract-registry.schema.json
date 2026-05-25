@@ -93,13 +93,7 @@
                       }
                     }
                   },
-                  "required": [
-                    "type",
-                    "name",
-                    "description",
-                    "required",
-                    "choices"
-                  ],
+                  "required": ["type", "name", "description", "required"],
                   "additionalProperties": false
                 }
               }

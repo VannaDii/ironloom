@@ -100,7 +100,6 @@ function createRequiredTextOption(
     name,
     description,
     required: true,
-    choices: [],
   };
 }
 

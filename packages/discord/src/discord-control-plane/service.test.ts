@@ -504,6 +504,347 @@ describe('DiscordControlPlaneService', () => {
     );
   });
 
+  it('enforces new-project uniqueness per repo across thread contexts', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const first = await service.handleAction({
+      id: 'discord-004-new-project-a',
+      summary: 'new-project (repo:devplat) (project:alpha)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-new-project-a',
+      threadId: 'thread-new-project-a',
+      channelId: 'channel-new-project-a',
+      action: 'new-project',
+      privileged: false,
+    });
+    const duplicate = await service.handleAction({
+      id: 'discord-004-new-project-b',
+      summary: 'new-project (repo:devplat) (project:alpha)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:01.000Z',
+      actorId: 'user-new-project-b',
+      threadId: 'thread-new-project-b',
+      channelId: 'channel-new-project-b',
+      action: 'new-project',
+      privileged: false,
+      workItem: {
+        threadKind: 'implementation',
+        threadId: 'thread-new-project-b',
+        artifactId: 'artifact-duplicate',
+        sliceId: 'slice-duplicate',
+      },
+    });
+
+    expect(first.allowed).toBe(true);
+    expect(duplicate.allowed).toBe(false);
+    expect(duplicate.failedClosed).toBe(true);
+    expect(await store.list('audit')).toContain(
+      'discord-004-new-project-b:audit',
+    );
+  });
+
+  it('does not reserve new-project identity state when policy blocks new-project', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const blocked = await service.handleAction({
+      id: 'discord-004-new-project-blocked',
+      summary: 'new-project (repo:devplat) (project:blocked)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-new-project-blocked',
+      threadId: 'thread-new-project-blocked',
+      channelId: 'channel-new-project-blocked',
+      action: 'new-project',
+      privileged: true,
+    });
+
+    expect(blocked.allowed).toBe(false);
+    expect(await store.list('state')).not.toContain(
+      'project-identity:devplat:blocked',
+    );
+  });
+
+  it('fails closed for duplicate new-project identity without a bound work item', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    await service.handleAction({
+      id: 'discord-004-new-project-no-work-item-a',
+      summary: 'new-project (repo:devplat) (project:gamma)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-new-project-no-work-item-a',
+      threadId: 'thread-new-project-no-work-item-a',
+      channelId: 'channel-new-project-no-work-item-a',
+      action: 'new-project',
+      privileged: false,
+    });
+
+    const duplicate = await service.handleAction({
+      id: 'discord-004-new-project-no-work-item-b',
+      summary: 'new-project (repo:devplat) (project:gamma)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:01.000Z',
+      actorId: 'user-new-project-no-work-item-b',
+      threadId: 'thread-new-project-no-work-item-b',
+      channelId: 'channel-new-project-no-work-item-b',
+      action: 'new-project',
+      privileged: false,
+    });
+
+    expect(duplicate.allowed).toBe(false);
+    expect(duplicate.failedClosed).toBe(true);
+  });
+
+  it('allows duplicate new-project identity within the same thread context', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    await service.handleAction({
+      id: 'discord-004-new-project-same-thread-a',
+      summary: 'new-project (repo:devplat) (project:alpha)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-new-project-same-thread-a',
+      threadId: 'thread-new-project-same-thread',
+      channelId: 'channel-new-project-same-thread',
+      action: 'new-project',
+      privileged: false,
+    });
+
+    const retry = await service.handleAction({
+      id: 'discord-004-new-project-same-thread-b',
+      summary: 'new-project (repo:devplat) (project:alpha)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:01.000Z',
+      actorId: 'user-new-project-same-thread-b',
+      threadId: 'thread-new-project-same-thread',
+      channelId: 'channel-new-project-same-thread',
+      action: 'new-project',
+      privileged: false,
+    });
+
+    expect(retry.allowed).toBe(true);
+    expect(retry.failedClosed).toBe(false);
+  });
+
+  it('allows new-project when project identity markers are incomplete in summary', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const result = await service.handleAction({
+      id: 'discord-004-new-project-incomplete-markers',
+      summary: 'new-project (repo:devplat) (project:alpha',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-new-project-incomplete-markers',
+      threadId: 'thread-new-project-incomplete-markers',
+      channelId: 'channel-new-project-incomplete-markers',
+      action: 'new-project',
+      privileged: false,
+    });
+
+    expect(result.allowed).toBe(true);
+    expect(result.failedClosed).toBe(false);
+    expect(await store.list('state')).not.toContain(
+      'project-identity:devplat:alpha',
+    );
+  });
+
+  it('allows non new-project actions without identity reservations', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const result = await service.handleAction({
+      id: 'discord-004-non-new-project',
+      summary: 'retry gates',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-non-new-project',
+      threadId: 'thread-non-new-project',
+      channelId: 'channel-non-new-project',
+      action: 'retry-gates',
+      privileged: false,
+    });
+
+    expect(result.allowed).toBe(true);
+    expect(await store.list('state')).not.toContain(
+      'project-identity:devplat:alpha',
+    );
+  });
+
+  it('allows new-project when repo marker is missing from summary', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const result = await service.handleAction({
+      id: 'discord-004-new-project-missing-repo',
+      summary: 'new-project (project:alpha)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-new-project-missing-repo',
+      threadId: 'thread-new-project-missing-repo',
+      channelId: 'channel-new-project-missing-repo',
+      action: 'new-project',
+      privileged: false,
+    });
+
+    expect(result.allowed).toBe(true);
+    expect(result.failedClosed).toBe(false);
+  });
+
+  it('allows new-project when repo marker is unterminated in summary', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const result = await service.handleAction({
+      id: 'discord-004-new-project-unterminated-repo',
+      summary: 'new-project (repo:devplat',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-new-project-unterminated-repo',
+      threadId: 'thread-new-project-unterminated-repo',
+      channelId: 'channel-new-project-unterminated-repo',
+      action: 'new-project',
+      privileged: false,
+    });
+
+    expect(result.allowed).toBe(true);
+    expect(result.failedClosed).toBe(false);
+  });
+
+  it('allows new-project when project marker is missing from summary', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const result = await service.handleAction({
+      id: 'discord-004-new-project-missing-project',
+      summary: 'new-project (repo:devplat)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-new-project-missing-project',
+      threadId: 'thread-new-project-missing-project',
+      channelId: 'channel-new-project-missing-project',
+      action: 'new-project',
+      privileged: false,
+    });
+
+    expect(result.allowed).toBe(true);
+    expect(result.failedClosed).toBe(false);
+  });
+
+  it('allows new-project when repo marker value is blank in summary', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const result = await service.handleAction({
+      id: 'discord-004-new-project-blank-repo',
+      summary: 'new-project (repo: ) (project:alpha)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-new-project-blank-repo',
+      threadId: 'thread-new-project-blank-repo',
+      channelId: 'channel-new-project-blank-repo',
+      action: 'new-project',
+      privileged: false,
+    });
+
+    expect(result.allowed).toBe(true);
+    expect(result.failedClosed).toBe(false);
+  });
+
+  it('allows new-project when project marker value is blank in summary', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const result = await service.handleAction({
+      id: 'discord-004-new-project-blank-project',
+      summary: 'new-project (repo:devplat) (project: )',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-new-project-blank-project',
+      threadId: 'thread-new-project-blank-project',
+      channelId: 'channel-new-project-blank-project',
+      action: 'new-project',
+      privileged: false,
+    });
+
+    expect(result.allowed).toBe(true);
+    expect(result.failedClosed).toBe(false);
+  });
+
   it('fails closed on routed interactions when open-project intent changes for a thread', async () => {
     const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
     const store = new FileStoreService(rootDirectory);

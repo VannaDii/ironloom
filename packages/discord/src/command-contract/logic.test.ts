@@ -109,7 +109,6 @@ describe('Discord command contract logic', () => {
               name: 'repo',
               description: 'Repository name to bootstrap or create.',
               required: true,
-              choices: [],
             },
             {
               type: 3,
@@ -117,7 +116,6 @@ describe('Discord command contract logic', () => {
               description:
                 'Unique project name (3-30 characters) within the repository.',
               required: true,
-              choices: [],
             },
             {
               type: 3,
@@ -145,7 +143,6 @@ describe('Discord command contract logic', () => {
               name: 'repo',
               description: 'Repository name that owns the project.',
               required: true,
-              choices: [],
             },
             {
               type: 3,
@@ -153,7 +150,6 @@ describe('Discord command contract logic', () => {
               description:
                 'Project name bound to the operator control context.',
               required: true,
-              choices: [],
             },
             {
               type: 3,
@@ -223,7 +219,6 @@ describe('Discord command contract logic', () => {
                 description:
                   'Replacement direction for the next research cycle.',
                 required: true,
-                choices: [],
               },
             ],
           },
@@ -240,7 +235,6 @@ describe('Discord command contract logic', () => {
                 description:
                   'URL queued for inclusion in the next research update.',
                 required: true,
-                choices: [],
               },
             ],
           },
