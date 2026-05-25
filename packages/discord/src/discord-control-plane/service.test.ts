@@ -3029,7 +3029,7 @@ describe('DiscordControlPlaneService', () => {
 
     const firstConsider = await service.handleAction({
       id: 'discord-consider-001',
-      summary: 'consider (url:https-//example.com/one)',
+      summary: 'consider (url64:aHR0cHM6Ly9leGFtcGxlLmNvbS9vbmU)',
       status: 'running',
       trace: [],
       updatedAt: '2026-04-04T00:00:00.000Z',
@@ -3041,7 +3041,7 @@ describe('DiscordControlPlaneService', () => {
     });
     const secondConsider = await service.handleAction({
       id: 'discord-consider-002',
-      summary: 'consider (url:https-//example.com/two)',
+      summary: 'consider (url64:aHR0cHM6Ly9leGFtcGxlLmNvbS90d28)',
       status: 'running',
       trace: [],
       updatedAt: '2026-04-04T00:00:01.000Z',
@@ -3231,6 +3231,66 @@ describe('DiscordControlPlaneService', () => {
     const queueState = await store.read(
       'state',
       'discovery-consider-queue:thread-consider-no-marker',
+    );
+    expect(queueState.ok).toBe(false);
+  });
+
+  it('keeps consider summary unchanged when url64 marker is invalid', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const result = await service.handleAction({
+      id: 'discord-consider-invalid-url64',
+      summary: 'consider (url64:invalid+/token)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-consider-invalid-url64',
+      threadId: 'thread-consider-invalid-url64',
+      channelId: 'channel-consider-invalid-url64',
+      action: 'consider',
+      privileged: false,
+    });
+
+    expect(result.request.summary).toBe('consider (url64:invalid+/token)');
+    const queueState = await store.read(
+      'state',
+      'discovery-consider-queue:thread-consider-invalid-url64',
+    );
+    expect(queueState.ok).toBe(false);
+  });
+
+  it('keeps consider summary unchanged when decoded url64 marker is blank', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    const result = await service.handleAction({
+      id: 'discord-consider-blank-url64',
+      summary: 'consider (url64:ICAg)',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-consider-blank-url64',
+      threadId: 'thread-consider-blank-url64',
+      channelId: 'channel-consider-blank-url64',
+      action: 'consider',
+      privileged: false,
+    });
+
+    expect(result.request.summary).toBe('consider (url64:ICAg)');
+    const queueState = await store.read(
+      'state',
+      'discovery-consider-queue:thread-consider-blank-url64',
     );
     expect(queueState.ok).toBe(false);
   });

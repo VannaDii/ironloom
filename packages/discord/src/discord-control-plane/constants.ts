@@ -118,3 +118,8 @@ export const DISCORD_PROJECT_NAME_MAX_LENGTH = 30;
  * Upper bound for persisted Discord control request summaries.
  */
 export const DISCORD_CONTROL_REQUEST_SUMMARY_MAX_LENGTH = 1000;
+
+/**
+ * Pattern for validating base64url marker tokens embedded in control summaries.
+ */
+export const DISCORD_BASE64URL_MARKER_PATTERN = /^[A-Za-z0-9_-]+$/u;

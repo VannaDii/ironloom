@@ -135,9 +135,7 @@ describe('DiscordControlRequest logic', () => {
         ) => {
           expect(route.ok).toBe(true);
           if (route.ok) {
-            expect(route.request.summary).toContain(
-              'url:https-//example.com/a/b injected',
-            );
+            expect(route.request.summary).toContain('(url64:');
           }
         },
       },
@@ -303,9 +301,7 @@ describe('DiscordControlRequest logic', () => {
         ) => {
           expect(route.ok).toBe(true);
           if (route.ok) {
-            expect(route.request.summary).toContain(
-              'url:https-//example.com/[intent-spoof]-v1',
-            );
+            expect(route.request.summary).toContain('(url64:');
           }
         },
       },
@@ -1551,9 +1547,7 @@ describe('DiscordControlRequest logic', () => {
         ) => {
           expect(route.ok).toBe(true);
           if (route.ok) {
-            expect(route.request.summary).toContain(
-              'url:https-//example.com/dependency-risk-model',
-            );
+            expect(route.request.summary).toContain('(url64:');
           }
         },
       },

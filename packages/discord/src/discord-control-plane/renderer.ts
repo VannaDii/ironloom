@@ -33,6 +33,7 @@ import {
 
 import {
   DISCORD_ACTION_ROW_COMPONENT_TYPE,
+  DISCORD_BASE64URL_MARKER_PATTERN,
   DISCORD_BUTTON_COMPONENT_TYPE,
   DISCORD_BUTTON_LABEL_MAX_LENGTH,
   DISCORD_BUTTON_STYLE_DANGER,
@@ -622,6 +623,24 @@ function resolveSummaryMarkerValue(
 }
 
 /**
+ * Decodes base64url summary marker values when present.
+ */
+function resolveDecodedSummaryMarkerValue(
+  summary: string,
+  markerPrefix: string,
+): string | undefined {
+  const encoded = resolveSummaryMarkerValue(summary, markerPrefix);
+  if (encoded === undefined || encoded.length === 0) {
+    return undefined;
+  }
+  if (!DISCORD_BASE64URL_MARKER_PATTERN.test(encoded)) {
+    return undefined;
+  }
+  const decoded = Buffer.from(encoded, 'base64url').toString('utf8').trim();
+  return decoded.length === 0 ? undefined : decoded;
+}
+
+/**
  * Returns additional fields for status and project summary messages.
  */
 function resolveStatusSummaryMetadataFields(
@@ -827,7 +846,9 @@ function resolveDiscoveryControlFields(
   }
 
   if (request.action === DEVPLAT_ACTION_CONSIDER) {
-    const url = resolveSummaryMarkerValue(request.summary, '(url:');
+    const url =
+      resolveDecodedSummaryMarkerValue(request.summary, '(url64:') ??
+      resolveSummaryMarkerValue(request.summary, '(url:');
     const queuedCount = resolveSummaryMarkerValue(
       request.summary,
       '(queued-count:',

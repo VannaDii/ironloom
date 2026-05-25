@@ -34,6 +34,7 @@ import { FileStoreService } from '@vannadii/devplat-storage';
 
 import {
   DISCORD_EPHEMERAL_MESSAGE_FLAG,
+  DISCORD_BASE64URL_MARKER_PATTERN,
   DISCORD_APPLICATION_ID_ENVIRONMENT_VARIABLE,
   DISCORD_PROJECT_CONFIG_VERSION_PATTERN,
   DISCORD_REST_SUCCESS_MAX_EXCLUSIVE_STATUS,
@@ -209,18 +210,69 @@ function resolveDirectionPromptFromSummary(
  * Parses the final `(url:<value>)` marker from a summary.
  */
 function resolveConsiderUrlFromSummary(summary: string): string | undefined {
-  const marker = '(url:';
+  const encodedValue = resolveSummaryMarkerValue(summary, '(url64:');
+  const decodedValue = decodeBase64UrlSummaryValue(encodedValue);
+  if (decodedValue !== undefined) {
+    return decodedValue;
+  }
+  return resolveSummaryMarkerValue(summary, '(url:');
+}
+
+/**
+ * Sanitizes queued URL values before embedding them in human-readable markers.
+ */
+function sanitizeSummaryQueuedUrlValue(value: string): string {
+  return value
+    .split('(')
+    .join('[')
+    .split(')')
+    .join(']')
+    .split(':')
+    .join('-')
+    .split('|')
+    .join('/')
+    .split('\r')
+    .join(' ')
+    .split('\n')
+    .join(' ')
+    .split('\t')
+    .join(' ')
+    .split('`')
+    .join("'")
+    .trim();
+}
+
+/** Resolves one parenthesized summary marker value by prefix. */
+function resolveSummaryMarkerValue(
+  summary: string,
+  marker: string,
+): string | undefined {
   const markerIndex = summary.lastIndexOf(marker);
   if (markerIndex < 0) {
     return undefined;
   }
-  const start = markerIndex + marker.length;
-  const end = summary.indexOf(')', start);
-  if (end < 0) {
+  const valueStart = markerIndex + marker.length;
+  const valueEnd = summary.indexOf(')', valueStart);
+  if (valueEnd < 0) {
     return undefined;
   }
-  const value = summary.slice(start, end).trim();
+  const value = summary.slice(valueStart, valueEnd).trim();
   return value.length === 0 ? undefined : value;
+}
+
+/** Decodes a base64url summary value into UTF-8 text. */
+function decodeBase64UrlSummaryValue(
+  encodedValue: string | undefined,
+): string | undefined {
+  if (encodedValue === undefined) {
+    return undefined;
+  }
+  if (!DISCORD_BASE64URL_MARKER_PATTERN.test(encodedValue)) {
+    return undefined;
+  }
+  const decoded = Buffer.from(encodedValue, 'base64url').toString('utf8');
+  const trimmed = decoded.trim();
+  return trimmed.length === 0 ? undefined : trimmed;
 }
 
 /**
@@ -1360,7 +1412,9 @@ export class DiscordControlPlaneService {
       summary:
         queuedUrls.length === 0
           ? request.summary
-          : `${request.summary} (considered-urls:${queuedUrls.join('|')})`,
+          : `${request.summary} (considered-urls:${queuedUrls
+              .map((entry) => sanitizeSummaryQueuedUrlValue(entry))
+              .join('|')})`,
     };
   }
 

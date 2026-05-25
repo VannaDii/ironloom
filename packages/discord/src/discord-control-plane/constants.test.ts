@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  DISCORD_BASE64URL_MARKER_PATTERN,
   DISCORD_COMPONENT_CUSTOM_ID_PREFIX,
   DISCORD_CUSTOM_ID_MAX_LENGTH,
   DISCORD_EPHEMERAL_MESSAGE_FLAG,
@@ -20,6 +21,7 @@ type DiscordControlPlaneConstantsCase = {
     successMin: number;
     successMaxExclusive: number;
     projectConfigVersionPattern: RegExp;
+    base64urlMarkerPattern: RegExp;
   };
   mock: () => Record<string, never>;
   assert: (
@@ -40,6 +42,7 @@ describe('discord control-plane constants', () => {
         successMin: DISCORD_REST_SUCCESS_MIN_STATUS,
         successMaxExclusive: DISCORD_REST_SUCCESS_MAX_EXCLUSIVE_STATUS,
         projectConfigVersionPattern: DISCORD_PROJECT_CONFIG_VERSION_PATTERN,
+        base64urlMarkerPattern: DISCORD_BASE64URL_MARKER_PATTERN,
       },
       mock: () => ({}),
       assert: (context, inputs) => {
@@ -51,6 +54,10 @@ describe('discord control-plane constants', () => {
         expect(inputs.successMaxExclusive).toBe(300);
         expect(inputs.projectConfigVersionPattern.test('v9')).toBe(true);
         expect(inputs.projectConfigVersionPattern.test('v1junk')).toBe(false);
+        expect(inputs.base64urlMarkerPattern.test('aHR0cHM6Ly8')).toBe(true);
+        expect(inputs.base64urlMarkerPattern.test('invalid+/token')).toBe(
+          false,
+        );
       },
     },
   ] satisfies DiscordControlPlaneConstantsCase[];

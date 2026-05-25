@@ -1226,7 +1226,7 @@ describe('Discord control-plane renderer', () => {
           ...request,
           action: 'consider',
           summary:
-            'consider (url:https-//example.com/ops-playbook) (queued-count:3)',
+            'consider (url64:aHR0cHM6Ly9leGFtcGxlLmNvbS9vcHMtcGxheWJvb2s) (queued-count:3)',
         },
       },
       mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
@@ -1235,7 +1235,7 @@ describe('Discord control-plane renderer', () => {
         payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
       ) => {
         expect(payload.content).toContain(
-          'URL: https-//example.com/ops-playbook',
+          'URL: https://example.com/ops-playbook',
         );
         expect(payload.content).toContain('Queued items: 3');
       },
@@ -1258,6 +1258,42 @@ describe('Discord control-plane renderer', () => {
         expect(payload.content).toContain(
           'Queued URLs used: https-//example.com/one|https-//example.com/two',
         );
+      },
+    },
+    {
+      name: 'renders consider metadata as unavailable when url64 marker is invalid',
+      inputs: {
+        request: {
+          ...request,
+          action: 'consider',
+          summary: 'consider (url64:invalid+/token) (queued-count:1)',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain('URL: unavailable');
+        expect(payload.content).toContain('Queued items: 1');
+      },
+    },
+    {
+      name: 'renders consider metadata as unavailable when decoded url64 is blank',
+      inputs: {
+        request: {
+          ...request,
+          action: 'consider',
+          summary: 'consider (url64:ICAg) (queued-count:1)',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain('URL: unavailable');
+        expect(payload.content).toContain('Queued items: 1');
       },
     },
     {

@@ -826,6 +826,13 @@ function sanitizeSummaryMarkerValue(value: string): string {
     .trim();
 }
 
+/**
+ * Encodes marker values that must round-trip without delimiter loss.
+ */
+function encodeSummaryMarkerValue(value: string): string {
+  return Buffer.from(value, 'utf8').toString('base64url');
+}
+
 /** Sanitizes repo/project markers to keep persisted identity keys path-safe. */
 function sanitizeStorageMarkerValue(value: string): string {
   return sanitizeSummaryMarkerValue(value)
@@ -883,7 +890,7 @@ function createInteractionControlRequestInput(
       : '';
   const considerUrlSuffix =
     action === DEVPLAT_ACTION_CONSIDER && input.considerUrl !== undefined
-      ? ` (url:${sanitizeSummaryMarkerValue(input.considerUrl)})`
+      ? ` (url64:${encodeSummaryMarkerValue(input.considerUrl)})`
       : '';
   const summary = truncateControlRequestSummary(
     `${input.summary?.trim() ?? action}${projectContextSuffix}${intentSuffix}${resumeForceSuffix}${settingsHistoryModeSuffix}${qualityStrictnessSuffix}${redirectPromptSuffix}${considerUrlSuffix}`.trim(),
