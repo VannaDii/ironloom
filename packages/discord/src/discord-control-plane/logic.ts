@@ -414,6 +414,20 @@ function collectThreadCandidates(
   ].filter((value) => value.length > 0);
 }
 
+/** Returns true when a thread-id token represents a concrete thread binding. */
+function isResolvableThreadId(value: string | undefined): value is string {
+  if (value === undefined) {
+    return false;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  return (
+    normalized.length > 0 &&
+    normalized !== 'unresolved' &&
+    normalized !== 'ambiguous'
+  );
+}
+
 /** Trims an optional string value. */
 function trimOptional(value: string | undefined): string | undefined {
   const trimmed = value?.trim();
@@ -966,10 +980,19 @@ export function createDiscordControlRequestFromInteraction(
 
   const threadCandidates = [...new Set(collectThreadCandidates(input))];
   if (threadCandidates.length !== 1) {
-    const expectedThread =
-      input.boundSession?.threadId ??
-      input.boundThreadId?.trim() ??
-      'unresolved';
+    const expectedThreadFromSession = trimOptional(
+      input.boundSession?.threadId,
+    );
+    const expectedThreadFromBinding = trimOptional(input.boundThreadId);
+    const expectedThreadFromInteraction = trimOptional(input.threadId);
+    let expectedThread = 'unresolved';
+    if (isResolvableThreadId(expectedThreadFromSession)) {
+      expectedThread = expectedThreadFromSession;
+    } else if (isResolvableThreadId(expectedThreadFromBinding)) {
+      expectedThread = expectedThreadFromBinding;
+    } else if (isResolvableThreadId(expectedThreadFromInteraction)) {
+      expectedThread = expectedThreadFromInteraction;
+    }
     const detectedThread =
       threadCandidates.length === 0 ? 'unresolved' : threadCandidates.join(',');
     return {

@@ -1197,6 +1197,30 @@ describe('DiscordControlRequest logic', () => {
       {
         inputs: {
           interaction: {
+            id: 'interaction-005b',
+            token: 'token-5b',
+            actorId: 'user-5b',
+            channelId: 'channel-5b',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'show status',
+            boundThreadId: 'unresolved',
+            threadId: 'thread-5b',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(false);
+          if (!route.ok) {
+            expect(route.reason).toContain('project/thread context mismatch');
+            expect(route.reason).toContain('expected=thread-5b');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
             id: 'interaction-006',
             token: 'token-6',
             actorId: 'user-6',

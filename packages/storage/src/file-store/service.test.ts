@@ -230,6 +230,48 @@ describe('FileStoreService', () => {
       },
     },
     {
+      name: 'deduplicates duplicate indexes during create-only store-if-absent writes',
+      inputs: {
+        mode: 'store-if-absent',
+        record: {
+          id: 'storage-if-absent-dedup-indexes',
+          key: 'if-absent-dedup-indexes',
+          scope: 'state',
+          summary: 'Store once with duplicate indexes',
+          status: 'complete',
+          trace: [],
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          indexes: ['task', 'task'],
+          payload: { state: 'dedup-indexes' },
+        },
+      },
+      mock: async () => {
+        const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-storage-'));
+        return {
+          rootDirectory,
+          service: new FileStoreService(rootDirectory),
+        };
+      },
+      assert: async (context, inputs) => {
+        if (inputs.mode !== 'store-if-absent') {
+          throw new Error('expected store-if-absent inputs');
+        }
+        const stored = await context.service.storeIfAbsent(inputs.record);
+        expect(stored.ok).toBe(true);
+        await expect(
+          readFile(
+            resolve(
+              context.rootDirectory,
+              'indexes',
+              'task',
+              'if-absent-dedup-indexes.json',
+            ),
+            'utf8',
+          ),
+        ).resolves.toContain('"key": "if-absent-dedup-indexes"');
+      },
+    },
+    {
       name: 'writes and reads file-backed records inside the storage root',
       inputs: {
         mode: 'store-read',

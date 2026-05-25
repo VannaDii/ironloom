@@ -51,6 +51,7 @@ export class FileStoreService {
     record: StoredRecord<TPayload>,
   ): Promise<StoredRecord<TPayload>> {
     const normalized = createStoredRecord(record);
+    const uniqueIndexes = [...new Set(normalized.indexes ?? [])];
     const filePath = resolve(
       this.rootDirectory,
       buildStoragePath(normalized.scope, normalized.key),
@@ -62,7 +63,7 @@ export class FileStoreService {
       'utf8',
     );
     await Promise.all(
-      (normalized.indexes ?? []).map(async (indexName) => {
+      uniqueIndexes.map(async (indexName) => {
         const indexPath = resolve(
           this.rootDirectory,
           buildStorageIndexPath(indexName, normalized.key),
@@ -85,6 +86,7 @@ export class FileStoreService {
     record: StoredRecord<TPayload>,
   ): Promise<DevplatResult<StoredRecord<TPayload>>> {
     const normalized = createStoredRecord(record);
+    const uniqueIndexes = [...new Set(normalized.indexes ?? [])];
     const filePath = resolve(
       this.rootDirectory,
       buildStoragePath(normalized.scope, normalized.key),
@@ -103,7 +105,7 @@ export class FileStoreService {
       } finally {
         await handle.close();
       }
-      for (const indexName of normalized.indexes ?? []) {
+      for (const indexName of uniqueIndexes) {
         const indexPath = resolve(
           this.rootDirectory,
           buildStorageIndexPath(indexName, normalized.key),
