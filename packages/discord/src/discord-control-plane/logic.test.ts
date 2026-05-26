@@ -896,6 +896,83 @@ describe('DiscordControlRequest logic', () => {
       {
         inputs: {
           interaction: {
+            id: 'interaction-010a-role',
+            token: 'token-10a-role',
+            actorId: 'user-10a-role',
+            channelId: 'thread-10a-role',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'project-summary',
+            threadId: 'thread-10a-role',
+            actorRoleIds: [' role-project-operator '],
+            projectOperatorRoleId: 'role-project-operator',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.summary).toContain(
+              '(summary-visibility:role)',
+            );
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-010a-no-role',
+            token: 'token-10a-no-role',
+            actorId: 'user-10a-no-role',
+            channelId: 'thread-10a-no-role',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'project-summary',
+            threadId: 'thread-10a-no-role',
+            actorRoleIds: ['role-unrelated'],
+            projectOperatorRoleId: 'role-project-operator',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.summary).not.toContain(
+              '(summary-visibility:role)',
+            );
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-010a-no-actor-roles',
+            token: 'token-10a-no-actor-roles',
+            actorId: 'user-10a-no-actor-roles',
+            channelId: 'thread-10a-no-actor-roles',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'project-summary',
+            threadId: 'thread-10a-no-actor-roles',
+            projectOperatorRoleId: 'role-project-operator',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.summary).not.toContain(
+              '(summary-visibility:role)',
+            );
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
             id: 'interaction-010b',
             token: 'token-10b',
             actorId: 'user-10b',
@@ -2490,6 +2567,39 @@ describe('DiscordControlRequest logic', () => {
           expect(interaction.considerUrl).toBe(
             'https://example.com/operator-reference',
           );
+        },
+      },
+      {
+        name: 'trims callback option fallback strings and omits blank values',
+        inputs: {
+          callback: {
+            id: 'callback-002g6',
+            token: 'token-002g6',
+            channel_id: 'thread-002g6',
+            data: {
+              name: 'new-project',
+            },
+            user: {
+              id: 'operator-002g6',
+            },
+          },
+          options: {
+            projectRepo: '   ',
+            projectName: '   ',
+            redirectPrompt: '   ',
+            considerUrl: '   ',
+          },
+        },
+        mock: () => ({}),
+        assert: (context, inputs) => {
+          const interaction = createDiscordOperatorInteractionFromCallback(
+            inputs.callback,
+            inputs.options,
+          );
+          expect(interaction.projectRepo).toBeUndefined();
+          expect(interaction.projectName).toBeUndefined();
+          expect(interaction.redirectPrompt).toBeUndefined();
+          expect(interaction.considerUrl).toBeUndefined();
         },
       },
       {
