@@ -69,6 +69,18 @@ const newProjectQualityStrictnessOptionValues = [
 ] satisfies readonly string[];
 
 /**
+ * Supported `/project-summary --phase` option values.
+ */
+const projectSummaryPhaseOptionValues = [
+  'all',
+  DEVPLAT_ACTION_SPEC,
+  'slicing',
+  'implementation',
+  'pr',
+  'release',
+] satisfies readonly string[];
+
+/**
  * Builds a required string slash-command option from fixed values.
  */
 function createRequiredStringOption(
@@ -156,6 +168,17 @@ const openProjectOptions: readonly DiscordCommandOption[] = [
 ];
 
 /**
+ * Named options exposed by `/project-summary`.
+ */
+const projectSummaryOptions: readonly DiscordCommandOption[] = [
+  createOptionalStringOption(
+    'phase',
+    'Optional condensed phase view filter for the summary response.',
+    projectSummaryPhaseOptionValues,
+  ),
+];
+
+/**
  * Named options exposed by `/resume-project`.
  */
 const resumeProjectOptions: readonly DiscordCommandOption[] = [
@@ -223,6 +246,7 @@ const commandContracts: readonly DiscordCommandContract[] = [
     type: applicationCommandType,
     action: DEVPLAT_ACTION_PROJECT_SUMMARY,
     privileged: false,
+    options: projectSummaryOptions,
   },
   {
     name: DEVPLAT_ACTION_PROJECT_SETTINGS,

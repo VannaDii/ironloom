@@ -166,6 +166,31 @@ describe('Discord command contract logic', () => {
           ],
         });
         expect(
+          payloads.find((payload) => payload.name === 'project-summary'),
+        ).toEqual({
+          name: 'project-summary',
+          description:
+            'Show a read-only project summary across lifecycle phases.',
+          type: 1,
+          options: [
+            {
+              type: 3,
+              name: 'phase',
+              description:
+                'Optional condensed phase view filter for the summary response.',
+              required: false,
+              choices: [
+                { name: 'all', value: 'all' },
+                { name: 'spec', value: 'spec' },
+                { name: 'slicing', value: 'slicing' },
+                { name: 'implementation', value: 'implementation' },
+                { name: 'pr', value: 'pr' },
+                { name: 'release', value: 'release' },
+              ],
+            },
+          ],
+        });
+        expect(
           payloads.find((payload) => payload.name === 'resume-project'),
         ).toEqual({
           name: 'resume-project',
