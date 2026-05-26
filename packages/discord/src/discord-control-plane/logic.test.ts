@@ -2414,6 +2414,29 @@ describe('DiscordControlRequest logic', () => {
         },
       },
       {
+        name: 'treats resume-project component clicks as force confirmations',
+        inputs: {
+          callback: {
+            id: 'callback-002f2',
+            token: 'token-002f2',
+            channel_id: 'thread-002f2',
+            data: {
+              custom_id: 'devplat:v1:resume-project:thread-002f2',
+            },
+            user: {
+              id: 'operator-002f2',
+            },
+          },
+        },
+        mock: () => ({}),
+        assert: (context, inputs) => {
+          const interaction = createDiscordOperatorInteractionFromCallback(
+            inputs.callback,
+          );
+          expect(interaction.resumeProjectForce).toBe(true);
+        },
+      },
+      {
         name: 'extracts detailed project-settings-history mode from slash-command options',
         inputs: {
           callback: {

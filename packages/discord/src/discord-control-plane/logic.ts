@@ -778,6 +778,9 @@ export function createDiscordOperatorInteractionFromCallback(
     input,
     options,
   );
+  const componentContext = parseDiscordComponentCustomId(customId);
+  const resumeProjectForceFromComponent =
+    componentContext?.action === DEVPLAT_ACTION_RESUME_PROJECT;
 
   return {
     id: input.id,
@@ -797,6 +800,10 @@ export function createDiscordOperatorInteractionFromCallback(
       : { boundSession: options.boundSession }),
     ...(summary === undefined ? {} : { summary }),
     ...callbackOptionFields,
+    ...(callbackOptionFields.resumeProjectForce === undefined &&
+    resumeProjectForceFromComponent
+      ? { resumeProjectForce: true }
+      : {}),
     ...(input.member?.roles === undefined
       ? {}
       : {
