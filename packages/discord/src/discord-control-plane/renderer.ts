@@ -884,6 +884,8 @@ function resolveProjectSummaryVisibilityFields(
       View: `${phaseFilter} phases (condensed)`,
       'Phase filter commands':
         '/project-summary --phase all|spec|slicing|implementation|pr|release',
+      'Phase filter examples':
+        '/project-summary --phase spec | /project-summary --phase pr | /project-summary --phase release',
       'Artifact links': 'restricted/unavailable',
       ...(releasePrerequisites === undefined
         ? {}
@@ -909,6 +911,8 @@ function resolveProjectSummaryVisibilityFields(
     View: `${phaseFilter} phases (condensed)`,
     'Phase filter commands':
       '/project-summary --phase all|spec|slicing|implementation|pr|release',
+    'Phase filter examples':
+      '/project-summary --phase spec | /project-summary --phase pr | /project-summary --phase release',
     ...(eta === undefined ? {} : { ETA: eta }),
     'Artifact links': artifactLinks ?? 'none',
     'Config version': configVersion,

@@ -351,6 +351,9 @@ describe('Discord control-plane renderer', () => {
           'Phase filter commands: /project-summary --phase all|spec|slicing|implementation|pr|release',
         );
         expect(payload.content).toContain(
+          'Phase filter examples: /project-summary --phase spec | /project-summary --phase pr | /project-summary --phase release',
+        );
+        expect(payload.content).toContain(
           'Artifact links: restricted/unavailable',
         );
         expect(payload.content).toContain(
@@ -395,6 +398,9 @@ describe('Discord control-plane renderer', () => {
         expect(payload.content).toContain(
           'Phase filter commands: /project-summary --phase all|spec|slicing|implementation|pr|release',
         );
+        expect(payload.content).toContain(
+          'Phase filter examples: /project-summary --phase spec | /project-summary --phase pr | /project-summary --phase release',
+        );
         expect(payload.content).toContain('ETA: 10m');
         expect(payload.content).toContain('Config version: v5');
         expect(payload.content).toContain('Quality strictness: on');
@@ -423,6 +429,9 @@ describe('Discord control-plane renderer', () => {
         expect(payload.content).toContain('View: all phases (condensed)');
         expect(payload.content).toContain(
           'Phase filter commands: /project-summary --phase all|spec|slicing|implementation|pr|release',
+        );
+        expect(payload.content).toContain(
+          'Phase filter examples: /project-summary --phase spec | /project-summary --phase pr | /project-summary --phase release',
         );
         expect(payload.content).toContain('Artifact links: none');
         expect(payload.content).toContain('Config version: unknown');
@@ -454,6 +463,9 @@ describe('Discord control-plane renderer', () => {
         expect(payload.content).toContain('View: all phases (condensed)');
         expect(payload.content).toContain(
           'Phase filter commands: /project-summary --phase all|spec|slicing|implementation|pr|release',
+        );
+        expect(payload.content).toContain(
+          'Phase filter examples: /project-summary --phase spec | /project-summary --phase pr | /project-summary --phase release',
         );
         expect(payload.content).not.toContain('Release prerequisites:');
       },
