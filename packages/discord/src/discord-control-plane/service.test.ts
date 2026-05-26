@@ -4,10 +4,11 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import type { DevplatResult } from '@vannadii/devplat-core';
 import { TelemetryEventService } from '@vannadii/devplat-observability';
 import { DecisionPolicyService } from '@vannadii/devplat-policy';
 import { FileStoreService } from '@vannadii/devplat-storage';
-import type { StoredRecord } from '@vannadii/devplat-storage';
+import type { StoreScope, StoredRecord } from '@vannadii/devplat-storage';
 
 import {
   DiscordControlPlaneService,
@@ -86,7 +87,7 @@ class RejectingProjectIdentityReservationStore extends FileStoreService {
 
   public override async storeIfAbsent<TPayload extends object>(
     record: StoredRecord<TPayload>,
-  ) {
+  ): Promise<DevplatResult<StoredRecord<TPayload>>> {
     if (record.key.startsWith('project-identity:')) {
       return {
         ok: false,
@@ -105,7 +106,7 @@ class FailingProjectIdentityReservationStore extends FileStoreService {
 
   public override async storeIfAbsent<TPayload extends object>(
     record: StoredRecord<TPayload>,
-  ) {
+  ): Promise<DevplatResult<StoredRecord<TPayload>>> {
     if (record.key.startsWith('project-identity:')) {
       return {
         ok: false,
@@ -124,7 +125,7 @@ class NoSpaceProjectIdentityReservationStore extends FileStoreService {
 
   public override async storeIfAbsent<TPayload extends object>(
     record: StoredRecord<TPayload>,
-  ) {
+  ): Promise<DevplatResult<StoredRecord<TPayload>>> {
     if (record.key.startsWith('project-identity:')) {
       return {
         ok: false,
@@ -154,7 +155,7 @@ class RejectingIdentityReservationStore extends FileStoreService {
    */
   public override async storeIfAbsent<TPayload extends object>(
     record: StoredRecord<TPayload>,
-  ) {
+  ): Promise<DevplatResult<StoredRecord<TPayload>>> {
     if (record.key.startsWith('project-identity:')) {
       return {
         ok: false,
@@ -171,7 +172,10 @@ class FailingProjectIdentityReadStore extends FileStoreService {
     super(rootDirectory);
   }
 
-  public override async read(scope: string, key: string) {
+  public override async read(
+    scope: StoreScope,
+    key: string,
+  ): Promise<DevplatResult<StoredRecord>> {
     if (scope === 'state' && key.startsWith('project-identity:')) {
       return {
         ok: false,

@@ -80,8 +80,12 @@ export class FileStoreService {
   }
 
   /**
+<<<<<<< HEAD
    * Persists a normalized record only when the primary record path and all
    * requested index entry paths do not already exist.
+=======
+   * Persists a normalized record only when the primary record path and each index path are absent.
+>>>>>>> 986672f (fix(discord): prefer out-of-band discovery metadata)
    */
   public async storeIfAbsent<TPayload extends object>(
     record: StoredRecord<TPayload>,
