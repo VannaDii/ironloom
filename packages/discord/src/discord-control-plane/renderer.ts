@@ -143,7 +143,11 @@ const actionDisplays: Readonly<
     acceptedIndicator: '🟡',
     result:
       'Global preflight is running before project resume. If issues are detected, a second confirmation is required. Use /resume-project --force force to acknowledge and continue.',
-    controls: [DEVPLAT_ACTION_PROJECT_SUMMARY, DEVPLAT_ACTION_SHOW_STATUS],
+    controls: [
+      DEVPLAT_ACTION_RESUME_PROJECT,
+      DEVPLAT_ACTION_PROJECT_SUMMARY,
+      DEVPLAT_ACTION_SHOW_STATUS,
+    ],
   },
   [DEVPLAT_ACTION_RELEASE_PROJECT]: {
     label: 'Release Project',

@@ -1682,6 +1682,27 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'includes dedicated resume confirmation button on resume-project responses',
+      inputs: {
+        request: {
+          ...request,
+          action: 'resume-project',
+          summary: 'resume-project (preflight:forced)',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        const labels =
+          payload.components?.flatMap((row) =>
+            row.components.map((button) => button.label),
+          ) ?? [];
+        expect(labels).toContain('Resume Project');
+      },
+    },
+    {
       name: 'shows merge after approval only for pull request threads',
       inputs: {
         request: {
