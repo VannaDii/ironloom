@@ -393,6 +393,54 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'renders project-summary role defaults when optional markers are missing',
+      inputs: {
+        request: {
+          ...request,
+          action: 'project-summary',
+          summary: 'project-summary',
+          privileged: true,
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain('Repo: unknown');
+        expect(payload.content).toContain('Project: unknown');
+        expect(payload.content).toContain('Phase: unknown');
+        expect(payload.content).toContain('Artifact links: none');
+        expect(payload.content).toContain('Config version: unknown');
+        expect(payload.content).toContain('Quality strictness: unknown');
+        expect(payload.content).toContain('Approval mode: unknown');
+        expect(payload.content).not.toContain('ETA:');
+        expect(payload.content).not.toContain('Release prerequisites:');
+      },
+    },
+    {
+      name: 'omits project-summary release prerequisites for non-role users when marker absent',
+      inputs: {
+        request: {
+          ...request,
+          action: 'project-summary',
+          summary:
+            'project-summary (repo:devplat) (project:operator-gap-closure)',
+          privileged: false,
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain(
+          'Artifact links: restricted/unavailable',
+        );
+        expect(payload.content).not.toContain('Release prerequisites:');
+      },
+    },
+    {
       name: 'renders project-settings-history summary mode for public visibility with redacted defaults',
       inputs: {
         request: {
