@@ -861,6 +861,8 @@ function resolveProjectSummaryVisibilityFields(
     resolveSummaryMarkerValue(request.summary, '(blocked-status:') ?? 'unknown';
   const pendingApprovals =
     resolveSummaryMarkerValue(request.summary, '(pending-approvals:') ?? '0';
+  const phaseFilter =
+    resolveSummaryMarkerValue(request.summary, '(phase-filter:') ?? 'all';
   const eta = resolveSummaryMarkerValue(request.summary, '(eta:');
   const artifactLinks = resolveSummaryMarkerValue(
     request.summary,
@@ -879,6 +881,9 @@ function resolveProjectSummaryVisibilityFields(
       'Phase status': phaseStatus,
       'Blocked status': blockedStatus,
       'Pending approvals': pendingApprovals,
+      View: `${phaseFilter} phases (condensed)`,
+      'Phase filter commands':
+        '/project-summary --phase all|spec|slicing|implementation|pr|release',
       'Artifact links': 'restricted/unavailable',
       ...(releasePrerequisites === undefined
         ? {}
@@ -901,6 +906,9 @@ function resolveProjectSummaryVisibilityFields(
     'Phase status': phaseStatus,
     'Blocked status': blockedStatus,
     'Pending approvals': pendingApprovals,
+    View: `${phaseFilter} phases (condensed)`,
+    'Phase filter commands':
+      '/project-summary --phase all|spec|slicing|implementation|pr|release',
     ...(eta === undefined ? {} : { ETA: eta }),
     'Artifact links': artifactLinks ?? 'none',
     'Config version': configVersion,

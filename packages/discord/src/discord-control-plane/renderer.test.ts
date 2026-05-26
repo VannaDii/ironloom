@@ -328,6 +328,7 @@ describe('Discord control-plane renderer', () => {
             '(phase:Slice PR Review) ' +
             '(phase-status:blocked) ' +
             '(blocked-status:blocked) ' +
+            '(phase-filter:all) ' +
             '(pending-approvals:2) ' +
             '(eta:15m) ' +
             '(artifact-links:https://example.com/artifact) ' +
@@ -345,6 +346,10 @@ describe('Discord control-plane renderer', () => {
         expect(payload.content).toContain('Phase status: blocked');
         expect(payload.content).toContain('Blocked status: blocked');
         expect(payload.content).toContain('Pending approvals: 2');
+        expect(payload.content).toContain('View: all phases (condensed)');
+        expect(payload.content).toContain(
+          'Phase filter commands: /project-summary --phase all|spec|slicing|implementation|pr|release',
+        );
         expect(payload.content).toContain(
           'Artifact links: restricted/unavailable',
         );
@@ -367,6 +372,7 @@ describe('Discord control-plane renderer', () => {
             '(phase:Slice PR Review) ' +
             '(phase-status:in-progress) ' +
             '(blocked-status:unblocked) ' +
+            '(phase-filter:pr) ' +
             '(pending-approvals:1) ' +
             '(eta:10m) ' +
             '(artifact-links:https://example.com/artifact) ' +
@@ -384,6 +390,10 @@ describe('Discord control-plane renderer', () => {
       ) => {
         expect(payload.content).toContain(
           'Artifact links: https://example.com/artifact',
+        );
+        expect(payload.content).toContain('View: pr phases (condensed)');
+        expect(payload.content).toContain(
+          'Phase filter commands: /project-summary --phase all|spec|slicing|implementation|pr|release',
         );
         expect(payload.content).toContain('ETA: 10m');
         expect(payload.content).toContain('Config version: v5');
@@ -410,6 +420,10 @@ describe('Discord control-plane renderer', () => {
         expect(payload.content).toContain('Repo: unknown');
         expect(payload.content).toContain('Project: unknown');
         expect(payload.content).toContain('Phase: unknown');
+        expect(payload.content).toContain('View: all phases (condensed)');
+        expect(payload.content).toContain(
+          'Phase filter commands: /project-summary --phase all|spec|slicing|implementation|pr|release',
+        );
         expect(payload.content).toContain('Artifact links: none');
         expect(payload.content).toContain('Config version: unknown');
         expect(payload.content).toContain('Quality strictness: unknown');
@@ -436,6 +450,10 @@ describe('Discord control-plane renderer', () => {
       ) => {
         expect(payload.content).toContain(
           'Artifact links: restricted/unavailable',
+        );
+        expect(payload.content).toContain('View: all phases (condensed)');
+        expect(payload.content).toContain(
+          'Phase filter commands: /project-summary --phase all|spec|slicing|implementation|pr|release',
         );
         expect(payload.content).not.toContain('Release prerequisites:');
       },
