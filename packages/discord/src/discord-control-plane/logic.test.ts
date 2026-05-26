@@ -221,6 +221,60 @@ describe('DiscordControlRequest logic', () => {
     }
   });
 
+  it('trims fallback callback options before creating interaction fields', () => {
+    const interaction = createDiscordOperatorInteractionFromCallback(
+      {
+        id: 'callback-fallback-trim-001',
+        token: 'token-fallback-trim-001',
+        channel_id: 'thread-fallback-trim-001',
+        data: {
+          custom_id: 'devplat:v1:redirect:thread-fallback-trim-001',
+        },
+        user: {
+          id: 'operator-fallback-trim-001',
+        },
+      },
+      {
+        projectRepo: '  devplat  ',
+        projectName: '  operator-gap-closure  ',
+        redirectPrompt: '  focus on regressions  ',
+        considerUrl: '  https://example.com/design-note  ',
+      },
+    );
+
+    expect(interaction.projectRepo).toBe('devplat');
+    expect(interaction.projectName).toBe('operator-gap-closure');
+    expect(interaction.redirectPrompt).toBe('focus on regressions');
+    expect(interaction.considerUrl).toBe('https://example.com/design-note');
+  });
+
+  it('drops whitespace-only fallback callback options', () => {
+    const interaction = createDiscordOperatorInteractionFromCallback(
+      {
+        id: 'callback-fallback-trim-002',
+        token: 'token-fallback-trim-002',
+        channel_id: 'thread-fallback-trim-002',
+        data: {
+          custom_id: 'devplat:v1:redirect:thread-fallback-trim-002',
+        },
+        user: {
+          id: 'operator-fallback-trim-002',
+        },
+      },
+      {
+        projectRepo: '   ',
+        projectName: '\n\t',
+        redirectPrompt: '   ',
+        considerUrl: '  ',
+      },
+    );
+
+    expect(interaction.projectRepo).toBeUndefined();
+    expect(interaction.projectName).toBeUndefined();
+    expect(interaction.redirectPrompt).toBeUndefined();
+    expect(interaction.considerUrl).toBeUndefined();
+  });
+
   it('accepts diagnostic and lifecycle control actions used in daily operation', () => {
     const request = createDiscordControlRequest({
       id: 'discord-003',
@@ -766,6 +820,76 @@ describe('DiscordControlRequest logic', () => {
           if (route.ok) {
             expect(route.request.action).toBe('project-summary');
             expect(route.request.summary).not.toContain('(phase-filter:');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-010a3',
+            token: 'token-10a3',
+            actorId: 'user-10a3',
+            channelId: 'thread-10a3',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'project-summary',
+            threadId: 'thread-10a3',
+            actorRoleIds: [' role-project-operator '],
+            projectOperatorRoleId: 'role-project-operator',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.summary).toContain('(visibility:role)');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-010a4',
+            token: 'token-10a4',
+            actorId: 'user-10a4',
+            channelId: 'thread-10a4',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'project-summary',
+            threadId: 'thread-10a4',
+            actorRoleIds: ['role-project-operator'],
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.summary).not.toContain('(visibility:role)');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-010a5',
+            token: 'token-10a5',
+            actorId: 'user-10a5',
+            channelId: 'thread-10a5',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'project-summary',
+            threadId: 'thread-10a5',
+            projectOperatorRoleId: 'role-project-operator',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.summary).not.toContain('(visibility:role)');
           }
         },
       },

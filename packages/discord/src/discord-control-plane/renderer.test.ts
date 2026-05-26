@@ -363,7 +363,7 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
-      name: 'renders project-summary operational fields for role participants',
+      name: 'renders project-summary operational fields when role visibility marker is present',
       inputs: {
         request: {
           ...request,
@@ -376,6 +376,7 @@ describe('Discord control-plane renderer', () => {
             '(phase-status:in-progress) ' +
             '(blocked-status:unblocked) ' +
             '(phase-filter:pr) ' +
+            '(visibility:role) ' +
             '(pending-approvals:1) ' +
             '(eta:10m) ' +
             '(artifact-links:https://example.com/artifact) ' +
@@ -383,7 +384,7 @@ describe('Discord control-plane renderer', () => {
             '(quality-strictness:on) ' +
             '(approval-mode:manual) ' +
             '(release-prerequisites:all-clear)',
-          privileged: true,
+          privileged: false,
         },
       },
       mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
@@ -409,13 +410,13 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
-      name: 'renders project-summary role defaults when optional markers are missing',
+      name: 'renders project-summary role defaults when visibility marker is present',
       inputs: {
         request: {
           ...request,
           action: 'project-summary',
-          summary: 'project-summary',
-          privileged: true,
+          summary: 'project-summary (visibility:role)',
+          privileged: false,
         },
       },
       mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
@@ -468,6 +469,30 @@ describe('Discord control-plane renderer', () => {
           'Phase filter examples: /project-summary --phase spec | /project-summary --phase pr | /project-summary --phase release',
         );
         expect(payload.content).not.toContain('Release prerequisites:');
+      },
+    },
+    {
+      name: 'keeps project-summary redacted without role visibility marker even if privileged is true',
+      inputs: {
+        request: {
+          ...request,
+          action: 'project-summary',
+          summary:
+            'project-summary (repo:devplat) (project:operator-gap-closure) (artifact-links:https://example.com/artifact)',
+          privileged: true,
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain(
+          'Artifact links: restricted/unavailable',
+        );
+        expect(payload.content).not.toContain(
+          'Artifact links: https://example.com/artifact',
+        );
       },
     },
     {

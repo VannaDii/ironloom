@@ -872,8 +872,12 @@ function resolveProjectSummaryVisibilityFields(
     request.summary,
     '(release-prerequisites:',
   );
+  const roleVisibility = resolveSummaryMarkerValue(
+    request.summary,
+    '(visibility:',
+  );
 
-  if (!request.privileged) {
+  if (roleVisibility !== 'role') {
     return {
       Repo: repo ?? 'unknown',
       Project: project ?? 'unknown',

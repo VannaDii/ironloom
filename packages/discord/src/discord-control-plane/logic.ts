@@ -226,6 +226,23 @@ function resolveConfiguredRoleId(
 }
 
 /**
+ * Returns true when the actor has the configured role mapping.
+ */
+function hasActorConfiguredRole(
+  role: DevplatOperatorRole,
+  input: DiscordOperatorInteraction,
+): boolean {
+  const configuredRoleId = resolveConfiguredRoleId(role, input);
+  if (configuredRoleId === undefined) {
+    return false;
+  }
+
+  return (input.actorRoleIds ?? [])
+    .map((roleId) => roleId.trim())
+    .includes(configuredRoleId);
+}
+
+/**
  * Resolves role authorization outcome for an action.
  */
 function resolveRoleAuthorizationFailure(
@@ -594,9 +611,11 @@ function resolveCallbackOptionalInteractionFields(
   const openProjectIntent =
     resolveOpenProjectIntentFromCallback(input) ?? options.openProjectIntent;
   const projectRepo =
-    resolveNamedOptionFromCallback(input, 'repo') ?? options.projectRepo;
+    resolveNamedOptionFromCallback(input, 'repo') ??
+    trimOptional(options.projectRepo);
   const projectName =
-    resolveNamedOptionFromCallback(input, 'project') ?? options.projectName;
+    resolveNamedOptionFromCallback(input, 'project') ??
+    trimOptional(options.projectName);
   const resumeProjectForce =
     resolveResumeProjectForceFromCallback(input) ?? options.resumeProjectForce;
   const projectSettingsHistoryDetailed =
@@ -610,9 +629,10 @@ function resolveCallbackOptionalInteractionFields(
     options.projectSummaryPhaseFilter;
   const redirectPrompt =
     resolveNamedOptionFromCallback(input, 'direction-prompt') ??
-    options.redirectPrompt;
+    trimOptional(options.redirectPrompt);
   const considerUrl =
-    resolveNamedOptionFromCallback(input, 'url') ?? options.considerUrl;
+    resolveNamedOptionFromCallback(input, 'url') ??
+    trimOptional(options.considerUrl);
 
   return {
     ...(openProjectIntent === undefined ? {} : { openProjectIntent }),
@@ -1038,9 +1058,14 @@ function createActionSpecificMarkers(
         ? []
         : [`(quality-strictness:${input.newProjectQualityStrictness})`];
     case DEVPLAT_ACTION_PROJECT_SUMMARY:
-      return input.projectSummaryPhaseFilter === undefined
-        ? []
-        : [`(phase-filter:${input.projectSummaryPhaseFilter})`];
+      return [
+        ...(input.projectSummaryPhaseFilter === undefined
+          ? []
+          : [`(phase-filter:${input.projectSummaryPhaseFilter})`]),
+        ...(hasActorConfiguredRole('project-operator', input)
+          ? ['(visibility:role)']
+          : []),
+      ];
     case DEVPLAT_ACTION_REDIRECT:
       return [
         `(direction-prompt:${sanitizeSummaryMarkerValue(String(input.redirectPrompt))})`,
