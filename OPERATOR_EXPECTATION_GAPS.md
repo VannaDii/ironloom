@@ -473,7 +473,7 @@ Usage rules:
 ## 32. Read-Only/Public Command Surface
 
 - [x] Keep `/phase-contract` available to all participants.
-- [ ] Keep `/project-summary` available to all participants.
+- [x] Keep `/project-summary` available to all participants.
 - [ ] Keep `/show-status` and `/show-last-artifact` non-mutating access available where thread context allows.
 
 ## 33. Release Preconditions in Summaries
