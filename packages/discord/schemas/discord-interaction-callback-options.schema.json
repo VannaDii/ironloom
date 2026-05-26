@@ -313,6 +313,9 @@
         "projectSettingsHistoryDetailed": {
           "type": "boolean"
         },
+        "projectSummaryPhaseFilter": {
+          "enum": ["all", "spec", "slicing", "implementation", "pr", "release"]
+        },
         "resumeProjectForce": {
           "type": "boolean"
         },

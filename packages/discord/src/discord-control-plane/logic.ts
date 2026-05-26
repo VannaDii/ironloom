@@ -12,6 +12,7 @@ import {
   DEVPLAT_ACTION_REBASE_ALL_DEPENDENTS,
   DEVPLAT_ACTION_REBASE_DEPENDENTS,
   DEVPLAT_ACTION_PROJECT_SETTINGS,
+  DEVPLAT_ACTION_PROJECT_SUMMARY,
   DEVPLAT_ACTION_RELEASE_PROJECT,
   DEVPLAT_ACTION_RELEASE_WORKTREE,
   DEVPLAT_ACTION_RESUME_PROJECT,
@@ -72,6 +73,17 @@ type OpenProjectIntent = 'maintenance' | 'bugfix' | 'new-feature';
  * Supported `/new-project --quality-strictness` option values.
  */
 type NewProjectQualityStrictness = 'on' | 'off';
+
+/**
+ * Supported `/project-summary --phase` option values.
+ */
+type ProjectSummaryPhaseFilter =
+  | 'all'
+  | typeof DEVPLAT_ACTION_SPEC
+  | 'slicing'
+  | 'implementation'
+  | 'pr'
+  | 'release';
 
 /**
  * Logical operator roles used for interaction-time authorization checks.
@@ -544,6 +556,24 @@ function createNewProjectQualityStrictnessInteractionFields(
   return { newProjectQualityStrictness: value };
 }
 
+/** Resolves `/project-summary --phase` from callback options. */
+function resolveProjectSummaryPhaseFilterFromCallback(
+  input: DiscordInteractionCallback,
+): ProjectSummaryPhaseFilter | undefined {
+  const value = resolveNamedOptionFromCallback(input, 'phase')?.toLowerCase();
+  switch (value) {
+    case 'all':
+    case DEVPLAT_ACTION_SPEC:
+    case 'slicing':
+    case 'implementation':
+    case 'pr':
+    case 'release':
+      return value;
+    default:
+      return undefined;
+  }
+}
+
 /**
  * Resolves callback-derived optional interaction fields.
  */
@@ -557,6 +587,7 @@ function resolveCallbackOptionalInteractionFields(
   readonly resumeProjectForce?: boolean;
   readonly projectSettingsHistoryDetailed?: boolean;
   readonly newProjectQualityStrictness?: NewProjectQualityStrictness;
+  readonly projectSummaryPhaseFilter?: ProjectSummaryPhaseFilter;
   readonly redirectPrompt?: string;
   readonly considerUrl?: string;
 } {
@@ -574,6 +605,9 @@ function resolveCallbackOptionalInteractionFields(
   const newProjectQualityStrictness =
     resolveNewProjectQualityStrictnessFromCallback(input) ??
     options.newProjectQualityStrictness;
+  const projectSummaryPhaseFilter =
+    resolveProjectSummaryPhaseFilterFromCallback(input) ??
+    options.projectSummaryPhaseFilter;
   const redirectPrompt =
     resolveNamedOptionFromCallback(input, 'direction-prompt') ??
     options.redirectPrompt;
@@ -591,6 +625,9 @@ function resolveCallbackOptionalInteractionFields(
     ...createNewProjectQualityStrictnessInteractionFields(
       newProjectQualityStrictness,
     ),
+    ...(projectSummaryPhaseFilter === undefined
+      ? {}
+      : { projectSummaryPhaseFilter }),
     ...(redirectPrompt === undefined ? {} : { redirectPrompt }),
     ...(considerUrl === undefined ? {} : { considerUrl }),
   };
@@ -967,50 +1004,63 @@ function composeBoundedControlRequestSummary(
 }
 
 /** Builds structured summary markers for interaction-routed control requests. */
+function createProjectIdentityMarkers(
+  input: DiscordOperatorInteraction,
+): readonly string[] {
+  if (input.projectRepo === undefined || input.projectName === undefined) {
+    return [];
+  }
+
+  return [
+    `(repo:${sanitizeStorageMarkerValue(input.projectRepo)})`,
+    `(project:${sanitizeStorageMarkerValue(input.projectName)})`,
+  ];
+}
+
+/** Builds action-specific structured summary markers. */
+function createActionSpecificMarkers(
+  input: DiscordOperatorInteraction,
+  action: DiscordControlAction,
+): readonly string[] {
+  switch (action) {
+    case DEVPLAT_ACTION_OPEN_PROJECT:
+      return [`(intent:${String(input.openProjectIntent)})`];
+    case DEVPLAT_ACTION_RESUME_PROJECT:
+      return input.resumeProjectForce ? ['(force:true)'] : [];
+    case DEVPLAT_ACTION_PROJECT_SETTINGS_HISTORY:
+      return [
+        input.projectSettingsHistoryDetailed
+          ? '(mode:detailed)'
+          : '(mode:summary)',
+      ];
+    case DEVPLAT_ACTION_NEW_PROJECT:
+      return input.newProjectQualityStrictness === undefined
+        ? []
+        : [`(quality-strictness:${input.newProjectQualityStrictness})`];
+    case DEVPLAT_ACTION_PROJECT_SUMMARY:
+      return input.projectSummaryPhaseFilter === undefined
+        ? []
+        : [`(phase-filter:${input.projectSummaryPhaseFilter})`];
+    case DEVPLAT_ACTION_REDIRECT:
+      return [
+        `(direction-prompt:${sanitizeSummaryMarkerValue(String(input.redirectPrompt))})`,
+      ];
+    case DEVPLAT_ACTION_CONSIDER:
+      return [`(url64:${encodeSummaryMarkerValue(String(input.considerUrl))})`];
+    default:
+      return [];
+  }
+}
+
+/** Builds structured summary markers for interaction-routed control requests. */
 function composeInteractionMarkerSuffix(
   input: DiscordOperatorInteraction,
   action: DiscordControlAction,
 ): string {
-  const markers: string[] = [];
-  if (input.projectRepo !== undefined && input.projectName !== undefined) {
-    markers.push(`(repo:${sanitizeStorageMarkerValue(input.projectRepo)})`);
-    markers.push(`(project:${sanitizeStorageMarkerValue(input.projectName)})`);
-  }
-  if (
-    action === DEVPLAT_ACTION_OPEN_PROJECT &&
-    input.openProjectIntent !== undefined
-  ) {
-    markers.push(`(intent:${input.openProjectIntent})`);
-  }
-  if (action === DEVPLAT_ACTION_RESUME_PROJECT && input.resumeProjectForce) {
-    markers.push('(force:true)');
-  }
-  if (action === DEVPLAT_ACTION_PROJECT_SETTINGS_HISTORY) {
-    markers.push(
-      input.projectSettingsHistoryDetailed
-        ? '(mode:detailed)'
-        : '(mode:summary)',
-    );
-  }
-  if (
-    action === DEVPLAT_ACTION_NEW_PROJECT &&
-    input.newProjectQualityStrictness !== undefined
-  ) {
-    markers.push(`(quality-strictness:${input.newProjectQualityStrictness})`);
-  }
-  if (
-    action === DEVPLAT_ACTION_REDIRECT &&
-    input.redirectPrompt !== undefined
-  ) {
-    markers.push(
-      `(direction-prompt:${sanitizeSummaryMarkerValue(input.redirectPrompt)})`,
-    );
-  }
-  if (action === DEVPLAT_ACTION_CONSIDER && input.considerUrl !== undefined) {
-    markers.push(`(url64:${encodeSummaryMarkerValue(input.considerUrl)})`);
-  }
-
-  return markers.join(' ');
+  return [
+    ...createProjectIdentityMarkers(input),
+    ...createActionSpecificMarkers(input, action),
+  ].join(' ');
 }
 
 /** Creates optional out-of-band request fields for marker-sensitive payloads. */

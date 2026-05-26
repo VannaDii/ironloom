@@ -732,6 +732,7 @@ describe('DiscordControlRequest logic', () => {
             updatedAt: '2026-04-04T00:00:00.000Z',
             commandName: 'project-summary',
             threadId: 'thread-10a',
+            projectSummaryPhaseFilter: 'pr',
           } satisfies DiscordOperatorInteraction,
         },
         mock: () => undefined,
@@ -741,6 +742,30 @@ describe('DiscordControlRequest logic', () => {
           expect(route.ok).toBe(true);
           if (route.ok) {
             expect(route.request.action).toBe('project-summary');
+            expect(route.request.summary).toContain('(phase-filter:pr)');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-010a2',
+            token: 'token-10a2',
+            actorId: 'user-10a2',
+            channelId: 'thread-10a2',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'project-summary',
+            threadId: 'thread-10a2',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.action).toBe('project-summary');
+            expect(route.request.summary).not.toContain('(phase-filter:');
           }
         },
       },
@@ -2459,6 +2484,209 @@ describe('DiscordControlRequest logic', () => {
             inputs.callback,
           );
           expect(interaction.resumeProjectForce).toBe(true);
+        },
+      },
+      {
+        name: 'extracts project-summary phase filter from slash-command options',
+        inputs: {
+          callback: {
+            id: 'callback-002h2',
+            token: 'token-002h2',
+            channel_id: 'thread-002h2',
+            data: {
+              name: 'project-summary',
+              options: [
+                {
+                  name: 'phase',
+                  value: 'implementation',
+                },
+              ],
+            },
+            user: {
+              id: 'operator-002h2',
+            },
+          },
+        },
+        mock: () => ({}),
+        assert: (context, inputs) => {
+          const interaction = createDiscordOperatorInteractionFromCallback(
+            inputs.callback,
+          );
+          expect(interaction.projectSummaryPhaseFilter).toBe('implementation');
+        },
+      },
+      {
+        name: 'extracts project-summary spec phase filter from slash-command options',
+        inputs: {
+          callback: {
+            id: 'callback-002h2b',
+            token: 'token-002h2b',
+            channel_id: 'thread-002h2b',
+            data: {
+              name: 'project-summary',
+              options: [
+                {
+                  name: 'phase',
+                  value: 'spec',
+                },
+              ],
+            },
+            user: {
+              id: 'operator-002h2b',
+            },
+          },
+        },
+        mock: () => ({}),
+        assert: (context, inputs) => {
+          const interaction = createDiscordOperatorInteractionFromCallback(
+            inputs.callback,
+          );
+          expect(interaction.projectSummaryPhaseFilter).toBe('spec');
+        },
+      },
+      {
+        name: 'extracts project-summary all phase filter from slash-command options',
+        inputs: {
+          callback: {
+            id: 'callback-002h2c',
+            token: 'token-002h2c',
+            channel_id: 'thread-002h2c',
+            data: {
+              name: 'project-summary',
+              options: [
+                {
+                  name: 'phase',
+                  value: 'all',
+                },
+              ],
+            },
+            user: {
+              id: 'operator-002h2c',
+            },
+          },
+        },
+        mock: () => ({}),
+        assert: (context, inputs) => {
+          const interaction = createDiscordOperatorInteractionFromCallback(
+            inputs.callback,
+          );
+          expect(interaction.projectSummaryPhaseFilter).toBe('all');
+        },
+      },
+      {
+        name: 'extracts project-summary slicing phase filter from slash-command options',
+        inputs: {
+          callback: {
+            id: 'callback-002h2d',
+            token: 'token-002h2d',
+            channel_id: 'thread-002h2d',
+            data: {
+              name: 'project-summary',
+              options: [
+                {
+                  name: 'phase',
+                  value: 'slicing',
+                },
+              ],
+            },
+            user: {
+              id: 'operator-002h2d',
+            },
+          },
+        },
+        mock: () => ({}),
+        assert: (context, inputs) => {
+          const interaction = createDiscordOperatorInteractionFromCallback(
+            inputs.callback,
+          );
+          expect(interaction.projectSummaryPhaseFilter).toBe('slicing');
+        },
+      },
+      {
+        name: 'extracts project-summary pr phase filter from slash-command options',
+        inputs: {
+          callback: {
+            id: 'callback-002h2e',
+            token: 'token-002h2e',
+            channel_id: 'thread-002h2e',
+            data: {
+              name: 'project-summary',
+              options: [
+                {
+                  name: 'phase',
+                  value: 'pr',
+                },
+              ],
+            },
+            user: {
+              id: 'operator-002h2e',
+            },
+          },
+        },
+        mock: () => ({}),
+        assert: (context, inputs) => {
+          const interaction = createDiscordOperatorInteractionFromCallback(
+            inputs.callback,
+          );
+          expect(interaction.projectSummaryPhaseFilter).toBe('pr');
+        },
+      },
+      {
+        name: 'extracts project-summary release phase filter from slash-command options',
+        inputs: {
+          callback: {
+            id: 'callback-002h2f',
+            token: 'token-002h2f',
+            channel_id: 'thread-002h2f',
+            data: {
+              name: 'project-summary',
+              options: [
+                {
+                  name: 'phase',
+                  value: 'release',
+                },
+              ],
+            },
+            user: {
+              id: 'operator-002h2f',
+            },
+          },
+        },
+        mock: () => ({}),
+        assert: (context, inputs) => {
+          const interaction = createDiscordOperatorInteractionFromCallback(
+            inputs.callback,
+          );
+          expect(interaction.projectSummaryPhaseFilter).toBe('release');
+        },
+      },
+      {
+        name: 'ignores unsupported project-summary phase filter options',
+        inputs: {
+          callback: {
+            id: 'callback-002h3',
+            token: 'token-002h3',
+            channel_id: 'thread-002h3',
+            data: {
+              name: 'project-summary',
+              options: [
+                {
+                  name: 'phase',
+                  value: 'unknown-phase',
+                },
+              ],
+            },
+            user: {
+              id: 'operator-002h3',
+            },
+          },
+        },
+        mock: () => ({}),
+        assert: (context, inputs) => {
+          const interaction = createDiscordOperatorInteractionFromCallback(
+            inputs.callback,
+          );
+          expect(interaction.projectSummaryPhaseFilter).toBeUndefined();
         },
       },
       {
