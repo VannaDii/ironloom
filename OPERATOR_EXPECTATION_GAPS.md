@@ -70,7 +70,7 @@ Usage rules:
 - [ ] Implement and expose phase: Slice PR Review.
 - [x] Implement and expose phase: Slice Approval Request.
 - [ ] Implement and expose phase: Slice PR Merge.
-- [ ] Implement and expose phase: Next Slice or Release.
+- [x] Implement and expose phase: Next Slice or Release.
 - [ ] Implement and expose phase: Completion message with links/activity summary.
 - [ ] For each phase, post one primary phase message.
 - [ ] Thread all updates under that primary phase message.
@@ -118,8 +118,8 @@ Usage rules:
 - [ ] On `/spec`, post research summary with `Approve` action.
 - [x] Keep research commands available before approval.
 - [x] If additional research command used, remove stale prior approval button.
-- [ ] On approval button failure/expiry, provide `/approve-this` fallback in-thread.
-- [ ] Restrict fallback `/approve-this` with same `spec-approver` permission and identical audit semantics.
+- [x] On approval button failure/expiry, provide `/approve-this` fallback in-thread.
+- [x] Restrict fallback `/approve-this` with same `spec-approver` permission and identical audit semantics.
 - [ ] On approval, start speccing/workstream immediately.
 
 ## 10. Spec/Research Re-entry and Global Pause
@@ -191,7 +191,7 @@ Usage rules:
 - [ ] If preflight has issues, require second confirmation.
 - [ ] Support second confirmation via button.
 - [x] Support second confirmation via `/resume-project --force` fallback.
-- [ ] Restrict force resume to `project-operator`.
+- [x] Restrict force resume to `project-operator`.
 - [ ] On force resume, notify impacted roles automatically.
 - [ ] On resume, restart from latest durable artifact checkpoints.
 - [ ] Post resumed checkpoint ID/timestamp and persist audit.
@@ -199,7 +199,7 @@ Usage rules:
 ## 15. Release Orchestration
 
 - [x] Implement `/release-project`.
-- [ ] Require dedicated release approval button in addition to command.
+- [x] Require dedicated release approval button in addition to command.
 - [ ] Re-validate release preconditions at button click time.
 - [ ] Precondition: all required slices merged.
 - [ ] Precondition: all required gates pass.
@@ -253,9 +253,9 @@ Usage rules:
 - [ ] Keep phase contract auto-updated when settings change.
 - [ ] On phase contract update, post visible changelog message.
 - [ ] Mention impacted roles on permission/approval behavior changes.
-- [ ] Support `/phase-contract` command for all participants.
-- [ ] Keep `/phase-contract` authoritative even when command guidance is off.
-- [ ] Show contract-allowed commands in `/phase-contract` with lock markers and required roles.
+- [x] Support `/phase-contract` command for all participants.
+- [x] Keep `/phase-contract` authoritative even when command guidance is off.
+- [x] Show contract-allowed commands in `/phase-contract` with lock markers and required roles.
 - [ ] Auto-archive phase threads on successful release.
 - [ ] Lock phase threads post-release.
 - [ ] Keep non-mutating commands functional in locked threads.
@@ -265,7 +265,7 @@ Usage rules:
 
 - [x] Implement `/open-project --repo ... --project ... --intent maintenance|bugfix|new-feature`.
 - [x] Require `--intent` with no default.
-- [ ] Keep reopen intent immutable for the reopened run.
+- [x] Keep reopen intent immutable for the reopened run.
 - [ ] On open, post project dashboard summary:
 - [ ] phase.
 - [ ] blockers.

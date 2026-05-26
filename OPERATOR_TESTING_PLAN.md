@@ -462,14 +462,14 @@ Operational health section includes:
 
 ## 19.1 High-priority gaps
 
-1. Finish `/new-project` Discord-only bootstrap (repo auto-resolution/creation, discovery-thread kickoff, clarification loop).
-2. Complete `/open-project` reopen semantics (intent immutability, continuation/reopen lifecycle, dashboard completeness).
-3. Complete phase-contract pinned message lifecycle and contract-sync degradation handling.
-4. Complete `/project-settings` interactive governance and config-version lifecycle (history command baseline exists).
-5. Finish release approval orchestration (`/release-project` precondition re-checks, approval regeneration, diff reporting).
-6. Complete canonical release summary operational-health totals and visibility-tier behavior.
-7. Complete global pause/re-entry behavior for `/spec` and `/research` from later phases.
-8. Complete dependency-aware parallel slice scheduling and FIFO-bypass transparency.
+1. Remaining `/new-project` bootstrap parity gaps: GitHub-account repo resolution/auto-create and discovery-thread kickoff flow
+2. Remaining `/open-project` reopen parity gaps: dashboard/continuation-thread lifecycle and archived-thread reopen behavior
+3. Remaining project-level command gaps: resume preflight completeness and cancellation summaries per phase thread
+4. Missing phase-contract pinned message lifecycle
+5. Remaining project settings/config-version gaps: interactive controls, batched rollback semantics, and in-flight propagation guarantees
+6. Remaining strict project-bound context gaps: bind all project messages/threads to project context (not mutating-only paths)
+7. Missing release precondition revalidation + approval-button regeneration diff flow
+8. Missing canonical release summary with operational health and visibility tiers
 
 ## 19.2 Secondary gaps
 
