@@ -913,9 +913,7 @@ describe('DiscordControlRequest logic', () => {
         ) => {
           expect(route.ok).toBe(true);
           if (route.ok) {
-            expect(route.request.summary).toContain(
-              '(summary-visibility:role)',
-            );
+            expect(route.request.summary).toContain('(visibility:role)');
           }
         },
       },
@@ -939,9 +937,7 @@ describe('DiscordControlRequest logic', () => {
         ) => {
           expect(route.ok).toBe(true);
           if (route.ok) {
-            expect(route.request.summary).not.toContain(
-              '(summary-visibility:role)',
-            );
+            expect(route.request.summary).not.toContain('(visibility:role)');
           }
         },
       },
@@ -964,9 +960,7 @@ describe('DiscordControlRequest logic', () => {
         ) => {
           expect(route.ok).toBe(true);
           if (route.ok) {
-            expect(route.request.summary).not.toContain(
-              '(summary-visibility:role)',
-            );
+            expect(route.request.summary).not.toContain('(visibility:role)');
           }
         },
       },
