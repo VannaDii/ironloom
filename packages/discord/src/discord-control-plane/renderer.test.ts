@@ -1438,22 +1438,13 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
-<<<<<<< HEAD
       name: 'prefers redirectPrompt request field over summary marker',
-=======
-      name: 'prefers redirect prompt from request fields when summary marker is unavailable',
->>>>>>> 986672f (fix(discord): prefer out-of-band discovery metadata)
       inputs: {
         request: {
           ...request,
           action: 'redirect',
-<<<<<<< HEAD
           summary: 'redirect (direction-prompt:legacy marker direction)',
           redirectPrompt: 'latest out-of-band direction',
-=======
-          summary: 'redirect',
-          redirectPrompt: 'prefer reversible rollout slices',
->>>>>>> 986672f (fix(discord): prefer out-of-band discovery metadata)
         },
       },
       mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
@@ -1462,11 +1453,7 @@ describe('Discord control-plane renderer', () => {
         payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
       ) => {
         expect(payload.content).toContain(
-<<<<<<< HEAD
           'Direction: latest out-of-band direction',
-=======
-          'Direction: prefer reversible rollout slices',
->>>>>>> 986672f (fix(discord): prefer out-of-band discovery metadata)
         );
       },
     },
@@ -1492,23 +1479,14 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
-<<<<<<< HEAD
       name: 'prefers considerUrl request field over summary marker',
-=======
-      name: 'prefers consider url from request fields when summary markers are unavailable',
->>>>>>> 986672f (fix(discord): prefer out-of-band discovery metadata)
       inputs: {
         request: {
           ...request,
           action: 'consider',
-<<<<<<< HEAD
           summary:
             'consider (url64:aHR0cHM6Ly9leGFtcGxlLmNvbS9sZWdhY3ktc3VtbWFyeQ) (queued-count:2)',
           considerUrl: 'https://example.com/latest-consider-url',
-=======
-          summary: 'consider (url64:invalid+/token) (queued-count:1)',
-          considerUrl: 'https://example.com/preferred-from-field',
->>>>>>> 986672f (fix(discord): prefer out-of-band discovery metadata)
         },
       },
       mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
@@ -1517,15 +1495,9 @@ describe('Discord control-plane renderer', () => {
         payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
       ) => {
         expect(payload.content).toContain(
-<<<<<<< HEAD
           'URL: https://example.com/latest-consider-url',
         );
         expect(payload.content).toContain('Queued items: 2');
-=======
-          'URL: https://example.com/preferred-from-field',
-        );
-        expect(payload.content).toContain('Queued items: 1');
->>>>>>> 986672f (fix(discord): prefer out-of-band discovery metadata)
       },
     },
     {
