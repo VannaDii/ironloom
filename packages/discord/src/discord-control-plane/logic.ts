@@ -279,7 +279,7 @@ function resolveProjectNameLengthFailureReason(
     return undefined;
   }
 
-  return `${action} requires --project length ${String(DISCORD_PROJECT_NAME_MIN_LENGTH)}-${String(DISCORD_PROJECT_NAME_MAX_LENGTH)} characters.`;
+  return `/${action} requires --project length ${String(DISCORD_PROJECT_NAME_MIN_LENGTH)}-${String(DISCORD_PROJECT_NAME_MAX_LENGTH)} characters.`;
 }
 
 /**
@@ -291,17 +291,17 @@ function resolveProjectRouteRequirementFailureReason(
 ): string | undefined {
   if (action === DEVPLAT_ACTION_OPEN_PROJECT) {
     if (input.projectRepo === undefined || input.projectName === undefined) {
-      return 'open-project requires --repo <repo_name> and --project <project_name>.';
+      return '/open-project requires --repo <repo_name> and --project <project_name>.';
     }
     if (input.openProjectIntent === undefined) {
-      return 'open-project requires --intent maintenance|bugfix|new-feature.';
+      return '/open-project requires --intent maintenance|bugfix|new-feature.';
     }
     return resolveProjectNameLengthFailureReason(action, input.projectName);
   }
 
   if (action === DEVPLAT_ACTION_NEW_PROJECT) {
     if (input.projectRepo === undefined || input.projectName === undefined) {
-      return 'new-project requires --repo <repo_name> and --project <project_name>.';
+      return '/new-project requires --repo <repo_name> and --project <project_name>.';
     }
     return resolveProjectNameLengthFailureReason(action, input.projectName);
   }
@@ -310,11 +310,11 @@ function resolveProjectRouteRequirementFailureReason(
     action === DEVPLAT_ACTION_REDIRECT &&
     input.redirectPrompt === undefined
   ) {
-    return 'redirect requires --direction-prompt <text>.';
+    return '/redirect requires --direction-prompt <text>.';
   }
 
   if (action === DEVPLAT_ACTION_CONSIDER && input.considerUrl === undefined) {
-    return 'consider requires --url <value>.';
+    return '/consider requires --url <value>.';
   }
 
   return undefined;

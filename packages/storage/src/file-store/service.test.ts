@@ -70,7 +70,7 @@ type FileStoreServiceCase = {
 describe('FileStoreService', () => {
   const cases = [
     {
-      name: 'creates records atomically when key is absent and rejects duplicates',
+      name: 'creates records in create-only mode when key is absent and rejects duplicates',
       inputs: {
         mode: 'store-if-absent',
         record: {

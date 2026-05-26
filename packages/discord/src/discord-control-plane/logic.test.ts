@@ -444,7 +444,7 @@ describe('DiscordControlRequest logic', () => {
           expect(route.ok).toBe(false);
           if (!route.ok) {
             expect(route.reason).toContain(
-              'new-project requires --project length 3-30 characters.',
+              '/new-project requires --project length 3-30 characters.',
             );
           }
         },
@@ -496,7 +496,7 @@ describe('DiscordControlRequest logic', () => {
           expect(route.ok).toBe(false);
           if (!route.ok) {
             expect(route.reason).toContain(
-              'open-project requires --project length 3-30 characters.',
+              '/open-project requires --project length 3-30 characters.',
             );
           }
         },
@@ -1537,7 +1537,7 @@ describe('DiscordControlRequest logic', () => {
         ) => {
           expect(route.ok).toBe(false);
           if (!route.ok) {
-            expect(route.reason).toContain('new-project requires --repo');
+            expect(route.reason).toContain('/new-project requires --repo');
           }
         },
       },
@@ -1559,7 +1559,7 @@ describe('DiscordControlRequest logic', () => {
         ) => {
           expect(route.ok).toBe(false);
           if (!route.ok) {
-            expect(route.reason).toContain('open-project requires --repo');
+            expect(route.reason).toContain('/open-project requires --repo');
           }
         },
       },
@@ -1585,7 +1585,7 @@ describe('DiscordControlRequest logic', () => {
         ) => {
           expect(route.ok).toBe(false);
           if (!route.ok) {
-            expect(route.reason).toContain('open-project requires --intent');
+            expect(route.reason).toContain('/open-project requires --intent');
           }
         },
       },
@@ -1669,7 +1669,7 @@ describe('DiscordControlRequest logic', () => {
           expect(route.ok).toBe(false);
           if (!route.ok) {
             expect(route.reason).toContain(
-              'redirect requires --direction-prompt',
+              '/redirect requires --direction-prompt',
             );
           }
         },
@@ -1692,7 +1692,7 @@ describe('DiscordControlRequest logic', () => {
         ) => {
           expect(route.ok).toBe(false);
           if (!route.ok) {
-            expect(route.reason).toContain('consider requires --url');
+            expect(route.reason).toContain('/consider requires --url');
           }
         },
       },
