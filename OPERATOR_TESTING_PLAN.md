@@ -15,7 +15,7 @@ Deliver a Discord-first operator experience where a human operator can run the f
 
 - Discord commands exist mainly for already-bound threads.
 - Initial research/spec bootstrap still requires OpenClaw/agent initiation.
-- No `/new-project` Discord bootstrap command exists yet.
+- `/new-project` exists, but Discord-only bootstrap remains incomplete because repository auto-resolution/auto-creation and immediate discovery-thread kickoff are not fully implemented.
 
 ## 2.2 Target state
 
@@ -462,14 +462,14 @@ Operational health section includes:
 
 ## 19.1 High-priority gaps
 
-1. Missing `/new-project` bootstrap flow
-2. Missing `/open-project` with intent and reopen semantics
-3. Missing role-gated project-level command set (`/cancel-project`, `/resume-project`, `/release-project`)
-4. Missing phase-contract pinned message lifecycle
-5. Missing project settings/config-version system and history modes
-6. Missing strict project-bound context enforcement on all mutating actions
-7. Missing release precondition + approval button regeneration flow
-8. Missing canonical release summary with operational health and visibility tiers
+1. Finish `/new-project` Discord-only bootstrap (repo auto-resolution/creation, discovery-thread kickoff, clarification loop).
+2. Complete `/open-project` reopen semantics (intent immutability, continuation/reopen lifecycle, dashboard completeness).
+3. Complete phase-contract pinned message lifecycle and contract-sync degradation handling.
+4. Complete `/project-settings` interactive governance and config-version lifecycle (history command baseline exists).
+5. Finish release approval orchestration (`/release-project` precondition re-checks, approval regeneration, diff reporting).
+6. Complete canonical release summary operational-health totals and visibility-tier behavior.
+7. Complete global pause/re-entry behavior for `/spec` and `/research` from later phases.
+8. Complete dependency-aware parallel slice scheduling and FIFO-bypass transparency.
 
 ## 19.2 Secondary gaps
 

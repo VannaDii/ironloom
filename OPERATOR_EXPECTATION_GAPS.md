@@ -198,7 +198,7 @@ Usage rules:
 
 ## 15. Release Orchestration
 
-- [ ] Implement `/release-project`.
+- [x] Implement `/release-project`.
 - [ ] Require dedicated release approval button in addition to command.
 - [ ] Re-validate release preconditions at button click time.
 - [ ] Precondition: all required slices merged.
