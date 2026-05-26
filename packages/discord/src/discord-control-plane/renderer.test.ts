@@ -1438,6 +1438,26 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'prefers redirectPrompt request field over summary marker',
+      inputs: {
+        request: {
+          ...request,
+          action: 'redirect',
+          summary: 'redirect (direction-prompt:legacy marker direction)',
+          redirectPrompt: 'latest out-of-band direction',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain(
+          'Direction: latest out-of-band direction',
+        );
+      },
+    },
+    {
       name: 'renders consider accepted metadata with queued count',
       inputs: {
         request: {
@@ -1456,6 +1476,28 @@ describe('Discord control-plane renderer', () => {
           'URL: https://example.com/ops-playbook',
         );
         expect(payload.content).toContain('Queued items: 3');
+      },
+    },
+    {
+      name: 'prefers considerUrl request field over summary marker',
+      inputs: {
+        request: {
+          ...request,
+          action: 'consider',
+          summary:
+            'consider (url64:aHR0cHM6Ly9leGFtcGxlLmNvbS9sZWdhY3ktc3VtbWFyeQ) (queued-count:2)',
+          considerUrl: 'https://example.com/latest-consider-url',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain(
+          'URL: https://example.com/latest-consider-url',
+        );
+        expect(payload.content).toContain('Queued items: 2');
       },
     },
     {

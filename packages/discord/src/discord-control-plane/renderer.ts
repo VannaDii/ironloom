@@ -935,10 +935,9 @@ function resolveDiscoveryControlFields(
   request: DiscordControlRequest,
 ): Readonly<Record<string, string>> {
   if (request.action === DEVPLAT_ACTION_REDIRECT) {
-    const direction = resolveSummaryMarkerValue(
-      request.summary,
-      '(direction-prompt:',
-    );
+    const direction =
+      request.redirectPrompt ??
+      resolveSummaryMarkerValue(request.summary, '(direction-prompt:');
     const previousDirection = resolveSummaryMarkerValue(
       request.summary,
       '(previous-direction:',
@@ -953,6 +952,7 @@ function resolveDiscoveryControlFields(
 
   if (request.action === DEVPLAT_ACTION_CONSIDER) {
     const url =
+      request.considerUrl ??
       resolveDecodedSummaryMarkerValue(request.summary, '(url64:') ??
       resolveSummaryMarkerValue(request.summary, '(url:');
     const queuedCount = resolveSummaryMarkerValue(

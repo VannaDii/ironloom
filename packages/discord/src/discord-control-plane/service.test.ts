@@ -89,7 +89,7 @@ class RejectingProjectIdentityReservationStore extends FileStoreService {
   ) {
     if (record.key.startsWith('project-identity:')) {
       return {
-        ok: false as const,
+        ok: false,
         error: 'EEXIST: file already exists',
       };
     }
@@ -108,7 +108,7 @@ class FailingProjectIdentityReservationStore extends FileStoreService {
   ) {
     if (record.key.startsWith('project-identity:')) {
       return {
-        ok: false as const,
+        ok: false,
         error: 'EACCES: permission denied',
       };
     }
@@ -127,7 +127,7 @@ class NoSpaceProjectIdentityReservationStore extends FileStoreService {
   ) {
     if (record.key.startsWith('project-identity:')) {
       return {
-        ok: false as const,
+        ok: false,
         error: 'ENOSPC: no space left on device',
       };
     }
@@ -157,7 +157,7 @@ class RejectingIdentityReservationStore extends FileStoreService {
   ) {
     if (record.key.startsWith('project-identity:')) {
       return {
-        ok: false as const,
+        ok: false,
         error: this.rejectionMessage,
       };
     }
@@ -174,7 +174,7 @@ class FailingProjectIdentityReadStore extends FileStoreService {
   public override async read(scope: string, key: string) {
     if (scope === 'state' && key.startsWith('project-identity:')) {
       return {
-        ok: false as const,
+        ok: false,
         error: 'EACCES: permission denied',
       };
     }

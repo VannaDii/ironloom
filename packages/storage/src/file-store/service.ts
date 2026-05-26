@@ -80,7 +80,8 @@ export class FileStoreService {
   }
 
   /**
-   * Persists a normalized record only when the target storage path does not exist.
+   * Persists a normalized record only when the primary record path and all
+   * requested index entry paths do not already exist.
    */
   public async storeIfAbsent<TPayload extends object>(
     record: StoredRecord<TPayload>,
