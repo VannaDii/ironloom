@@ -1284,10 +1284,35 @@ describe('DiscordControlRequest logic', () => {
         assert: (
           route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
         ) => {
-          expect(route.ok).toBe(true);
-          if (route.ok) {
-            expect(route.request.action).toBe('show-status');
-            expect(route.request.threadId).toBe('thread-5b');
+          expect(route.ok).toBe(false);
+          if (!route.ok) {
+            expect(route.reason).toContain('project/thread context mismatch');
+            expect(route.reason).toContain('expected=unresolved');
+            expect(route.reason).toContain('detected=thread-5b');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-005c',
+            token: 'token-5c',
+            actorId: 'user-5c',
+            channelId: 'channel-5c',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'show status',
+            boundThreadId: 'ambiguous',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(false);
+          if (!route.ok) {
+            expect(route.reason).toContain('project/thread context mismatch');
+            expect(route.reason).toContain('expected=ambiguous');
+            expect(route.reason).toContain('detected=unresolved');
           }
         },
       },

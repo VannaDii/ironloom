@@ -1080,6 +1080,24 @@ export function createDiscordControlRequestFromInteraction(
     };
   }
 
+  const explicitBinding = trimOptional(input.boundThreadId)?.toLowerCase();
+  if (explicitBinding === 'unresolved' || explicitBinding === 'ambiguous') {
+    const detectedThread = [
+      trimOptional(input.boundSession?.threadId),
+      trimOptional(input.threadId),
+      resolveDiscordComponentThreadId(input.customId),
+    ]
+      .filter((value) => isResolvableThreadId(value))
+      .join(',');
+    return {
+      ok: false,
+      interactionId: input.id,
+      reason:
+        `project/thread context mismatch: expected=${explicitBinding} detected=${detectedThread.length === 0 ? 'unresolved' : detectedThread}. ` +
+        'Recovery: /open-project --repo <repo_name> --project <project_name> --intent maintenance|bugfix|new-feature',
+    };
+  }
+
   const threadCandidates = [...new Set(collectThreadCandidates(input))];
   if (threadCandidates.length !== 1) {
     const expectedThreadFromSession = trimOptional(
