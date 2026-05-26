@@ -472,7 +472,7 @@ Usage rules:
 
 ## 32. Read-Only/Public Command Surface
 
-- [ ] Keep `/phase-contract` available to all participants.
+- [x] Keep `/phase-contract` available to all participants.
 - [ ] Keep `/project-summary` available to all participants.
 - [ ] Keep `/show-status` and `/show-last-artifact` non-mutating access available where thread context allows.
 
@@ -498,8 +498,8 @@ Usage rules:
 - [ ] `/project-settings-history`.
 - [x] `/cancel-project`.
 - [x] `/resume-project`.
-- [ ] `/release-project`.
-- [ ] `/phase-contract`.
+- [x] `/release-project`.
+- [x] `/phase-contract`.
 - [x] `/alternatives` and `/alts` alias.
 - [x] `/redirect`.
 - [x] `/consider`.
