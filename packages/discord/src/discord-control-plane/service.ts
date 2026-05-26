@@ -319,6 +319,7 @@ function createProjectPhaseStateKey(threadId: string): string {
 const phaseAgnosticAllowedActions: readonly DiscordControlAction[] = [
   DEVPLAT_ACTION_NEW_PROJECT,
   DEVPLAT_ACTION_OPEN_PROJECT,
+  DEVPLAT_ACTION_RESEARCH,
   DEVPLAT_ACTION_PROJECT_SETTINGS,
   DEVPLAT_ACTION_PROJECT_SETTINGS_HISTORY,
   DEVPLAT_ACTION_CANCEL_PROJECT,

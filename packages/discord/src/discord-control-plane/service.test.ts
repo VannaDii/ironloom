@@ -3294,10 +3294,24 @@ describe('DiscordControlPlaneService', () => {
       action: 'show-status',
       privileged: false,
     });
+    const researchResult = await service.handleAction({
+      id: 'discord-phase-unknown-research',
+      summary: 'research',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:08.550Z',
+      actorId: 'user-phase',
+      threadId: 'thread-phase-unknown',
+      channelId: 'channel-phase-unknown',
+      action: 'research',
+      privileged: false,
+    });
 
     expect(blockedResult.allowed).toBe(false);
     expect(allowedResult.allowed).toBe(true);
     expect(allowedResult.failedClosed).toBe(false);
+    expect(researchResult.allowed).toBe(true);
+    expect(researchResult.failedClosed).toBe(false);
   });
 
   it('accepts discovery-thread spec interactions without a bound work session', async () => {
