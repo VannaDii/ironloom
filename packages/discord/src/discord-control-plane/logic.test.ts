@@ -1284,10 +1284,10 @@ describe('DiscordControlRequest logic', () => {
         assert: (
           route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
         ) => {
-          expect(route.ok).toBe(false);
-          if (!route.ok) {
-            expect(route.reason).toContain('project/thread context mismatch');
-            expect(route.reason).toContain('expected=thread-5b');
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.action).toBe('show-status');
+            expect(route.request.threadId).toBe('thread-5b');
           }
         },
       },

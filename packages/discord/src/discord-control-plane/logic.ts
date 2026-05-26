@@ -417,7 +417,7 @@ function collectThreadCandidates(
     ...(input.boundSession === undefined
       ? []
       : [input.boundSession.threadId.trim()]),
-  ].filter((value) => value.length > 0);
+  ].filter((value) => isResolvableThreadId(value));
 }
 
 /** Returns true when a thread-id token represents a concrete thread binding. */
