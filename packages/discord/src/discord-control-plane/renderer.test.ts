@@ -1661,6 +1661,27 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'includes dedicated release approval button on release-project confirmations',
+      inputs: {
+        request: {
+          ...request,
+          action: 'release-project',
+          summary: 'release-project (repo:devplat) (branch:main)',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        const labels =
+          payload.components?.flatMap((row) =>
+            row.components.map((button) => button.label),
+          ) ?? [];
+        expect(labels).toContain('Release Project');
+      },
+    },
+    {
       name: 'shows merge after approval only for pull request threads',
       inputs: {
         request: {

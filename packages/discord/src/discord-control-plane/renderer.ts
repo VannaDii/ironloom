@@ -150,7 +150,11 @@ const actionDisplays: Readonly<
     acceptedTitle: 'Release requested',
     acceptedIndicator: '🟡',
     result: 'Release preconditions are being re-validated.',
-    controls: [DEVPLAT_ACTION_PROJECT_SUMMARY, DEVPLAT_ACTION_SHOW_STATUS],
+    controls: [
+      DEVPLAT_ACTION_RELEASE_PROJECT,
+      DEVPLAT_ACTION_PROJECT_SUMMARY,
+      DEVPLAT_ACTION_SHOW_STATUS,
+    ],
   },
   [DEVPLAT_ACTION_PHASE_CONTRACT]: {
     label: 'Phase Contract',
