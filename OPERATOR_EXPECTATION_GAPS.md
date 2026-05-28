@@ -61,20 +61,20 @@ Usage rules:
 
 ## 6. Lifecycle Phase Model
 
-- [ ] Implement and expose phase: Spec Draft.
-- [ ] Implement and expose phase: Spec Refinement/Approval.
+- [x] Implement and expose phase: Spec Draft.
+- [x] Implement and expose phase: Spec Refinement/Approval.
 - [ ] Implement and expose phase: Slicing.
 - [x] Implement and expose phase: Slicing Refinement/Approval.
-- [ ] Implement and expose phase: Slice Implementation.
+- [x] Implement and expose phase: Slice Implementation.
 - [x] Implement and expose phase: Slice PR Creation.
-- [ ] Implement and expose phase: Slice PR Review.
+- [x] Implement and expose phase: Slice PR Review.
 - [x] Implement and expose phase: Slice Approval Request.
-- [ ] Implement and expose phase: Slice PR Merge.
+- [x] Implement and expose phase: Slice PR Merge.
 - [x] Implement and expose phase: Next Slice or Release.
 - [ ] Implement and expose phase: Completion message with links/activity summary.
 - [ ] For each phase, post one primary phase message.
 - [ ] Thread all updates under that primary phase message.
-- [ ] Accept only phase-appropriate commands in each phase thread.
+- [x] Accept only phase-appropriate commands in each phase thread.
 - [ ] Keep one pinned phase-contract message per active phase thread.
 - [ ] Update pinned phase-contract in place.
 
@@ -126,7 +126,7 @@ Usage rules:
 
 - [x] Allow `/spec` from later phases.
 - [ ] On `/spec` from later phase, globally pause active work.
-- [ ] Allow `/research` from any project-bound thread.
+- [x] Allow `/research` from any project-bound thread.
 - [ ] On `/research` re-entry, globally pause active implementation/PR activity.
 - [ ] Use approval button to resume after re-entered research.
 - [ ] Support `/approve-this` fallback if resume approval button fails.
