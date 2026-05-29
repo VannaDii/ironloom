@@ -379,16 +379,23 @@ function resolveForceResumeFromSummary(summary: string): boolean {
  */
 function createResumeProjectPreflightSummarySuffix(
   mode: 'ready' | 'forced',
+  checks: Readonly<{
+    repoAccess: string;
+    branchState: string;
+    prStatus: string;
+    gateHealth: string;
+    blockerInventory: string;
+  }>,
   issues: readonly string[],
 ): string {
   const issuesMarker = issues.length === 0 ? 'none' : issues.join('|');
   return (
     ` (preflight:${mode}` +
-    ` repo-access:unknown` +
-    ` branch-state:unknown` +
-    ` pr-status:unknown` +
-    ` gate-health:unknown` +
-    ` blocker-inventory:unknown` +
+    ` repo-access:${checks.repoAccess}` +
+    ` branch-state:${checks.branchState}` +
+    ` pr-status:${checks.prStatus}` +
+    ` gate-health:${checks.gateHealth}` +
+    ` blocker-inventory:${checks.blockerInventory}` +
     ` issues:${issuesMarker})`
   );
 }
@@ -982,6 +989,17 @@ export class DiscordControlPlaneService {
       return { ok: true, summarySuffix: '' };
     }
     const threadPaused = await this.resolveThreadPausedState(request.threadId);
+    const checks = {
+      repoAccess: request.workItem === undefined ? 'unknown' : 'ok',
+      branchState:
+        request.workItem?.threadKind === 'pull-request'
+          ? 'pr-branch'
+          : 'unknown',
+      prStatus:
+        request.workItem?.pullRequestNumber === undefined ? 'unknown' : 'open',
+      gateHealth: 'unknown',
+      blockerInventory: threadPaused ? 'paused-thread' : 'no-blockers',
+    };
     const preflightIssues: string[] = [];
     if (!threadPaused) {
       preflightIssues.push('thread-not-paused');
@@ -991,6 +1009,7 @@ export class DiscordControlPlaneService {
         ok: true,
         summarySuffix: createResumeProjectPreflightSummarySuffix(
           'ready',
+          checks,
           preflightIssues,
         ),
       };
@@ -1000,6 +1019,7 @@ export class DiscordControlPlaneService {
         ok: true,
         summarySuffix: createResumeProjectPreflightSummarySuffix(
           'forced',
+          checks,
           preflightIssues,
         ),
       };

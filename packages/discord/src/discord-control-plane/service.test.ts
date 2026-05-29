@@ -682,7 +682,9 @@ describe('DiscordControlPlaneService', () => {
     expect(resumeResult.request.summary).toContain('branch-state:unknown');
     expect(resumeResult.request.summary).toContain('pr-status:unknown');
     expect(resumeResult.request.summary).toContain('gate-health:unknown');
-    expect(resumeResult.request.summary).toContain('blocker-inventory:unknown');
+    expect(resumeResult.request.summary).toContain(
+      'blocker-inventory:paused-thread',
+    );
     expect(resumeResult.request.summary).toContain('issues:none');
 
     const unblockedMutation = await service.handleAction({
@@ -746,8 +748,93 @@ describe('DiscordControlPlaneService', () => {
     expect(forcedResume.request.summary).toContain('branch-state:unknown');
     expect(forcedResume.request.summary).toContain('pr-status:unknown');
     expect(forcedResume.request.summary).toContain('gate-health:unknown');
-    expect(forcedResume.request.summary).toContain('blocker-inventory:unknown');
+    expect(forcedResume.request.summary).toContain(
+      'blocker-inventory:no-blockers',
+    );
     expect(forcedResume.request.summary).toContain('issues:thread-not-paused');
+  });
+
+  it('renders resume-project preflight checks from work-item context', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    await service.handleAction({
+      id: 'discord-004-resume-project-context-pause',
+      summary: 'cancel-project',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:00.000Z',
+      actorId: 'user-resume-project-context-pause',
+      threadId: 'thread-resume-project-context',
+      channelId: 'channel-resume-project-context',
+      action: 'cancel-project',
+      privileged: false,
+    });
+
+    const pullRequestResume = await service.handleAction({
+      id: 'discord-004-resume-project-context-pr',
+      summary: 'resume-project',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:01.000Z',
+      actorId: 'user-resume-project-context-pr',
+      threadId: 'thread-resume-project-context',
+      channelId: 'channel-resume-project-context',
+      action: 'resume-project',
+      privileged: false,
+      workItem: {
+        threadKind: 'pull-request',
+        threadId: 'thread-resume-project-context',
+        artifactId: 'artifact-resume-project-context-pr',
+        pullRequestNumber: 42,
+      },
+    });
+    expect(pullRequestResume.request.summary).toContain('repo-access:ok');
+    expect(pullRequestResume.request.summary).toContain(
+      'branch-state:pr-branch',
+    );
+    expect(pullRequestResume.request.summary).toContain('pr-status:open');
+
+    await service.handleAction({
+      id: 'discord-004-resume-project-context-pause-2',
+      summary: 'cancel-project',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:02.000Z',
+      actorId: 'user-resume-project-context-pause-2',
+      threadId: 'thread-resume-project-context',
+      channelId: 'channel-resume-project-context',
+      action: 'cancel-project',
+      privileged: false,
+    });
+
+    const implementationResume = await service.handleAction({
+      id: 'discord-004-resume-project-context-implementation',
+      summary: 'resume-project',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:03.000Z',
+      actorId: 'user-resume-project-context-implementation',
+      threadId: 'thread-resume-project-context',
+      channelId: 'channel-resume-project-context',
+      action: 'resume-project',
+      privileged: false,
+      workItem: {
+        threadKind: 'implementation',
+        threadId: 'thread-resume-project-context',
+        artifactId: 'artifact-resume-project-context-implementation',
+      },
+    });
+    expect(implementationResume.request.summary).toContain('repo-access:ok');
+    expect(implementationResume.request.summary).toContain(
+      'branch-state:unknown',
+    );
+    expect(implementationResume.request.summary).toContain('pr-status:unknown');
   });
 
   it('fails closed when thread pause state is unreadable', async () => {
