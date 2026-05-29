@@ -396,6 +396,42 @@ const blockedControls: readonly DiscordControlAction[] = [
 ];
 
 /**
+ * Full command surface shown in `/show-status` next-actions output.
+ */
+const showStatusCommandSurface: readonly DiscordControlAction[] = [
+  DEVPLAT_ACTION_NEW_PROJECT,
+  DEVPLAT_ACTION_OPEN_PROJECT,
+  DEVPLAT_ACTION_PROJECT_SUMMARY,
+  DEVPLAT_ACTION_PROJECT_SETTINGS,
+  DEVPLAT_ACTION_PROJECT_SETTINGS_HISTORY,
+  DEVPLAT_ACTION_CANCEL_PROJECT,
+  DEVPLAT_ACTION_RESUME_PROJECT,
+  DEVPLAT_ACTION_RELEASE_PROJECT,
+  DEVPLAT_ACTION_PHASE_CONTRACT,
+  DEVPLAT_ACTION_RESEARCH,
+  DEVPLAT_ACTION_SPEC,
+  DEVPLAT_ACTION_APPROVE_THIS,
+  DEVPLAT_ACTION_REDIRECT,
+  DEVPLAT_ACTION_CONSIDER,
+  DEVPLAT_ACTION_ALTERNATIVES,
+  DEVPLAT_ACTION_RUN_THIS,
+  DEVPLAT_ACTION_CLAIM_THIS,
+  DEVPLAT_ACTION_COMPLETE_THIS,
+  DEVPLAT_ACTION_BLOCK_THIS,
+  DEVPLAT_ACTION_PAUSE_THIS,
+  DEVPLAT_ACTION_RESUME_THIS,
+  DEVPLAT_ACTION_RETRY_GATES,
+  DEVPLAT_ACTION_MERGE_NOW,
+  DEVPLAT_ACTION_REBASE_ALL_DEPENDENTS,
+  DEVPLAT_ACTION_SYNC_WORKTREE,
+  DEVPLAT_ACTION_RELEASE_WORKTREE,
+  DEVPLAT_ACTION_SHOW_STATUS,
+  DEVPLAT_ACTION_SHOW_LAST_ARTIFACT,
+  DEVPLAT_ACTION_EXPLAIN_FAILURE,
+  DEVPLAT_ACTION_UPDATE_SPEC,
+];
+
+/**
  * Mentions are rendered as text only unless a future caller opts in explicitly.
  */
 const safeAllowedMentions = {
@@ -720,11 +756,23 @@ function resolveShowStatusOrderedFields(
     `workflow-run:${resolveSummaryMarkerValue(request.summary, '(workflow-run:') ?? 'none'}`,
     `published-assets:${resolveSummaryMarkerValue(request.summary, '(asset-links:') ?? 'none'}`,
   ].join(' | ');
-  const nextActions = resolveAcceptedControls(
+  const availableActions = resolveAcceptedControls(
     request,
     resolveActionDisplay(request.action),
-  )
-    .map((action) => `/${action}`)
+  );
+  const nextActions = showStatusCommandSurface
+    .map((action) => {
+      if (availableActions.includes(action)) {
+        return `/${action} [available]`;
+      }
+      const requiredRole = resolveRequiredRoleLabel({
+        ...request,
+        action,
+      });
+      return requiredRole === undefined
+        ? `/${action} [locked]`
+        : `/${action} [locked:${requiredRole}]`;
+    })
     .join(' | ');
 
   return {

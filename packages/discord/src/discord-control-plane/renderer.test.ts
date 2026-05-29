@@ -329,6 +329,29 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'renders show-status next actions with availability and locked role markers',
+      inputs: {
+        request: {
+          ...request,
+          action: 'show-status',
+          summary: 'Project status (phase:Slice PR Review)',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain('/run-this [available]');
+        expect(payload.content).toContain('/retry-gates [available]');
+        expect(payload.content).toContain('/show-last-artifact [available]');
+        expect(payload.content).toContain(
+          '/new-project [locked:project-operator]',
+        );
+        expect(payload.content).toContain('/explain-failure [locked]');
+      },
+    },
+    {
       name: 'prefers the last status phase marker when summary has duplicates',
       inputs: {
         request: {
