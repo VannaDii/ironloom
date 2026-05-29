@@ -347,7 +347,7 @@ Usage rules:
 - [ ] Show locked/denied markers and required roles for unavailable actions.
 - [x] For `/show-last-artifact`, add one-line “why this matters now” interpretation summary.
 - [x] For `/show-status`, include project identity header at top every time.
-- [ ] For status payloads, always full detail (no condensed default).
+- [x] For status payloads, always full detail (no condensed default).
 
 ## 23. Command Guidance and Discoverability
 
