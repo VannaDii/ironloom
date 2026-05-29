@@ -1613,7 +1613,7 @@ export class DiscordControlPlaneService {
       return 'Spec Refinement/Approval';
     }
     if (request.action === DEVPLAT_ACTION_RELEASE_PROJECT) {
-      return 'Next Slice or Release';
+      return 'Completion';
     }
     if (
       request.action === DEVPLAT_ACTION_RUN_THIS ||
@@ -1646,6 +1646,32 @@ export class DiscordControlPlaneService {
       return 'Slicing Refinement/Approval';
     }
     return undefined;
+  }
+
+  /**
+   * Appends completion summary markers for release actions.
+   */
+  private appendReleaseCompletionSummary(
+    request: DiscordControlRequest,
+  ): DiscordControlRequest {
+    if (request.action !== DEVPLAT_ACTION_RELEASE_PROJECT) {
+      return request;
+    }
+
+    const hasLinks =
+      request.workItem?.artifactId !== undefined ||
+      request.workItem?.pullRequestNumber !== undefined;
+    const hasActivitySummary =
+      request.workItem?.threadKind !== undefined ||
+      request.workItem?.artifactId !== undefined;
+
+    return {
+      ...request,
+      summary:
+        request.summary +
+        ` (completion-links:${hasLinks ? 'available' : 'pending'})` +
+        ` (activity-summary:${hasActivitySummary ? 'available' : 'pending'})`,
+    };
   }
 
   /**
@@ -2000,16 +2026,16 @@ export class DiscordControlPlaneService {
         requestWithDiscoveryState,
         decision,
       );
+    const requestWithCompletionSummary = this.appendReleaseCompletionSummary(
+      requestWithSpecApprovalLifecycle,
+    );
     await this.persistLifecyclePhaseState(
-      requestWithSpecApprovalLifecycle,
+      requestWithCompletionSummary,
       decision,
     );
-    await this.persistThreadPausedState(
-      requestWithSpecApprovalLifecycle,
-      decision,
-    );
+    await this.persistThreadPausedState(requestWithCompletionSummary, decision);
 
-    return this.persistAction(requestWithSpecApprovalLifecycle, decision);
+    return this.persistAction(requestWithCompletionSummary, decision);
   }
 
   /**

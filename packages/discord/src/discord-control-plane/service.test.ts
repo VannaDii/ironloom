@@ -2735,7 +2735,51 @@ describe('DiscordControlPlaneService', () => {
     const phaseState = await store.read('state', 'project-phase:thread-phase');
     expect(phaseState.ok).toBe(true);
     if (phaseState.ok) {
-      expect(phaseState.value.payload['phase']).toBe('Next Slice or Release');
+      expect(phaseState.value.payload['phase']).toBe('Completion');
+    }
+  });
+
+  it('appends completion summary markers for release-project actions', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    class AlwaysAllowDecisionPolicyService extends DecisionPolicyService {
+      public override evaluateControlAction() {
+        return { id: 'policy-allow-all', allowed: true, trace: [] };
+      }
+    }
+    const service = new DiscordControlPlaneService(
+      new AlwaysAllowDecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    await service.handleAction({
+      id: 'discord-phase-release-summary',
+      summary: 'release-project',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:04.500Z',
+      actorId: 'user-phase',
+      threadId: 'thread-phase',
+      channelId: 'channel-phase',
+      action: 'release-project',
+      privileged: false,
+      workItem: {
+        threadKind: 'pull-request',
+        threadId: 'thread-phase',
+        artifactId: 'artifact-phase-release',
+        pullRequestNumber: 81,
+      },
+    });
+
+    const persisted = await store.read(
+      'state',
+      'discord-phase-release-summary',
+    );
+    expect(persisted.ok).toBe(true);
+    if (persisted.ok) {
+      expect(persisted.value.summary).toContain('(completion-links:available)');
+      expect(persisted.value.summary).toContain('(activity-summary:available)');
     }
   });
 

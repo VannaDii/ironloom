@@ -71,7 +71,7 @@ Usage rules:
 - [x] Implement and expose phase: Slice Approval Request.
 - [x] Implement and expose phase: Slice PR Merge.
 - [x] Implement and expose phase: Next Slice or Release.
-- [ ] Implement and expose phase: Completion message with links/activity summary.
+- [x] Implement and expose phase: Completion message with links/activity summary.
 - [ ] For each phase, post one primary phase message.
 - [ ] Thread all updates under that primary phase message.
 - [x] Accept only phase-appropriate commands in each phase thread.
