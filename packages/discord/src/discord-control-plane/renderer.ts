@@ -712,29 +712,26 @@ function resolveResumeProjectPreflightFields(
     .map((token) => token.trim())
     .filter((token) => token.length > 0);
 
-  let mode: string | undefined;
-  let checks: string | undefined;
-  let issues: string | undefined;
-  for (const token of tokens) {
-    const separatorIndex = token.indexOf(':');
-    if (separatorIndex <= 0) {
-      mode = token;
-      continue;
-    }
-    const key = token.slice(0, separatorIndex);
-    const value = token.slice(separatorIndex + 1);
-    if (key === 'issues') {
-      issues = value;
-      continue;
-    }
-    checks =
-      checks === undefined ? `${key}:${value}` : `${checks}, ${key}:${value}`;
-  }
+  const mode = tokens.find((token) => !token.includes(':'));
+  const issuesToken = tokens.find((token) => token.startsWith('issues:'));
+  const issues =
+    issuesToken === undefined ? undefined : issuesToken.slice('issues:'.length);
+  const checksTokens = tokens.filter(
+    (token) => token.includes(':') && !token.startsWith('issues:'),
+  );
+  const checks =
+    checksTokens.length === 0 ? undefined : checksTokens.join(', ');
+
+  const notifyRoles =
+    mode === 'forced' && issues !== undefined && issues !== 'none'
+      ? 'spec-approver | merge-approver'
+      : undefined;
 
   return {
     ...(mode === undefined ? {} : { Preflight: mode }),
     ...(checks === undefined ? {} : { Checks: checks }),
     ...(issues === undefined ? {} : { Issues: issues }),
+    ...(notifyRoles === undefined ? {} : { 'Notify roles': notifyRoles }),
   };
 }
 

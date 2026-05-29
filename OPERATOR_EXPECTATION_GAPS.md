@@ -192,7 +192,7 @@ Usage rules:
 - [ ] Support second confirmation via button.
 - [x] Support second confirmation via `/resume-project --force` fallback.
 - [x] Restrict force resume to `project-operator`.
-- [ ] On force resume, notify impacted roles automatically.
+- [x] On force resume, notify impacted roles automatically.
 - [ ] On resume, restart from latest durable artifact checkpoints.
 - [ ] Post resumed checkpoint ID/timestamp and persist audit.
 

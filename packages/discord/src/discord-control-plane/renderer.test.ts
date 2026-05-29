@@ -1334,6 +1334,9 @@ describe('Discord control-plane renderer', () => {
           'Checks: repo-access:unknown, branch-state:unknown, pr-status:unknown, gate-health:unknown, blocker-inventory:unknown',
         );
         expect(payload.content).toContain('Issues: thread-not-paused');
+        expect(payload.content).toContain(
+          'Notify roles: spec-approver | merge-approver',
+        );
       },
     },
     {
