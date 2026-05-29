@@ -1643,7 +1643,7 @@ export class DiscordControlPlaneService {
       if (request.workItem?.threadKind === 'implementation') {
         return 'Slice Implementation';
       }
-      return 'Slicing';
+      return 'Slicing Refinement/Approval';
     }
     return undefined;
   }

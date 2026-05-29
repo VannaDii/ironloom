@@ -2622,7 +2622,9 @@ describe('DiscordControlPlaneService', () => {
     const phaseState = await store.read('state', 'project-phase:thread-phase');
     expect(phaseState.ok).toBe(true);
     if (phaseState.ok) {
-      expect(phaseState.value.payload['phase']).toBe('Slicing');
+      expect(phaseState.value.payload['phase']).toBe(
+        'Slicing Refinement/Approval',
+      );
     }
   });
 
