@@ -235,6 +235,7 @@ If approval fails preconditions:
 - `/resume-project` (`project-operator`) resumes all previously active threads.
 - `/resume-project` runs global preflight; if issues found, second confirmation required (button or `/resume-project --force`).
 - force-resume notifies impacted roles.
+- resume responses include checkpoint id/timestamp markers for auditable restart context.
 
 ## 10. Thread and Continuation Rules
 
