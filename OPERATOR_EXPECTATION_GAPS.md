@@ -186,10 +186,10 @@ Usage rules:
 - [x] On `/cancel-project`, immediately pause all activity.
 - [ ] Post cancellation summary per phase thread.
 - [x] Implement `/resume-project`.
-- [ ] On `/resume-project`, run global preflight (repo access, branch state, PR status, gate health, blocker inventory).
-- [ ] Post single resume readiness report.
-- [ ] If preflight has issues, require second confirmation.
-- [ ] Support second confirmation via button.
+- [x] On `/resume-project`, run global preflight (repo access, branch state, PR status, gate health, blocker inventory).
+- [x] Post single resume readiness report.
+- [x] If preflight has issues, require second confirmation.
+- [x] Support second confirmation via button.
 - [x] Support second confirmation via `/resume-project --force` fallback.
 - [x] Restrict force resume to `project-operator`.
 - [x] On force resume, notify impacted roles automatically.
