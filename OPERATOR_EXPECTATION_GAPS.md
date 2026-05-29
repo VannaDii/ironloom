@@ -120,7 +120,7 @@ Usage rules:
 - [x] If additional research command used, remove stale prior approval button.
 - [x] On approval button failure/expiry, provide `/approve-this` fallback in-thread.
 - [x] Restrict fallback `/approve-this` with same `spec-approver` permission and identical audit semantics.
-- [ ] On approval, start speccing/workstream immediately.
+- [x] On approval, start speccing/workstream immediately.
 
 ## 10. Spec/Research Re-entry and Global Pause
 
