@@ -345,7 +345,7 @@ Usage rules:
 - [ ] published assets.
 - [ ] In next actions show all possible commands (not only authorized ones).
 - [ ] Show locked/denied markers and required roles for unavailable actions.
-- [ ] For `/show-last-artifact`, add one-line “why this matters now” interpretation summary.
+- [x] For `/show-last-artifact`, add one-line “why this matters now” interpretation summary.
 - [x] For `/show-status`, include project identity header at top every time.
 - [ ] For status payloads, always full detail (no condensed default).
 
