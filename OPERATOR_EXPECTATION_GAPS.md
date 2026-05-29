@@ -323,14 +323,14 @@ Usage rules:
 
 ## 22. Messaging Format and Content
 
-- [ ] Enforce strict full-status section order:
+- [x] Enforce strict full-status section order:
 - [x] identity header.
-- [ ] phase.
-- [ ] current action.
-- [ ] blockers.
-- [ ] approvals.
-- [ ] links.
-- [ ] next actions.
+- [x] phase.
+- [x] current action.
+- [x] blockers.
+- [x] approvals.
+- [x] links.
+- [x] next actions.
 - [x] In identity header include:
 - [x] repo.
 - [x] project name.

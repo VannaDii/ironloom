@@ -257,13 +257,12 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
-      name: 'renders status metadata fields when summary includes config and intent markers',
+      name: 'renders show-status sections in strict order',
       inputs: {
         request: {
           ...request,
           action: 'show-status',
-          summary:
-            'Project status (intent:maintenance) (config-version:v7) (phase:Spec Draft)',
+          summary: 'Project status (phase:Spec Draft)',
         },
       },
       mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
@@ -271,22 +270,30 @@ describe('Discord control-plane renderer', () => {
       assert: (
         payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
       ) => {
-        expect(payload.content).toContain(
-          'Identity: repo:unknown · project:unknown · phase:Spec Draft · thread-kind:implementation',
-        );
-        expect(payload.content).toContain('Run intent: maintenance');
-        expect(payload.content).toContain('Config version: v7');
-        expect(payload.content).toContain('Phase: Spec Draft');
+        const identityIndex = payload.content.indexOf('Identity:');
+        const phaseIndex = payload.content.indexOf('Phase:');
+        const currentActionIndex = payload.content.indexOf('Current action:');
+        const blockersIndex = payload.content.indexOf('Blockers:');
+        const approvalsIndex = payload.content.indexOf('Approvals:');
+        const linksIndex = payload.content.indexOf('Links:');
+        const nextActionsIndex = payload.content.indexOf('Next actions:');
+        expect(identityIndex).toBeGreaterThan(-1);
+        expect(phaseIndex).toBeGreaterThan(identityIndex);
+        expect(currentActionIndex).toBeGreaterThan(phaseIndex);
+        expect(blockersIndex).toBeGreaterThan(currentActionIndex);
+        expect(approvalsIndex).toBeGreaterThan(blockersIndex);
+        expect(linksIndex).toBeGreaterThan(approvalsIndex);
+        expect(nextActionsIndex).toBeGreaterThan(linksIndex);
       },
     },
     {
-      name: 'prefers the last status metadata markers when summary has duplicates',
+      name: 'prefers the last status phase marker when summary has duplicates',
       inputs: {
         request: {
           ...request,
           action: 'show-status',
           summary:
-            'Project status (intent:maintenance) text (intent:bugfix) (config-version:v1) (config-version:v7)',
+            'Project status (phase:Spec Draft) text (phase:Slice PR Review)',
         },
       },
       mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
@@ -294,8 +301,7 @@ describe('Discord control-plane renderer', () => {
       assert: (
         payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
       ) => {
-        expect(payload.content).toContain('Run intent: bugfix');
-        expect(payload.content).toContain('Config version: v7');
+        expect(payload.content).toContain('Phase: Slice PR Review');
       },
     },
     {
@@ -316,9 +322,7 @@ describe('Discord control-plane renderer', () => {
         expect(payload.content).toContain(
           'Identity: repo:unknown · project:unknown · phase:unknown · thread-kind:implementation',
         );
-        expect(payload.content).not.toContain('Run intent:');
-        expect(payload.content).not.toContain('Config version:');
-        expect(payload.content).not.toContain('Phase:');
+        expect(payload.content).toContain('Phase: unknown');
       },
     },
     {
@@ -592,8 +596,7 @@ describe('Discord control-plane renderer', () => {
       assert: (
         payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
       ) => {
-        expect(payload.content).not.toContain('Run intent:');
-        expect(payload.content).not.toContain('Config version:');
+        expect(payload.content).toContain('Phase: unknown');
       },
     },
     {
@@ -610,7 +613,7 @@ describe('Discord control-plane renderer', () => {
       assert: (
         payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
       ) => {
-        expect(payload.content).not.toContain('Config version:');
+        expect(payload.content).toContain('Phase: unknown');
       },
     },
     {

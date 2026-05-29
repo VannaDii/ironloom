@@ -693,6 +693,58 @@ function resolveStatusSummaryMetadataFields(
 }
 
 /**
+ * Builds strict full-status sections in required order for `/show-status`.
+ */
+function resolveShowStatusOrderedFields(
+  request: DiscordControlRequest,
+): Readonly<Record<string, string>> {
+  if (request.action !== DEVPLAT_ACTION_SHOW_STATUS) {
+    return {};
+  }
+
+  const metadata = resolveSummaryMetadata(request.summary);
+  const identity =
+    `repo:${resolveSummaryMarkerValue(request.summary, '(repo:') ?? 'unknown'} · ` +
+    `project:${resolveSummaryMarkerValue(request.summary, '(project:') ?? 'unknown'} · ` +
+    `phase:${metadata.phase ?? 'unknown'} · ` +
+    `thread-kind:${request.workItem?.threadKind ?? 'thread'}`;
+  const pendingApprovals =
+    resolveSummaryMarkerValue(request.summary, '(pending-approvals:') ?? '0';
+  const blockers =
+    resolveSummaryMarkerValue(request.summary, '(blocked-status:') ?? 'none';
+  const links = [
+    `spec-pr:${resolveSummaryMarkerValue(request.summary, '(spec-pr:') ?? 'none'}`,
+    `active-slice-pr:${resolveSummaryMarkerValue(request.summary, '(active-slice-pr:') ?? 'none'}`,
+    `merged-pr-links:${resolveSummaryMarkerValue(request.summary, '(merged-pr-links:') ?? 'none'}`,
+    `latest-artifact:${resolveSummaryMarkerValue(request.summary, '(artifact-links:') ?? 'none'}`,
+    `workflow-run:${resolveSummaryMarkerValue(request.summary, '(workflow-run:') ?? 'none'}`,
+    `published-assets:${resolveSummaryMarkerValue(request.summary, '(asset-links:') ?? 'none'}`,
+  ].join(' | ');
+  const nextActions = resolveAcceptedControls(
+    request,
+    resolveActionDisplay(request.action),
+  )
+    .map((action) => `/${action}`)
+    .join(' | ');
+
+  return {
+    Identity: identity,
+    Phase: metadata.phase ?? 'unknown',
+    'Current action': `${request.action} · ${renderDiscordItemValue(request)}`,
+    Blockers: blockers,
+    Approvals: pendingApprovals,
+    ...(metadata.runIntent === undefined
+      ? {}
+      : { 'Run intent': metadata.runIntent }),
+    ...(metadata.configVersion === undefined
+      ? {}
+      : { 'Config version': metadata.configVersion }),
+    Links: links,
+    'Next actions': nextActions,
+  };
+}
+
+/**
  * Parses resume-project preflight markers from summary metadata.
  */
 function resolveResumeProjectPreflightFields(
@@ -1399,21 +1451,26 @@ export function renderDiscordControlAcceptedMessage(
   request: DiscordControlRequest,
 ): DiscordMessagePayload {
   const display = resolveActionDisplay(request.action);
+  const showStatusOrderedFields = resolveShowStatusOrderedFields(request);
+  const statusFields =
+    request.action === DEVPLAT_ACTION_SHOW_STATUS
+      ? showStatusOrderedFields
+      : {
+          Status: 'accepted',
+          Scope: renderDiscordScopeValue(request),
+          Item: renderDiscordItemValue(request),
+          Actor: describeActor(request.actorId),
+          ...resolveStatusSummaryMetadataFields(request),
+          ...resolveProjectSummaryVisibilityFields(request),
+          ...resolveResumeProjectPreflightFields(request),
+          ...resolveReleaseSummaryFields(request),
+          ...resolveDiscoveryControlFields(request),
+          ...resolveAlternativesFields(request),
+          ...resolveProjectSettingsHistoryFields(request),
+        };
   const content = renderDiscordMessageContent({
     actionLabel: display.acceptedTitle,
-    fields: {
-      Status: 'accepted',
-      Scope: renderDiscordScopeValue(request),
-      Item: renderDiscordItemValue(request),
-      Actor: describeActor(request.actorId),
-      ...resolveStatusSummaryMetadataFields(request),
-      ...resolveProjectSummaryVisibilityFields(request),
-      ...resolveResumeProjectPreflightFields(request),
-      ...resolveReleaseSummaryFields(request),
-      ...resolveDiscoveryControlFields(request),
-      ...resolveAlternativesFields(request),
-      ...resolveProjectSettingsHistoryFields(request),
-    },
+    fields: statusFields,
     indicator: display.acceptedIndicator,
     result: display.result,
   });
