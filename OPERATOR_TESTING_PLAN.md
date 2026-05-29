@@ -464,7 +464,7 @@ Operational health section includes:
 
 1. Remaining `/new-project` bootstrap parity gaps: GitHub-account repo resolution/auto-create and discovery-thread kickoff flow
 2. Remaining `/open-project` reopen parity gaps: dashboard/continuation-thread lifecycle and archived-thread reopen behavior
-3. Remaining project-level command gaps: resume preflight completeness and cancellation summaries per phase thread
+3. Remaining project-level command gaps: cancellation summaries per phase thread
 4. Missing phase-contract pinned message lifecycle
 5. Remaining project settings/config-version gaps: interactive controls, batched rollback semantics, and in-flight propagation guarantees
 6. Remaining strict project-bound context gaps: bind all project messages/threads to project context (not mutating-only paths)
