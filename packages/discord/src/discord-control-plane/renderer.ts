@@ -673,7 +673,15 @@ function resolveStatusSummaryMetadataFields(
   }
 
   const metadata = resolveSummaryMetadata(request.summary);
+  const repo =
+    resolveSummaryMarkerValue(request.summary, '(repo:') ?? 'unknown';
+  const project =
+    resolveSummaryMarkerValue(request.summary, '(project:') ?? 'unknown';
+  const phase = metadata.phase ?? 'unknown';
+  const threadKind = request.workItem?.threadKind ?? 'thread';
+
   return {
+    Identity: `repo:${repo} · project:${project} · phase:${phase} · thread-kind:${threadKind}`,
     ...(metadata.runIntent === undefined
       ? {}
       : { 'Run intent': metadata.runIntent }),

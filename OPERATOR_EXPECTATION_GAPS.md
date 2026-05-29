@@ -324,18 +324,18 @@ Usage rules:
 ## 22. Messaging Format and Content
 
 - [ ] Enforce strict full-status section order:
-- [ ] identity header.
+- [x] identity header.
 - [ ] phase.
 - [ ] current action.
 - [ ] blockers.
 - [ ] approvals.
 - [ ] links.
 - [ ] next actions.
-- [ ] In identity header include:
-- [ ] repo.
-- [ ] project name.
-- [ ] phase.
-- [ ] thread kind.
+- [x] In identity header include:
+- [x] repo.
+- [x] project name.
+- [x] phase.
+- [x] thread kind.
 - [ ] In links section include when available:
 - [ ] spec PR.
 - [ ] active slice PR.
@@ -346,7 +346,7 @@ Usage rules:
 - [ ] In next actions show all possible commands (not only authorized ones).
 - [ ] Show locked/denied markers and required roles for unavailable actions.
 - [ ] For `/show-last-artifact`, add one-line “why this matters now” interpretation summary.
-- [ ] For `/show-status`, include project identity header at top every time.
+- [x] For `/show-status`, include project identity header at top every time.
 - [ ] For status payloads, always full detail (no condensed default).
 
 ## 23. Command Guidance and Discoverability

@@ -271,6 +271,9 @@ describe('Discord control-plane renderer', () => {
       assert: (
         payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
       ) => {
+        expect(payload.content).toContain(
+          'Identity: repo:unknown · project:unknown · phase:Spec Draft · thread-kind:implementation',
+        );
         expect(payload.content).toContain('Run intent: maintenance');
         expect(payload.content).toContain('Config version: v7');
         expect(payload.content).toContain('Phase: Spec Draft');
@@ -310,6 +313,9 @@ describe('Discord control-plane renderer', () => {
       assert: (
         payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
       ) => {
+        expect(payload.content).toContain(
+          'Identity: repo:unknown · project:unknown · phase:unknown · thread-kind:implementation',
+        );
         expect(payload.content).not.toContain('Run intent:');
         expect(payload.content).not.toContain('Config version:');
         expect(payload.content).not.toContain('Phase:');
