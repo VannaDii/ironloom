@@ -287,6 +287,48 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'renders show-status links section with all required link categories',
+      inputs: {
+        request: {
+          ...request,
+          action: 'show-status',
+          summary:
+            'Project status ' +
+            '(phase:Slice PR Review) ' +
+            '(spec-pr:https://github.com/org/repo/pull/10) ' +
+            '(active-slice-pr:https://github.com/org/repo/pull/11) ' +
+            '(merged-pr-links:https://github.com/org/repo/pull/1|https://github.com/org/repo/pull/2) ' +
+            '(artifact-links:https://example.com/artifacts/123) ' +
+            '(workflow-run:https://github.com/org/repo/actions/runs/77) ' +
+            '(asset-links:https://example.com/assets/build.zip)',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain(
+          'Links: spec-pr:https://github.com/org/repo/pull/10',
+        );
+        expect(payload.content).toContain(
+          'active-slice-pr:https://github.com/org/repo/pull/11',
+        );
+        expect(payload.content).toContain(
+          'merged-pr-links:https://github.com/org/repo/pull/1|https://github.com/org/repo/pull/2',
+        );
+        expect(payload.content).toContain(
+          'latest-artifact:https://example.com/artifacts/123',
+        );
+        expect(payload.content).toContain(
+          'workflow-run:https://github.com/org/repo/actions/runs/77',
+        );
+        expect(payload.content).toContain(
+          'published-assets:https://example.com/assets/build.zip',
+        );
+      },
+    },
+    {
       name: 'prefers the last status phase marker when summary has duplicates',
       inputs: {
         request: {

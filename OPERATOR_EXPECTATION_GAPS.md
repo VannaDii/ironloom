@@ -336,13 +336,13 @@ Usage rules:
 - [x] project name.
 - [x] phase.
 - [x] thread kind.
-- [ ] In links section include when available:
-- [ ] spec PR.
-- [ ] active slice PR.
-- [ ] merged slice PRs.
-- [ ] latest artifact.
-- [ ] workflow run.
-- [ ] published assets.
+- [x] In links section include when available:
+- [x] spec PR.
+- [x] active slice PR.
+- [x] merged slice PRs.
+- [x] latest artifact.
+- [x] workflow run.
+- [x] published assets.
 - [ ] In next actions show all possible commands (not only authorized ones).
 - [ ] Show locked/denied markers and required roles for unavailable actions.
 - [x] For `/show-last-artifact`, add one-line “why this matters now” interpretation summary.
