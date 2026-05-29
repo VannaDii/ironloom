@@ -734,12 +734,22 @@ function resolveResumeProjectPreflightFields(
     mode === 'forced' && issues !== undefined && issues !== 'none'
       ? 'spec-approver | merge-approver'
       : undefined;
+  const checkpointId = resolveSummaryMarkerValue(
+    request.summary,
+    '(checkpoint-id:',
+  );
+  const checkpointAt = resolveSummaryMarkerValue(
+    request.summary,
+    '(checkpoint-at:',
+  );
 
   return {
     ...(mode === undefined ? {} : { Preflight: mode }),
     ...(checks === undefined ? {} : { Checks: checks }),
     ...(issues === undefined ? {} : { Issues: issues }),
     ...(notifyRoles === undefined ? {} : { 'Notify roles': notifyRoles }),
+    ...(checkpointId === undefined ? {} : { 'Checkpoint ID': checkpointId }),
+    ...(checkpointAt === undefined ? {} : { 'Checkpoint at': checkpointAt }),
   };
 }
 

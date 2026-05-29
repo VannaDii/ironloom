@@ -1323,7 +1323,7 @@ describe('Discord control-plane renderer', () => {
           ...request,
           action: 'resume-project',
           summary:
-            'resume-project (preflight:forced repo-access:unknown branch-state:unknown pr-status:unknown gate-health:unknown blocker-inventory:unknown issues:thread-not-paused)',
+            'resume-project (preflight:forced repo-access:unknown branch-state:unknown pr-status:unknown gate-health:unknown blocker-inventory:unknown issues:thread-not-paused) (checkpoint-id:artifact-123) (checkpoint-at:2026-04-04T00:00:01.000Z)',
         },
       },
       mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
@@ -1342,6 +1342,10 @@ describe('Discord control-plane renderer', () => {
         expect(payload.content).toContain('Issues: thread-not-paused');
         expect(payload.content).toContain(
           'Notify roles: spec-approver | merge-approver',
+        );
+        expect(payload.content).toContain('Checkpoint ID: artifact-123');
+        expect(payload.content).toContain(
+          'Checkpoint at: 2026-04-04T00:00:01.000Z',
         );
       },
     },
