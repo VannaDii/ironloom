@@ -400,6 +400,18 @@ function createResumeProjectPreflightSummarySuffix(
   );
 }
 
+/**
+ * Creates a standardized resume checkpoint summary marker.
+ */
+function createResumeProjectCheckpointSummarySuffix(
+  request: DiscordControlRequest,
+): string {
+  const checkpointId = request.workItem?.artifactId ?? 'unavailable';
+  return (
+    ` (checkpoint-id:${checkpointId}` + ` checkpoint-at:${request.updatedAt})`
+  );
+}
+
 /** Detects duplicate-write errors returned by the file-store layer. */
 function isAlreadyExistsStoreError(error: string): boolean {
   const normalized = error.toLowerCase();
@@ -1993,12 +2005,22 @@ export class DiscordControlPlaneService {
             summary:
               `${request.summary}${resumePreflight.summarySuffix}`.trim(),
           };
+    const requestWithResumeCheckpointSummary =
+      request.action !== DEVPLAT_ACTION_RESUME_PROJECT
+        ? requestWithPreflightSummary
+        : {
+            ...requestWithPreflightSummary,
+            summary:
+              `${requestWithPreflightSummary.summary}${createResumeProjectCheckpointSummarySuffix(
+                requestWithPreflightSummary,
+              )}`.trim(),
+          };
     const identityUniqueness = await this.enforceNewProjectIdentityUniqueness(
-      requestWithPreflightSummary,
+      requestWithResumeCheckpointSummary,
     );
     if (!identityUniqueness.ok) {
       return this.failClosedWithAudit(
-        requestWithPreflightSummary,
+        requestWithResumeCheckpointSummary,
         identityUniqueness.reason,
         'duplicate-project-identity',
       );
@@ -2019,14 +2041,14 @@ export class DiscordControlPlaneService {
         updatedAt: request.updatedAt,
         payload: {
           threadId: requestWithPreflightSummary.threadId,
-          action: requestWithPreflightSummary.action,
+          action: requestWithResumeCheckpointSummary.action,
           intent: immutability.persistIntent,
         },
       });
     }
     if (decision.allowed) {
       const identityFailure = await this.persistNewProjectIdentityReservation(
-        requestWithPreflightSummary,
+        requestWithResumeCheckpointSummary,
         identityUniqueness,
       );
       if (identityFailure !== undefined) {
@@ -2034,7 +2056,7 @@ export class DiscordControlPlaneService {
       }
     }
     const requestWithDiscoveryState = await this.persistDiscoveryResearchState(
-      requestWithPreflightSummary,
+      requestWithResumeCheckpointSummary,
       decision,
     );
     const requestWithSpecApprovalLifecycle =

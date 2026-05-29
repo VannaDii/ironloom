@@ -686,6 +686,10 @@ describe('DiscordControlPlaneService', () => {
       'blocker-inventory:paused-thread',
     );
     expect(resumeResult.request.summary).toContain('issues:none');
+    expect(resumeResult.request.summary).toContain('checkpoint-id:unavailable');
+    expect(resumeResult.request.summary).toContain(
+      'checkpoint-at:2026-04-04T00:00:03.000Z',
+    );
 
     const unblockedMutation = await service.handleAction({
       id: 'discord-004-resume-project-mutation-restored',
@@ -752,6 +756,10 @@ describe('DiscordControlPlaneService', () => {
       'blocker-inventory:no-blockers',
     );
     expect(forcedResume.request.summary).toContain('issues:thread-not-paused');
+    expect(forcedResume.request.summary).toContain('checkpoint-id:unavailable');
+    expect(forcedResume.request.summary).toContain(
+      'checkpoint-at:2026-04-04T00:00:01.000Z',
+    );
   });
 
   it('renders resume-project preflight checks from work-item context', async () => {
@@ -799,6 +807,9 @@ describe('DiscordControlPlaneService', () => {
       'branch-state:pr-branch',
     );
     expect(pullRequestResume.request.summary).toContain('pr-status:open');
+    expect(pullRequestResume.request.summary).toContain(
+      'checkpoint-id:artifact-resume-project-context-pr',
+    );
 
     await service.handleAction({
       id: 'discord-004-resume-project-context-pause-2',
@@ -835,6 +846,9 @@ describe('DiscordControlPlaneService', () => {
       'branch-state:unknown',
     );
     expect(implementationResume.request.summary).toContain('pr-status:unknown');
+    expect(implementationResume.request.summary).toContain(
+      'checkpoint-id:artifact-resume-project-context-implementation',
+    );
   });
 
   it('fails closed when thread pause state is unreadable', async () => {

@@ -194,7 +194,7 @@ Usage rules:
 - [x] Restrict force resume to `project-operator`.
 - [x] On force resume, notify impacted roles automatically.
 - [ ] On resume, restart from latest durable artifact checkpoints.
-- [ ] Post resumed checkpoint ID/timestamp and persist audit.
+- [x] Post resumed checkpoint ID/timestamp and persist audit.
 
 ## 15. Release Orchestration
 
