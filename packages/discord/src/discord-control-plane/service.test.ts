@@ -2628,6 +2628,51 @@ describe('DiscordControlPlaneService', () => {
     }
   });
 
+  it('advances from spec approval into slicing phase on approve-this', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    class AlwaysAllowDecisionPolicyService extends DecisionPolicyService {
+      public override evaluateControlAction() {
+        return { id: 'policy-allow-all', allowed: true, trace: [] };
+      }
+    }
+    const service = new DiscordControlPlaneService(
+      new AlwaysAllowDecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+    );
+
+    await service.handleAction({
+      id: 'discord-phase-spec-to-slicing-1',
+      summary: 'spec',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:01.500Z',
+      actorId: 'user-phase',
+      threadId: 'thread-phase',
+      channelId: 'channel-phase',
+      action: 'spec',
+      privileged: false,
+    });
+    await service.handleAction({
+      id: 'discord-phase-spec-to-slicing-2',
+      summary: 'approve-this',
+      status: 'running',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:01.600Z',
+      actorId: 'user-phase',
+      threadId: 'thread-phase',
+      channelId: 'channel-phase',
+      action: 'approve-this',
+      privileged: false,
+    });
+    const phaseState = await store.read('state', 'project-phase:thread-phase');
+    expect(phaseState.ok).toBe(true);
+    if (phaseState.ok) {
+      expect(phaseState.value.payload['phase']).toBe('Slicing');
+    }
+  });
+
   it('persists lifecycle phase for approve-this implementation contexts', async () => {
     const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
     const store = new FileStoreService(rootDirectory);

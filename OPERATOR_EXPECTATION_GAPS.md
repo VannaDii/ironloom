@@ -63,7 +63,7 @@ Usage rules:
 
 - [x] Implement and expose phase: Spec Draft.
 - [x] Implement and expose phase: Spec Refinement/Approval.
-- [ ] Implement and expose phase: Slicing.
+- [x] Implement and expose phase: Slicing.
 - [x] Implement and expose phase: Slicing Refinement/Approval.
 - [x] Implement and expose phase: Slice Implementation.
 - [x] Implement and expose phase: Slice PR Creation.

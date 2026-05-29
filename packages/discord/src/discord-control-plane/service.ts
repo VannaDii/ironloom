@@ -1684,7 +1684,23 @@ export class DiscordControlPlaneService {
     if (!decision.allowed) {
       return;
     }
-    const phase = this.resolveLifecyclePhaseForAction(request);
+    let phase = this.resolveLifecyclePhaseForAction(request);
+    if (
+      request.action === DEVPLAT_ACTION_APPROVE_THIS &&
+      request.workItem === undefined &&
+      phase === 'Slicing Refinement/Approval'
+    ) {
+      const previousPhaseState = await this.store.read(
+        'state',
+        createProjectPhaseStateKey(request.threadId),
+      );
+      const previousPhase = previousPhaseState.ok
+        ? readTrimmedStringField(previousPhaseState.value.payload, 'phase')
+        : undefined;
+      if (previousPhase === 'Spec Refinement/Approval') {
+        phase = 'Slicing';
+      }
+    }
     if (phase === undefined) {
       return;
     }
