@@ -382,11 +382,21 @@ describe('Discord control-plane renderer', () => {
         expect(payload.content).toContain('/run-this [available]');
         expect(payload.content).toContain('/retry-gates [available]');
         expect(payload.content).toContain('/show-last-artifact [available]');
+        expect(payload.content).toContain('/run-this [available] (button:Run)');
+        expect(payload.content).toContain(
+          '/retry-gates [available] (button:Retry Gates)',
+        );
+        expect(payload.content).toContain(
+          '/show-last-artifact [available] (button:Details)',
+        );
         expect(payload.content).toContain(
           '/new-project [locked:project-operator]',
         );
         expect(payload.content).toContain('/explain-failure [available]');
         expect(payload.content).toContain('/research [available]');
+        expect(payload.content).not.toContain(
+          '/research [available] (button:Research)',
+        );
         expect(payload.content).toContain('/spec [available]');
         expect(payload.content).toContain('/show-status [available]');
       },

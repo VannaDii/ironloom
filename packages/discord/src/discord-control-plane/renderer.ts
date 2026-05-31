@@ -950,7 +950,10 @@ function resolveShowStatusOrderedFields(
         action,
       });
       if (requiredRole === undefined || availableActions.includes(action)) {
-        return `/${action} [available]`;
+        const buttonAlternative = availableActions.includes(action)
+          ? ` (button:${resolveActionDisplay(action).label})`
+          : '';
+        return `/${action} [available]${buttonAlternative}`;
       }
       return `/${action} [locked:${requiredRole}]`;
     })
