@@ -1404,6 +1404,40 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'renders plain resume-project component ids outside forced preflight',
+      inputs: {
+        request,
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordActionComponentRows(inputRequest, ['resume-project']),
+      assert: (
+        components: ReturnType<typeof renderDiscordActionComponentRows>,
+      ) => {
+        expect(components[0]?.components[0]?.custom_id).toBe(
+          'devplat:v1:resume-project:thread-1',
+        );
+      },
+    },
+    {
+      name: 'renders explicit resume-project force component ids for forced preflight',
+      inputs: {
+        request: {
+          ...request,
+          action: 'resume-project',
+          summary: 'resume-project (preflight:forced issues:thread-not-paused)',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordActionComponentRows(inputRequest, ['resume-project']),
+      assert: (
+        components: ReturnType<typeof renderDiscordActionComponentRows>,
+      ) => {
+        expect(components[0]?.components[0]?.custom_id).toBe(
+          'devplat:v1:resume-project-force:thread-1',
+        );
+      },
+    },
+    {
       name: 'splits contextual component rows at Discord row limits',
       inputs: {
         request,
@@ -2131,6 +2165,11 @@ describe('Discord control-plane renderer', () => {
             row.components.map((button) => button.label),
           ) ?? [];
         expect(labels).toContain('Resume Project');
+        const customIds =
+          payload.components?.flatMap((row) =>
+            row.components.map((button) => button.custom_id),
+          ) ?? [];
+        expect(customIds).toContain('devplat:v1:resume-project-force:thread-1');
       },
     },
     {

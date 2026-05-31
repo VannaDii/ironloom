@@ -2740,7 +2740,7 @@ describe('DiscordControlRequest logic', () => {
         },
       },
       {
-        name: 'treats resume-project component clicks as force confirmations',
+        name: 'treats plain resume-project component clicks as initial resumes',
         inputs: {
           callback: {
             id: 'callback-002f2',
@@ -2751,6 +2751,29 @@ describe('DiscordControlRequest logic', () => {
             },
             user: {
               id: 'operator-002f2',
+            },
+          },
+        },
+        mock: () => ({}),
+        assert: (context, inputs) => {
+          const interaction = createDiscordOperatorInteractionFromCallback(
+            inputs.callback,
+          );
+          expect(interaction.resumeProjectForce).toBeUndefined();
+        },
+      },
+      {
+        name: 'treats explicit resume-project force component clicks as confirmations',
+        inputs: {
+          callback: {
+            id: 'callback-002f3',
+            token: 'token-002f3',
+            channel_id: 'thread-002f3',
+            data: {
+              custom_id: 'devplat:v1:resume-project-force:thread-002f3',
+            },
+            user: {
+              id: 'operator-002f3',
             },
           },
         },

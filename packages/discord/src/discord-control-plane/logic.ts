@@ -39,6 +39,7 @@ import {
   DISCORD_CONTROL_REQUEST_SUMMARY_MAX_LENGTH,
   DISCORD_PROJECT_NAME_MAX_LENGTH,
   DISCORD_PROJECT_NAME_MIN_LENGTH,
+  DISCORD_RESUME_PROJECT_FORCE_COMPONENT_ACTION_TOKEN,
   DISCORD_SUMMARY_MARKER_TOKEN_PATTERN,
 } from './constants.js';
 import type {
@@ -61,6 +62,7 @@ import type { DiscordThreadSession } from '../thread-session/codec.js';
  */
 type DiscordComponentCustomIdContext = {
   readonly action: DiscordControlAction;
+  readonly resumeProjectForce?: boolean;
   readonly threadId: string;
 };
 
@@ -394,7 +396,10 @@ function parseDiscordComponentCustomId(
 
   const actionToken = suffix.slice(0, separatorIndex);
   const threadToken = suffix.slice(separatorIndex + 1);
-  const action = resolveKnownAction(actionToken);
+  const action =
+    actionToken === DISCORD_RESUME_PROJECT_FORCE_COMPONENT_ACTION_TOKEN
+      ? DEVPLAT_ACTION_RESUME_PROJECT
+      : resolveKnownAction(actionToken);
   const threadId = threadToken.trim();
   if (action === undefined || threadId.length === 0) {
     return undefined;
@@ -402,6 +407,9 @@ function parseDiscordComponentCustomId(
 
   return {
     action,
+    ...(actionToken === DISCORD_RESUME_PROJECT_FORCE_COMPONENT_ACTION_TOKEN
+      ? { resumeProjectForce: true }
+      : {}),
     threadId,
   };
 }
@@ -853,8 +861,7 @@ export function createDiscordOperatorInteractionFromCallback(
     options,
   );
   const componentContext = parseDiscordComponentCustomId(customId);
-  const resumeProjectForceFromComponent =
-    componentContext?.action === DEVPLAT_ACTION_RESUME_PROJECT;
+  const resumeProjectForceFromComponent = componentContext?.resumeProjectForce;
 
   return {
     id: input.id,
@@ -875,7 +882,7 @@ export function createDiscordOperatorInteractionFromCallback(
     ...(summary === undefined ? {} : { summary }),
     ...callbackOptionFields,
     ...(callbackOptionFields.resumeProjectForce === undefined &&
-    resumeProjectForceFromComponent
+    resumeProjectForceFromComponent === true
       ? { resumeProjectForce: true }
       : {}),
     ...(input.member?.roles === undefined

@@ -95,6 +95,12 @@ export const DISCORD_ROUTE_FAILURE_TRUNCATED_MARKER = '(truncated)';
 export const DISCORD_COMPONENT_CUSTOM_ID_PREFIX = 'devplat:v1';
 
 /**
+ * Explicit component action token for resume-project force confirmations.
+ */
+export const DISCORD_RESUME_PROJECT_FORCE_COMPONENT_ACTION_TOKEN =
+  'resume-project-force';
+
+/**
  * Inclusive lower bound for successful Discord REST response status codes.
  */
 export const DISCORD_REST_SUCCESS_MIN_STATUS = 200;

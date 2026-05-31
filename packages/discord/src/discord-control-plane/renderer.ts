@@ -45,6 +45,7 @@ import {
   DISCORD_EPHEMERAL_MESSAGE_FLAG,
   DISCORD_MESSAGE_CONTENT_MAX_LENGTH,
   DISCORD_MESSAGE_CONTENT_TRUNCATED_MARKER,
+  DISCORD_RESUME_PROJECT_FORCE_COMPONENT_ACTION_TOKEN,
   DISCORD_ROUTE_FAILURE_EVENT_LABEL,
   DISCORD_ROUTE_FAILURE_REDACTED_VALUE,
   DISCORD_ROUTE_FAILURE_TRUNCATED_MARKER,
@@ -1415,13 +1416,35 @@ function resolveRequiredRoleLabel(
 function createDiscordComponentCustomId(
   action: DiscordControlAction,
   threadId: string,
+  forceResumeProject: boolean,
 ): string {
-  const customId = `${DISCORD_COMPONENT_CUSTOM_ID_PREFIX}:${action}:${threadId}`;
+  const actionToken =
+    forceResumeProject && action === DEVPLAT_ACTION_RESUME_PROJECT
+      ? DISCORD_RESUME_PROJECT_FORCE_COMPONENT_ACTION_TOKEN
+      : action;
+  const customId = `${DISCORD_COMPONENT_CUSTOM_ID_PREFIX}:${actionToken}:${threadId}`;
   if (customId.length > DISCORD_CUSTOM_ID_MAX_LENGTH) {
     throw new Error('Discord component custom_id exceeds 100 characters.');
   }
 
   return customId;
+}
+
+/**
+ * Resolves whether a resume button is an explicit force confirmation.
+ */
+function shouldCreateResumeProjectForceButton(
+  request: DiscordControlRequest,
+  action: DiscordControlAction,
+): boolean {
+  if (
+    action !== DEVPLAT_ACTION_RESUME_PROJECT ||
+    request.action !== DEVPLAT_ACTION_RESUME_PROJECT
+  ) {
+    return false;
+  }
+
+  return resolveResumeProjectPreflightFields(request)['Preflight'] === 'forced';
 }
 
 /**
@@ -1543,7 +1566,11 @@ function createDiscordButton(
     /**
      * Discord component wire key; internal interaction inputs normalize it to `customId`.
      */
-    custom_id: createDiscordComponentCustomId(action, request.threadId),
+    custom_id: createDiscordComponentCustomId(
+      action,
+      request.threadId,
+      shouldCreateResumeProjectForceButton(request, action),
+    ),
   };
 }
 
