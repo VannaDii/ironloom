@@ -374,7 +374,7 @@ Usage rules:
 - [x] Redact sensitive artifact links for non-role participants.
 - [ ] Allow full continuation event reason visibility to all users.
 - [x] Make unmet release prerequisites visible to all users.
-- [ ] Make non-blocking degradation notes visible to all users.
+- [x] Make non-blocking degradation notes visible to all users.
 - [x] For role users, include in summary:
 - [x] current config version.
 - [x] strictness flag state.
