@@ -307,7 +307,7 @@ Usage rules:
 - [ ] `show_command_guidance` (default on).
 - [ ] release `@everyone` toggle (default on).
 - [ ] Emit durable config-version artifact on every settings change.
-- [ ] Include current config version in status output.
+- [x] Include current config version in status output.
 
 ## 21. Settings History
 
