@@ -446,6 +446,7 @@ describe('Discord control-plane renderer', () => {
         expect(payload.content).toContain(
           'Possible commands: /project-summary [available] | /phase-contract [available] | /release-project [locked:project-operator|merge-approver]',
         );
+        expect(payload.content).toContain('Degradation notes: none reported');
         expect(payload.content).not.toContain('ETA:');
       },
     },
@@ -474,7 +475,8 @@ describe('Discord control-plane renderer', () => {
             '(audit-artifact-links:https://example.com/audit/1|https://example.com/audit/2) ' +
             '(release-prerequisites:all-clear) ' +
             '(release-prerequisite-links:https://github.com/VannaDii/devplat/pull/81) ' +
-            '(release-prerequisite-roles:merge-approver)',
+            '(release-prerequisite-roles:merge-approver) ' +
+            '(degradation-notes:contract-sync-degraded informational only)',
           privileged: false,
         },
       },
@@ -512,6 +514,9 @@ describe('Discord control-plane renderer', () => {
         );
         expect(payload.content).toContain(
           'Possible commands: /project-summary [available] | /phase-contract [available] | /release-project [locked:project-operator|merge-approver]',
+        );
+        expect(payload.content).toContain(
+          'Degradation notes: contract-sync-degraded informational only',
         );
       },
     },

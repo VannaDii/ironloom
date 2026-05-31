@@ -1020,6 +1020,10 @@ function resolveProjectSummaryVisibilityFields(
     request.summary,
     '(possible-commands:',
   );
+  const degradationNotes = resolveSummaryMarkerValue(
+    request.summary,
+    '(degradation-notes:',
+  );
   const roleVisibility = resolveSummaryMarkerValue(
     request.summary,
     '(visibility:',
@@ -1052,6 +1056,7 @@ function resolveProjectSummaryVisibilityFields(
       'Possible commands':
         possibleCommands ??
         '/project-summary [available] | /phase-contract [available] | /release-project [locked:project-operator|merge-approver]',
+      'Degradation notes': degradationNotes ?? 'none reported',
     };
   }
 
@@ -1101,6 +1106,7 @@ function resolveProjectSummaryVisibilityFields(
     'Possible commands':
       possibleCommands ??
       '/project-summary [available] | /phase-contract [available] | /release-project [locked:project-operator|merge-approver]',
+    'Degradation notes': degradationNotes ?? 'none reported',
   };
 }
 
