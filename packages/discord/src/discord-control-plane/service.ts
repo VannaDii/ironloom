@@ -2007,14 +2007,10 @@ export class DiscordControlPlaneService {
     }
     const resumePreflight = await this.enforceResumeProjectPreflight(request);
     if (!resumePreflight.ok) {
-      const requestWithPreflightSummary =
-        resumePreflight.summarySuffix.length === 0
-          ? request
-          : {
-              ...request,
-              summary:
-                `${request.summary}${resumePreflight.summarySuffix}`.trim(),
-            };
+      const requestWithPreflightSummary = {
+        ...request,
+        summary: `${request.summary}${resumePreflight.summarySuffix}`.trim(),
+      };
       return this.failClosedWithAudit(
         requestWithPreflightSummary,
         resumePreflight.reason,
