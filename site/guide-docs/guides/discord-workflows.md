@@ -100,6 +100,10 @@ Read-only thread visibility:
 
 - `/show-status` and `/show-last-artifact` remain non-mutating and are not
   role-gated; they are available wherever valid thread context resolves
+- when `show_command_guidance` is off, normal status and summary messages hide
+  textual command hints such as next-action and phase-filter examples
+- `/phase-contract` remains the authoritative command-discovery surface and
+  continues to show allowed commands, lock markers, and required roles
 
 Named-option command contracts are registered for bootstrap, reopen, and
 research/project controls:

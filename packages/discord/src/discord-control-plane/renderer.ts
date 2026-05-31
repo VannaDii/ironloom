@@ -434,6 +434,17 @@ const showStatusCommandSurface: readonly DiscordControlAction[] = [
 ];
 
 /**
+ * Field labels that are command-discovery guidance rather than status facts.
+ */
+const commandGuidanceFieldNames = new Set([
+  'Approval fallback',
+  'Next actions',
+  'Phase filter commands',
+  'Phase filter examples',
+  'Possible commands',
+]);
+
+/**
  * Mentions are rendered as text only unless a future caller opts in explicitly.
  */
 const safeAllowedMentions = {
@@ -691,6 +702,48 @@ function resolveSummaryMarkerValue(
 
   const value = summary.slice(valueStart, valueEnd).trim();
   return value.length === 0 ? undefined : value;
+}
+
+/**
+ * Returns true when project settings request hidden command guidance.
+ */
+function isCommandGuidanceDisabled(request: DiscordControlRequest): boolean {
+  const setting =
+    resolveSummaryMarkerValue(request.summary, '(show_command_guidance:') ??
+    resolveSummaryMarkerValue(request.summary, '(show-command-guidance:');
+
+  return setting?.toLowerCase() === 'off';
+}
+
+/**
+ * Returns true when normal messages should include command-discovery hints.
+ */
+function shouldRenderCommandGuidance(request: DiscordControlRequest): boolean {
+  return (
+    request.action === DEVPLAT_ACTION_PHASE_CONTRACT ||
+    !isCommandGuidanceDisabled(request)
+  );
+}
+
+/**
+ * Removes command-discovery fields when guidance is disabled for normal messages.
+ */
+function filterCommandGuidanceFields(
+  request: DiscordControlRequest,
+  fields: Readonly<Record<string, string>>,
+): Readonly<Record<string, string>> {
+  if (shouldRenderCommandGuidance(request)) {
+    return fields;
+  }
+
+  const filteredFields: Record<string, string> = {};
+  for (const [fieldName, fieldValue] of Object.entries(fields)) {
+    if (!commandGuidanceFieldNames.has(fieldName)) {
+      filteredFields[fieldName] = fieldValue;
+    }
+  }
+
+  return filteredFields;
 }
 
 /**
@@ -1726,7 +1779,8 @@ export function renderDiscordControlAcceptedMessage(
 ): DiscordMessagePayload {
   const display = resolveActionDisplay(request.action);
   const showStatusOrderedFields = resolveShowStatusOrderedFields(request);
-  const statusFields =
+  const statusFields = filterCommandGuidanceFields(
+    request,
     request.action === DEVPLAT_ACTION_SHOW_STATUS
       ? showStatusOrderedFields
       : {
@@ -1742,7 +1796,8 @@ export function renderDiscordControlAcceptedMessage(
           ...resolveDiscoveryControlFields(request),
           ...resolveAlternativesFields(request),
           ...resolveProjectSettingsHistoryFields(request),
-        };
+        },
+  );
   const content = renderDiscordMessageContent({
     actionLabel: display.acceptedTitle,
     fields: statusFields,

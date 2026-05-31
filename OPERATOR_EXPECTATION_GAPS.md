@@ -351,8 +351,8 @@ Usage rules:
 
 ## 23. Command Guidance and Discoverability
 
-- [ ] Support `show_command_guidance` setting across all message types.
-- [ ] When `show_command_guidance=off`, hide command guidance hints in normal messages.
+- [x] Support `show_command_guidance` setting across all message types.
+- [x] When `show_command_guidance=off`, hide command guidance hints in normal messages.
 - [ ] Even with guidance off, `/phase-contract` must continue to show full allowed command contract.
 - [ ] In guidance-enabled mode, show button alternatives only when currently available.
 - [ ] In checklist/next-action messaging, include slash + button alternatives where supported.

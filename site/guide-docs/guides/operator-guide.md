@@ -54,6 +54,10 @@ that lifecycle:
 - `/resume-project [--force force]` for guarded resume
 - `/release-project` to request release orchestration
 
+When `show_command_guidance` is disabled, normal status and summary messages
+hide textual command hints. `/phase-contract` remains available to everyone as
+the complete command contract with lock markers and role requirements.
+
 ```mermaid
 flowchart TD
   Intake["Operator requests a repository change"]

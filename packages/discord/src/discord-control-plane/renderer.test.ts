@@ -355,6 +355,26 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'hides show-status command guidance when the project setting is off',
+      inputs: {
+        request: {
+          ...request,
+          action: 'show-status',
+          summary:
+            'Project status (phase:Slice PR Review) (show_command_guidance:off)',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain('Phase: Slice PR Review');
+        expect(payload.content).not.toContain('Next actions:');
+        expect(payload.content).not.toContain('/run-this [available]');
+      },
+    },
+    {
       name: 'prefers the last status phase marker when summary has duplicates',
       inputs: {
         request: {
@@ -457,6 +477,32 @@ describe('Discord control-plane renderer', () => {
           'Last continuation event: thread:impl-2 reason:reopen failed',
         );
         expect(payload.content).not.toContain('ETA:');
+      },
+    },
+    {
+      name: 'hides project-summary command hints when command guidance is off',
+      inputs: {
+        request: {
+          ...request,
+          action: 'project-summary',
+          summary:
+            'project-summary ' +
+            '(repo:devplat) ' +
+            '(project:operator-gap-closure) ' +
+            '(possible-commands:/project-summary [available] | /phase-contract [available]) ' +
+            '(show-command-guidance:off)',
+          privileged: false,
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain('Repo: devplat');
+        expect(payload.content).not.toContain('Phase filter commands:');
+        expect(payload.content).not.toContain('Phase filter examples:');
+        expect(payload.content).not.toContain('Possible commands:');
       },
     },
     {
