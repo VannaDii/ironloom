@@ -1699,7 +1699,8 @@ describe('Discord control-plane renderer', () => {
           'Notify roles: spec-approver | merge-approver',
         );
         expect(payload.content).toContain('Checkpoint ID: artifact-123');
-        expect(payload.content).toContain(
+        expect(payload.content).toContain('Checkpoint at: <t:1775260801:R>');
+        expect(payload.content).not.toContain(
           'Checkpoint at: 2026-04-04T00:00:01.000Z',
         );
       },
@@ -1722,6 +1723,24 @@ describe('Discord control-plane renderer', () => {
         expect(payload.content).not.toContain('Preflight:');
         expect(payload.content).not.toContain('Checks:');
         expect(payload.content).not.toContain('Issues:');
+      },
+    },
+    {
+      name: 'keeps invalid resume checkpoint timestamps visible as raw diagnostics',
+      inputs: {
+        request: {
+          ...request,
+          action: 'resume-project',
+          summary:
+            'resume-project (preflight:ready) (checkpoint-at:not-a-timestamp)',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain('Checkpoint at: not-a-timestamp');
       },
     },
     {

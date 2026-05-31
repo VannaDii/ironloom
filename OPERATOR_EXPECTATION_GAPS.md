@@ -446,8 +446,8 @@ Usage rules:
 - [ ] Acknowledge operator interactions within 1 second target.
 - [ ] If full result not ready, include response time estimate.
 - [ ] Allow variable estimate wording (e.g., "when job completes").
-- [ ] Show relative-time tags in Discord messages only.
-- [ ] Persist absolute UTC timestamps in audit artifacts.
+- [x] Show relative-time tags in Discord messages only.
+- [x] Persist absolute UTC timestamps in audit artifacts.
 
 ## 30. Atomicity and Recovery for `/new-project`
 

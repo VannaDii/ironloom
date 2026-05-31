@@ -43,6 +43,7 @@ import {
   DISCORD_COMPONENT_CUSTOM_ID_PREFIX,
   DISCORD_CUSTOM_ID_MAX_LENGTH,
   DISCORD_EPHEMERAL_MESSAGE_FLAG,
+  DISCORD_MILLISECONDS_PER_SECOND,
   DISCORD_MESSAGE_CONTENT_MAX_LENGTH,
   DISCORD_MESSAGE_CONTENT_TRUNCATED_MARKER,
   DISCORD_RESUME_PROJECT_FORCE_COMPONENT_ACTION_TOKEN,
@@ -462,6 +463,20 @@ function describeDiscordMessageItem(request: DiscordControlRequest): string {
  */
 function describeActor(actorId: string): string {
   return `<@${actorId}>`;
+}
+
+/**
+ * Formats an absolute UTC timestamp as a Discord relative-time display tag.
+ */
+function formatDiscordRelativeTimeTag(value: string): string {
+  const timestampMilliseconds = Date.parse(value);
+  if (Number.isNaN(timestampMilliseconds)) {
+    return value;
+  }
+
+  return `<t:${String(
+    Math.floor(timestampMilliseconds / DISCORD_MILLISECONDS_PER_SECOND),
+  )}:R>`;
 }
 
 /**
@@ -935,7 +950,9 @@ function resolveResumeProjectPreflightFields(
     ...(issues === undefined ? {} : { Issues: issues }),
     ...(notifyRoles === undefined ? {} : { 'Notify roles': notifyRoles }),
     ...(checkpointId === undefined ? {} : { 'Checkpoint ID': checkpointId }),
-    ...(checkpointAt === undefined ? {} : { 'Checkpoint at': checkpointAt }),
+    ...(checkpointAt === undefined
+      ? {}
+      : { 'Checkpoint at': formatDiscordRelativeTimeTag(checkpointAt) }),
   };
 }
 

@@ -70,6 +70,11 @@ export const DISCORD_CUSTOM_ID_MAX_LENGTH = 100;
 export const DISCORD_MESSAGE_CONTENT_MAX_LENGTH = 2000;
 
 /**
+ * Number of milliseconds in one Unix timestamp second.
+ */
+export const DISCORD_MILLISECONDS_PER_SECOND = 1000;
+
+/**
  * Marker appended when Discord message content is truncated to satisfy length limits.
  */
 export const DISCORD_MESSAGE_CONTENT_TRUNCATED_MARKER = '(content truncated)';
