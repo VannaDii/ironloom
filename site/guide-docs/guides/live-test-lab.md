@@ -201,6 +201,17 @@ there is no real Discord interaction token to acknowledge; human-triggered
 slash/button clicks in the sandbox guild use the private Gateway worker and real
 Discord deferred-response and completion-follow-up path during the hold window.
 
+Production-overlap command contract checks:
+
+- validates registration of project bootstrap and management commands used in
+  production (`/new-project`, `/open-project`, `/project-summary`,
+  `/project-settings`, `/project-settings-history`, `/cancel-project`,
+  `/resume-project`, `/release-project`)
+- validates discovery controls (`/alternatives` and `/alts`, `/redirect`,
+  `/consider`, `/research`, `/spec`) before thread-bound implementation work
+- validates command metadata normalization and callback routing through the same
+  interaction control-plane path used by real slash commands and button clicks
+
 The Discord package also exposes a private outbound Gateway runtime for
 production mounts. That runtime identifies with Discord Gateway, heartbeats,
 receives `INTERACTION_CREATE` dispatches without public ingress, resolves

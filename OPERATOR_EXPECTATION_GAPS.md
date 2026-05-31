@@ -490,7 +490,7 @@ Usage rules:
 - [x] Update [user-guide.md](/workspace/devplat/site/guide-docs/guides/user-guide.md) for Discord-only bootstrap and project lifecycle usage.
 - [x] Update [live-test-lab.md](/workspace/devplat/site/guide-docs/guides/live-test-lab.md) only where behavior overlaps with production operator controls.
 - [x] Update command reference docs to named-option format and kebab-case conventions.
-- [ ] Keep docs aligned with final command set:
+- [x] Keep docs aligned with final command set:
 - [x] `/new-project`.
 - [x] `/open-project`.
 - [x] `/project-summary`.
