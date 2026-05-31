@@ -508,6 +508,60 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'defaults project-summary release-precondition links, roles, and commands when markers are absent for non-role visibility',
+      inputs: {
+        request: {
+          ...request,
+          action: 'project-summary',
+          summary:
+            'project-summary ' +
+            '(repo:devplat) ' +
+            '(project:operator-gap-closure) ' +
+            '(release-prerequisites:missing-gates)',
+          privileged: false,
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain(
+          'Release prerequisite links: restricted/unavailable',
+        );
+        expect(payload.content).toContain(
+          'Release unblock roles: restricted/unavailable',
+        );
+        expect(payload.content).toContain(
+          'Possible commands: /project-summary [available] | /phase-contract [available] | /release-project [locked:project-operator|merge-approver]',
+        );
+      },
+    },
+    {
+      name: 'defaults project-summary release-precondition links and roles when markers are absent for role visibility',
+      inputs: {
+        request: {
+          ...request,
+          action: 'project-summary',
+          summary:
+            'project-summary ' +
+            '(visibility:role) ' +
+            '(release-prerequisites:missing-gates)',
+          privileged: false,
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain(
+          'Release prerequisite links: unavailable',
+        );
+        expect(payload.content).toContain('Release unblock roles: unavailable');
+      },
+    },
+    {
       name: 'renders project-summary role defaults when visibility marker is present',
       inputs: {
         request: {
