@@ -5060,6 +5060,105 @@ describe('DiscordControlPlaneService', () => {
         },
       },
       {
+        name: 'uses hydrated request metadata in acknowledged completion payloads',
+        inputs: {
+          interaction: {
+            id: 'interaction-acknowledged-hydrated-completion-001',
+            token: 'token-acknowledged-hydrated-completion-1',
+            actorId: 'user-acknowledged-hydrated-completion-1',
+            channelId: 'channel-acknowledged-hydrated-completion-1',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'show status',
+            threadId: 'thread-acknowledged-hydrated-completion-1',
+            projectRepo: 'devplat',
+            projectName: 'operator-gap-closure',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: async () => {
+          const rootDirectory = await mkdtemp(
+            join(tmpdir(), 'devplat-discord-'),
+          );
+          const events: string[] = [];
+          const store = new FileStoreService(rootDirectory);
+          await store.store({
+            id: 'project-identity-thread-acknowledged-hydrated-completion-1',
+            key: 'project-identity:devplat:operator-gap-closure',
+            scope: 'state',
+            summary: 'Project identity binding.',
+            status: 'approved',
+            trace: [],
+            updatedAt: '2026-04-03T00:00:00.000Z',
+            payload: {
+              repo: 'devplat',
+              project: 'operator-gap-closure',
+              threadId: 'thread-acknowledged-hydrated-completion-1',
+              phase: 'implementation',
+              intent: 'maintenance',
+            },
+          });
+          return {
+            events,
+            store,
+            service: new DiscordControlPlaneService(
+              new DecisionPolicyService(),
+              new TelemetryEventService(store),
+              store,
+              {
+                async postInteractionResponse(input) {
+                  return createReceipt(
+                    `/interactions/${input.id}/${input.token}/callback`,
+                  );
+                },
+                async postInteractionDeferred(input) {
+                  return createReceipt(
+                    `/interactions/${input.id}/${input.token}/callback`,
+                  );
+                },
+                async postInteractionCompletion(input, payload) {
+                  events.push(
+                    `interaction-completion:${input.id}:${payload.content}`,
+                  );
+                  return createReceipt(`/webhooks/application/${input.token}`);
+                },
+                async postThreadMessage(threadId, payload) {
+                  events.push(`thread-message:${threadId}:${payload.content}`);
+                  return createReceipt(`/channels/${threadId}/messages`);
+                },
+              },
+            ),
+          };
+        },
+        assert: async (
+          context: {
+            events: string[];
+            store: FileStoreService;
+            service: DiscordControlPlaneService;
+          },
+          inputs: {
+            interaction: DiscordOperatorInteraction;
+          },
+        ) => {
+          const result = await context.service.handleAcknowledgedInteraction(
+            inputs.interaction,
+          );
+
+          expect(result.allowed).toBe(true);
+          expect(result.failedClosed).toBe(false);
+          expect(context.events.join('\n')).toContain(
+            'thread-message:thread-acknowledged-hydrated-completion-1:ℹ️ DevPlat · Status',
+          );
+          expect(context.events.join('\n')).toContain(
+            'Item: show-status (repo:devplat) (project:operator-gap-closure)',
+          );
+          expect(context.events.join('\n')).toContain(
+            'interaction-completion:interaction-acknowledged-hydrated-completion-001:ℹ️ DevPlat · Interaction completed',
+          );
+          expect(result.completionReceipt?.endpoint).toBe(
+            '/webhooks/application/token-acknowledged-hydrated-completion-1',
+          );
+        },
+      },
+      {
         name: 'posts blocked policy decisions after an HTTP webhook acknowledgement',
         inputs: {
           interaction: {

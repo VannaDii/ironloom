@@ -2668,9 +2668,9 @@ export class DiscordControlPlaneService {
     > = {};
     if (!isDiscordComponentInteraction(input)) {
       const completionPayload = threadPostResult.ok
-        ? renderDiscordInteractionCompletionMessage(result.request)
+        ? renderDiscordInteractionCompletionMessage(renderedRequest)
         : renderDiscordInteractionThreadPostFailureCompletionMessage(
-            result.request,
+            renderedRequest,
             threadPostResult.threadPostError,
           );
       const completionResult = await this.postInteractionCompletion(

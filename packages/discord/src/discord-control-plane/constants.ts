@@ -105,7 +105,7 @@ export const DISCORD_REST_SUCCESS_MIN_STATUS = 200;
 export const DISCORD_REST_SUCCESS_MAX_EXCLUSIVE_STATUS = 300;
 
 /**
- * Pattern for strict `v<integer>` project config-version markers.
+ * Pattern for strict `v<positive-integer>` project config-version markers.
  */
 export const DISCORD_PROJECT_CONFIG_VERSION_PATTERN = /^v[1-9]\d*$/u;
 
