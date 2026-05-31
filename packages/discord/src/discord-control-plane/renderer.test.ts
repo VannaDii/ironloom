@@ -2164,11 +2164,11 @@ describe('Discord control-plane renderer', () => {
           payload.components?.flatMap((row) =>
             row.components.map((button) => button.label),
           ) ?? [];
-        expect(labels).toContain('Resume Project');
         const customIds =
           payload.components?.flatMap((row) =>
             row.components.map((button) => button.custom_id),
           ) ?? [];
+        expect(labels).toContain('Resume Project');
         expect(customIds).toContain('devplat:v1:resume-project-force:thread-1');
       },
     },
