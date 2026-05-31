@@ -242,6 +242,18 @@ function hasActorConfiguredRole(
     .includes(configuredRoleId);
 }
 
+/** Returns true when the actor matches any configured operator role mapping. */
+function hasActorConfiguredOperatorRole(
+  input: DiscordOperatorInteraction,
+): boolean {
+  const operatorRoles: readonly DevplatOperatorRole[] = [
+    'project-operator',
+    'spec-approver',
+    'merge-approver',
+  ];
+  return operatorRoles.some((role) => hasActorConfiguredRole(role, input));
+}
+
 /**
  * Resolves role authorization outcome for an action.
  */
@@ -1062,9 +1074,7 @@ function createActionSpecificMarkers(
         ...(input.projectSummaryPhaseFilter === undefined
           ? []
           : [`(phase-filter:${input.projectSummaryPhaseFilter})`]),
-        ...(hasActorConfiguredRole('project-operator', input)
-          ? ['(visibility:role)']
-          : []),
+        ...(hasActorConfiguredOperatorRole(input) ? ['(visibility:role)'] : []),
       ];
     case DEVPLAT_ACTION_REDIRECT:
       return [

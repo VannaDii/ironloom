@@ -944,6 +944,54 @@ describe('DiscordControlRequest logic', () => {
       {
         inputs: {
           interaction: {
+            id: 'interaction-010a-spec-role',
+            token: 'token-10a-spec-role',
+            actorId: 'user-10a-spec-role',
+            channelId: 'thread-10a-spec-role',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'project-summary',
+            threadId: 'thread-10a-spec-role',
+            actorRoleIds: ['role-spec-approver'],
+            specApproverRoleId: 'role-spec-approver',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.summary).toContain('(visibility:role)');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
+            id: 'interaction-010a-merge-role',
+            token: 'token-10a-merge-role',
+            actorId: 'user-10a-merge-role',
+            channelId: 'thread-10a-merge-role',
+            updatedAt: '2026-04-04T00:00:00.000Z',
+            commandName: 'project-summary',
+            threadId: 'thread-10a-merge-role',
+            actorRoleIds: ['role-merge-approver'],
+            mergeApproverRoleId: 'role-merge-approver',
+          } satisfies DiscordOperatorInteraction,
+        },
+        mock: () => undefined,
+        assert: (
+          route: ReturnType<typeof createDiscordControlRequestFromInteraction>,
+        ) => {
+          expect(route.ok).toBe(true);
+          if (route.ok) {
+            expect(route.request.summary).toContain('(visibility:role)');
+          }
+        },
+      },
+      {
+        inputs: {
+          interaction: {
             id: 'interaction-010a-no-actor-roles',
             token: 'token-10a-no-actor-roles',
             actorId: 'user-10a-no-actor-roles',
