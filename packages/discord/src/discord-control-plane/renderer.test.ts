@@ -2023,6 +2023,7 @@ describe('Discord control-plane renderer', () => {
         expect(payload.content).toContain('Spec link:');
         expect(payload.content).toContain('Slice list/status:');
         expect(payload.content).toContain('Gate results:');
+        expect(payload.content).toContain('Operational health:');
         expect(payload.content).toContain('Unresolved risks:');
         expect(payload.content).toContain('Follow-up recommendations:');
         expect(payload.content).toContain('Asset links:');
@@ -2046,6 +2047,7 @@ describe('Discord control-plane renderer', () => {
             '(spec-link:https://github.com/VannaDii/devplat/blob/main/spec.md) ' +
             '(slice-list-status:slice-a:merged|slice-b:queued) ' +
             '(gate-results:unit:pass|lint:pass) ' +
+            '(health-metrics:current-run:green|lifetime:stable) ' +
             '(unresolved-risks:dependency-drift) ' +
             '(follow-up-recommendations:monitor-rollout) ' +
             '(asset-links:https://example.invalid/release.tgz) ' +
@@ -2070,6 +2072,9 @@ describe('Discord control-plane renderer', () => {
           'Slice list/status: slice-a:merged|slice-b:queued',
         );
         expect(payload.content).toContain('Gate results: unit:pass|lint:pass');
+        expect(payload.content).toContain(
+          'Operational health: current-run:green|lifetime:stable',
+        );
         expect(payload.content).toContain('Unresolved risks: dependency-drift');
         expect(payload.content).toContain(
           'Follow-up recommendations: monitor-rollout',

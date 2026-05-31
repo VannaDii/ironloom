@@ -2839,6 +2839,7 @@ describe('DiscordControlPlaneService', () => {
     if (persisted.ok) {
       expect(persisted.value.summary).toContain('(completion-links:available)');
       expect(persisted.value.summary).toContain('(activity-summary:available)');
+      expect(persisted.value.summary).toContain('(health-metrics:available)');
     }
   });
 

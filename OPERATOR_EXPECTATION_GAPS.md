@@ -21,7 +21,7 @@ Usage rules:
 - [ ] Close gap: bootstrap currently requires OpenClaw/agent initiation.
 - [ ] Add full Discord-only bootstrap path.
 - [x] Close gap: no `/new-project` currently exists.
-- [ ] Ensure release produces canonical summary with required links and health metrics.
+- [x] Ensure release produces canonical summary with required links and health metrics.
 
 ## 3. Global Command Contract
 
@@ -237,14 +237,14 @@ Usage rules:
 
 ## 17. Operational Health Reporting
 
-- [ ] Include operational health section in release summary.
-- [ ] Include blocker incidents.
-- [ ] Include stall incidents.
-- [ ] Include contract degradation incidents.
-- [ ] Show both project-lifetime totals and current-run totals.
-- [ ] Link each count to incident thread/artifact details.
+- [x] Include operational health section in release summary.
+- [x] Include blocker incidents.
+- [x] Include stall incidents.
+- [x] Include contract degradation incidents.
+- [x] Show both project-lifetime totals and current-run totals.
+- [x] Link each count to incident thread/artifact details.
 - [ ] Apply redaction rules for sensitive links when viewer lacks roles.
-- [ ] Keep operational health section visible to all participants.
+- [x] Keep operational health section visible to all participants.
 
 ## 18. Thread Lifecycle and Continuations
 

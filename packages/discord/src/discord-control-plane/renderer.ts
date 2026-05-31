@@ -994,6 +994,10 @@ function resolveReleaseSummaryFields(
     request.summary,
     '(gate-results:',
   );
+  const healthMetrics = resolveSummaryMarkerValue(
+    request.summary,
+    '(health-metrics:',
+  );
   const unresolvedRisks = resolveSummaryMarkerValue(
     request.summary,
     '(unresolved-risks:',
@@ -1030,6 +1034,7 @@ function resolveReleaseSummaryFields(
     'Spec link': specLink ?? 'unavailable',
     'Slice list/status': sliceListStatus ?? 'unavailable',
     'Gate results': gateResults ?? 'unavailable',
+    'Operational health': healthMetrics ?? 'pending incident aggregation',
     'Unresolved risks': unresolvedRisks ?? 'none reported',
     'Follow-up recommendations': followUpRecommendations ?? 'none',
     'Asset links': assetLinks ?? 'none published',

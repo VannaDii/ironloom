@@ -1682,7 +1682,8 @@ export class DiscordControlPlaneService {
       summary:
         request.summary +
         ` (completion-links:${hasLinks ? 'available' : 'pending'})` +
-        ` (activity-summary:${hasActivitySummary ? 'available' : 'pending'})`,
+        ` (activity-summary:${hasActivitySummary ? 'available' : 'pending'})` +
+        ` (health-metrics:${hasActivitySummary ? 'available' : 'pending'})`,
     };
   }
 
