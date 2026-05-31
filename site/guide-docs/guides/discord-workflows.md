@@ -96,6 +96,11 @@ bound-thread lifecycle controls.
 | `/explain-failure`          | implementation or pull-request                   | Summarize the latest failing gate, review, or remediation state.                              |
 | `/update-spec`              | spec                                             | Create a new revision of the bound spec while preserving history.                             |
 
+Read-only thread visibility:
+
+- `/show-status` and `/show-last-artifact` remain non-mutating and are not
+  role-gated; they are available wherever valid thread context resolves
+
 Named-option command contracts are registered for bootstrap, reopen, and
 research/project controls:
 

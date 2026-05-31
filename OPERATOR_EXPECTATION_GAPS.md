@@ -474,7 +474,7 @@ Usage rules:
 
 - [x] Keep `/phase-contract` available to all participants.
 - [x] Keep `/project-summary` available to all participants.
-- [ ] Keep `/show-status` and `/show-last-artifact` non-mutating access available where thread context allows.
+- [x] Keep `/show-status` and `/show-last-artifact` non-mutating access available where thread context allows.
 
 ## 33. Release Preconditions in Summaries
 
