@@ -665,6 +665,28 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'orders same-rank prerequisites alphabetically and places settings before unknown tokens',
+      inputs: {
+        request: {
+          ...request,
+          action: 'project-summary',
+          summary:
+            'project-summary ' +
+            '(release-prerequisites:gate-fail-z|gate-fail-a|approval-mode-change|misc-observer-note)',
+          privileged: false,
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain(
+          'Release prerequisites: gate-fail-a|gate-fail-z|approval-mode-change|misc-observer-note',
+        );
+      },
+    },
+    {
       name: 'infers pending-approvals release prerequisite when markers are absent',
       inputs: {
         request: {
