@@ -678,6 +678,27 @@ function resolveSummaryMarkerValue(
 }
 
 /**
+ * Infers release-precondition status when explicit prerequisite markers are unavailable.
+ */
+function resolveReleasePrerequisitesValue(
+  releasePrerequisites: string | undefined,
+  blockedStatus: string,
+  pendingApprovals: string,
+): string {
+  if (releasePrerequisites !== undefined) {
+    return releasePrerequisites;
+  }
+  const pendingApprovalsCount = Number.parseInt(pendingApprovals, 10);
+  if (Number.isFinite(pendingApprovalsCount) && pendingApprovalsCount > 0) {
+    return 'pending-approvals';
+  }
+  if (blockedStatus !== 'unblocked') {
+    return 'blocked-threads';
+  }
+  return 'unknown';
+}
+
+/**
  * Decodes base64url summary marker values when present.
  */
 function resolveDecodedSummaryMarkerValue(
@@ -1005,6 +1026,11 @@ function resolveProjectSummaryVisibilityFields(
   );
 
   if (roleVisibility !== 'role') {
+    const resolvedReleasePrerequisites = resolveReleasePrerequisitesValue(
+      releasePrerequisites,
+      blockedStatus,
+      pendingApprovals,
+    );
     return {
       Repo: repo ?? 'unknown',
       Project: project ?? 'unknown',
@@ -1018,7 +1044,7 @@ function resolveProjectSummaryVisibilityFields(
       'Phase filter examples':
         '/project-summary --phase spec | /project-summary --phase pr | /project-summary --phase release',
       'Artifact links': 'restricted/unavailable',
-      'Release prerequisites': releasePrerequisites ?? 'unknown',
+      'Release prerequisites': resolvedReleasePrerequisites,
       'Release prerequisite links':
         releasePrerequisiteLinks ?? 'restricted/unavailable',
       'Release unblock roles':
@@ -1036,6 +1062,11 @@ function resolveProjectSummaryVisibilityFields(
     resolveSummaryMarkerValue(request.summary, '(approval-mode:') ?? 'unknown';
   const configVersion =
     resolveSummaryMarkerValue(request.summary, '(config-version:') ?? 'unknown';
+  const resolvedReleasePrerequisites = resolveReleasePrerequisitesValue(
+    releasePrerequisites,
+    blockedStatus,
+    pendingApprovals,
+  );
   const approvalModeImpact = resolveSummaryMarkerValue(
     request.summary,
     '(approval-mode-impact:',
@@ -1064,7 +1095,7 @@ function resolveProjectSummaryVisibilityFields(
     'Approval mode': approvalMode,
     'Approval-mode impact': approvalModeImpact ?? 'unknown',
     'Audit artifact links': auditArtifactLinks ?? 'unavailable',
-    'Release prerequisites': releasePrerequisites ?? 'unknown',
+    'Release prerequisites': resolvedReleasePrerequisites,
     'Release prerequisite links': releasePrerequisiteLinks ?? 'unavailable',
     'Release unblock roles': releasePrerequisiteRoles ?? 'unavailable',
     'Possible commands':

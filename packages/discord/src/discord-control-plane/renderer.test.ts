@@ -601,7 +601,9 @@ describe('Discord control-plane renderer', () => {
         expect(payload.content).toContain('Approval-mode impact: unknown');
         expect(payload.content).toContain('Audit artifact links: unavailable');
         expect(payload.content).not.toContain('ETA:');
-        expect(payload.content).toContain('Release prerequisites: unknown');
+        expect(payload.content).toContain(
+          'Release prerequisites: blocked-threads',
+        );
       },
     },
     {
@@ -630,7 +632,33 @@ describe('Discord control-plane renderer', () => {
         expect(payload.content).toContain(
           'Phase filter examples: /project-summary --phase spec | /project-summary --phase pr | /project-summary --phase release',
         );
-        expect(payload.content).toContain('Release prerequisites: unknown');
+        expect(payload.content).toContain(
+          'Release prerequisites: blocked-threads',
+        );
+      },
+    },
+    {
+      name: 'infers pending-approvals release prerequisite when markers are absent',
+      inputs: {
+        request: {
+          ...request,
+          action: 'project-summary',
+          summary:
+            'project-summary ' +
+            '(phase-status:in-progress) ' +
+            '(blocked-status:unblocked) ' +
+            '(pending-approvals:3)',
+          privileged: false,
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain(
+          'Release prerequisites: pending-approvals',
+        );
       },
     },
     {
