@@ -384,10 +384,10 @@ Usage rules:
 
 ## 25. `/project-summary` UX
 
-- [ ] Default summary view: all phases condensed.
-- [ ] Include footer listing phase filters/operators can request.
-- [ ] Support phase filtering options via named option style.
-- [ ] Include one-tap command examples in footer for each phase filter.
+- [x] Default summary view: all phases condensed.
+- [x] Include footer listing phase filters/operators can request.
+- [x] Support phase filtering options via named option style.
+- [x] Include one-tap command examples in footer for each phase filter.
 - [ ] Include unmet release prerequisites block whenever release is not possible.
 - [ ] Order unmet prerequisites by critical-path impact.
 - [ ] Keep prerequisite descriptions strictly factual.
