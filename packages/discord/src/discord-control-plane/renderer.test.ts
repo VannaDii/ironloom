@@ -722,9 +722,7 @@ describe('Discord control-plane renderer', () => {
           'Last continuation event: none recorded',
         );
         expect(payload.content).not.toContain('ETA:');
-        expect(payload.content).toContain(
-          'Release prerequisites: blocked-threads',
-        );
+        expect(payload.content).toContain('Release prerequisites: unknown');
       },
     },
     {
@@ -753,6 +751,25 @@ describe('Discord control-plane renderer', () => {
         expect(payload.content).toContain(
           'Phase filter examples: /project-summary --phase spec | /project-summary --phase pr | /project-summary --phase release',
         );
+        expect(payload.content).toContain('Release prerequisites: unknown');
+      },
+    },
+    {
+      name: 'renders project-summary blocked-thread prerequisites only when blocked status is explicit',
+      inputs: {
+        request: {
+          ...request,
+          action: 'project-summary',
+          summary:
+            'project-summary (repo:devplat) (project:operator-gap-closure) (blocked-status:blocked)',
+          privileged: false,
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
         expect(payload.content).toContain(
           'Release prerequisites: blocked-threads',
         );
@@ -1969,6 +1986,28 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'normalizes redirect field values onto one line',
+      inputs: {
+        request: {
+          ...request,
+          action: 'redirect',
+          summary:
+            'redirect (direction-prompt:legacy marker direction) (previous-direction:old\tpath)',
+          redirectPrompt: 'latest\nout-of-band\tdirection',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain(
+          'Direction: latest out-of-band direction',
+        );
+        expect(payload.content).toContain('Previous direction: old path');
+      },
+    },
+    {
       name: 'renders consider accepted metadata with queued count',
       inputs: {
         request: {
@@ -2009,6 +2048,26 @@ describe('Discord control-plane renderer', () => {
           'URL: https://example.com/latest-consider-url',
         );
         expect(payload.content).toContain('Queued items: 2');
+      },
+    },
+    {
+      name: 'normalizes consider URL field values onto one line',
+      inputs: {
+        request: {
+          ...request,
+          action: 'consider',
+          summary: 'consider (queued-count:2)',
+          considerUrl: 'https://example.com/latest\nconsider\turl',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain(
+          'URL: https://example.com/latest consider url',
+        );
       },
     },
     {

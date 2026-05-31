@@ -790,10 +790,24 @@ function resolveReleasePrerequisitesValue(
   if (Number.isFinite(pendingApprovalsCount) && pendingApprovalsCount > 0) {
     return 'pending-approvals';
   }
-  if (blockedStatus !== 'unblocked') {
+  if (blockedStatus === 'blocked' || blockedStatus === 'blocked-threads') {
     return 'blocked-threads';
   }
   return 'unknown';
+}
+
+/**
+ * Normalizes operator field values so one field cannot spill across lines.
+ */
+function normalizeDiscordFieldValue(value: string): string {
+  return value
+    .split('\r')
+    .join(' ')
+    .split('\n')
+    .join(' ')
+    .split('\t')
+    .join(' ')
+    .trim();
 }
 
 /**
@@ -1343,10 +1357,15 @@ function resolveDiscoveryControlFields(
       '(previous-direction:',
     );
     return {
-      Direction: direction ?? 'unavailable',
+      Direction:
+        direction === undefined
+          ? 'unavailable'
+          : normalizeDiscordFieldValue(direction),
       ...(previousDirection === undefined
         ? {}
-        : { 'Previous direction': previousDirection }),
+        : {
+            'Previous direction': normalizeDiscordFieldValue(previousDirection),
+          }),
     };
   }
 
@@ -1360,7 +1379,7 @@ function resolveDiscoveryControlFields(
       '(queued-count:',
     );
     return {
-      URL: url ?? 'unavailable',
+      URL: url === undefined ? 'unavailable' : normalizeDiscordFieldValue(url),
       'Queued items': queuedCount ?? 'unknown',
     };
   }

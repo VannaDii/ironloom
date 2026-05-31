@@ -92,7 +92,7 @@ jobs:
             sudo chmod -R u+rwX,go+rX "$RUNNER_TEMP/discord-ux-live-lab" || true
           fi
 
-      - name: Upload Discord UX Artifacts
+      - name: Package Discord UX Artifacts
         if: always()
         run: |
           archive_path="${RUNNER_TEMP}/discord-ux-live-lab.tar.gz"
