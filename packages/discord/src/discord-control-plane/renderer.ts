@@ -1042,6 +1042,37 @@ function resolveReleaseSummaryFields(
 }
 
 /**
+ * Returns dashboard snapshot fields for `/open-project` confirmations.
+ */
+function resolveOpenProjectDashboardFields(
+  request: DiscordControlRequest,
+): Readonly<Record<string, string>> {
+  if (request.action !== DEVPLAT_ACTION_OPEN_PROJECT) {
+    return {};
+  }
+
+  const phase = resolveSummaryMarkerValue(request.summary, '(phase:');
+  const blockers = resolveSummaryMarkerValue(request.summary, '(blockers:');
+  const activeSlices = resolveSummaryMarkerValue(
+    request.summary,
+    '(active-slices:',
+  );
+  const pendingApprovals = resolveSummaryMarkerValue(
+    request.summary,
+    '(pending-approvals:',
+  );
+  const keyLinks = resolveSummaryMarkerValue(request.summary, '(key-links:');
+
+  return {
+    Phase: phase ?? 'unknown',
+    Blockers: blockers ?? 'unknown',
+    'Active slices': activeSlices ?? 'unknown',
+    'Pending approvals': pendingApprovals ?? '0',
+    'Key links': keyLinks ?? 'unavailable',
+  };
+}
+
+/**
  * Returns visibility-tiered fields for `/project-summary`.
  */
 function resolveProjectSummaryVisibilityFields(
@@ -1655,6 +1686,7 @@ export function renderDiscordControlAcceptedMessage(
           ...resolveProjectSummaryVisibilityFields(request),
           ...resolveResumeProjectPreflightFields(request),
           ...resolveReleaseSummaryFields(request),
+          ...resolveOpenProjectDashboardFields(request),
           ...resolveDiscoveryControlFields(request),
           ...resolveAlternativesFields(request),
           ...resolveProjectSettingsHistoryFields(request),

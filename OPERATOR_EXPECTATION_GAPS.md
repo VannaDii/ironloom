@@ -266,12 +266,12 @@ Usage rules:
 - [x] Implement `/open-project --repo ... --project ... --intent maintenance|bugfix|new-feature`.
 - [x] Require `--intent` with no default.
 - [x] Keep reopen intent immutable for the reopened run.
-- [ ] On open, post project dashboard summary:
-- [ ] phase.
-- [ ] blockers.
-- [ ] active slices.
-- [ ] pending approvals.
-- [ ] key links.
+- [x] On open, post project dashboard summary.
+- [x] phase.
+- [x] blockers.
+- [x] active slices.
+- [x] pending approvals.
+- [x] key links.
 - [ ] Route commands into project-bound threads.
 - [ ] Reopen archived threads by default.
 - [ ] If thread reopen fails, create continuation thread and notify explicit reopen failure with links to prior context.

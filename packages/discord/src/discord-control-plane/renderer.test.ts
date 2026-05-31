@@ -1591,6 +1591,53 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'renders open-project accepted message with dashboard summary fields',
+      inputs: {
+        request: {
+          ...request,
+          action: 'open-project',
+          summary:
+            'open-project (phase:implementation) (blockers:thread-44 waiting-on-approval) (active-slices:3) (pending-approvals:2) (key-links:https://github.com/VannaDii/devplat/pull/81|https://github.com/VannaDii/devplat/issues/14)',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain('Phase: implementation');
+        expect(payload.content).toContain(
+          'Blockers: thread-44 waiting-on-approval',
+        );
+        expect(payload.content).toContain('Active slices: 3');
+        expect(payload.content).toContain('Pending approvals: 2');
+        expect(payload.content).toContain(
+          'Key links: https://github.com/VannaDii/devplat/pull/81|https://github.com/VannaDii/devplat/issues/14',
+        );
+      },
+    },
+    {
+      name: 'defaults open-project dashboard fields when markers are absent',
+      inputs: {
+        request: {
+          ...request,
+          action: 'open-project',
+          summary: 'open-project',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain('Phase: unknown');
+        expect(payload.content).toContain('Blockers: unknown');
+        expect(payload.content).toContain('Active slices: unknown');
+        expect(payload.content).toContain('Pending approvals: 0');
+        expect(payload.content).toContain('Key links: unavailable');
+      },
+    },
+    {
       name: 'renders resume-project accepted message with second-confirmation guidance',
       inputs: {
         request: {
