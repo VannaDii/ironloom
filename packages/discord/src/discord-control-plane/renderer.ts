@@ -1043,6 +1043,8 @@ function resolveReleaseSummaryFields(
     request.summary,
     '(incident-links:',
   );
+  const roleVisibility =
+    resolveSummaryMarkerValue(request.summary, '(visibility:') === 'role';
 
   return {
     Repo: repo ?? 'unknown',
@@ -1060,7 +1062,10 @@ function resolveReleaseSummaryFields(
     'Stall incidents': stallIncidents ?? 'current-run:unknown lifetime:unknown',
     'Contract degradation incidents':
       contractDegradationIncidents ?? 'current-run:unknown lifetime:unknown',
-    'Incident links': incidentLinks ?? 'restricted/unavailable',
+    'Incident links':
+      roleVisibility && incidentLinks !== undefined
+        ? incidentLinks
+        : 'restricted/unavailable',
   };
 }
 

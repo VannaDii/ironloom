@@ -243,7 +243,7 @@ Usage rules:
 - [x] Include contract degradation incidents.
 - [x] Show both project-lifetime totals and current-run totals.
 - [x] Link each count to incident thread/artifact details.
-- [ ] Apply redaction rules for sensitive links when viewer lacks roles.
+- [x] Apply redaction rules for sensitive links when viewer lacks roles.
 - [x] Keep operational health section visible to all participants.
 
 ## 18. Thread Lifecycle and Continuations

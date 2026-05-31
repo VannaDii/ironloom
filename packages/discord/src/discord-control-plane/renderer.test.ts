@@ -2111,6 +2111,26 @@ describe('Discord control-plane renderer', () => {
           'Contract degradation incidents: current-run:0|lifetime:2',
         );
         expect(payload.content).toContain(
+          'Incident links: restricted/unavailable',
+        );
+      },
+    },
+    {
+      name: 'renders release incident links for role-visible release summaries',
+      inputs: {
+        request: {
+          ...request,
+          action: 'release-project',
+          summary:
+            'release-project (visibility:role) (incident-links:https://example.invalid/incidents)',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain(
           'Incident links: https://example.invalid/incidents',
         );
       },

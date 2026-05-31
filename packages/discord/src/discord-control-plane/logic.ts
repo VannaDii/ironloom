@@ -1083,6 +1083,8 @@ function createActionSpecificMarkers(
           : [`(phase-filter:${input.projectSummaryPhaseFilter})`]),
         ...(hasActorConfiguredOperatorRole(input) ? ['(visibility:role)'] : []),
       ];
+    case DEVPLAT_ACTION_RELEASE_PROJECT:
+      return hasActorConfiguredOperatorRole(input) ? ['(visibility:role)'] : [];
     case DEVPLAT_ACTION_REDIRECT:
       return [
         `(direction-prompt:${sanitizeSummaryMarkerValue(String(input.redirectPrompt))})`,
