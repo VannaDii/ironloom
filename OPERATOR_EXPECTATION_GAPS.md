@@ -391,7 +391,7 @@ Usage rules:
 - [ ] Include unmet release prerequisites block whenever release is not possible.
 - [ ] Order unmet prerequisites by critical-path impact.
 - [ ] Keep prerequisite descriptions strictly factual.
-- [ ] Include next command suggestions with role-required markers.
+- [x] Include next command suggestions with role-required markers.
 
 ## 26. Mentions and Notification Policy
 
