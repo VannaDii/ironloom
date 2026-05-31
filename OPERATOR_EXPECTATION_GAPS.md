@@ -488,14 +488,14 @@ Usage rules:
 - [x] Update [operator-guide.md](/workspace/devplat/site/guide-docs/guides/operator-guide.md) as each checklist area lands.
 - [x] Update [discord-workflows.md](/workspace/devplat/site/guide-docs/guides/discord-workflows.md) for new commands, role model, and thread contracts.
 - [x] Update [user-guide.md](/workspace/devplat/site/guide-docs/guides/user-guide.md) for Discord-only bootstrap and project lifecycle usage.
-- [ ] Update [live-test-lab.md](/workspace/devplat/site/guide-docs/guides/live-test-lab.md) only where behavior overlaps with production operator controls.
+- [x] Update [live-test-lab.md](/workspace/devplat/site/guide-docs/guides/live-test-lab.md) only where behavior overlaps with production operator controls.
 - [x] Update command reference docs to named-option format and kebab-case conventions.
 - [ ] Keep docs aligned with final command set:
-- [ ] `/new-project`.
-- [ ] `/open-project`.
-- [ ] `/project-summary`.
-- [ ] `/project-settings`.
-- [ ] `/project-settings-history`.
+- [x] `/new-project`.
+- [x] `/open-project`.
+- [x] `/project-summary`.
+- [x] `/project-settings`.
+- [x] `/project-settings-history`.
 - [x] `/cancel-project`.
 - [x] `/resume-project`.
 - [x] `/release-project`.

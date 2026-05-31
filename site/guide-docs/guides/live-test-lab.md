@@ -184,6 +184,15 @@ rows, so the live-lab lane cannot silently regress to plain log-style messages.
 Only unbound bootstrap/progress status messages stay noninteractive to avoid
 stale clickable buttons after cleanup.
 
+Production-overlap command contract checks in this probe include the same
+named-option bootstrap and management surface documented for operators:
+
+- `/new-project --repo <repo_name> --project <project_name> [--quality-strictness on|off]`
+- `/open-project --repo <repo_name> --project <project_name> --intent maintenance|bugfix|new-feature`
+- `/project-summary --phase all|spec|slicing|implementation|pr|release`
+- `/project-settings`
+- `/project-settings-history [--mode summary|detailed]`
+
 Discord does not provide a supported bot API for clicking buttons as a human
 operator. The automated live lab therefore validates the production registration,
 normalization, routing, thread posting, and structured-message path with a
