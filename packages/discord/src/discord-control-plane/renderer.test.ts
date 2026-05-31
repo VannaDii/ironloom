@@ -662,6 +662,28 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'falls back to unknown release prerequisites when thread is unblocked with no pending approvals',
+      inputs: {
+        request: {
+          ...request,
+          action: 'project-summary',
+          summary:
+            'project-summary ' +
+            '(phase-status:in-progress) ' +
+            '(blocked-status:unblocked) ' +
+            '(pending-approvals:0)',
+          privileged: false,
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain('Release prerequisites: unknown');
+      },
+    },
+    {
       name: 'keeps project-summary redacted without role visibility marker even if privileged is true',
       inputs: {
         request: {
