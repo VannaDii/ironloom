@@ -315,7 +315,7 @@ Usage rules:
 - [x] Keep history append-only and immutable.
 - [x] Detailed history mode restricted to `project-operator`.
 - [x] Public summary mode available to all participants.
-- [ ] In public summary mode, include:
+- [x] In public summary mode, include:
 - [x] timestamp.
 - [x] actor.
 - [x] changed setting keys.
@@ -381,6 +381,7 @@ Usage rules:
 - [x] active approval mode.
 - [x] pending approval-mode impact on open PRs.
 - [x] audit artifact links.
+- [x] Treat configured `project-operator`, `spec-approver`, and `merge-approver` as role-visible participants.
 
 ## 25. `/project-summary` UX
 
