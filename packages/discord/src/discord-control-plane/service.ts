@@ -378,7 +378,7 @@ function resolveForceResumeFromSummary(summary: string): boolean {
  * Creates a standardized resume-preflight summary marker.
  */
 function createResumeProjectPreflightSummarySuffix(
-  mode: 'ready' | 'forced',
+  mode: 'ready' | 'confirmation-required' | 'forced',
   checks: Readonly<{
     repoAccess: string;
     branchState: string;
@@ -501,20 +501,28 @@ function appendProjectSettingsHistoryMarkers(
 ): string {
   const suffixes: string[] = [];
   if (markers.changedAt !== undefined) {
-    suffixes.push(`(changed-at:${markers.changedAt})`);
+    suffixes.push(
+      `(changed-at:${sanitizeSummaryMarkerTextValue(markers.changedAt)})`,
+    );
   }
   if (markers.changedBy !== undefined) {
-    suffixes.push(`(changed-by:${markers.changedBy})`);
+    suffixes.push(
+      `(changed-by:${sanitizeSummaryMarkerTextValue(markers.changedBy)})`,
+    );
   }
   if (markers.changedKeys !== undefined) {
-    suffixes.push(`(changed-keys:${markers.changedKeys})`);
+    suffixes.push(
+      `(changed-keys:${sanitizeSummaryMarkerTextValue(markers.changedKeys)})`,
+    );
   }
   const effectiveValues =
     mode === 'detailed'
       ? markers.effectiveValuesDetailed
       : markers.effectiveValuesSummary;
   if (effectiveValues !== undefined) {
-    suffixes.push(`(effective-values:${effectiveValues})`);
+    suffixes.push(
+      `(effective-values:${sanitizeSummaryMarkerTextValue(effectiveValues)})`,
+    );
   }
   if (suffixes.length === 0) {
     return summary;
@@ -995,7 +1003,8 @@ export class DiscordControlPlaneService {
   private async enforceResumeProjectPreflight(
     request: DiscordControlRequest,
   ): Promise<
-    { ok: true; summarySuffix: string } | { ok: false; reason: string }
+    | { ok: true; summarySuffix: string }
+    | { ok: false; reason: string; summarySuffix: string }
   > {
     if (request.action !== DEVPLAT_ACTION_RESUME_PROJECT) {
       return { ok: true, summarySuffix: '' };
@@ -1038,6 +1047,11 @@ export class DiscordControlPlaneService {
     }
     return {
       ok: false,
+      summarySuffix: createResumeProjectPreflightSummarySuffix(
+        'confirmation-required',
+        checks,
+        preflightIssues,
+      ),
       reason:
         `resume preflight requires second confirmation: issues=${preflightIssues.join('|')}. ` +
         'Run /resume-project --force force to acknowledge and continue.',
@@ -1993,8 +2007,16 @@ export class DiscordControlPlaneService {
     }
     const resumePreflight = await this.enforceResumeProjectPreflight(request);
     if (!resumePreflight.ok) {
+      const requestWithPreflightSummary =
+        resumePreflight.summarySuffix.length === 0
+          ? request
+          : {
+              ...request,
+              summary:
+                `${request.summary}${resumePreflight.summarySuffix}`.trim(),
+            };
       return this.failClosedWithAudit(
-        request,
+        requestWithPreflightSummary,
         resumePreflight.reason,
         'resume-preflight-blocked',
       );

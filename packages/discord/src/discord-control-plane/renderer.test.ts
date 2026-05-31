@@ -1048,6 +1048,33 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'renders resume-project blocked confirmation with force button',
+      inputs: {
+        request: {
+          ...request,
+          action: 'resume-project',
+          summary:
+            'resume-project (preflight:confirmation-required repo-access:unknown branch-state:unknown pr-status:unknown gate-health:unknown blocker-inventory:no-blockers issues:thread-not-paused)',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlBlockedMessage(
+          inputRequest,
+          'resume preflight requires second confirmation',
+        ),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlBlockedMessage>,
+      ) => {
+        const customIds =
+          payload.components?.flatMap((row) =>
+            row.components.map((button) => button.custom_id),
+          ) ?? [];
+        expect(payload.content).toContain('Preflight: confirmation-required');
+        expect(payload.content).toContain('Issues: thread-not-paused');
+        expect(customIds).toContain('devplat:v1:resume-project-force:thread-1');
+      },
+    },
+    {
       name: 'renders blocked merge role for merge-now actions',
       inputs: {
         request: {
@@ -1468,12 +1495,13 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
-      name: 'renders explicit resume-project force component ids for forced preflight',
+      name: 'renders explicit resume-project force component ids for confirmation-required preflight',
       inputs: {
         request: {
           ...request,
           action: 'resume-project',
-          summary: 'resume-project (preflight:forced issues:thread-not-paused)',
+          summary:
+            'resume-project (preflight:confirmation-required issues:thread-not-paused)',
         },
       },
       mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
@@ -2240,7 +2268,7 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
-      name: 'includes dedicated resume confirmation button on resume-project responses',
+      name: 'uses normal resume component ids after force resume is accepted',
       inputs: {
         request: {
           ...request,
@@ -2262,7 +2290,7 @@ describe('Discord control-plane renderer', () => {
             row.components.map((button) => button.custom_id),
           ) ?? [];
         expect(labels).toContain('Resume Project');
-        expect(customIds).toContain('devplat:v1:resume-project-force:thread-1');
+        expect(customIds).toContain('devplat:v1:resume-project:thread-1');
       },
     },
     {

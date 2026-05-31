@@ -1522,7 +1522,31 @@ function shouldCreateResumeProjectForceButton(
     return false;
   }
 
-  return resolveResumeProjectPreflightFields(request)['Preflight'] === 'forced';
+  return (
+    resolveResumeProjectPreflightFields(request)['Preflight'] ===
+    'confirmation-required'
+  );
+}
+
+/**
+ * Resolves blocked-message controls with state-specific confirmation affordances.
+ */
+function resolveBlockedControls(
+  request: DiscordControlRequest,
+): readonly DiscordControlAction[] {
+  if (
+    request.action === DEVPLAT_ACTION_RESUME_PROJECT &&
+    resolveResumeProjectPreflightFields(request)['Preflight'] ===
+      'confirmation-required'
+  ) {
+    return [
+      DEVPLAT_ACTION_RESUME_PROJECT,
+      DEVPLAT_ACTION_PROJECT_SUMMARY,
+      DEVPLAT_ACTION_SHOW_STATUS,
+    ];
+  }
+
+  return blockedControls;
 }
 
 /**
@@ -1829,6 +1853,7 @@ export function renderDiscordControlBlockedMessage(
       Scope: renderDiscordScopeValue(request),
       Context: renderBlockedActionContextValue(request),
       ...resolveStatusSummaryMetadataFields(request),
+      ...resolveResumeProjectPreflightFields(request),
       ...(requiredRole === undefined ? {} : { 'Required role': requiredRole }),
       Reason: reason,
     },
@@ -1836,7 +1861,11 @@ export function renderDiscordControlBlockedMessage(
     result: 'No platform state was changed beyond audit logging.',
   });
 
-  return createDiscordPayload(content, request, blockedControls);
+  return createDiscordPayload(
+    content,
+    request,
+    resolveBlockedControls(request),
+  );
 }
 
 /**

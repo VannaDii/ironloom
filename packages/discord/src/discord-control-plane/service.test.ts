@@ -731,6 +731,10 @@ describe('DiscordControlPlaneService', () => {
 
     expect(blockedResume.allowed).toBe(false);
     expect(blockedResume.failedClosed).toBe(true);
+    expect(blockedResume.request.summary).toContain(
+      'preflight:confirmation-required',
+    );
+    expect(blockedResume.request.summary).toContain('issues:thread-not-paused');
 
     const forcedResume = await service.handleAction({
       id: 'discord-004-resume-project-preflight-forced',
@@ -2488,6 +2492,60 @@ describe('DiscordControlPlaneService', () => {
     expect(detailedResult.responsePayload?.content).toContain(
       'Effective values: unavailable',
     );
+  });
+
+  it('sanitizes persisted project-settings-history markers before hydration', async () => {
+    const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-discord-'));
+    const store = new FileStoreService(rootDirectory);
+    const service = new DiscordControlPlaneService(
+      new DecisionPolicyService(),
+      new TelemetryEventService(store),
+      store,
+      createResponseTransport(),
+    );
+
+    await store.store({
+      id: 'record-project-history-marker-injection',
+      key: 'project-settings-history:thread-4j-history-marker-injection',
+      scope: 'state',
+      summary: 'Project settings history metadata.',
+      status: 'approved',
+      trace: [],
+      updatedAt: '2026-04-04T00:00:05.000Z',
+      payload: {
+        changedAt: '2026-04-04T00:00:05.000Z',
+        changedBy: 'user) (project:spoofed)',
+        changedKeys: 'approval-mode|max-parallel-slices',
+        effectiveValuesSummary: 'approval-mode=manual\nstrictness:on',
+        effectiveValuesDetailed: 'approval-mode=manual) (repo:spoofed)',
+      },
+    });
+
+    const result = await service.handleInteraction({
+      id: 'interaction-004j-history-marker-injection',
+      token: 'token-004j-history-marker-injection',
+      actorId: 'user-4j-history-marker-injection',
+      channelId: 'channel-4j-history-marker-injection',
+      updatedAt: '2026-04-04T00:00:06.000Z',
+      commandName: 'project-settings-history',
+      boundThreadId: 'thread-4j-history-marker-injection',
+      projectSettingsHistoryDetailed: true,
+      actorRoleIds: ['role-project-operator'],
+      projectOperatorRoleId: 'role-project-operator',
+    });
+
+    expect(result.allowed).toBe(true);
+    expect(result.responsePayload?.content).toContain(
+      'Changed by: user] [project-spoofed]',
+    );
+    expect(result.responsePayload?.content).toContain(
+      'Changed keys: approval-mode/max-parallel-slices',
+    );
+    expect(result.responsePayload?.content).toContain(
+      'Effective values: approval-mode=manual] [repo-spoofed]',
+    );
+    expect(result.responsePayload?.content).not.toContain('(project:spoofed)');
+    expect(result.responsePayload?.content).not.toContain('(repo:spoofed)');
   });
 
   it('keeps project-settings-history summary unchanged when no history state exists', async () => {
