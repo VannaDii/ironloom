@@ -219,9 +219,9 @@ function resolveConsiderUrlFromSummary(summary: string): string | undefined {
 }
 
 /**
- * Sanitizes queued URL values before embedding them in human-readable markers.
+ * Sanitizes persisted text values before embedding them in human-readable markers.
  */
-function sanitizeSummaryQueuedUrlValue(value: string): string {
+function sanitizeSummaryMarkerTextValue(value: string): string {
   return value
     .split('(')
     .join('[')
@@ -1409,7 +1409,9 @@ export class DiscordControlPlaneService {
     const previousDirectionSuffix =
       previousDirection === undefined
         ? ''
-        : ` (previous-direction:${previousDirection})`;
+        : ` (previous-direction:${sanitizeSummaryMarkerTextValue(
+            previousDirection,
+          )})`;
     return {
       ...request,
       summary: `${request.summary}${previousDirectionSuffix}`.trim(),
@@ -1501,7 +1503,7 @@ export class DiscordControlPlaneService {
         queuedUrls.length === 0
           ? request.summary
           : `${request.summary} (considered-urls:${queuedUrls
-              .map((entry) => sanitizeSummaryQueuedUrlValue(entry))
+              .map((entry) => sanitizeSummaryMarkerTextValue(entry))
               .join('|')})`,
     };
   }
