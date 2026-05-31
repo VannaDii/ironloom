@@ -1936,11 +1936,10 @@ export class DiscordControlPlaneService {
         `new-project identity reservation failed: repo=${identityUniqueness.persistRepo} ` +
         `project=${identityUniqueness.persistProject} code=${errorCode}.`;
     }
-    return this.failClosedWithAudit(
-      request,
-      fallbackReason,
-      'duplicate-project-identity',
-    );
+    const resultStatus = isAlreadyExistsStoreError(identityReservation.error)
+      ? 'duplicate-project-identity'
+      : 'project-identity-reservation-failed';
+    return this.failClosedWithAudit(request, fallbackReason, resultStatus);
   }
 
   /** Handle action. */

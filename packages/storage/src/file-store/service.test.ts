@@ -258,6 +258,9 @@ describe('FileStoreService', () => {
         }
         const stored = await context.service.storeIfAbsent(inputs.record);
         expect(stored.ok).toBe(true);
+        if (stored.ok) {
+          expect(stored.value.indexes).toEqual(['task']);
+        }
         await expect(
           readFile(
             resolve(
@@ -269,6 +272,50 @@ describe('FileStoreService', () => {
             'utf8',
           ),
         ).resolves.toContain('"key": "if-absent-dedup-indexes"');
+        await expect(
+          readFile(
+            resolve(
+              context.rootDirectory,
+              'state',
+              'if-absent-dedup-indexes.json',
+            ),
+            'utf8',
+          ),
+        ).resolves.toContain('"indexes": [\n    "task"\n  ]');
+      },
+    },
+    {
+      name: 'deduplicates duplicate indexes during regular store writes',
+      inputs: {
+        mode: 'store-read',
+        record: {
+          id: 'storage-dedup-indexes',
+          key: 'dedup-indexes',
+          scope: 'state',
+          summary: 'Store with duplicate indexes',
+          status: 'complete',
+          trace: [],
+          updatedAt: '2026-04-04T00:00:00.000Z',
+          indexes: ['task', 'task'],
+          payload: { state: 'dedup-indexes' },
+        },
+      },
+      mock: async () => {
+        const rootDirectory = await mkdtemp(join(tmpdir(), 'devplat-storage-'));
+        return {
+          rootDirectory,
+          service: new FileStoreService(rootDirectory),
+        };
+      },
+      assert: async (context, inputs) => {
+        const stored = await context.service.store(inputs.record);
+        expect(stored.indexes).toEqual(['task']);
+        await expect(
+          readFile(
+            resolve(context.rootDirectory, 'state', 'dedup-indexes.json'),
+            'utf8',
+          ),
+        ).resolves.toContain('"indexes": [\n    "task"\n  ]');
       },
     },
     {

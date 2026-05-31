@@ -348,7 +348,10 @@ describe('Discord control-plane renderer', () => {
         expect(payload.content).toContain(
           '/new-project [locked:project-operator]',
         );
-        expect(payload.content).toContain('/explain-failure [locked]');
+        expect(payload.content).toContain('/explain-failure [available]');
+        expect(payload.content).toContain('/research [available]');
+        expect(payload.content).toContain('/spec [available]');
+        expect(payload.content).toContain('/show-status [available]');
       },
     },
     {

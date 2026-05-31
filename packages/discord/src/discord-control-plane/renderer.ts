@@ -863,16 +863,14 @@ function resolveShowStatusOrderedFields(
   );
   const nextActions = showStatusCommandSurface
     .map((action) => {
-      if (availableActions.includes(action)) {
-        return `/${action} [available]`;
-      }
       const requiredRole = resolveRequiredRoleLabel({
         ...request,
         action,
       });
-      return requiredRole === undefined
-        ? `/${action} [locked]`
-        : `/${action} [locked:${requiredRole}]`;
+      if (requiredRole === undefined || availableActions.includes(action)) {
+        return `/${action} [available]`;
+      }
+      return `/${action} [locked:${requiredRole}]`;
     })
     .join(' | ');
 

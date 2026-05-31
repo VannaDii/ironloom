@@ -48,9 +48,13 @@ export function createStorageLayoutContract(): StorageLayoutContract {
 export function createStoredRecord<TPayload extends object>(
   input: StoredRecord<TPayload>,
 ): StoredRecord<TPayload> {
+  const indexFields =
+    input.indexes === undefined ? {} : { indexes: [...new Set(input.indexes)] };
+
   return appendTrace(
     {
       ...input,
+      ...indexFields,
       key: assertSafeStoredRecordKey(input.key),
       layoutVersion: input.layoutVersion ?? STORAGE_LAYOUT_VERSION,
       summary: input.summary.trim(),

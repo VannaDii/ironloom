@@ -1144,6 +1144,18 @@ describe('DiscordControlPlaneService', () => {
 
     expect(result.allowed).toBe(false);
     expect(result.failedClosed).toBe(true);
+    const audit = await store.read(
+      'audit',
+      'discord-004-new-project-identity-write-failure:audit',
+    );
+    expect(audit.ok).toBe(true);
+    if (audit.ok) {
+      expect(audit.value.payload).toMatchObject({
+        details: {
+          resultStatus: 'project-identity-reservation-failed',
+        },
+      });
+    }
   });
 
   it('surfaces sanitized no-space identity reservation failures with an error code', async () => {
@@ -1172,6 +1184,18 @@ describe('DiscordControlPlaneService', () => {
     expect(result.failedClosed).toBe(true);
     expect(result.blockedReason).toContain('code=ENOSPC');
     expect(result.blockedReason).not.toContain(rootDirectory);
+    const audit = await store.read(
+      'audit',
+      'discord-new-project-enospc-001:audit',
+    );
+    expect(audit.ok).toBe(true);
+    if (audit.ok) {
+      expect(audit.value.payload).toMatchObject({
+        details: {
+          resultStatus: 'project-identity-reservation-failed',
+        },
+      });
+    }
   });
 
   it('fails closed when new-project identity markers are incomplete in summary', async () => {
@@ -1287,6 +1311,18 @@ describe('DiscordControlPlaneService', () => {
 
     expect(result.allowed).toBe(false);
     expect(result.failedClosed).toBe(true);
+    const audit = await store.read(
+      'audit',
+      'discord-004-new-project-write-collision:audit',
+    );
+    expect(audit.ok).toBe(true);
+    if (audit.ok) {
+      expect(audit.value.payload).toMatchObject({
+        details: {
+          resultStatus: 'duplicate-project-identity',
+        },
+      });
+    }
   });
 
   it('fails closed when project identity reservation write fails unexpectedly', async () => {
@@ -1313,6 +1349,18 @@ describe('DiscordControlPlaneService', () => {
 
     expect(result.allowed).toBe(false);
     expect(result.failedClosed).toBe(true);
+    const audit = await store.read(
+      'audit',
+      'discord-004-new-project-write-failure:audit',
+    );
+    expect(audit.ok).toBe(true);
+    if (audit.ok) {
+      expect(audit.value.payload).toMatchObject({
+        details: {
+          resultStatus: 'project-identity-reservation-failed',
+        },
+      });
+    }
   });
 
   it('fails closed when project identity exists without a bound thread marker', async () => {
