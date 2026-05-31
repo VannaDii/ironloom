@@ -643,6 +643,28 @@ describe('Discord control-plane renderer', () => {
       },
     },
     {
+      name: 'orders explicit release prerequisites by critical-path impact',
+      inputs: {
+        request: {
+          ...request,
+          action: 'project-summary',
+          summary:
+            'project-summary ' +
+            '(release-prerequisites:missing-gates|blocked-threads|missing-required-slices|pending-approvals)',
+          privileged: false,
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain(
+          'Release prerequisites: blocked-threads|missing-required-slices|missing-gates|pending-approvals',
+        );
+      },
+    },
+    {
       name: 'infers pending-approvals release prerequisite when markers are absent',
       inputs: {
         request: {

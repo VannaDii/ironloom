@@ -389,7 +389,7 @@ Usage rules:
 - [x] Support phase filtering options via named option style.
 - [x] Include one-tap command examples in footer for each phase filter.
 - [x] Include unmet release prerequisites block whenever release is not possible.
-- [ ] Order unmet prerequisites by critical-path impact.
+- [x] Order unmet prerequisites by critical-path impact.
 - [x] Keep prerequisite descriptions strictly factual.
 - [x] Include next command suggestions with role-required markers.
 

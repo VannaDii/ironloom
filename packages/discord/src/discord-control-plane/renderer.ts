@@ -686,7 +686,7 @@ function resolveReleasePrerequisitesValue(
   pendingApprovals: string,
 ): string {
   if (releasePrerequisites !== undefined) {
-    return releasePrerequisites;
+    return sortReleasePrerequisitesByCriticalPath(releasePrerequisites);
   }
   const pendingApprovalsCount = Number.parseInt(pendingApprovals, 10);
   if (Number.isFinite(pendingApprovalsCount) && pendingApprovalsCount > 0) {
@@ -696,6 +696,70 @@ function resolveReleasePrerequisitesValue(
     return 'blocked-threads';
   }
   return 'unknown';
+}
+
+/**
+ * Sorts explicit release prerequisites by critical-path impact.
+ */
+function sortReleasePrerequisitesByCriticalPath(value: string): string {
+  const parts = value
+    .split('|')
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+
+  if (parts.length <= 1) {
+    return value;
+  }
+
+  const sorted = [...parts].sort((left, right) => {
+    const rankDelta =
+      resolveReleasePrerequisiteRank(left) -
+      resolveReleasePrerequisiteRank(right);
+    if (rankDelta !== 0) {
+      return rankDelta;
+    }
+    return left.localeCompare(right);
+  });
+
+  return sorted.join('|');
+}
+
+/**
+ * Ranks one release prerequisite by critical-path impact.
+ */
+function resolveReleasePrerequisiteRank(prerequisite: string): number {
+  const normalized = prerequisite.toLowerCase();
+  if (
+    normalized.includes('blocked-thread') ||
+    normalized.includes('blocked-threads')
+  ) {
+    return 0;
+  }
+  if (
+    normalized.includes('required-slice') ||
+    normalized.includes('slice-merge') ||
+    normalized.includes('required-slices')
+  ) {
+    return 1;
+  }
+  if (
+    normalized.includes('gate-fail') ||
+    normalized.includes('failed-gate') ||
+    normalized.includes('missing-gate') ||
+    normalized.includes('gates-pass')
+  ) {
+    return 2;
+  }
+  if (
+    normalized.includes('pending-approval') ||
+    normalized.includes('merge-approval')
+  ) {
+    return 3;
+  }
+  if (normalized.includes('settings') || normalized.includes('approval-mode')) {
+    return 4;
+  }
+  return 10;
 }
 
 /**
