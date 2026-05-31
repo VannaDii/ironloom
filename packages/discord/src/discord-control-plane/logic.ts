@@ -1084,7 +1084,7 @@ function createActionSpecificMarkers(
         ...(hasActorConfiguredOperatorRole(input) ? ['(visibility:role)'] : []),
       ];
     case DEVPLAT_ACTION_RELEASE_PROJECT:
-      return hasActorConfiguredOperatorRole(input) ? ['(visibility:role)'] : [];
+      return ['(visibility:role)'];
     case DEVPLAT_ACTION_REDIRECT:
       return [
         `(direction-prompt:${sanitizeSummaryMarkerValue(String(input.redirectPrompt))})`,
