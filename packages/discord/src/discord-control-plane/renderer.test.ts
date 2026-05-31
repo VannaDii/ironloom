@@ -410,7 +410,9 @@ describe('Discord control-plane renderer', () => {
             '(release-prerequisites:missing-merge-approval) ' +
             '(release-prerequisite-links:https://github.com/VannaDii/devplat/pull/81|https://github.com/VannaDii/devplat/actions/runs/1) ' +
             '(release-prerequisite-roles:merge-approver|project-operator) ' +
-            '(possible-commands:/project-summary [available] | /phase-contract [available] | /release-project [locked:project-operator|merge-approver])',
+            '(possible-commands:/project-summary [available] | /phase-contract [available] | /release-project [locked:project-operator|merge-approver]) ' +
+            '(continuation-counter:2) ' +
+            '(continuation-last-event:thread:impl-2 reason:reopen failed)',
           privileged: false,
         },
       },
@@ -447,6 +449,10 @@ describe('Discord control-plane renderer', () => {
           'Possible commands: /project-summary [available] | /phase-contract [available] | /release-project [locked:project-operator|merge-approver]',
         );
         expect(payload.content).toContain('Degradation notes: none reported');
+        expect(payload.content).toContain('Continuation counter: 2');
+        expect(payload.content).toContain(
+          'Last continuation event: thread:impl-2 reason:reopen failed',
+        );
         expect(payload.content).not.toContain('ETA:');
       },
     },
@@ -476,7 +482,9 @@ describe('Discord control-plane renderer', () => {
             '(release-prerequisites:all-clear) ' +
             '(release-prerequisite-links:https://github.com/VannaDii/devplat/pull/81) ' +
             '(release-prerequisite-roles:merge-approver) ' +
-            '(degradation-notes:contract-sync-degraded informational only)',
+            '(degradation-notes:contract-sync-degraded informational only) ' +
+            '(continuation-counter:5) ' +
+            '(continuation-last-event:thread:pr-5 reason:archive reopen denied)',
           privileged: false,
         },
       },
@@ -518,6 +526,10 @@ describe('Discord control-plane renderer', () => {
         expect(payload.content).toContain(
           'Degradation notes: contract-sync-degraded informational only',
         );
+        expect(payload.content).toContain('Continuation counter: 5');
+        expect(payload.content).toContain(
+          'Last continuation event: thread:pr-5 reason:archive reopen denied',
+        );
       },
     },
     {
@@ -547,6 +559,10 @@ describe('Discord control-plane renderer', () => {
         );
         expect(payload.content).toContain(
           'Possible commands: /project-summary [available] | /phase-contract [available] | /release-project [locked:project-operator|merge-approver]',
+        );
+        expect(payload.content).toContain('Continuation counter: 0');
+        expect(payload.content).toContain(
+          'Last continuation event: none recorded',
         );
       },
     },
@@ -605,6 +621,10 @@ describe('Discord control-plane renderer', () => {
         expect(payload.content).toContain('Approval mode: unknown');
         expect(payload.content).toContain('Approval-mode impact: unknown');
         expect(payload.content).toContain('Audit artifact links: unavailable');
+        expect(payload.content).toContain('Continuation counter: 0');
+        expect(payload.content).toContain(
+          'Last continuation event: none recorded',
+        );
         expect(payload.content).not.toContain('ETA:');
         expect(payload.content).toContain(
           'Release prerequisites: blocked-threads',

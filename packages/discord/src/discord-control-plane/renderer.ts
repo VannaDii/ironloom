@@ -1088,6 +1088,14 @@ function resolveProjectSummaryVisibilityFields(
     request.summary,
     '(degradation-notes:',
   );
+  const continuationCounter = resolveSummaryMarkerValue(
+    request.summary,
+    '(continuation-counter:',
+  );
+  const continuationLastEvent = resolveSummaryMarkerValue(
+    request.summary,
+    '(continuation-last-event:',
+  );
   const roleVisibility = resolveSummaryMarkerValue(
     request.summary,
     '(visibility:',
@@ -1121,6 +1129,8 @@ function resolveProjectSummaryVisibilityFields(
         possibleCommands ??
         '/project-summary [available] | /phase-contract [available] | /release-project [locked:project-operator|merge-approver]',
       'Degradation notes': degradationNotes ?? 'none reported',
+      'Continuation counter': continuationCounter ?? '0',
+      'Last continuation event': continuationLastEvent ?? 'none recorded',
     };
   }
 
@@ -1171,6 +1181,8 @@ function resolveProjectSummaryVisibilityFields(
       possibleCommands ??
       '/project-summary [available] | /phase-contract [available] | /release-project [locked:project-operator|merge-approver]',
     'Degradation notes': degradationNotes ?? 'none reported',
+    'Continuation counter': continuationCounter ?? '0',
+    'Last continuation event': continuationLastEvent ?? 'none recorded',
   };
 }
 

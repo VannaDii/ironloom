@@ -282,8 +282,8 @@ Usage rules:
 - [ ] Use global continuation counter per project (not per thread lineage).
 - [ ] Persist continuation counter across release/archive cycles (never reset).
 - [ ] Store continuation counter changes in versioned config/audit artifacts.
-- [ ] Show continuation counter to all users in summaries.
-- [ ] Show last continuation event (thread + reason) in summaries.
+- [x] Show continuation counter to all users in summaries.
+- [x] Show last continuation event (thread + reason) in summaries.
 
 ## 20. Settings and Config Governance
 
@@ -372,7 +372,7 @@ Usage rules:
 - [x] pending approval counts.
 - [x] Exclude ETA for non-role participants.
 - [x] Redact sensitive artifact links for non-role participants.
-- [ ] Allow full continuation event reason visibility to all users.
+- [x] Allow full continuation event reason visibility to all users.
 - [x] Make unmet release prerequisites visible to all users.
 - [x] Make non-blocking degradation notes visible to all users.
 - [x] For role users, include in summary:
