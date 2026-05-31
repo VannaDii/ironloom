@@ -363,7 +363,7 @@ Usage rules:
 
 - [x] Implement `/project-summary` read-only command for all participants.
 - [x] Restrict `/open-project` to `project-operator` only.
-- [ ] For non-role participants, `/project-summary` shows:
+- [x] For non-role participants, `/project-summary` shows:
 - [x] repo.
 - [x] project name.
 - [x] current phase.
