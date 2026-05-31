@@ -470,6 +470,8 @@ describe('Discord control-plane renderer', () => {
             '(config-version:v5) ' +
             '(quality-strictness:on) ' +
             '(approval-mode:manual) ' +
+            '(approval-mode-impact:2 open PRs will require merge-approver confirmation) ' +
+            '(audit-artifact-links:https://example.com/audit/1|https://example.com/audit/2) ' +
             '(release-prerequisites:all-clear) ' +
             '(release-prerequisite-links:https://github.com/VannaDii/devplat/pull/81) ' +
             '(release-prerequisite-roles:merge-approver)',
@@ -495,6 +497,12 @@ describe('Discord control-plane renderer', () => {
         expect(payload.content).toContain('Config version: v5');
         expect(payload.content).toContain('Quality strictness: on');
         expect(payload.content).toContain('Approval mode: manual');
+        expect(payload.content).toContain(
+          'Approval-mode impact: 2 open PRs will require merge-approver confirmation',
+        );
+        expect(payload.content).toContain(
+          'Audit artifact links: https://example.com/audit/1|https://example.com/audit/2',
+        );
         expect(payload.content).toContain('Release prerequisites: all-clear');
         expect(payload.content).toContain(
           'Release prerequisite links: https://github.com/VannaDii/devplat/pull/81',
@@ -590,6 +598,8 @@ describe('Discord control-plane renderer', () => {
         expect(payload.content).toContain('Config version: unknown');
         expect(payload.content).toContain('Quality strictness: unknown');
         expect(payload.content).toContain('Approval mode: unknown');
+        expect(payload.content).toContain('Approval-mode impact: unknown');
+        expect(payload.content).toContain('Audit artifact links: unavailable');
         expect(payload.content).not.toContain('ETA:');
         expect(payload.content).toContain('Release prerequisites: unknown');
       },

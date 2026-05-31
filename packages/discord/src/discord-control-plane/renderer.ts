@@ -1021,7 +1021,8 @@ function resolveProjectSummaryVisibilityFields(
       'Release prerequisites': releasePrerequisites ?? 'unknown',
       'Release prerequisite links':
         releasePrerequisiteLinks ?? 'restricted/unavailable',
-      'Release unblock roles': releasePrerequisiteRoles ?? 'restricted/unavailable',
+      'Release unblock roles':
+        releasePrerequisiteRoles ?? 'restricted/unavailable',
       'Possible commands':
         possibleCommands ??
         '/project-summary [available] | /phase-contract [available] | /release-project [locked:project-operator|merge-approver]',
@@ -1035,6 +1036,14 @@ function resolveProjectSummaryVisibilityFields(
     resolveSummaryMarkerValue(request.summary, '(approval-mode:') ?? 'unknown';
   const configVersion =
     resolveSummaryMarkerValue(request.summary, '(config-version:') ?? 'unknown';
+  const approvalModeImpact = resolveSummaryMarkerValue(
+    request.summary,
+    '(approval-mode-impact:',
+  );
+  const auditArtifactLinks = resolveSummaryMarkerValue(
+    request.summary,
+    '(audit-artifact-links:',
+  );
 
   return {
     Repo: repo ?? 'unknown',
@@ -1053,6 +1062,8 @@ function resolveProjectSummaryVisibilityFields(
     'Config version': configVersion,
     'Quality strictness': strictness,
     'Approval mode': approvalMode,
+    'Approval-mode impact': approvalModeImpact ?? 'unknown',
+    'Audit artifact links': auditArtifactLinks ?? 'unavailable',
     'Release prerequisites': releasePrerequisites ?? 'unknown',
     'Release prerequisite links': releasePrerequisiteLinks ?? 'unavailable',
     'Release unblock roles': releasePrerequisiteRoles ?? 'unavailable',

@@ -375,12 +375,12 @@ Usage rules:
 - [ ] Allow full continuation event reason visibility to all users.
 - [x] Make unmet release prerequisites visible to all users.
 - [ ] Make non-blocking degradation notes visible to all users.
-- [ ] For role users, include in summary:
+- [x] For role users, include in summary:
 - [x] current config version.
 - [x] strictness flag state.
 - [x] active approval mode.
-- [ ] pending approval-mode impact on open PRs.
-- [ ] audit artifact links.
+- [x] pending approval-mode impact on open PRs.
+- [x] audit artifact links.
 
 ## 25. `/project-summary` UX
 
