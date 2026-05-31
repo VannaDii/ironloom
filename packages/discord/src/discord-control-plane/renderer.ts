@@ -987,6 +987,18 @@ function resolveProjectSummaryVisibilityFields(
     request.summary,
     '(release-prerequisites:',
   );
+  const releasePrerequisiteLinks = resolveSummaryMarkerValue(
+    request.summary,
+    '(release-prerequisite-links:',
+  );
+  const releasePrerequisiteRoles = resolveSummaryMarkerValue(
+    request.summary,
+    '(release-prerequisite-roles:',
+  );
+  const possibleCommands = resolveSummaryMarkerValue(
+    request.summary,
+    '(possible-commands:',
+  );
   const roleVisibility = resolveSummaryMarkerValue(
     request.summary,
     '(visibility:',
@@ -1007,6 +1019,12 @@ function resolveProjectSummaryVisibilityFields(
         '/project-summary --phase spec | /project-summary --phase pr | /project-summary --phase release',
       'Artifact links': 'restricted/unavailable',
       'Release prerequisites': releasePrerequisites ?? 'unknown',
+      'Release prerequisite links':
+        releasePrerequisiteLinks ?? 'restricted/unavailable',
+      'Release unblock roles': releasePrerequisiteRoles ?? 'restricted/unavailable',
+      'Possible commands':
+        possibleCommands ??
+        '/project-summary [available] | /phase-contract [available] | /release-project [locked:project-operator|merge-approver]',
     };
   }
 
@@ -1036,6 +1054,11 @@ function resolveProjectSummaryVisibilityFields(
     'Quality strictness': strictness,
     'Approval mode': approvalMode,
     'Release prerequisites': releasePrerequisites ?? 'unknown',
+    'Release prerequisite links': releasePrerequisiteLinks ?? 'unavailable',
+    'Release unblock roles': releasePrerequisiteRoles ?? 'unavailable',
+    'Possible commands':
+      possibleCommands ??
+      '/project-summary [available] | /phase-contract [available] | /release-project [locked:project-operator|merge-approver]',
   };
 }
 

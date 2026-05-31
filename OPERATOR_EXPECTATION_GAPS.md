@@ -478,10 +478,10 @@ Usage rules:
 
 ## 33. Release Preconditions in Summaries
 
-- [ ] Include unmet preconditions in `/project-summary` whenever release not possible.
-- [ ] Include direct links to relevant threads/artifacts for each unmet item.
-- [ ] Include role markers for each unblock path.
-- [ ] Show all possible commands with locked markers (do not personalize suggestions per caller permissions).
+- [x] Include unmet preconditions in `/project-summary` whenever release not possible.
+- [x] Include direct links to relevant threads/artifacts for each unmet item.
+- [x] Include role markers for each unblock path.
+- [x] Show all possible commands with locked markers (do not personalize suggestions per caller permissions).
 
 ## 34. Documentation Update Requirements (while implementing)
 

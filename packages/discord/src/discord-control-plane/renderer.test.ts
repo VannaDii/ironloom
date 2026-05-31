@@ -407,7 +407,10 @@ describe('Discord control-plane renderer', () => {
             '(pending-approvals:2) ' +
             '(eta:15m) ' +
             '(artifact-links:https://example.com/artifact) ' +
-            '(release-prerequisites:missing-merge-approval)',
+            '(release-prerequisites:missing-merge-approval) ' +
+            '(release-prerequisite-links:https://github.com/VannaDii/devplat/pull/81|https://github.com/VannaDii/devplat/actions/runs/1) ' +
+            '(release-prerequisite-roles:merge-approver|project-operator) ' +
+            '(possible-commands:/project-summary [available] | /phase-contract [available] | /release-project [locked:project-operator|merge-approver])',
           privileged: false,
         },
       },
@@ -434,6 +437,15 @@ describe('Discord control-plane renderer', () => {
         expect(payload.content).toContain(
           'Release prerequisites: missing-merge-approval',
         );
+        expect(payload.content).toContain(
+          'Release prerequisite links: https://github.com/VannaDii/devplat/pull/81|https://github.com/VannaDii/devplat/actions/runs/1',
+        );
+        expect(payload.content).toContain(
+          'Release unblock roles: merge-approver|project-operator',
+        );
+        expect(payload.content).toContain(
+          'Possible commands: /project-summary [available] | /phase-contract [available] | /release-project [locked:project-operator|merge-approver]',
+        );
         expect(payload.content).not.toContain('ETA:');
       },
     },
@@ -458,7 +470,9 @@ describe('Discord control-plane renderer', () => {
             '(config-version:v5) ' +
             '(quality-strictness:on) ' +
             '(approval-mode:manual) ' +
-            '(release-prerequisites:all-clear)',
+            '(release-prerequisites:all-clear) ' +
+            '(release-prerequisite-links:https://github.com/VannaDii/devplat/pull/81) ' +
+            '(release-prerequisite-roles:merge-approver)',
           privileged: false,
         },
       },
@@ -482,6 +496,15 @@ describe('Discord control-plane renderer', () => {
         expect(payload.content).toContain('Quality strictness: on');
         expect(payload.content).toContain('Approval mode: manual');
         expect(payload.content).toContain('Release prerequisites: all-clear');
+        expect(payload.content).toContain(
+          'Release prerequisite links: https://github.com/VannaDii/devplat/pull/81',
+        );
+        expect(payload.content).toContain(
+          'Release unblock roles: merge-approver',
+        );
+        expect(payload.content).toContain(
+          'Possible commands: /project-summary [available] | /phase-contract [available] | /release-project [locked:project-operator|merge-approver]',
+        );
       },
     },
     {
