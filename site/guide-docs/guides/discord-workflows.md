@@ -122,6 +122,21 @@ Discovery control behavior is thread-scoped and durable:
 - role participants receive the same baseline plus config version, quality
   strictness, approval mode, and unredacted artifact links when available
 
+Release summary contract:
+
+- `/release-project` requires a dedicated release-approval button click
+- release preconditions are re-evaluated at approval click time
+- if preconditions fail, the stale approval prompt is replaced and the unmet
+  prerequisite list is regenerated with role-marked unblock paths
+- the canonical release summary includes repo, branch, merged PR links, spec
+  link, slice status, gate results, unresolved risks, follow-up guidance, and
+  published or downloadable asset links
+- the release summary includes an operational-health section with blocker,
+  stall, and contract-sync degradation incidents for both current run and
+  project-lifetime totals
+- incident links and sensitive artifact references are redacted for viewers
+  without the required roles
+
 For the full research-to-PR command workflow, use the canonical
 [Commanded Delivery Flow](./operator-guide.md#commanded-delivery-flow) in the
 operator guide.

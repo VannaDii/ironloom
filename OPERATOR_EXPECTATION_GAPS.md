@@ -489,7 +489,7 @@ Usage rules:
 - [x] Update [discord-workflows.md](/workspace/devplat/site/guide-docs/guides/discord-workflows.md) for new commands, role model, and thread contracts.
 - [x] Update [user-guide.md](/workspace/devplat/site/guide-docs/guides/user-guide.md) for Discord-only bootstrap and project lifecycle usage.
 - [ ] Update [live-test-lab.md](/workspace/devplat/site/guide-docs/guides/live-test-lab.md) only where behavior overlaps with production operator controls.
-- [ ] Update command reference docs to named-option format and kebab-case conventions.
+- [x] Update command reference docs to named-option format and kebab-case conventions.
 - [ ] Keep docs aligned with final command set:
 - [ ] `/new-project`.
 - [ ] `/open-project`.
@@ -505,9 +505,9 @@ Usage rules:
 - [x] `/consider`.
 - [x] `/research`.
 - [x] `/spec`.
-- [ ] Ensure docs describe role checks for both slash commands and button actions.
-- [ ] Ensure docs reflect visibility tiers for role and non-role participants.
-- [ ] Ensure docs include release summary requirements and operational health section.
+- [x] Ensure docs describe role checks for both slash commands and button actions.
+- [x] Ensure docs reflect visibility tiers for role and non-role participants.
+- [x] Ensure docs include release summary requirements and operational health section.
 
 ## 35. Acceptance Test Checklist
 
