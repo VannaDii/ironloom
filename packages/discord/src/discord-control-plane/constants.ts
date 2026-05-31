@@ -80,6 +80,11 @@ export const DISCORD_MILLISECONDS_PER_SECOND = 1000;
 export const DISCORD_MESSAGE_CONTENT_TRUNCATED_MARKER = '(content truncated)';
 
 /**
+ * Default operator-facing estimate for deferred work without a precise ETA.
+ */
+export const DISCORD_DEFAULT_RESPONSE_TIME_ESTIMATE = 'when job completes';
+
+/**
  * Label used before Discord route-failure event diagnostics.
  */
 export const DISCORD_ROUTE_FAILURE_EVENT_LABEL = 'Received event:';

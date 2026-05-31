@@ -443,9 +443,9 @@ Usage rules:
 
 ## 29. Responsiveness and Timing
 
-- [ ] Acknowledge operator interactions within 1 second target.
-- [ ] If full result not ready, include response time estimate.
-- [ ] Allow variable estimate wording (e.g., "when job completes").
+- [x] Acknowledge operator interactions within 1 second target.
+- [x] If full result not ready, include response time estimate.
+- [x] Allow variable estimate wording (e.g., "when job completes").
 - [x] Show relative-time tags in Discord messages only.
 - [x] Persist absolute UTC timestamps in audit artifacts.
 

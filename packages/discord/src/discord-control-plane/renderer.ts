@@ -42,6 +42,7 @@ import {
   DISCORD_BUTTON_STYLE_SUCCESS,
   DISCORD_COMPONENT_CUSTOM_ID_PREFIX,
   DISCORD_CUSTOM_ID_MAX_LENGTH,
+  DISCORD_DEFAULT_RESPONSE_TIME_ESTIMATE,
   DISCORD_EPHEMERAL_MESSAGE_FLAG,
   DISCORD_MILLISECONDS_PER_SECOND,
   DISCORD_MESSAGE_CONTENT_MAX_LENGTH,
@@ -71,6 +72,7 @@ type DiscordActionDisplay = {
   readonly acceptedIndicator: string;
   readonly result: string;
   readonly controls: readonly DiscordControlAction[];
+  readonly responseEstimate?: string;
 };
 
 /**
@@ -95,6 +97,7 @@ const actionDisplays: Readonly<
     acceptedIndicator: '🟡',
     result: 'Project bootstrap is running with Discord-first controls.',
     controls: [DEVPLAT_ACTION_PROJECT_SUMMARY, DEVPLAT_ACTION_SHOW_STATUS],
+    responseEstimate: DISCORD_DEFAULT_RESPONSE_TIME_ESTIMATE,
   },
   [DEVPLAT_ACTION_OPEN_PROJECT]: {
     label: 'Open Project',
@@ -115,6 +118,7 @@ const actionDisplays: Readonly<
     acceptedTitle: 'Settings update requested',
     acceptedIndicator: '🟡',
     result: 'Project settings update is being applied.',
+    responseEstimate: DISCORD_DEFAULT_RESPONSE_TIME_ESTIMATE,
     controls: [
       DEVPLAT_ACTION_PROJECT_SETTINGS_HISTORY,
       DEVPLAT_ACTION_PROJECT_SUMMARY,
@@ -145,6 +149,7 @@ const actionDisplays: Readonly<
     acceptedIndicator: '🟡',
     result:
       'Global preflight is running before project resume. If issues are detected, a second confirmation is required. Use /resume-project --force force to acknowledge and continue.',
+    responseEstimate: DISCORD_DEFAULT_RESPONSE_TIME_ESTIMATE,
     controls: [
       DEVPLAT_ACTION_RESUME_PROJECT,
       DEVPLAT_ACTION_PROJECT_SUMMARY,
@@ -156,6 +161,7 @@ const actionDisplays: Readonly<
     acceptedTitle: 'Release requested',
     acceptedIndicator: '🟡',
     result: 'Release preconditions are being re-validated.',
+    responseEstimate: DISCORD_DEFAULT_RESPONSE_TIME_ESTIMATE,
     controls: [
       DEVPLAT_ACTION_RELEASE_PROJECT,
       DEVPLAT_ACTION_PROJECT_SUMMARY,
@@ -175,6 +181,7 @@ const actionDisplays: Readonly<
     acceptedIndicator: '🟡',
     result:
       'Generating 3 alternatives with S/M/L effort, time ranges, and risk types: technical, product, security, dependency, operational.',
+    responseEstimate: DISCORD_DEFAULT_RESPONSE_TIME_ESTIMATE,
     controls: [DEVPLAT_ACTION_RESEARCH, DEVPLAT_ACTION_SPEC],
   },
   [DEVPLAT_ACTION_REDIRECT]: {
@@ -196,6 +203,7 @@ const actionDisplays: Readonly<
     acceptedTitle: 'Research requested',
     acceptedIndicator: '🟡',
     result: 'Research is running for the current project context.',
+    responseEstimate: DISCORD_DEFAULT_RESPONSE_TIME_ESTIMATE,
     controls: [DEVPLAT_ACTION_ALTERNATIVES, DEVPLAT_ACTION_SPEC],
   },
   [DEVPLAT_ACTION_SPEC]: {
@@ -203,6 +211,7 @@ const actionDisplays: Readonly<
     acceptedTitle: 'Spec requested',
     acceptedIndicator: '🟡',
     result: 'Preparing spec summary and approval checkpoint.',
+    responseEstimate: DISCORD_DEFAULT_RESPONSE_TIME_ESTIMATE,
     controls: [
       DEVPLAT_ACTION_APPROVE_THIS,
       DEVPLAT_ACTION_RESEARCH,
@@ -266,6 +275,7 @@ const actionDisplays: Readonly<
     acceptedTitle: 'Merge requested',
     acceptedIndicator: '🟡',
     result: 'Merge request accepted. Policy and gates will be checked first.',
+    responseEstimate: DISCORD_DEFAULT_RESPONSE_TIME_ESTIMATE,
     controls: [
       DEVPLAT_ACTION_SHOW_STATUS,
       DEVPLAT_ACTION_REBASE_ALL_DEPENDENTS,
@@ -288,6 +298,7 @@ const actionDisplays: Readonly<
     acceptedTitle: 'Rebase requested',
     acceptedIndicator: '🟡',
     result: 'Rebase requested for dependent branches.',
+    responseEstimate: DISCORD_DEFAULT_RESPONSE_TIME_ESTIMATE,
     controls: [
       DEVPLAT_ACTION_SHOW_STATUS,
       DEVPLAT_ACTION_EXPLAIN_FAILURE,
@@ -317,6 +328,7 @@ const actionDisplays: Readonly<
     acceptedTitle: 'Gates retry queued',
     acceptedIndicator: '🟡',
     result: 'Re-running quality gates for this work item.',
+    responseEstimate: DISCORD_DEFAULT_RESPONSE_TIME_ESTIMATE,
     controls: [
       DEVPLAT_ACTION_SHOW_STATUS,
       DEVPLAT_ACTION_EXPLAIN_FAILURE,
@@ -328,6 +340,7 @@ const actionDisplays: Readonly<
     acceptedTitle: 'Run requested',
     acceptedIndicator: '🟡',
     result: 'Starting the bound work item.',
+    responseEstimate: DISCORD_DEFAULT_RESPONSE_TIME_ESTIMATE,
     controls: [
       DEVPLAT_ACTION_SHOW_LAST_ARTIFACT,
       DEVPLAT_ACTION_SHOW_STATUS,
@@ -361,6 +374,7 @@ const actionDisplays: Readonly<
     acceptedTitle: 'Worktree sync queued',
     acceptedIndicator: '🟡',
     result: 'Synchronizing the bound worktree.',
+    responseEstimate: DISCORD_DEFAULT_RESPONSE_TIME_ESTIMATE,
     controls: [
       DEVPLAT_ACTION_SHOW_STATUS,
       DEVPLAT_ACTION_RELEASE_WORKTREE,
@@ -372,6 +386,7 @@ const actionDisplays: Readonly<
     acceptedTitle: 'Spec update requested',
     acceptedIndicator: '🟡',
     result: 'Updating the bound spec from this thread context.',
+    responseEstimate: DISCORD_DEFAULT_RESPONSE_TIME_ESTIMATE,
     controls: [
       DEVPLAT_ACTION_SHOW_STATUS,
       DEVPLAT_ACTION_APPROVE_THIS,
@@ -723,6 +738,20 @@ function shouldRenderCommandGuidance(request: DiscordControlRequest): boolean {
     request.action === DEVPLAT_ACTION_PHASE_CONTRACT ||
     !isCommandGuidanceDisabled(request)
   );
+}
+
+/**
+ * Resolves response-time estimate fields for accepted controls still doing work.
+ */
+function resolveResponseEstimateFields(
+  request: DiscordControlRequest,
+  display: DiscordActionDisplay,
+): Readonly<Record<string, string>> {
+  const estimate =
+    resolveSummaryMarkerValue(request.summary, '(response-estimate:') ??
+    display.responseEstimate;
+
+  return estimate === undefined ? {} : { 'Response estimate': estimate };
 }
 
 /**
@@ -1813,6 +1842,7 @@ export function renderDiscordControlAcceptedMessage(
           Item: renderDiscordItemValue(request),
           Actor: describeActor(request.actorId),
           ...resolveStatusSummaryMetadataFields(request),
+          ...resolveResponseEstimateFields(request, display),
           ...resolveProjectSummaryVisibilityFields(request),
           ...resolveResumeProjectPreflightFields(request),
           ...resolveReleaseSummaryFields(request),

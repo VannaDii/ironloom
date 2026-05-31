@@ -227,11 +227,48 @@ describe('Discord control-plane renderer', () => {
           'Item: implementation slice-1 in thread-1',
         );
         expect(payload.content).toContain('Actor: <@operator-1>');
+        expect(payload.content).toContain(
+          'Response estimate: when job completes',
+        );
         expect(payload.content).toContain('→ Starting the bound work item.');
         expect(payload.allowed_mentions).toEqual({ parse: [] });
         expect(
           payload.components?.[0]?.components.map((button) => button.label),
         ).toEqual(['Details', 'Show Status', 'Pause']);
+      },
+    },
+    {
+      name: 'renders variable response estimates from summary markers',
+      inputs: {
+        request: {
+          ...request,
+          action: 'retry-gates',
+          summary: 'Retry gates (response-estimate:about 2 minutes)',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).toContain('Response estimate: about 2 minutes');
+      },
+    },
+    {
+      name: 'omits response estimates when accepted command already has the full result',
+      inputs: {
+        request: {
+          ...request,
+          action: 'show-last-artifact',
+          summary: 'Latest artifact ready',
+        },
+      },
+      mock: ({ request: inputRequest }: { request: DiscordControlRequest }) =>
+        renderDiscordControlAcceptedMessage(inputRequest),
+      assert: (
+        payload: ReturnType<typeof renderDiscordControlAcceptedMessage>,
+      ) => {
+        expect(payload.content).not.toContain('Response estimate:');
       },
     },
     {
