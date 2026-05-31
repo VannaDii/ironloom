@@ -514,11 +514,11 @@ describe('Discord control-plane renderer', () => {
         expect(payload.content).toContain('Quality strictness: unknown');
         expect(payload.content).toContain('Approval mode: unknown');
         expect(payload.content).not.toContain('ETA:');
-        expect(payload.content).not.toContain('Release prerequisites:');
+        expect(payload.content).toContain('Release prerequisites: unknown');
       },
     },
     {
-      name: 'omits project-summary release prerequisites for non-role users when marker absent',
+      name: 'renders project-summary release prerequisites default for non-role users when marker absent',
       inputs: {
         request: {
           ...request,
@@ -543,7 +543,7 @@ describe('Discord control-plane renderer', () => {
         expect(payload.content).toContain(
           'Phase filter examples: /project-summary --phase spec | /project-summary --phase pr | /project-summary --phase release',
         );
-        expect(payload.content).not.toContain('Release prerequisites:');
+        expect(payload.content).toContain('Release prerequisites: unknown');
       },
     },
     {

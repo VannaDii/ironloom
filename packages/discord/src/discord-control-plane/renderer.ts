@@ -1006,9 +1006,7 @@ function resolveProjectSummaryVisibilityFields(
       'Phase filter examples':
         '/project-summary --phase spec | /project-summary --phase pr | /project-summary --phase release',
       'Artifact links': 'restricted/unavailable',
-      ...(releasePrerequisites === undefined
-        ? {}
-        : { 'Release prerequisites': releasePrerequisites }),
+      'Release prerequisites': releasePrerequisites ?? 'unknown',
     };
   }
 
@@ -1037,9 +1035,7 @@ function resolveProjectSummaryVisibilityFields(
     'Config version': configVersion,
     'Quality strictness': strictness,
     'Approval mode': approvalMode,
-    ...(releasePrerequisites === undefined
-      ? {}
-      : { 'Release prerequisites': releasePrerequisites }),
+    'Release prerequisites': releasePrerequisites ?? 'unknown',
   };
 }
 
