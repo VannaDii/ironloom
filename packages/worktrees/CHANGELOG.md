@@ -1,5 +1,12 @@
 # @vannadii/devplat-worktrees
 
+## 0.2.1
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @vannadii/devplat-core@0.2.1
+
 ## 0.2.0
 
 ### Patch Changes
