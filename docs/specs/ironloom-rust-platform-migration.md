@@ -33,6 +33,7 @@ Current important surfaces:
 - OpenClaw runtime: `packages/openclaw`, generated OpenClaw manifest, `docker/openclaw-runtime`, OpenClaw live-lab workflows and scripts.
 - Deployment: `deploy/helm/devplat`, `deploy/artifacthub/devplat`, Docker and Helm publishing workflows.
 - Documentation: `site/guide-docs` VitePress site and guide pages.
+- Public website reference: sibling repo `../BlueMoonFarm`, a Rust/Yew/Trunk static SPA with Rust prerendering, i18n-owned copy, SEO output, Terraform-managed static hosting, and preview/production publish workflows.
 - CI/CD: `.github/workflows/ci.yml`, `typescript-matrix.yml`, `docker-publish.yml`, `helm-publish.yml`, `docs-deploy.yml`, `release.yml`, `publish-release.yml`, `sonar-bootstrap-check.yml`, OpenClaw/Discord live-lab workflows.
 - Quality system: SonarCloud configured through `sonar-project.properties`, coverage from Vitest LCOV, strict generated-artifact checks.
 
