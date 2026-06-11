@@ -4,7 +4,7 @@ export default defineConfig({
   title: 'DevPlat',
   description:
     'Platform and operations guide for the DevPlat monorepo, OpenClaw adapter, and delivery surfaces.',
-  base: '/devplat/',
+  base: '/',
   cleanUrls: true,
   lastUpdated: true,
   themeConfig: {
