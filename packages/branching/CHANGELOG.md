@@ -1,5 +1,14 @@
 # @vannadii/devplat-branching
 
+## 0.2.1
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @vannadii/devplat-core@0.2.1
+  - @vannadii/devplat-prs@0.2.1
+  - @vannadii/devplat-worktrees@0.2.1
+
 ## 0.2.0
 
 ### Patch Changes

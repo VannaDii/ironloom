@@ -1,5 +1,17 @@
 # @vannadii/devplat-discord
 
+## 0.2.1
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @vannadii/devplat-artifacts@0.2.1
+  - @vannadii/devplat-config@0.2.1
+  - @vannadii/devplat-core@0.2.1
+  - @vannadii/devplat-observability@0.2.1
+  - @vannadii/devplat-policy@0.2.1
+  - @vannadii/devplat-storage@0.2.1
+
 ## 0.2.0
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
   "name": "@vannadii/devplat-review",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Automated review engine contracts.",
   "license": "MIT",
   "type": "module",
@@ -30,8 +30,8 @@
   },
   "dependencies": {
     "io-ts": "2.2.22",
-    "@vannadii/devplat-artifacts": "0.2.0",
-    "@vannadii/devplat-core": "0.2.0"
+    "@vannadii/devplat-artifacts": "0.2.1",
+    "@vannadii/devplat-core": "0.2.1"
   },
   "repository": {
     "type": "git",
