@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "WorktreeRequest",
+  "description": "Validated worktree allocation request.",
+  "type": "object",
+  "properties": {
+    "branch_name": {
+      "description": "Branch to allocate.",
+      "$ref": "#/$defs/BranchName"
+    },
+    "relative_path": {
+      "description": "Repository-relative safe path.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "branch_name",
+    "relative_path"
+  ],
+  "$defs": {
+    "BranchName": {
+      "description": "Validated Git branch reference.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

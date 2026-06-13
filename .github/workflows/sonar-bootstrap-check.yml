@@ -1,41 +1,24 @@
-name: Sonar Bootstrap Check
+name: SonarCloud Bootstrap Check
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - sonar-project.properties
+      - crates/ironloom-sonarcloud/**
 
 permissions:
   contents: read
 
 jobs:
-  verify-sonar-configuration:
-    name: Verify SonarCloud Config
+  sonar-bootstrap:
+    name: Validate SonarCloud Contract
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v6
 
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-          cache-dependency-path: package-lock.json
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Verify Node alignment
-        run: npm run verify:node
-
-      - name: Ensure project metadata is committed
-        run: |
-          test -f sonar-project.properties
-          grep -q '^sonar.organization=vannadii$' sonar-project.properties
-          grep -q '^sonar.projectKey=vannadii_devplat$' sonar-project.properties
-
-      - name: Verify Sonar bootstrap requirements
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_REGION: global
-        run: |
-          npm run verify:sonar-bootstrap
+      - name: Test SonarCloud crate
+        run: cargo test -p ironloom-sonarcloud

@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "QueueState",
+  "description": "Durable work item lifecycle states.",
+  "oneOf": [
+    {
+      "description": "Work item is waiting for a claim.",
+      "type": "string",
+      "const": "pending"
+    },
+    {
+      "description": "Work item is actively claimed.",
+      "type": "string",
+      "const": "claimed"
+    },
+    {
+      "description": "Work item finished successfully.",
+      "type": "string",
+      "const": "completed"
+    },
+    {
+      "description": "Work item failed and requires follow-up.",
+      "type": "string",
+      "const": "failed"
+    }
+  ]
+}

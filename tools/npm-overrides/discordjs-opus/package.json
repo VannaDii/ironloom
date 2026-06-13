@@ -1,6 +1,0 @@
-{
-  "name": "@discordjs/opus",
-  "version": "0.10.0",
-  "private": true,
-  "main": "./index.cjs"
-}

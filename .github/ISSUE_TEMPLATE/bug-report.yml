@@ -13,60 +13,43 @@ body:
     validations:
       required: true
   - type: dropdown
-    id: lifecycle_stage
+    id: surface
     attributes:
-      label: Lifecycle stage
-      description: Which part of the platform lifecycle is failing?
+      label: Surface
+      description: Which Ironloom surface is failing?
       options:
-        - Research
-        - Spec PR
-        - Human approval
-        - Slicing
-        - Implementation PR
-        - Gates, review, or remediation
-        - Operator control
-        - Release surfaces
+        - Rust runtime
+        - Discord operator adapter
+        - GitHub source-of-truth adapter
+        - SonarCloud quality gate
+        - Storage or artifacts
+        - Docker image
+        - Helm chart
+        - Documentation or GitHub Pages
     validations:
       required: true
-  - type: checkboxes
-    id: release_surfaces
-    attributes:
-      label: Affected release surfaces
-      description: Check every published surface affected by this defect.
-      options:
-        - label: GitHub Packages npm packages
-        - label: GHCR Docker image
-        - label: GHCR OCI Helm chart
-        - label: GitHub Pages documentation site
   - type: textarea
     id: impact
     attributes:
       label: Impact
       description: Explain why this matters.
-      placeholder: What behavior, package, workflow, or operator action is affected?
+      placeholder: What behavior, workflow, or operator action is affected?
     validations:
       required: true
   - type: textarea
     id: operator_impact
     attributes:
       label: Operator and audit impact
-      description: Explain any GitHub, Discord, OpenClaw, or audit-trail impact.
+      description: Explain any GitHub, Discord, SonarCloud, or audit-trail impact.
       placeholder: Which operator flow, audit artifact, or control-plane action is affected?
-  - type: textarea
-    id: performance_impact
-    attributes:
-      label: Performance impact
-      description: Note any latency, throughput, scan-cost, or benchmark regression.
-      placeholder: What got slower or more expensive?
   - type: textarea
     id: reproduction
     attributes:
       label: Reproduction
       description: Provide exact reproduction steps.
       placeholder: |
-        1. nvm use
-        2. npm ci
-        3. ...
+        1. cargo test --workspace --all-features
+        2. helm template ironloom deploy/helm/ironloom
     validations:
       required: true
   - type: textarea
@@ -86,8 +69,3 @@ body:
     attributes:
       label: Relevant logs or artifacts
       description: Include failing command output, artifact names, or links.
-  - type: input
-    id: packages
-    attributes:
-      label: Affected packages
-      placeholder: '@vannadii/devplat-openclaw, @vannadii/devplat-discord'

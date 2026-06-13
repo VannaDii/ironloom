@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DiscordCommand",
+  "description": "Thread-bound operator command received from Discord.",
+  "type": "object",
+  "properties": {
+    "actor_id": {
+      "description": "Requesting actor.",
+      "$ref": "#/$defs/ActorId"
+    },
+    "command": {
+      "description": "Command text.",
+      "type": "string"
+    },
+    "correlation_id": {
+      "description": "Correlation identifier for audit.",
+      "$ref": "#/$defs/CorrelationId"
+    },
+    "thread_id": {
+      "description": "Originating Discord thread.",
+      "$ref": "#/$defs/ThreadId"
+    }
+  },
+  "required": [
+    "thread_id",
+    "actor_id",
+    "correlation_id",
+    "command"
+  ],
+  "$defs": {
+    "ActorId": {
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "CorrelationId": {
+      "description": "Validated Ironloom CorrelationId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ThreadId": {
+      "description": "Validated Ironloom ThreadId value.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

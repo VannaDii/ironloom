@@ -1,0 +1,23 @@
+name: Discord Runtime Harness
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  harness:
+    name: Fake Discord Vertical Slice
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run vertical slice tests
+        run: cargo test -p ironloom-runtime --test vertical_slice

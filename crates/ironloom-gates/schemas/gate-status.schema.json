@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GateStatus",
+  "description": "Gate execution status.",
+  "oneOf": [
+    {
+      "description": "Gate completed successfully.",
+      "type": "string",
+      "const": "passed"
+    },
+    {
+      "description": "Gate completed and reported a validation failure.",
+      "type": "string",
+      "const": "failed"
+    }
+  ]
+}

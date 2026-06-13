@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ironloom.fullname" . }}
+  labels:
+    {{- include "ironloom.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "ironloom.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "ironloom.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      serviceAccountName: {{ include "ironloom.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: ironloom
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: {{ include "ironloom.fullname" . }}-config
+          env:
+            - name: IRONLOOM_DISCORD_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.discord.existingSecret }}
+                  key: {{ .Values.discord.tokenKey }}
+            - name: IRONLOOM_DISCORD_PUBLIC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.discord.existingSecret }}
+                  key: {{ .Values.discord.publicKeyKey }}
+            - name: IRONLOOM_GITHUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.github.existingSecret }}
+                  key: {{ .Values.github.tokenKey }}
+            - name: IRONLOOM_SONARCLOUD_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.sonarcloud.existingSecret }}
+                  key: {{ .Values.sonarcloud.tokenKey }}
+          volumeMounts:
+            - name: state
+              mountPath: {{ .Values.runtime.stateMountPath }}
+            - name: worktrees
+              mountPath: {{ .Values.runtime.worktreeMountPath }}
+            - name: tmp
+              mountPath: /tmp
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: state
+          persistentVolumeClaim:
+            claimName: {{ include "ironloom.fullname" . }}-state
+        - name: worktrees
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}

@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GateResult",
+  "description": "Structured gate execution result.",
+  "type": "object",
+  "properties": {
+    "exit_code": {
+      "description": "Process exit code.",
+      "type": "integer",
+      "format": "int32"
+    },
+    "status": {
+      "description": "Gate status.",
+      "$ref": "#/$defs/GateStatus"
+    },
+    "stderr": {
+      "description": "Captured standard error.",
+      "type": "string"
+    },
+    "stdout": {
+      "description": "Captured standard output.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "status",
+    "exit_code",
+    "stdout",
+    "stderr"
+  ],
+  "$defs": {
+    "GateStatus": {
+      "description": "Gate execution status.",
+      "oneOf": [
+        {
+          "description": "Gate completed successfully.",
+          "type": "string",
+          "const": "passed"
+        },
+        {
+          "description": "Gate completed and reported a validation failure.",
+          "type": "string",
+          "const": "failed"
+        }
+      ]
+    }
+  }
+}

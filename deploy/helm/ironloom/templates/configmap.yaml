@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ironloom.fullname" . }}-config
+  labels:
+    {{- include "ironloom.labels" . | nindent 4 }}
+data:
+  IRONLOOM_BIND_ADDR: {{ .Values.runtime.bindAddress | quote }}
+  IRONLOOM_PUBLIC_URL: {{ .Values.runtime.publicUrl | quote }}
+  IRONLOOM_STATE_ROOT: {{ .Values.runtime.stateMountPath | quote }}
+  IRONLOOM_WORKTREE_ROOT: {{ .Values.runtime.worktreeMountPath | quote }}
+  IRONLOOM_LOG_LEVEL: {{ .Values.observability.logLevel | quote }}
+  IRONLOOM_SONARCLOUD_ORGANIZATION: {{ .Values.sonarcloud.organization | quote }}
+  IRONLOOM_SONARCLOUD_PROJECT_KEY: {{ .Values.sonarcloud.projectKey | quote }}

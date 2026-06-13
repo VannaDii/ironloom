@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ArtifactKind",
+  "description": "Artifact categories emitted by the Ironloom runtime.",
+  "oneOf": [
+    {
+      "description": "Structured result from a repository gate command.",
+      "type": "string",
+      "const": "gate_result"
+    },
+    {
+      "description": "Supervisor routing and validation decision.",
+      "type": "string",
+      "const": "supervisor_decision"
+    },
+    {
+      "description": "Operator-facing Discord interaction result.",
+      "type": "string",
+      "const": "discord_interaction"
+    },
+    {
+      "description": "Auditable policy decision.",
+      "type": "string",
+      "const": "policy_decision"
+    }
+  ]
+}

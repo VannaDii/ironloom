@@ -1,0 +1,21 @@
+[package]
+name = "ironloom-storage"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+publish.workspace = true
+description = "Filesystem-backed Ironloom state and artifact storage."
+
+[dependencies]
+ironloom-artifacts = { path = "../ironloom-artifacts", version = "0.1.0" }
+ironloom-core = { path = "../ironloom-core", version = "0.1.0" }
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

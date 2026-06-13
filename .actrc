@@ -1,4 +1,4 @@
---actor devplat-local-act
+--actor ironloom-local-act
 -P ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-latest
 --artifact-server-path .artifacts/act
 --concurrent-jobs 1

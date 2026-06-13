@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ProcessGraph",
+  "description": "Supervisor process graph.",
+  "type": "object",
+  "properties": {
+    "nodes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ProcessNode"
+      }
+    },
+    "transitions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Transition"
+      }
+    }
+  },
+  "required": [
+    "nodes",
+    "transitions"
+  ],
+  "$defs": {
+    "ProcessNode": {
+      "description": "A typed unit of work in the supervisor process graph.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "required_inputs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "name",
+        "required_inputs"
+      ]
+    },
+    "RetryPolicy": {
+      "description": "Retry budget for a process graph transition.",
+      "oneOf": [
+        {
+          "description": "Retry a bounded number of times.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "bounded"
+            },
+            "max_attempts": {
+              "type": "integer",
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0
+            }
+          },
+          "required": [
+            "kind",
+            "max_attempts"
+          ]
+        },
+        {
+          "description": "Invalid first-release policy used only to verify fail-closed validation.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "unbounded"
+            }
+          },
+          "required": [
+            "kind"
+          ]
+        }
+      ]
+    },
+    "Transition": {
+      "description": "Directed edge between process graph nodes.",
+      "type": "object",
+      "properties": {
+        "retry_policy": {
+          "$ref": "#/$defs/RetryPolicy"
+        },
+        "source": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "target",
+        "retry_policy"
+      ]
+    }
+  }
+}

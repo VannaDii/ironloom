@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PolicyContext",
+  "description": "Inputs required for a fail-closed policy decision.",
+  "type": "object",
+  "properties": {
+    "action": {
+      "description": "Action under evaluation.",
+      "$ref": "#/$defs/ActionKind"
+    },
+    "actor_id": {
+      "description": "Actor requesting the action.",
+      "$ref": "#/$defs/ActorId"
+    },
+    "destructive": {
+      "description": "Whether the action can mutate source-of-truth state.",
+      "type": "boolean"
+    },
+    "thread_id": {
+      "description": "Bound Discord thread, if one was resolved exactly.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ThreadId"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "actor_id",
+    "action",
+    "destructive"
+  ],
+  "$defs": {
+    "ActionKind": {
+      "description": "Operator action categories evaluated by policy.",
+      "oneOf": [
+        {
+          "description": "Run a configured validation gate.",
+          "type": "string",
+          "const": "run_gate"
+        },
+        {
+          "description": "Merge a pull request.",
+          "type": "string",
+          "const": "merge_pull_request"
+        }
+      ]
+    },
+    "ActorId": {
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ThreadId": {
+      "description": "Validated Ironloom ThreadId value.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

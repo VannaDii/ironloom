@@ -10,173 +10,112 @@ permissions:
   contents: read
 
 jobs:
-  alignment:
-    name: Node Alignment
+  rust:
+    name: Rust Gates (${{ matrix.toolchain }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain:
+          - stable
+          - beta
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          components: clippy,rustfmt
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Format
+        run: cargo fmt --check
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+      - name: Test
+        run: cargo test --workspace --all-features
+
+  security:
+    name: Dependency Policy
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v6
 
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-          cache-dependency-path: package-lock.json
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
 
-      - name: Install Deps
-        run: npm ci
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
 
-      - name: Verify Node Alignment
-        run: npm run verify:node
+      - name: Install cargo-deny
+        uses: taiki-e/install-action@cargo-deny
 
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
+      - name: Install cargo-audit
+        uses: taiki-e/install-action@cargo-audit
 
-    steps:
-      - uses: actions/checkout@v6
+      - name: Cargo deny
+        run: cargo deny check
 
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-          cache-dependency-path: package-lock.json
-
-      - name: Install Deps
-        run: npm ci
-
-      - name: Lint
-        run: npm run lint
-
-  typecheck:
-    name: Typecheck
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-          cache-dependency-path: package-lock.json
-
-      - name: Install Deps
-        run: npm ci
-
-      - name: Typecheck
-        run: npm run typecheck:workspace
+      - name: Cargo audit
+        run: cargo audit
 
   schemas:
-    name: Generate Schemas and Manifest
+    name: Schema Drift
     runs-on: ubuntu-latest
-    needs:
-      - typecheck
-      - alignment
-      - lint
     steps:
       - uses: actions/checkout@v6
 
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-          cache-dependency-path: package-lock.json
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
 
-      - name: Install Deps
-        run: npm ci
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
 
-      - name: Generate Schemas and Manifest
-        run: npm run prepare:generated
+      - name: Verify committed schemas
+        run: cargo run -p ironloom-schemas -- --check
 
-      - name: Verify Generated Artifacts Are Committed
-        run: |
-          git diff --exit-code -- \
-            packages/openclaw/openclaw.plugin.json \
-            'packages/*/schemas/*.schema.json'
-
-      - name: Upload Generated Artifacts
-        if: env.ACT != 'true'
-        uses: actions/upload-artifact@v7
-        with:
-          name: schemas-${{ github.run_id }}
-          retention-days: 14
-          overwrite: true
-          path: |
-            packages/*/schemas/*.schema.json
-            packages/openclaw/openclaw.plugin.json
-
-  repo:
-    name: Verify Repo
+  docs:
+    name: Docs
     runs-on: ubuntu-latest
-    needs: schemas
     steps:
       - uses: actions/checkout@v6
 
-      - name: Setup Node
-        uses: actions/setup-node@v6
+      - name: Setup mdBook
+        uses: peaceiris/actions-mdbook@v2
         with:
-          node-version-file: .nvmrc
-          cache: npm
-          cache-dependency-path: package-lock.json
+          mdbook-version: latest
 
-      - name: Install Deps
-        run: npm ci
+      - name: Build docs
+        run: mdbook build docs/site
 
-      - name: Verify Repo
-        env:
-          BRANCH_NAME:
-            ${{ github.event_name == 'pull_request' && github.head_ref ||
-            github.ref_name }}
-          PR_TITLE: ${{ github.event_name == 'pull_request' &&
-            github.event.pull_request.title || '' }}
-        run: npm run check:repo
-
-  test:
-    name: Test Coverage
+  coverage:
+    name: Coverage And Sonar
     runs-on: ubuntu-latest
     needs:
-      - schemas
+      - rust
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-          cache-dependency-path: package-lock.json
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
 
-      - name: Install Deps
-        run: npm ci
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
 
-      - name: Download Generated Artifacts
-        if: env.ACT != 'true'
-        uses: actions/download-artifact@v8
-        with:
-          name: schemas-${{ github.run_id }}
-          path: .
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
 
-      - name: Run Live Lab Preflight Tests
-        run: npm run test:openclaw:live-lab:preflight
-
-      - name: Test Coverage
-        run: npm run test:coverage:workspace
-
-      - name: Upload Coverage Artifacts
-        if: env.ACT != 'true'
-        uses: actions/upload-artifact@v7
-        with:
-          name: coverage-${{ github.run_id }}
-          retention-days: 14
-          overwrite: true
-          path: coverage
+      - name: Coverage
+        run: cargo llvm-cov --workspace --all-features --lcov --output-path target/lcov.info
 
       - name: Sonar Scan
         if:
@@ -189,280 +128,31 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-  build:
-    name: Upload Build Artifacts
+  packaging:
+    name: Packaging Smoke
     runs-on: ubuntu-latest
     needs:
-      - repo
-      - test
+      - rust
+      - docs
     steps:
       - uses: actions/checkout@v6
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-          cache-dependency-path: package-lock.json
-
-      - name: Install Deps
-        run: npm ci
-
-      - name: Download Prior Artifacts
-        if: env.ACT != 'true'
-        uses: actions/download-artifact@v8
-        with:
-          name: schemas-${{ github.run_id }}
-          path: .
-
-      - name: Build
-        run: npm run build:workspace
-
-      - name: Upload Build Artifacts
-        if: env.ACT != 'true'
-        uses: actions/upload-artifact@v7
-        with:
-          name: build-${{ github.run_id }}
-          retention-days: 14
-          overwrite: true
-          path: |
-            packages/*/dist/**
-            packages/*/schemas/*.schema.json
-            packages/openclaw/openclaw.plugin.json
-
-  openclaw-hermetic-deep-test:
-    name: OpenClaw Hermetic Deep Test
-    if: github.actor != 'devplat-local-act'
-    runs-on: ubuntu-latest
-    needs:
-      - repo
-      - test
-    steps:
-      - id: checkout
-        uses: actions/checkout@v6
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-          cache-dependency-path: package-lock.json
-
-      - id: install_deps
-        name: Install Deps
-        run: npm ci
-
-      - id: verify_node
-        name: Verify Node Alignment
-        run: npm run verify:node
-
-      - id: run_hermetic_deep_test
-        name: Run Hermetic Deep Test
-        run: node scripts/openclaw-deep-test.mjs --mode hermetic --report-dir
-          "$RUNNER_TEMP/openclaw-deep"
-
-      - name: Normalize Hermetic Deep Test Artifact Permissions
-        if: always()
-        run: |
-          if [[ -d "$RUNNER_TEMP/openclaw-deep" ]]; then
-            sudo chown -R "$(id -u):$(id -g)" "$RUNNER_TEMP/openclaw-deep" || true
-            sudo chmod -R u+rwX,go+rX "$RUNNER_TEMP/openclaw-deep" || true
-          fi
-
-      - name: Package Hermetic Deep Test Artifact
-        if: always()
-        run: |
-          artifact_root="$RUNNER_TEMP/openclaw-deep"
-          artifact="$RUNNER_TEMP/openclaw-deep-${{ github.run_id }}-${{ github.run_attempt }}.tgz"
-
-          if [[ ! -d "$artifact_root" ]]; then
-            mkdir -p "$artifact_root"
-            cat > "$artifact_root/artifact-status.json" <<EOF
-          {
-            "status": "report-directory-missing",
-            "workflow": "${{ github.workflow }}",
-            "job": "openclaw-hermetic-deep-test",
-            "run_id": "${{ github.run_id }}",
-            "run_attempt": "${{ github.run_attempt }}",
-            "ref": "${{ github.ref_name }}",
-            "checkout_outcome": "${{ steps.checkout.outcome }}",
-            "install_deps_outcome": "${{ steps.install_deps.outcome }}",
-            "verify_node_outcome": "${{ steps.verify_node.outcome }}",
-            "run_hermetic_deep_test_outcome": "${{ steps.run_hermetic_deep_test.outcome }}"
-          }
-          EOF
-          fi
-
-          tar -C "$RUNNER_TEMP" -czf "$artifact" openclaw-deep
-
-      - name: Upload Hermetic Deep Test Artifact
-        if: env.ACT != 'true'
-        uses: actions/upload-artifact@v7
-        with:
-          name: openclaw-deep-${{ github.run_id }}-${{ github.run_attempt }}
-          retention-days: 14
-          path: ${{ runner.temp }}/openclaw-deep-${{ github.run_id }}-${{
-            github.run_attempt }}.tgz
-
-  docs:
-    name: Upload Doc Artifacts
-    runs-on: ubuntu-latest
-    needs:
-      - build
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-          cache-dependency-path: package-lock.json
-
-      - name: Install Deps
-        run: npm ci
-
-      - name: Build Docs
-        run: npm run docs:build
-
-      - name: Upload Docs Artifact
-        if: env.ACT != 'true'
-        uses: actions/upload-artifact@v7
-        with:
-          name: docs-${{ github.run_id }}
-          retention-days: 14
-          overwrite: true
-          path: |
-            site/guide-docs/.vitepress/dist/**
-
-  publish-openclaw-runtime-image:
-    name: Publish OpenClaw Runtime Image
-    if: github.event_name == 'pull_request' &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.event.pull_request.user.login != 'dependabot[bot]'
-    runs-on: ubuntu-latest
-    needs:
-      - build
-      - openclaw-hermetic-deep-test
-    permissions:
-      contents: read
-      packages: write
-    outputs:
-      image_tag: ${{ steps.meta_vars.outputs.image_version }}
-
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-          cache-dependency-path: package-lock.json
-
-      - name: Install Deps
-        run: npm ci
-
-      - name: Verify Node Alignment
-        run: npm run verify:node
-
-      - name: Resolve Image Metadata
-        id: meta_vars
-        shell: bash
-        env:
-          PR_NUMBER: ${{ github.event.pull_request.number || '' }}
-        run: |
-          repository_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
-          echo "node_version=$(tr -d 'v' < .nvmrc)" >> "$GITHUB_OUTPUT"
-          registry_owner="${GITHUB_REPOSITORY_OWNER,,}"
-          echo "registry_owner=${registry_owner}" >> "$GITHUB_OUTPUT"
-          echo "repository_url=${repository_url}" >> "$GITHUB_OUTPUT"
-          package_version="$(
-            node --input-type=module -e "import { readFileSync } from 'node:fs'; console.log(JSON.parse(readFileSync('packages/openclaw/package.json', 'utf8')).version);"
-          )"
-          echo "package_version=$package_version" >> "$GITHUB_OUTPUT"
-          full_sha="$(git rev-parse HEAD)"
-          echo "full_sha=${full_sha}" >> "$GITHUB_OUTPUT"
-          short_sha="$(git rev-parse --short=12 HEAD)"
-          echo "short_sha=${short_sha}" >> "$GITHUB_OUTPUT"
-
-          image_version="${package_version}-dev.pr.${PR_NUMBER}.${short_sha}"
-          image_tags=$(
-            printf '%s\n' \
-              "ghcr.io/${registry_owner}/devplat-openclaw-runtime:${image_version}" \
-              "ghcr.io/${registry_owner}/devplat-openclaw-runtime:pr-${PR_NUMBER}" \
-              "ghcr.io/${registry_owner}/devplat-openclaw-runtime:sha-${short_sha}"
-          )
-
-          echo "image_version=${image_version}" >> "$GITHUB_OUTPUT"
-          {
-            echo "image_tags<<EOF"
-            printf '%s\n' "$image_tags"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: Log in to GHCR
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and publish image
+      - name: Docker build
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: docker/openclaw-runtime/Dockerfile
-          push: true
-          platforms: linux/amd64,linux/arm64/v8
-          build-args: |
-            NODE_VERSION=${{ steps.meta_vars.outputs.node_version }}
-          labels: |
-            org.opencontainers.image.title=devplat-openclaw-runtime
-            org.opencontainers.image.description=OpenClaw adapter runtime image for DevPlat.
-            org.opencontainers.image.url=${{ steps.meta_vars.outputs.repository_url }}
-            org.opencontainers.image.source=${{ steps.meta_vars.outputs.repository_url }}
-            org.opencontainers.image.revision=${{ steps.meta_vars.outputs.full_sha }}
-            org.opencontainers.image.version=${{ steps.meta_vars.outputs.image_version }}
-            org.opencontainers.image.licenses=MIT
-          tags: ${{ steps.meta_vars.outputs.image_tags }}
+          file: docker/ironloom-runtime/Dockerfile
+          push: false
+          platforms: linux/amd64
 
-  publish-helm-chart:
-    name: Publish Helm Chart
-    if: github.event_name == 'pull_request' &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.event.pull_request.user.login != 'dependabot[bot]'
-    runs-on: ubuntu-latest
-    needs:
-      - build
-      - openclaw-hermetic-deep-test
-      - publish-openclaw-runtime-image
-    permissions:
-      contents: read
-      packages: write
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
 
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: ${{ github.sha }}
+      - name: Helm lint
+        run: helm lint deploy/helm/ironloom
 
-      - name: Publish Helm Chart
-        uses: ./.github/actions/publish-helm-chart
-        with:
-          publish_mode: dev
-          ref: ${{ github.sha }}
-          pr_number: ${{ github.event.pull_request.number }}
-          image_tag: ${{ needs.publish-openclaw-runtime-image.outputs.image_tag }}
-          change_title: ${{ github.event.pull_request.title }}
-          change_body: ${{ github.event.pull_request.body || '' }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          helm_gpg_private: ${{ secrets.HELM_GPG_PRIVATE }}
-          helm_gpg_public: ${{ secrets.HELM_GPG_PUBLIC }}
-          helm_key_id: ${{ secrets.HELM_KEY_ID }}
-          helm_key_secret: ${{ secrets.HELM_KEY_SECRET }}
+      - name: Helm template
+        run: helm template ironloom deploy/helm/ironloom

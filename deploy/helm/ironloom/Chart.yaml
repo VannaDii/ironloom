@@ -1,0 +1,12 @@
+apiVersion: v2
+name: ironloom
+description: Rust supervisor runtime for auditable engineering operations.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+home: https://ironloom.dev
+sources:
+  - https://github.com/VannaDii/ironloom
+maintainers:
+  - name: Veritas Labs
+    url: https://veritaslabs.dev

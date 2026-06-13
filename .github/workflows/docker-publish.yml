@@ -1,9 +1,9 @@
 name: Publish Docker Image
 
 on:
-  pull_request:
-    types:
-      - closed
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -12,75 +12,22 @@ permissions:
 
 jobs:
   publish:
-    name: Publish Docker Image
-    if: github.event_name == 'workflow_dispatch' ||
-      (github.event.pull_request.merged == true &&
-      github.event.pull_request.base.ref == 'main')
+    name: Publish Ironloom Image
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v6
-        with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && github.ref ||
-            github.event.pull_request.merge_commit_sha }}
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-          cache-dependency-path: package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Verify Node alignment
-        run: npm run verify:node
 
       - name: Resolve metadata
-        id: meta_vars
+        id: meta
         shell: bash
-        env:
-          PR_HEAD_REF: ${{ github.event.pull_request.head.ref || '' }}
         run: |
-          repository_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
-          echo "node_version=$(tr -d 'v' < .nvmrc)" >> "$GITHUB_OUTPUT"
-          registry_owner="${GITHUB_REPOSITORY_OWNER,,}"
-          echo "registry_owner=${registry_owner}" >> "$GITHUB_OUTPUT"
-          echo "repository_url=${repository_url}" >> "$GITHUB_OUTPUT"
-          package_version="$(
-            node --input-type=module -e "import { readFileSync } from 'node:fs'; console.log(JSON.parse(readFileSync('packages/openclaw/package.json', 'utf8')).version);"
-          )"
-          echo "package_version=$package_version" >> "$GITHUB_OUTPUT"
-          full_sha="$(git rev-parse HEAD)"
-          echo "full_sha=${full_sha}" >> "$GITHUB_OUTPUT"
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          version="$(awk -F '"' '/^version =/ { print $2; exit }' Cargo.toml)"
           short_sha="$(git rev-parse --short=12 HEAD)"
+          echo "owner=${owner}" >> "$GITHUB_OUTPUT"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
           echo "short_sha=${short_sha}" >> "$GITHUB_OUTPUT"
-
-          if [[ -n "$PR_HEAD_REF" && "$PR_HEAD_REF" == changeset-release/* ]]; then
-            image_version="$package_version"
-            image_tags=$(
-              printf '%s\n' \
-                "ghcr.io/${registry_owner}/devplat-openclaw-runtime:${package_version}" \
-                "ghcr.io/${registry_owner}/devplat-openclaw-runtime:latest" \
-                "ghcr.io/${registry_owner}/devplat-openclaw-runtime:sha-${short_sha}"
-            )
-          else
-            image_version="${package_version}-dev.${GITHUB_RUN_NUMBER}.${short_sha}"
-            image_tags=$(
-              printf '%s\n' \
-                "ghcr.io/${registry_owner}/devplat-openclaw-runtime:${image_version}" \
-                "ghcr.io/${registry_owner}/devplat-openclaw-runtime:dev" \
-                "ghcr.io/${registry_owner}/devplat-openclaw-runtime:sha-${short_sha}"
-            )
-          fi
-
-          echo "image_version=${image_version}" >> "$GITHUB_OUTPUT"
-          {
-            echo "image_tags<<EOF"
-            printf '%s\n' "$image_tags"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
@@ -99,17 +46,18 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: docker/openclaw-runtime/Dockerfile
+          file: docker/ironloom-runtime/Dockerfile
           push: true
           platforms: linux/amd64,linux/arm64/v8
-          build-args: |
-            NODE_VERSION=${{ steps.meta_vars.outputs.node_version }}
           labels: |
-            org.opencontainers.image.title=devplat-openclaw-runtime
-            org.opencontainers.image.description=OpenClaw adapter runtime image for DevPlat.
-            org.opencontainers.image.url=${{ steps.meta_vars.outputs.repository_url }}
-            org.opencontainers.image.source=${{ steps.meta_vars.outputs.repository_url }}
-            org.opencontainers.image.revision=${{ steps.meta_vars.outputs.full_sha }}
-            org.opencontainers.image.version=${{ steps.meta_vars.outputs.image_version }}
+            org.opencontainers.image.title=Ironloom
+            org.opencontainers.image.description=Rust supervisor runtime for auditable engineering operations.
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.meta.outputs.version }}
             org.opencontainers.image.licenses=MIT
-          tags: ${{ steps.meta_vars.outputs.image_tags }}
+            org.opencontainers.image.vendor=Veritas Labs
+          tags: |
+            ghcr.io/${{ steps.meta.outputs.owner }}/ironloom:${{ steps.meta.outputs.version }}
+            ghcr.io/${{ steps.meta.outputs.owner }}/ironloom:sha-${{ steps.meta.outputs.short_sha }}
+            ghcr.io/${{ steps.meta.outputs.owner }}/ironloom:latest

@@ -8,9 +8,9 @@
 
 **Product identity:** Ironloom, `ironloom.dev`
 
-**Architecture:** Ironloom is a containerized Rust workspace whose core product is the supervisor runtime. Discord remains the primary operator interface, GitHub remains the source of truth for repository and pull-request state, SonarCloud remains the quality and compliance system, Kubernetes delivery targets k3s through a direct Ironloom Helm chart, and the public product website is a static Rust/Yew site modeled after the `../BlueMoonFarm` architecture.
+**Architecture:** Ironloom is a containerized Rust workspace whose core product is the supervisor runtime. Discord remains the primary operator interface, GitHub remains the source of truth for repository and pull-request state, SonarCloud remains the quality and compliance system, Kubernetes delivery targets k3s through a direct Ironloom Helm chart, and the public landing page lives on the GitHub Pages documentation site.
 
-**Tech stack:** Rust workspace, Cargo, Yew, Trunk, Rust prerendering, Alpine Linux container runtime, Helm OCI on GHCR, GitHub Actions, GitHub Pages documentation, static website hosting, Terraform-managed website infrastructure, Discord API, GitHub API, SonarCloud API.
+**Tech stack:** Rust workspace, Cargo, Alpine Linux container runtime, Helm OCI on GHCR, GitHub Actions, GitHub Pages documentation, mdBook, Discord API, GitHub API, SonarCloud API.
 
 ---
 
@@ -20,7 +20,7 @@ The current repository is a strict native-ESM TypeScript monorepo named DevPlat.
 
 The target repository is a Rust workspace named Ironloom. The OpenClaw adapter is removed entirely. TypeScript and Node are removed as the runtime platform. The supervisor becomes the central runtime service and routes work through a typed process graph. Worker modules start as functional Rust modules in one process, but the boundary is designed so workers can later move into separate processes or containers without changing the supervisor contract.
 
-Ironloom also gets a public website that is separate from the operator runtime and from `docs/site`. The website follows the proven Blue Moon Farm shape: a Rust/Yew static SPA built by Trunk, prerendered into route-level HTML with SEO files, validated as static output, and published as immutable static assets with preview and production deployment paths.
+Ironloom also gets a public landing page on `docs/site`. The landing page is part of the static GitHub Pages documentation site, keeps operator controls out of public content, and avoids reintroducing a separate web application stack.
 
 Migration must be staged. The first safe route is to add the Rust workspace and prove the first Discord-to-supervisor-to-gate vertical slice before deleting the existing TypeScript/OpenClaw runtime. CI must preserve the repository's strict validation posture throughout the transition.
 
@@ -33,7 +33,7 @@ Current important surfaces:
 - OpenClaw runtime: `packages/openclaw`, generated OpenClaw manifest, `docker/openclaw-runtime`, OpenClaw live-lab workflows and scripts.
 - Deployment: `deploy/helm/devplat`, `deploy/artifacthub/devplat`, Docker and Helm publishing workflows.
 - Documentation: `site/guide-docs` VitePress site and guide pages.
-- Public website reference: sibling repo `../BlueMoonFarm`, a Rust/Yew/Trunk static SPA with Rust prerendering, i18n-owned copy, SEO output, Terraform-managed static hosting, and preview/production publish workflows.
+- Public landing page target: `docs/site`, published by GitHub Pages with the operator and developer documentation.
 - CI/CD: `.github/workflows/ci.yml`, `typescript-matrix.yml`, `docker-publish.yml`, `helm-publish.yml`, `docs-deploy.yml`, `release.yml`, `publish-release.yml`, `sonar-bootstrap-check.yml`, OpenClaw/Discord live-lab workflows.
 - Quality system: SonarCloud configured through `sonar-project.properties`, coverage from Vitest LCOV, strict generated-artifact checks.
 
@@ -45,8 +45,8 @@ Current important surfaces:
 - Do not publish npm packages after the Rust migration completes.
 - Do not move business logic into Discord, GitHub, SonarCloud, or Kubernetes adapters.
 - Do not require worker process isolation in the first Rust version. Design for it, but start in-process.
-- Do not make the public website an operator control plane, source of truth, runtime API, or place for Ironloom business logic.
-- Do not add a website backend, form Lambda, admin app, or dynamic service unless a later approved product requirement creates that scope.
+- Do not make the docs-hosted public landing page an operator control plane, source of truth, runtime API, or place for Ironloom business logic.
+- Do not add a landing-page backend, form Lambda, admin app, or dynamic service unless a later approved product requirement creates that scope.
 
 ## Target Repository Structure
 
@@ -140,29 +140,6 @@ Current important surfaces:
 |   `-- site
 |       |-- book.toml
 |       `-- src/
-|-- website
-|   |-- Cargo.toml
-|   |-- Trunk.toml
-|   |-- index.html
-|   |-- i18n
-|   |   `-- en.json
-|   |-- public
-|   |   `-- assets/
-|   |-- prerender
-|   |   |-- Cargo.toml
-|   |   `-- src/main.rs
-|   |-- iac
-|   |   |-- main.tf
-|   |   |-- variables.tf
-|   |   `-- outputs.tf
-|   `-- src
-|       |-- app.rs
-|       |-- constants.rs
-|       |-- i18n.rs
-|       |-- routes.rs
-|       |-- seo.rs
-|       |-- site.rs
-|       `-- styles.css
 `-- .github
     |-- actions/
     |-- instructions/
@@ -173,8 +150,8 @@ Current important surfaces:
 Notes:
 
 - `docs/site` should replace the VitePress app with a Node-free static documentation build, preferably `mdBook`, unless Veritas Labs explicitly chooses another non-Node documentation generator.
-- `website` is the public product site, not the documentation site. It should use the Blue Moon Farm pattern: Rust/Yew, Trunk, static assets, content-owned i18n files, a Rust prerenderer for localized route HTML and SEO files, static preview and production publishing, and infrastructure-as-code for DNS/CDN/static hosting.
-- `website/i18n/en.json` is the first required content file. Add more locale files only when the product has approved localized content and parity validation.
+- `docs/site/src/introduction.md` is the public landing page. It must remain static, public-safe, and separate from runtime/operator control flows.
+- `docs/site` owns both product-facing introduction content and operator/developer documentation so GitHub Pages is the only first-release public web surface.
 - `crates/*/schemas` remains the committed contract surface. Rust types should generate JSON Schema with `schemars` or an equivalent generator.
 - `.devplat` runtime data paths should become `.ironloom`. The migration must decide whether to import old `.devplat` records or start clean.
 
@@ -210,7 +187,7 @@ Suggested root configuration:
 ```toml
 [workspace]
 resolver = "3"
-members = ["crates/*", "website", "website/prerender"]
+members = ["crates/*"]
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
@@ -609,8 +586,7 @@ Depends on:
 | `@vannadii/devplat-remediation`   | `ironloom-workers`, `ironloom-artifacts`, future crate only if needed | Remediation is a worker family and process graph route.                                  |
 | `@vannadii/devplat-prs`           | `ironloom-github`, `ironloom-artifacts`                               | PR lifecycle state is GitHub adapter plus artifacts.                                     |
 | `@vannadii/devplat-branching`     | `ironloom-worktrees`, `ironloom-github`, `ironloom-workers`           | Branch refresh and rebase behavior crosses worktree and GitHub boundaries.               |
-| `site/guide-docs`                 | `docs/site`                                                           | Rewrite for Ironloom and remove Node/VitePress unless explicitly retained for docs only. |
-| New public product website        | `website`                                                             | Build a static Rust/Yew/Trunk/prerendered site using the `../BlueMoonFarm` architecture. |
+| `site/guide-docs`                 | `docs/site`                                                           | Rewrite for Ironloom, include the public landing page, and remove Node/VitePress.        |
 | `docker/openclaw-runtime`         | `docker/ironloom-runtime`                                             | Runtime image becomes direct Ironloom service.                                           |
 | `deploy/helm/devplat`             | `deploy/helm/ironloom`                                                | Chart deploys Ironloom directly.                                                         |
 
@@ -690,31 +666,27 @@ The worktree manager owns local git worktree lifecycle. It must validate branch 
 
 Every operator action, policy decision, supervisor route, worker execution, artifact write, API submission, and user-visible response must carry a correlation ID. Audit records should be append-only and redaction-safe.
 
-## Public Website Architecture
+## Docs-Hosted Landing Page Architecture
 
-The public website is a static product and marketing surface for `ironloom.dev`. It is not part of the supervisor runtime, does not read `.ironloom`, and does not hold Discord, GitHub, SonarCloud, or AI credentials. It should link users to documentation and support channels, but all operator actions remain in Discord, GitHub, and the runtime control plane.
+The public landing page is a static mdBook page under `docs/site`, published through GitHub Pages with the operator and developer documentation. It is not part of the supervisor runtime, does not read `.ironloom`, and does not hold Discord, GitHub, SonarCloud, or AI credentials. It may link users to documentation and support channels, but all operator actions remain in Discord, GitHub, and the runtime control plane.
 
-The implementation should follow the sibling `../BlueMoonFarm` architecture with Ironloom-specific naming and content:
+The implementation should stay intentionally small:
 
-- A Rust/Yew SPA under `website/` with Trunk as the WebAssembly build entrypoint.
-- A `website/prerender` Rust binary that renders route-level static HTML into `website/dist`, writes canonical metadata, Open Graph/Twitter tags, JSON-LD, `sitemap.xml`, `robots.txt`, `llms.txt`, and `404.html`, and validates the generated output.
-- Content files under `website/i18n/`, starting with `en.json`, so public copy, metadata, alt text, labels, and structured-data text stay data-owned rather than scattered through components.
-- Runtime images, icons, fonts, and scripts under `website/public/assets`, copied by Trunk and referenced with stable same-origin paths.
-- Static hosting infrastructure under `website/iac`, following the Blue Moon Farm split between production and beta/preview targets: private object storage, CDN distribution, TLS certificate, DNS records, and explicit outputs used by publishing workflows.
-- Preview publishing for pull requests to an approved beta hostname and production publishing from `main` to the approved public hostname.
-- Smoke tests against representative prerendered routes after publish.
+- mdBook source under `docs/site/src`.
+- A first-page product introduction in `docs/site/src/introduction.md`.
+- Operator and developer runbooks in sibling mdBook chapters.
+- A GitHub Pages workflow that builds mdBook, writes the approved `CNAME`, and uploads the generated static site.
+- No Rust web app package, WebAssembly target, separate web build, prerenderer, or static-hosting infrastructure in the first release.
+- Public-safe content review for the landing page and guide pages before publication.
 
-Website quality gates:
+Docs and landing-page quality gates:
 
-- `cargo fmt --check` for the website workspace members.
-- `cargo test --all-targets --all-features` for the Yew app and prerenderer.
-- `cargo clippy --all-targets --all-features -- -D warnings` plus the repo's approved Clippy policy.
-- `trunk build --release` with the `wasm32-unknown-unknown` target.
-- Prerender validation that fails on route, canonical URL, sitemap, robots, `llms.txt`, JSON-LD, i18n parity, or missing asset errors.
-- Static HTML validation through a Rust/native validator or another approved non-Node tool, so the public website does not reintroduce npm into Ironloom CI.
-- Optional Lighthouse/PageSpeed checks for public website changes once the preview URL exists.
+- `mdbook build docs/site`.
+- GitHub Pages artifact upload from the generated mdBook output.
+- Link and content review for public-safe copy, credentials, and operator-only details.
+- Optional post-publish smoke checks for the root landing page and representative guide pages once Pages is live.
 
-Initial public pages should stay product-focused and static: home, platform overview, architecture, security/compliance, documentation link, company/about link, and contact/support link. Do not add account sign-in, operator controls, issue submission, or dynamic forms in the first website slice.
+Initial public content should stay product-focused and static: overview, architecture, security/compliance posture, documentation path, and support/contact path. Do not add account sign-in, operator controls, issue submission, or dynamic forms in the first landing-page slice.
 
 ## First Vertical Slice
 
@@ -939,7 +911,7 @@ Rollback:
 
 Purpose:
 
-- Replace Node/TypeScript validation with Rust validation while preserving strict repository enforcement, SonarCloud, Docker publishing, Helm publishing, docs publishing, and public website publishing.
+- Replace Node/TypeScript validation with Rust validation while preserving strict repository enforcement, SonarCloud, Docker publishing, Helm publishing, and GitHub Pages documentation publishing.
 
 File changes:
 
@@ -951,7 +923,6 @@ File changes:
 - Modify `.github/workflows/docker-publish.yml`.
 - Modify `.github/workflows/helm-publish.yml`.
 - Modify `.github/workflows/docs-deploy.yml`.
-- Add or modify public website preview and publish workflows.
 - Modify `.github/workflows/release.yml` and `.github/workflows/publish-release.yml`.
 - Modify `.github/actions/detect-release-impact`.
 - Modify `.github/actions/publish-helm-chart`.
@@ -968,8 +939,7 @@ Required work:
 - Keep SonarCloud quality gate wait behavior.
 - Keep Docker image publication to GHCR.
 - Keep Helm chart publication to GHCR OCI.
-- Keep GitHub Pages publication for the rewritten documentation.
-- Add public website build, prerender, validation, preview publish, production publish, and post-publish smoke tests.
+- Keep GitHub Pages publication for the rewritten documentation and landing page.
 - Replace Changesets-based release PR behavior with the selected Rust release/version process.
 
 Acceptance criteria:
@@ -977,8 +947,7 @@ Acceptance criteria:
 - Pull request CI has no Node, npm, TypeScript, ESLint, Vitest, Turbo, Husky, or OpenClaw dependency.
 - Main branch publishing still produces GHCR Docker images.
 - Helm publish still pushes an OCI chart to GHCR.
-- Docs deploy still publishes to GitHub Pages.
-- Website preview and production workflows publish static assets without adding npm or Node to the Ironloom validation path.
+- Docs deploy publishes the landing page and documentation to GitHub Pages without Node.
 - SonarCloud receives Rust source, test, coverage, and exclusion configuration.
 - PR template validation references Rust gates and Ironloom operator impact.
 
@@ -1030,11 +999,11 @@ Rollback:
 - Keep old Docker/Helm artifacts until the Ironloom image and chart are published and tested.
 - Revert image/chart workflow references if GHCR publishing fails.
 
-### Phase 7: Documentation, Public Website, And Branding Rewrite
+### Phase 7: Documentation, Landing Page, And Branding Rewrite
 
 Purpose:
 
-- Convert all public docs, the product website, and repo instructions from DevPlat/OpenClaw/TypeScript to Ironloom/Rust/Veritas Labs.
+- Convert all public docs, the docs-hosted landing page, and repo instructions from DevPlat/OpenClaw/TypeScript to Ironloom/Rust/Veritas Labs.
 
 File changes:
 
@@ -1042,9 +1011,8 @@ File changes:
 - Rewrite `AGENTS.md`.
 - Rewrite `SECURITY.md` if contact, domains, or runtime assumptions change.
 - Replace `site/guide-docs/` with `docs/site/`.
-- Create `website/` using the Blue Moon Farm Rust/Yew/Trunk/prerender/static-hosting architecture.
 - Rewrite guide pages for Ironloom.
-- Add public website content, route metadata, assets, prerenderer, validation, and infrastructure definitions.
+- Add docs-site landing page content, page metadata, public-safe copy, and GitHub Pages publishing configuration.
 - Update `.github/instructions/*.md`.
 - Update `.github/ISSUE_TEMPLATE/*.yml`.
 - Update `.github/CODEOWNERS` if ownership changes.
@@ -1065,19 +1033,18 @@ Required work:
 - Add Docker and k3s Helm deployment docs.
 - Add Rust developer guide.
 - Add migration notes for operators moving from `.devplat` to `.ironloom`.
-- Add the public website pages, metadata, structured data, static search files, and support/documentation links needed for `ironloom.dev`.
-- Keep `docs/site` as the operator/developer documentation surface and `website` as the public product surface.
-- Validate that no public website route exposes operator-only instructions, credentials, repository internals that are not intentionally public, or Discord/GitHub/SonarCloud control actions.
+- Add the landing page copy, metadata, and support/documentation links needed for the approved public docs host.
+- Keep `docs/site` as the combined public landing, operator documentation, and developer documentation surface.
+- Validate that public-facing docs pages do not expose credentials, private repository internals, or Discord/GitHub/SonarCloud control actions.
 
 Acceptance criteria:
 
 - Documentation builds without Node.
-- Public website builds, prerenders, validates, and publishes without Node.
 - No public guide page describes OpenClaw as an active runtime.
 - Docs explain the first vertical slice and production deployment model.
 - Docs preserve the strict validation philosophy.
 - Docs identify Discord as primary operator interface and GitHub as source of truth.
-- Public website routes explain Ironloom's product, architecture, security posture, and documentation path without becoming an operator control plane.
+- The landing page explains Ironloom's product, architecture, security posture, and documentation path without becoming an operator control plane.
 
 Rollback:
 
@@ -1176,8 +1143,7 @@ Target jobs:
 - `coverage`: `cargo llvm-cov --workspace --all-features --lcov --output-path target/lcov.info`
 - `security`: `cargo deny check` and `cargo audit`
 - `schemas`: generate JSON schemas and fail if git diff is non-empty
-- `docs`: build `docs/site`
-- `website`: build the Trunk/Yew site, run the prerenderer, validate static HTML/SEO/i18n output, and optionally run Lighthouse against a preview URL
+- `docs`: build `docs/site` and confirm the Pages artifact includes the landing page
 - `docker`: build Ironloom image without pushing for PRs
 - `helm`: lint and template `deploy/helm/ironloom`
 - `sonar`: SonarCloud scan with quality gate wait, excluding generated artifacts and deployment files as appropriate
@@ -1188,8 +1154,7 @@ Preserve:
 
 - Docker publishing to GHCR.
 - Helm chart publishing to GHCR OCI.
-- GitHub Pages docs publishing.
-- Public website preview and production static publishing.
+- GitHub Pages docs and landing-page publishing.
 - SonarCloud gate enforcement.
 
 Replace:
@@ -1209,7 +1174,6 @@ Update `sonar-project.properties`:
 - Test inclusions should match Rust test layout.
 - Coverage should point to Rust LCOV output.
 - Exclusions should include `target/**`, generated schema files if appropriate, deployment artifacts, docs output, and `.ironloom/**`.
-- Website exclusions should include generated `website/dist/**`; source, content, prerenderer, and infrastructure files should remain analyzable unless a specific tool limitation requires a narrow exclusion.
 
 ## Docker And Helm Migration Details
 
@@ -1279,40 +1243,37 @@ New docs required:
 - GitHub source-of-truth rules.
 - SonarCloud compliance workflow.
 
-## Public Website Migration Details
+## Docs-Hosted Landing Page Migration Details
 
-The public website should be developed as a first-class Rust surface, not as a renamed documentation app. It should borrow the proven Blue Moon Farm structure while using Ironloom-specific domains, content, routes, assets, and validation.
+The public landing page should be part of `docs/site`, not a separate application. This keeps the first release static, Node-free, and governed by the same GitHub Pages workflow as the operator and developer documentation.
 
-Website source layout:
+Landing-page source layout:
 
-- `website/Cargo.toml` for the Yew app package.
-- `website/Trunk.toml` and `website/index.html` for the WebAssembly shell.
-- `website/src/app.rs`, `routes.rs`, `site.rs`, `seo.rs`, `i18n.rs`, `constants.rs`, and focused component/page modules.
-- `website/i18n/en.json` as canonical public copy and metadata.
-- `website/prerender` for static HTML, SEO, route, sitemap, robots, `llms.txt`, and JSON-LD generation.
-- `website/public/assets` for same-origin images, icons, fonts, and small static scripts.
-- `website/iac` for static hosting infrastructure if Veritas Labs approves the Blue Moon Farm AWS model.
+- `docs/site/book.toml` for mdBook configuration.
+- `docs/site/src/SUMMARY.md` for navigation.
+- `docs/site/src/introduction.md` for the public landing page.
+- Focused guide pages under `docs/site/src/` for architecture, operations, deployment, quality, and release content.
+- `docs-deploy.yml` for GitHub Pages publication and `CNAME` writing after the docs hostname is approved.
 
-Website deployment model:
+Landing-page deployment model:
 
-- Pull requests publish a preview to an approved beta hostname after build and validation pass.
-- Main publishes production static assets to the approved public hostname.
-- Production and preview publishing must not overwrite each other.
-- Infrastructure workflows should expose bucket, CDN distribution, hostname, and invalidation outputs in GitHub summaries.
-- Post-publish smoke tests must fetch representative public routes and confirm prerendered route HTML, not only the client-side fallback shell.
+- Pull requests build mdBook through CI.
+- Main publishes the mdBook output to GitHub Pages.
+- Production publishing writes the approved docs hostname into `CNAME`.
+- Post-publish smoke tests should fetch the landing page and representative guide pages once Pages is live.
 
-Website content model:
+Landing-page content model:
 
-- Public copy lives in i18n/content files instead of being hard-coded throughout components.
-- Route metadata and structured data are generated from typed Rust data.
-- The first release can be English-only, but the file layout should allow later locale parity checks.
-- Public pages should emphasize product identity, architecture, security/compliance posture, deployment model, and links to docs/support.
-- Operator-only runbooks stay in `docs/site`; public pages can link to docs but should not duplicate internal operator procedures.
+- Public copy lives in the mdBook introduction and supporting guide pages.
+- The first release is English-only unless Veritas Labs approves a localization plan.
+- Public content should emphasize product identity, architecture, security/compliance posture, deployment model, and links to docs/support.
+- Operator-only procedures can remain in `docs/site`, but pages linked from the landing page must avoid credentials, private-only repository details, and active control instructions.
 
-Website validation:
+Landing-page validation:
 
-- The website gate should cover Rust formatting, tests, Clippy, Trunk release build, prerender validation, route inventory, SEO files, JSON-LD shape, canonical URL consistency, asset references, and static HTML validity.
-- Avoid `npx`, npm, or Node-based validation in the Ironloom version. If the exact Blue Moon Farm `html-validate` step is still desired, it must be replaced by an approved non-Node equivalent or explicitly approved as a temporary exception before implementation.
+- `mdbook build docs/site` must pass locally and in CI.
+- CI should keep docs publishing independent from runtime image and Helm publishing.
+- Optional link checks and post-publish smoke checks may be added without reintroducing Node.
 
 ## Branding Rename Checklist
 
@@ -1332,8 +1293,8 @@ Company and domains:
 
 - Replace VannaDii ownership references with Veritas Labs where the repository and publication ownership actually moves.
 - Use `veritaslabs.dev` for company pages, support, legal, and organization-level docs.
-- Use `ironloom.dev` for the public product website.
-- Use `docs.ironloom.dev`, GitHub Pages under the repository path, or another approved docs URL for operator and developer docs.
+- Use `docs.ironloom.dev`, GitHub Pages under the repository path, or another approved docs URL for the docs-hosted landing page and operator/developer docs.
+- Reserve `ironloom.dev` for a future redirect or separate public site only after a later approved product decision.
 - Add GitHub Pages `CNAME` only after DNS ownership and target domain are approved.
 
 Publishing:
@@ -1363,8 +1324,8 @@ High risks:
 - Alpine/musl builds can expose native TLS, OpenSSL, git, or CA certificate issues. Build and run container smoke tests early.
 - Removing Changesets requires a replacement release/version discipline before release workflows are deleted.
 - Docs generator migration can accidentally break GitHub Pages URLs.
-- Public website migration can accidentally mix product marketing, operator documentation, and runtime control concerns unless `website`, `docs/site`, and `crates/*` remain separate surfaces.
-- Static website infrastructure can break domain cutover, beta previews, certificate validation, or production publishing if DNS/CDN ownership is not approved before workflows are enabled.
+- Docs-hosted landing-page work can accidentally mix product marketing, operator documentation, and runtime control concerns unless public-safe content rules are enforced in `docs/site`.
+- GitHub Pages publishing can break domain cutover or certificate validation if DNS ownership is not approved before the `CNAME` is enabled.
 - Repository rename or transfer can break GHCR image paths, Pages, SonarCloud project keys, GitHub App installation, Discord OAuth redirect URLs, and webhook endpoints.
 
 Mitigations:
@@ -1382,7 +1343,7 @@ General rollback rules:
 
 - Prefer reverting whole phases instead of mixing old and new architecture.
 - Never roll back by reintroducing OpenClaw into Ironloom crates.
-- Keep TypeScript/OpenClaw deployment active until Ironloom runtime, Docker image, Helm chart, docs, website, and CI are accepted.
+- Keep TypeScript/OpenClaw deployment active until Ironloom runtime, Docker image, Helm chart, docs, landing page, and CI are accepted.
 - Preserve old deployment artifacts until the Ironloom chart is deployed successfully to k3s.
 - Preserve `.devplat` data until `.ironloom` import or clean-start policy is approved.
 
@@ -1391,8 +1352,7 @@ Operational rollback:
 - For CI-only failures, revert workflow changes and keep Rust code on branch.
 - For container failures, revert Docker workflow/image references.
 - For Helm failures, roll back the Helm release to the previous chart version and keep PVC data.
-- For docs failures, revert docs generator changes independently.
-- For website failures, revert website workflow, infrastructure, or content changes independently from runtime and docs changes.
+- For docs or landing-page failures, revert docs generator, Pages workflow, or content changes independently.
 - For Phase 8 deletion failures, revert the entire deletion commit.
 
 ## Acceptance Criteria For Complete Migration
@@ -1426,9 +1386,8 @@ Delivery:
 - Helm chart deploys Ironloom directly.
 - k3s deployment can run the first vertical slice.
 - GHCR Docker and Helm publication work.
-- GitHub Pages docs publish the Ironloom docs.
-- Public website preview and production publishes work.
-- Public website output is static, prerendered, SEO-valid, and separated from runtime/operator control surfaces.
+- GitHub Pages publishes the Ironloom landing page and docs.
+- Public docs output is static, public-safe, and separated from runtime/operator control surfaces.
 
 Quality:
 
@@ -1440,14 +1399,14 @@ Quality:
 - Optional `cargo nextest` and `cargo machete` are wired if approved.
 - SonarCloud quality gate passes with Rust coverage.
 
-## Open Questions Codex Cannot Safely Decide Alone
+## Open Questions The Worker Cannot Safely Decide Alone
 
 1. Should the GitHub repository be renamed/transferred from `VannaDii/devplat` to a Veritas Labs organization/repository, or should the migration happen in place first?
 2. What is the exact GitHub organization or registry owner for GHCR image and Helm chart publication?
 3. What SonarCloud organization and project key should replace `vannadii_devplat`?
 4. Should Ironloom publish Rust crates, or are Docker image and Helm chart the only release artifacts?
-5. Should `ironloom.dev` serve the public product website while docs move to `docs.ironloom.dev`, GitHub Pages under the repository path, or another approved docs URL?
-6. Who owns DNS and certificate setup for `veritaslabs.dev` and `ironloom.dev`?
+5. Which hostname should GitHub Pages use for the docs-hosted landing page and operator/developer docs?
+6. Should `ironloom.dev` redirect to the docs-hosted landing page in the first release, and who owns that DNS change?
 7. Should existing `.devplat` runtime records be imported into `.ironloom`, archived read-only, or discarded as pre-Ironloom state?
 8. What storage backend should follow the first filesystem implementation: SQLite, Postgres, object storage, or none until scale requires it?
 9. Which AI provider, model policy, prompt logging policy, and data-retention constraints are acceptable for AI-assisted supervisor routing?
@@ -1457,5 +1416,4 @@ Quality:
 13. Is `Ironloom` considered a registered tool name for branch-name and PR-title restrictions?
 14. What is the minimum supported Rust version, if any, beyond latest stable?
 15. Should process/container worker isolation be deferred entirely, or should the first release include an experimental out-of-process worker transport?
-16. Should the public website use the Blue Moon Farm AWS S3/CloudFront/Route 53 Terraform model exactly, or should Veritas Labs choose another static host while keeping the same Rust/Yew/Trunk/prerender architecture?
-17. Should the public website be English-only at launch, or should the first release include additional locale files and parity validation?
+16. Should the first-release docs site stay English-only, or should localization be planned now for later docs-site content?

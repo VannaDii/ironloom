@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RepositoryProjection",
+  "description": "Source-of-truth GitHub repository projection.",
+  "type": "object",
+  "properties": {
+    "default_branch": {
+      "description": "Default branch reported by GitHub.",
+      "type": "string"
+    },
+    "repository": {
+      "description": "GitHub repository slug.",
+      "$ref": "#/$defs/RepositorySlug"
+    },
+    "source_of_truth": {
+      "description": "Whether the value came directly from GitHub instead of local cache.",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "repository",
+    "default_branch",
+    "source_of_truth"
+  ],
+  "$defs": {
+    "RepositorySlug": {
+      "description": "Validated `owner/repository` GitHub repository slug.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

@@ -1,261 +1,28 @@
-name: Publish Release
+name: Publish Runtime Release
 
 on:
-  pull_request:
-    types:
-      - closed
   workflow_dispatch:
-    inputs:
-      ref:
-        description: Git ref to publish.
-        required: false
-        type: string
-      dist-tag:
-        description: GitHub Packages dist-tag for the dev build.
-        required: false
-        default: dev
-        type: string
-      prerelease-id:
-        description: Prerelease identifier prefix.
-        required: false
-        default: dev
-        type: string
-      package-list:
-        description: Comma-delimited package list for manual dev publishing.
-        required: false
-        type: string
 
 permissions:
-  id-token: write
   contents: read
   packages: write
-  pull-requests: read
 
 jobs:
   publish:
-    name: Publish GitHub Packages Release
-    if: github.event.pull_request.merged == true &&
-      github.event.pull_request.base.ref == 'main' &&
-      startsWith(github.event.pull_request.head.ref, 'changeset-release/')
+    name: Publish Image And Chart
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: write
-      packages: write
-      pull-requests: read
-
     steps:
       - uses: actions/checkout@v6
-        with:
-          ref: ${{ github.event.pull_request.merge_commit_sha }}
-          fetch-depth: 0
 
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-          cache-dependency-path: package-lock.json
-          registry-url: https://npm.pkg.github.com
-          scope: '@vannadii'
+      - name: Validate Rust workspace
+        run: cargo test --workspace --all-features
 
-      - name: Derive artifact metadata
-        id: artifact_meta
-        shell: bash
+      - name: Dispatch Docker publication
+        run: gh workflow run docker-publish.yml --ref "${GITHUB_REF_NAME}"
         env:
-          PR_HEAD_REF: ${{ github.event.pull_request.head.ref || '' }}
-        run: |
-          ref_name="${PR_HEAD_REF:-$GITHUB_REF_NAME}"
-          safe_ref_name="$(printf '%s' "$ref_name" | sed 's#[\"/:<>|*?\\]#-#g' | tr -s '-')"
-          safe_workflow_name="$(printf '%s' "$GITHUB_WORKFLOW" | sed 's#[\"/:<>|*?\\]#-#g' | tr -s '-')"
-          short_sha="$(git rev-parse --short=12 HEAD)"
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-          echo "safe_ref_name=${safe_ref_name}" >> "$GITHUB_OUTPUT"
-          echo "safe_workflow_name=${safe_workflow_name}" >> "$GITHUB_OUTPUT"
-          echo "short_sha=${short_sha}" >> "$GITHUB_OUTPUT"
-
-      - name: Install dependencies
-        run: npm ci --ignore-scripts
-
-      - name: Verify Node alignment
-        run: npm run verify:node
-
-      - name: Generate committed artifacts
-        run: npm run prepare:generated
-
-      - name: Test with coverage
-        run: npm run test:coverage:workspace
-
-      - name: Build
-        run: npm run build:workspace
-
-      - name: Publish stable packages to GitHub Packages
-        run: npm run release
+      - name: Dispatch Helm publication
+        run: gh workflow run helm-publish.yml --ref "${GITHUB_REF_NAME}"
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_CONFIG_REGISTRY: https://npm.pkg.github.com
-
-      - name: Push Changesets package tags
-        run: git push origin --tags
-
-      - name: Publish missing stable packages to GitHub Packages
-        run: node scripts/publish-unpublished-packages.mjs
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_CONFIG_REGISTRY: https://npm.pkg.github.com
-
-      - name: Create release line tags
-        run: npm run release:tag-lines
-
-      - name: Upload stable coverage artifacts
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: stable-coverage-artifacts-${{
-            steps.artifact_meta.outputs.safe_workflow_name }}-${{
-            steps.artifact_meta.outputs.safe_ref_name }}-${{
-            steps.artifact_meta.outputs.short_sha }}
-          retention-days: 14
-          path: |
-            coverage/lcov.info
-            coverage/coverage-summary.json
-            coverage/index.html
-            coverage/**
-
-      - name: Upload stable build artifacts
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name:
-            stable-build-artifacts-${{ steps.artifact_meta.outputs.safe_workflow_name
-            }}-${{ steps.artifact_meta.outputs.safe_ref_name }}-${{
-            steps.artifact_meta.outputs.short_sha }}
-          retention-days: 14
-          path: |
-            packages/*/dist/**
-            packages/*/schemas/*.schema.json
-            packages/openclaw/openclaw.plugin.json
-
-  publish-dev-build:
-    name: Publish GitHub Packages Dev Build
-    if: github.event_name == 'workflow_dispatch' ||
-      (github.event.pull_request.merged == true &&
-      github.event.pull_request.base.ref == 'main' &&
-      !startsWith(github.event.pull_request.head.ref, 'changeset-release/'))
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Resolve ref
-        id: resolved
-        shell: bash
-        run: |
-          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
-            echo "ref=${{ github.event.inputs.ref || github.ref }}" >> "$GITHUB_OUTPUT"
-            echo "package_list=${{ github.event.inputs.package-list }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "ref=${{ github.event.pull_request.merge_commit_sha }}" >> "$GITHUB_OUTPUT"
-          fi
-
-      - uses: actions/checkout@v6
-        with:
-          ref: ${{ steps.resolved.outputs.ref }}
-          fetch-depth: 0
-
-      - name: Derive artifact metadata
-        id: artifact_meta
-        shell: bash
-        env:
-          PR_HEAD_REF: ${{ github.event.pull_request.head.ref || '' }}
-          INPUT_REF: ${{ github.event.inputs.ref || '' }}
-        run: |
-          if [[ -n "$PR_HEAD_REF" ]]; then
-            ref_name="$PR_HEAD_REF"
-          elif [[ -n "$INPUT_REF" ]]; then
-            ref_name="$INPUT_REF"
-          else
-            ref_name="$GITHUB_REF_NAME"
-          fi
-
-          ref_name="${ref_name#refs/heads/}"
-          ref_name="${ref_name#refs/tags/}"
-
-          safe_ref_name="$(printf '%s' "$ref_name" | sed 's#[\"/:<>|*?\\]#-#g' | tr -s '-')"
-          safe_workflow_name="$(printf '%s' "$GITHUB_WORKFLOW" | sed 's#[\"/:<>|*?\\]#-#g' | tr -s '-')"
-          short_sha="$(git rev-parse --short=12 HEAD)"
-
-          echo "safe_ref_name=${safe_ref_name}" >> "$GITHUB_OUTPUT"
-          echo "safe_workflow_name=${safe_workflow_name}" >> "$GITHUB_OUTPUT"
-          echo "short_sha=${short_sha}" >> "$GITHUB_OUTPUT"
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-          cache-dependency-path: package-lock.json
-          registry-url: https://npm.pkg.github.com
-          scope: '@vannadii'
-
-      - name: Install dependencies
-        run: npm ci --ignore-scripts
-
-      - name: Verify Node alignment
-        run: npm run verify:node
-
-      - name: Generate committed artifacts
-        run: npm run prepare:generated
-
-      - name: Test with coverage
-        run: npm run test:coverage:workspace
-
-      - name: Build
-        run: npm run build:workspace
-
-      - name: Prepare dev publish
-        id: prepare
-        shell: bash
-        run: |
-          short_sha="$(git rev-parse --short HEAD)"
-          suffix="${{ github.event.inputs.prerelease-id || 'dev' }}.${{ github.run_number }}.${short_sha}"
-          package_list="${{ steps.resolved.outputs.package_list }}"
-          node scripts/prepare-dev-publish.mjs --suffix "${suffix}" --out-dir "${RUNNER_TEMP}/dev-publish" --packages "${package_list}" > "${RUNNER_TEMP}/dev-publish-manifest.json"
-          echo "suffix=${suffix}" >> "$GITHUB_OUTPUT"
-          echo "manifest=${RUNNER_TEMP}/dev-publish-manifest.json" >> "$GITHUB_OUTPUT"
-
-      - name: Publish dev packages to GitHub Packages
-        shell: bash
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_CONFIG_REGISTRY: https://npm.pkg.github.com
-        run: |
-          jq -r '.packages[].dir' "${{ steps.prepare.outputs.manifest }}" | while read -r dir; do
-            npm publish --registry "https://npm.pkg.github.com" --tag "${{ github.event.inputs.dist-tag || 'dev' }}" "$dir"
-          done
-
-      - name: Upload dev coverage artifacts
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name:
-            dev-coverage-artifacts-${{ steps.artifact_meta.outputs.safe_workflow_name
-            }}-${{ steps.artifact_meta.outputs.safe_ref_name }}-${{
-            steps.artifact_meta.outputs.short_sha }}
-          retention-days: 14
-          path: |
-            coverage/lcov.info
-            coverage/coverage-summary.json
-            coverage/index.html
-            coverage/**
-
-      - name: Upload dev publish artifacts
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name:
-            dev-publish-artifacts-${{ steps.artifact_meta.outputs.safe_workflow_name
-            }}-${{ steps.artifact_meta.outputs.safe_ref_name }}-${{
-            steps.artifact_meta.outputs.short_sha }}
-          retention-days: 14
-          path: |
-            ${{ runner.temp }}/dev-publish/**
-            packages/*/dist/**
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

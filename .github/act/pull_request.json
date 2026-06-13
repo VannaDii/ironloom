@@ -6,28 +6,28 @@
       "ref": "main",
       "sha": "0000000000000000000000000000000000000000",
       "repo": {
-        "full_name": "VannaDii/devplat"
+        "full_name": "VannaDii/ironloom"
       }
     },
-    "body": "Local act validation event for the full autonomy runtime branch.",
+    "body": "Local act validation event for the Ironloom runtime.",
     "head": {
-      "ref": "feature/full-autonomy-runtime",
+      "ref": "feature/ironloom-runtime",
       "sha": "0000000000000000000000000000000000000000",
       "repo": {
-        "full_name": "VannaDii/devplat"
+        "full_name": "VannaDii/ironloom"
       }
     },
     "merged": false,
     "number": 1,
-    "title": "feat: complete full autonomy runtime foundations",
+    "title": "feat: complete ironloom runtime foundations",
     "user": {
       "login": "dependabot[bot]"
     }
   },
   "repository": {
     "default_branch": "main",
-    "full_name": "VannaDii/devplat",
-    "name": "devplat",
+    "full_name": "VannaDii/ironloom",
+    "name": "ironloom",
     "owner": {
       "login": "VannaDii"
     }

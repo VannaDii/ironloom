@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ProcessNode",
+  "description": "A typed unit of work in the supervisor process graph.",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "required_inputs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "name",
+    "required_inputs"
+  ]
+}

@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "image",
+    "runtime",
+    "discord",
+    "github",
+    "sonarcloud",
+    "storage",
+    "service",
+    "resources",
+    "ingress",
+    "networkPolicy"
+  ],
+  "properties": {
+    "replicaCount": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "image": {
+      "type": "object",
+      "required": ["repository", "tag"],
+      "properties": {
+        "repository": { "type": "string", "minLength": 1 },
+        "tag": { "type": "string", "minLength": 1 },
+        "pullPolicy": { "type": "string" }
+      }
+    },
+    "runtime": {
+      "type": "object",
+      "required": ["bindAddress", "publicUrl", "stateMountPath", "worktreeMountPath"],
+      "properties": {
+        "bindAddress": { "type": "string", "minLength": 1 },
+        "publicUrl": { "type": "string", "minLength": 1 },
+        "stateMountPath": { "type": "string", "minLength": 1 },
+        "worktreeMountPath": { "type": "string", "minLength": 1 }
+      }
+    },
+    "storage": {
+      "type": "object",
+      "required": ["size"],
+      "properties": {
+        "size": { "type": "string", "minLength": 1 },
+        "storageClassName": { "type": "string" }
+      }
+    },
+    "discord": {
+      "type": "object",
+      "required": ["existingSecret", "tokenKey", "publicKeyKey"],
+      "properties": {
+        "existingSecret": { "type": "string", "minLength": 1 },
+        "tokenKey": { "type": "string", "minLength": 1 },
+        "publicKeyKey": { "type": "string", "minLength": 1 }
+      }
+    },
+    "github": {
+      "type": "object",
+      "required": ["existingSecret", "tokenKey"],
+      "properties": {
+        "existingSecret": { "type": "string", "minLength": 1 },
+        "tokenKey": { "type": "string", "minLength": 1 }
+      }
+    },
+    "sonarcloud": {
+      "type": "object",
+      "required": ["existingSecret", "tokenKey"],
+      "properties": {
+        "existingSecret": { "type": "string", "minLength": 1 },
+        "tokenKey": { "type": "string", "minLength": 1 },
+        "organization": { "type": "string" },
+        "projectKey": { "type": "string" }
+      }
+    },
+    "service": {
+      "type": "object",
+      "required": ["type", "port"],
+      "properties": {
+        "type": { "type": "string", "minLength": 1 },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 }
+      }
+    },
+    "resources": {
+      "type": "object"
+    },
+    "networkPolicy": {
+      "type": "object",
+      "required": ["enabled"],
+      "properties": {
+        "enabled": { "type": "boolean" }
+      }
+    },
+    "ingress": {
+      "type": "object",
+      "required": ["enabled", "hosts", "tls"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "className": { "type": "string" },
+        "hosts": { "type": "array" },
+        "tls": { "type": "array" }
+      }
+    }
+  }
+}

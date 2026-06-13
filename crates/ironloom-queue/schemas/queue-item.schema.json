@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "QueueItem",
+  "description": "Durable queue work item.",
+  "type": "object",
+  "properties": {
+    "state": {
+      "description": "Current lifecycle state.",
+      "$ref": "#/$defs/QueueState"
+    },
+    "work_item_id": {
+      "description": "Work item identifier.",
+      "$ref": "#/$defs/WorkItemId"
+    }
+  },
+  "required": [
+    "work_item_id",
+    "state"
+  ],
+  "$defs": {
+    "QueueState": {
+      "description": "Durable work item lifecycle states.",
+      "oneOf": [
+        {
+          "description": "Work item is waiting for a claim.",
+          "type": "string",
+          "const": "pending"
+        },
+        {
+          "description": "Work item is actively claimed.",
+          "type": "string",
+          "const": "claimed"
+        },
+        {
+          "description": "Work item finished successfully.",
+          "type": "string",
+          "const": "completed"
+        },
+        {
+          "description": "Work item failed and requires follow-up.",
+          "type": "string",
+          "const": "failed"
+        }
+      ]
+    },
+    "WorkItemId": {
+      "description": "Validated Ironloom WorkItemId value.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

@@ -1,30 +1,13 @@
 name: Publish Helm Chart
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
-      publish-mode:
-        description: Publish mode for the chart artifact.
-        required: false
-        default: dev
-        type: choice
-        options:
-          - dev
-          - stable
-      ref:
-        description: Git ref to publish.
-        required: false
-        type: string
-      pr-number:
-        description: Pull request number for dev chart versioning.
-        required: false
-        type: string
-      change-title:
-        description: Change title used for Artifact Hub metadata.
-        required: false
-        type: string
-      change-body:
-        description: Change body used for Artifact Hub metadata.
+      image-tag:
+        description: Image tag to write into chart values.
         required: false
         type: string
 
@@ -34,25 +17,41 @@ permissions:
 
 jobs:
   publish:
-    name: Publish Helm Chart
+    name: Publish Ironloom Helm Chart
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
 
     steps:
       - uses: actions/checkout@v6
 
-      - name: Publish Helm Chart
-        uses: ./.github/actions/publish-helm-chart
-        with:
-          publish_mode: ${{ github.event.inputs['publish-mode'] || 'dev' }}
-          ref: ${{ github.event.inputs.ref || github.sha }}
-          pr_number: ${{ github.event.inputs['pr-number'] || '' }}
-          change_title: ${{ github.event.inputs['change-title'] || '' }}
-          change_body: ${{ github.event.inputs['change-body'] || '' }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          helm_gpg_private: ${{ secrets.HELM_GPG_PRIVATE }}
-          helm_gpg_public: ${{ secrets.HELM_GPG_PUBLIC }}
-          helm_key_id: ${{ secrets.HELM_KEY_ID }}
-          helm_key_secret: ${{ secrets.HELM_KEY_SECRET }}
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io --username "${{ github.actor }}" --password-stdin
+
+      - name: Resolve chart metadata
+        id: meta
+        shell: bash
+        run: |
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          version="$(awk -F '"' '/^version =/ { print $2; exit }' Cargo.toml)"
+          image_tag="${{ github.event.inputs.image-tag }}"
+          if [[ -z "$image_tag" ]]; then
+            image_tag="$version"
+          fi
+          echo "owner=${owner}" >> "$GITHUB_OUTPUT"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "image_tag=${image_tag}" >> "$GITHUB_OUTPUT"
+
+      - name: Stage chart image tag
+        run: |
+          sed -i "s/tag: \"0.1.0\"/tag: \"${{ steps.meta.outputs.image_tag }}\"/" deploy/helm/ironloom/values.yaml
+
+      - name: Lint chart
+        run: helm lint deploy/helm/ironloom
+
+      - name: Package chart
+        run: helm package deploy/helm/ironloom --destination "${RUNNER_TEMP}/charts"
+
+      - name: Publish chart
+        run: helm push "${RUNNER_TEMP}/charts/ironloom-${{ steps.meta.outputs.version }}.tgz" "oci://ghcr.io/${{ steps.meta.outputs.owner }}/charts"

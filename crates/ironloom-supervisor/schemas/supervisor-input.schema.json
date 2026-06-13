@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SupervisorInput",
+  "description": "Supervisor input envelope for a thread-bound gate command.",
+  "type": "object",
+  "properties": {
+    "actor_id": {
+      "description": "Requesting actor.",
+      "$ref": "#/$defs/ActorId"
+    },
+    "command": {
+      "description": "Operator command text.",
+      "type": "string"
+    },
+    "correlation_id": {
+      "description": "Correlation identifier.",
+      "$ref": "#/$defs/CorrelationId"
+    },
+    "thread_id": {
+      "description": "Originating Discord thread.",
+      "$ref": "#/$defs/ThreadId"
+    },
+    "work_item_id": {
+      "description": "Work item selected by the Discord thread binding.",
+      "$ref": "#/$defs/WorkItemId"
+    }
+  },
+  "required": [
+    "work_item_id",
+    "thread_id",
+    "actor_id",
+    "correlation_id",
+    "command"
+  ],
+  "$defs": {
+    "ActorId": {
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "CorrelationId": {
+      "description": "Validated Ironloom CorrelationId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ThreadId": {
+      "description": "Validated Ironloom ThreadId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "WorkItemId": {
+      "description": "Validated Ironloom WorkItemId value.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RetryPolicy",
+  "description": "Retry budget for a process graph transition.",
+  "oneOf": [
+    {
+      "description": "Retry a bounded number of times.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "bounded"
+        },
+        "max_attempts": {
+          "type": "integer",
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0
+        }
+      },
+      "required": [
+        "kind",
+        "max_attempts"
+      ]
+    },
+    {
+      "description": "Invalid first-release policy used only to verify fail-closed validation.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "unbounded"
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    }
+  ]
+}

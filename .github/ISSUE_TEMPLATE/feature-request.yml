@@ -1,5 +1,5 @@
 name: Feature request
-description: Propose a new capability, workflow improvement, or package enhancement.
+description: Propose a new capability, workflow improvement, or delivery enhancement.
 title: '[Feature]: '
 labels:
   - enhancement
@@ -12,19 +12,19 @@ body:
     validations:
       required: true
   - type: dropdown
-    id: lifecycle_stage
+    id: surface
     attributes:
-      label: Lifecycle stage
-      description: Which lifecycle stage does this proposal target first?
+      label: Surface
+      description: Which Ironloom surface does this proposal target first?
       options:
-        - Research
-        - Spec PR
-        - Human approval
-        - Slicing
-        - Implementation PR
-        - Gates, review, or remediation
-        - Operator control
-        - Release surfaces
+        - Rust runtime
+        - Process graph
+        - Worker registry
+        - Discord operator adapter
+        - GitHub source-of-truth adapter
+        - SonarCloud quality gate
+        - Docker or Helm delivery
+        - Documentation or GitHub Pages
     validations:
       required: true
   - type: textarea
@@ -34,31 +34,16 @@ body:
       description: Describe the expected behavior clearly.
     validations:
       required: true
-  - type: checkboxes
-    id: release_surfaces
-    attributes:
-      label: Affected release surfaces
-      description: Check every published surface this proposal touches.
-      options:
-        - label: GitHub Packages npm packages
-        - label: GHCR Docker image
-        - label: GHCR OCI Helm chart
-        - label: GitHub Pages documentation site
   - type: textarea
     id: operator_impact
     attributes:
       label: Operator and audit impact
-      description: Explain any GitHub, Discord, OpenClaw, or audit-trail impact.
-  - type: textarea
-    id: performance_expectations
-    attributes:
-      label: Performance expectations
-      description: Describe latency, throughput, scan-cost, or benchmark expectations.
+      description: Explain any GitHub, Discord, SonarCloud, or audit-trail impact.
   - type: textarea
     id: constraints
     attributes:
       label: Constraints and non-goals
-      description: Note package boundaries, policy concerns, or things that must not change.
+      description: Note crate boundaries, policy concerns, or things that must not change.
   - type: textarea
     id: acceptance
     attributes:
@@ -66,8 +51,3 @@ body:
       description: List the outcomes that would make this complete.
     validations:
       required: true
-  - type: input
-    id: packages
-    attributes:
-      label: Target packages
-      placeholder: '@vannadii/devplat-supervisor, @vannadii/devplat-policy'

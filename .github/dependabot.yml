@@ -1,6 +1,6 @@
 version: 2
 updates:
-  - package-ecosystem: npm
+  - package-ecosystem: cargo
     directory: /
     schedule:
       interval: weekly
@@ -9,7 +9,6 @@ updates:
       timezone: America/Los_Angeles
     open-pull-requests-limit: 5
     rebase-strategy: auto
-    versioning-strategy: increase-if-necessary
     commit-message:
       prefix: chore
       include: scope
@@ -18,12 +17,7 @@ updates:
     labels:
       - dependencies
     groups:
-      prod:
-        dependency-type: production
-        patterns:
-          - '*'
-      dev:
-        dependency-type: development
+      rust:
         patterns:
           - '*'
 

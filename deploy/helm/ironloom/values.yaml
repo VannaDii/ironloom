@@ -1,0 +1,72 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/vannadii/ironloom
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  create: true
+  name: ""
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+service:
+  type: ClusterIP
+  port: 8080
+
+runtime:
+  bindAddress: "0.0.0.0:8080"
+  publicUrl: "https://ironloom.dev"
+  stateMountPath: /var/lib/ironloom/.ironloom
+  worktreeMountPath: /var/lib/ironloom/worktrees
+
+storage:
+  size: 2Gi
+  storageClassName: ""
+
+discord:
+  existingSecret: ironloom-discord
+  tokenKey: token
+  publicKeyKey: public-key
+
+github:
+  existingSecret: ironloom-github
+  tokenKey: token
+
+sonarcloud:
+  existingSecret: ironloom-sonarcloud
+  tokenKey: token
+  organization: ""
+  projectKey: ""
+
+observability:
+  logLevel: info
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+networkPolicy:
+  enabled: false
+
+ingress:
+  enabled: false
+  className: ""
+  hosts: []
+  tls: []

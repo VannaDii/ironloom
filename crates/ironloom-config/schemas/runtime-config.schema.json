@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RuntimeConfig",
+  "description": "Runtime configuration required before accepting work.",
+  "type": "object",
+  "properties": {
+    "discord_token_ref": {
+      "description": "Discord token secret reference.",
+      "type": "string"
+    },
+    "github_token_ref": {
+      "description": "GitHub credential secret reference.",
+      "type": "string"
+    },
+    "runtime_url": {
+      "description": "Public runtime base URL.",
+      "type": "string"
+    },
+    "sonarcloud_token_ref": {
+      "description": "SonarCloud token secret reference.",
+      "type": "string"
+    },
+    "state_root": {
+      "description": "State root that contains `.ironloom`.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "runtime_url",
+    "state_root",
+    "discord_token_ref",
+    "github_token_ref",
+    "sonarcloud_token_ref"
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PolicyDecision",
+  "description": "Policy result consumed before any worker side effect.",
+  "oneOf": [
+    {
+      "description": "The action can proceed.",
+      "type": "object",
+      "properties": {
+        "decision": {
+          "type": "string",
+          "const": "allowed"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "decision",
+        "reason"
+      ]
+    },
+    {
+      "description": "The action is blocked.",
+      "type": "object",
+      "properties": {
+        "decision": {
+          "type": "string",
+          "const": "denied"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "decision",
+        "reason"
+      ]
+    },
+    {
+      "description": "The action must pause for human approval.",
+      "type": "object",
+      "properties": {
+        "decision": {
+          "type": "string",
+          "const": "requires_approval"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "decision",
+        "reason"
+      ]
+    }
+  ]
+}

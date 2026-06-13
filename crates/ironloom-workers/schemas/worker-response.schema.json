@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "WorkerResponse",
+  "description": "Stable worker response envelope.",
+  "type": "object",
+  "properties": {
+    "artifact_ids": {
+      "description": "Produced artifact identifiers.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "payload": {
+      "description": "Worker-specific JSON payload."
+    },
+    "worker_name": {
+      "description": "Worker name.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "worker_name",
+    "artifact_ids",
+    "payload"
+  ]
+}

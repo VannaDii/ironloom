@@ -1,0 +1,17 @@
+[package]
+name = "ironloom-worktrees"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+publish.workspace = true
+description = "Ironloom git worktree safety and lifecycle contracts."
+
+[dependencies]
+ironloom-core = { path = "../ironloom-core", version = "0.1.0" }
+schemars.workspace = true
+serde.workspace = true
+
+[lints]
+workspace = true

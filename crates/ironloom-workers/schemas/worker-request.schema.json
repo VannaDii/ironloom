@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "WorkerRequest",
+  "description": "Stable worker request envelope that can later become an RPC contract.",
+  "type": "object",
+  "properties": {
+    "correlation_id": {
+      "description": "Request correlation identifier.",
+      "$ref": "#/$defs/CorrelationId"
+    },
+    "payload": {
+      "description": "Worker-specific JSON payload."
+    },
+    "work_item_id": {
+      "description": "Work item identifier.",
+      "$ref": "#/$defs/WorkItemId"
+    },
+    "worker_name": {
+      "description": "Worker name.",
+      "type": "string"
+    },
+    "worker_version": {
+      "description": "Worker version.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "worker_name",
+    "worker_version",
+    "work_item_id",
+    "correlation_id",
+    "payload"
+  ],
+  "$defs": {
+    "CorrelationId": {
+      "description": "Validated Ironloom CorrelationId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "WorkItemId": {
+      "description": "Validated Ironloom WorkItemId value.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

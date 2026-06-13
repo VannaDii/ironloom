@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SonarCloudConfig",
+  "description": "SonarCloud bootstrap settings.",
+  "type": "object",
+  "properties": {
+    "organization": {
+      "description": "SonarCloud organization key.",
+      "type": "string"
+    },
+    "project_key": {
+      "description": "SonarCloud project key.",
+      "type": "string"
+    },
+    "token_ref": {
+      "description": "Token secret reference.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "organization",
+    "project_key",
+    "token_ref"
+  ]
+}

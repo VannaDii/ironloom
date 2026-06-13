@@ -1,57 +1,38 @@
-name: Version Packages
+name: Create Release
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
-  version:
-    name: Version Packages
+  release:
+    name: GitHub Release
     runs-on: ubuntu-latest
 
     steps:
-      - name: Create DevPlat bot token
-        id: devplat_bot_token
-        uses: actions/create-github-app-token@v3
-        with:
-          client-id: ${{ secrets.BOT_CLIENT_ID }}
-          permission-contents: write
-          permission-pull-requests: write
-          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
-          repositories: ${{ github.event.repository.name }}
-
       - uses: actions/checkout@v6
-        with:
-          token: ${{ steps.devplat_bot_token.outputs.token }}
 
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-          cache-dependency-path: package-lock.json
-
-      - name: Install dependencies
-        run: npm ci --ignore-scripts
-
-      - name: Verify Node alignment
-        run: npm run verify:node
-
-      - name: Configure git identity
+      - name: Resolve release notes
+        id: notes
+        shell: bash
         run: |
-          git config user.name "${{ steps.devplat_bot_token.outputs.app-slug }}[bot]"
-          git config user.email "${{ steps.devplat_bot_token.outputs.app-slug }}[bot]@users.noreply.github.com"
+          version="$(awk -F '"' '/^version =/ { print $2; exit }' Cargo.toml)"
+          {
+            echo "body<<EOF"
+            echo "Ironloom ${version}"
+            echo
+            echo "- Rust supervisor runtime"
+            echo "- Docker image: ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/ironloom:${version}"
+            echo "- Helm chart: oci://ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/charts/ironloom"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
-      - name: Create or update release PR
-        uses: changesets/action@v1
+      - name: Create release
+        uses: softprops/action-gh-release@v2
         with:
-          title: 'chore(release): version packages'
-          commit: 'chore(release): version packages'
-          version: npm run version-packages
-        env:
-          GITHUB_TOKEN: ${{ steps.devplat_bot_token.outputs.token }}
+          body: ${{ steps.notes.outputs.body }}

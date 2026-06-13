@@ -2,25 +2,13 @@
 
 ## Our Standards
 
-Participation in DevPlat is expected to be professional, direct, and respectful.
-Contributors must:
+Participation in Ironloom is expected to be professional, direct, and respectful. Contributors must focus feedback on the work, explain concerns with concrete evidence, respect security and privacy boundaries, and accept that maintainers may reject changes that weaken correctness, safety, or maintainability.
 
-- focus feedback on the work, not the person
-- explain concerns with concrete evidence
-- avoid harassment, discrimination, intimidation, and personal attacks
-- respect security, privacy, and disclosure boundaries
-- accept that maintainers may reject changes that weaken correctness, safety, or maintainability
-
-Unacceptable behavior includes abusive language, deliberate disruption, doxxing, harassment, bad-faith review behavior, and public disclosure of security issues before coordination with maintainers.
+Unacceptable behavior includes harassment, discrimination, intimidation, personal attacks, deliberate disruption, doxxing, bad-faith review behavior, and public disclosure of security issues before coordination with maintainers.
 
 ## Scope
 
-This code of conduct applies to:
-
-- repository discussions
-- issues and pull requests
-- review comments
-- release and operational discussions connected to the project
+This code of conduct applies to repository discussions, issues, pull requests, review comments, release work, and operational discussions connected to the project.
 
 ## Reporting
 

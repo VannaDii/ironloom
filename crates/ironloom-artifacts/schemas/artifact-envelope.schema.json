@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ArtifactEnvelope",
+  "description": "Immutable artifact envelope stored under `.ironloom/artifacts`.",
+  "type": "object",
+  "properties": {
+    "checksum": {
+      "type": "string"
+    },
+    "correlation_id": {
+      "$ref": "#/$defs/CorrelationId"
+    },
+    "id": {
+      "$ref": "#/$defs/ArtifactId"
+    },
+    "kind": {
+      "$ref": "#/$defs/ArtifactKind"
+    },
+    "payload": true,
+    "thread_id": {
+      "$ref": "#/$defs/ThreadId"
+    },
+    "version": {
+      "type": "integer",
+      "format": "uint16",
+      "maximum": 65535,
+      "minimum": 0
+    },
+    "work_item_id": {
+      "$ref": "#/$defs/WorkItemId"
+    }
+  },
+  "required": [
+    "id",
+    "version",
+    "kind",
+    "work_item_id",
+    "thread_id",
+    "correlation_id",
+    "checksum",
+    "payload"
+  ],
+  "$defs": {
+    "ArtifactId": {
+      "description": "Validated Ironloom ArtifactId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ArtifactKind": {
+      "description": "Artifact categories emitted by the Ironloom runtime.",
+      "oneOf": [
+        {
+          "description": "Structured result from a repository gate command.",
+          "type": "string",
+          "const": "gate_result"
+        },
+        {
+          "description": "Supervisor routing and validation decision.",
+          "type": "string",
+          "const": "supervisor_decision"
+        },
+        {
+          "description": "Operator-facing Discord interaction result.",
+          "type": "string",
+          "const": "discord_interaction"
+        },
+        {
+          "description": "Auditable policy decision.",
+          "type": "string",
+          "const": "policy_decision"
+        }
+      ]
+    },
+    "CorrelationId": {
+      "description": "Validated Ironloom CorrelationId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ThreadId": {
+      "description": "Validated Ironloom ThreadId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "WorkItemId": {
+      "description": "Validated Ironloom WorkItemId value.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

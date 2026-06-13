@@ -1,0 +1,29 @@
+[package]
+name = "ironloom-runtime"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+publish.workspace = true
+description = "Deployable Ironloom supervisor runtime."
+
+[[bin]]
+name = "ironloom"
+path = "src/main.rs"
+
+[dependencies]
+ironloom-config = { path = "../ironloom-config", version = "0.1.0" }
+ironloom-core = { path = "../ironloom-core", version = "0.1.0" }
+ironloom-discord = { path = "../ironloom-discord", version = "0.1.0" }
+ironloom-gates = { path = "../ironloom-gates", version = "0.1.0" }
+ironloom-storage = { path = "../ironloom-storage", version = "0.1.0" }
+ironloom-supervisor = { path = "../ironloom-supervisor", version = "0.1.0" }
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

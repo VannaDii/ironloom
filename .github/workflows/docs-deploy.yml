@@ -17,40 +17,33 @@ concurrency:
 
 jobs:
   build:
-    name: Build Docs
+    name: Build Docs Site
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
 
-      - name: Setup Node
-        uses: actions/setup-node@v6
+      - name: Setup mdBook
+        uses: peaceiris/actions-mdbook@v2
         with:
-          node-version-file: .nvmrc
-          cache: npm
-          cache-dependency-path: package-lock.json
+          mdbook-version: latest
+
+      - name: Build docs
+        run: mdbook build docs/site --dest-dir ../../public
+
+      - name: Write custom domain
+        run: echo "docs.ironloom.dev" > public/CNAME
 
       - name: Setup Pages
         uses: actions/configure-pages@v6
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Verify Node alignment
-        run: npm run verify:node
-
-      - name: Build docs
-        run: npm run docs:build
-
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5
         with:
-          path: site/guide-docs/.vitepress/dist
+          path: public
 
   deploy:
-    name: Deploy Docs
+    name: Deploy Pages
     needs: build
     runs-on: ubuntu-latest
     environment:

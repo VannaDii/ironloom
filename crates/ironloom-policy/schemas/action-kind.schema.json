@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ActionKind",
+  "description": "Operator action categories evaluated by policy.",
+  "oneOf": [
+    {
+      "description": "Run a configured validation gate.",
+      "type": "string",
+      "const": "run_gate"
+    },
+    {
+      "description": "Merge a pull request.",
+      "type": "string",
+      "const": "merge_pull_request"
+    }
+  ]
+}

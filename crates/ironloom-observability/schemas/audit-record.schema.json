@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AuditRecord",
+  "description": "Redaction-safe audit record emitted by runtime components.",
+  "type": "object",
+  "properties": {
+    "actor_id": {
+      "description": "Actor associated with the action.",
+      "$ref": "#/$defs/ActorId"
+    },
+    "artifact_ids": {
+      "description": "Artifact identifiers produced by the action.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "correlation_id": {
+      "description": "Correlation identifier propagated through the slice.",
+      "$ref": "#/$defs/CorrelationId"
+    },
+    "process_node": {
+      "description": "Process node currently executing.",
+      "type": "string"
+    },
+    "thread_id": {
+      "description": "Discord thread associated with the action.",
+      "$ref": "#/$defs/ThreadId"
+    },
+    "work_item_id": {
+      "description": "Work item associated with the action.",
+      "$ref": "#/$defs/WorkItemId"
+    },
+    "worker_name": {
+      "description": "Worker that produced the record.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "correlation_id",
+    "actor_id",
+    "work_item_id",
+    "thread_id",
+    "process_node",
+    "worker_name",
+    "artifact_ids"
+  ],
+  "$defs": {
+    "ActorId": {
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "CorrelationId": {
+      "description": "Validated Ironloom CorrelationId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ThreadId": {
+      "description": "Validated Ironloom ThreadId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "WorkItemId": {
+      "description": "Validated Ironloom WorkItemId value.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

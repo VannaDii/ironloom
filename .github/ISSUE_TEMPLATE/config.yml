@@ -1,11 +1,11 @@
 blank_issues_enabled: false
 contact_links:
   - name: Support
-    url: https://github.com/VannaDii/devplat/blob/main/SUPPORT.md
+    url: https://github.com/VannaDii/ironloom/blob/main/SUPPORT.md
     about: Usage questions and operational support guidance live here.
   - name: Security disclosure
-    url: https://github.com/VannaDii/devplat/blob/main/SECURITY.md
+    url: https://github.com/VannaDii/ironloom/blob/main/SECURITY.md
     about: Do not file public issues for security vulnerabilities.
   - name: Contribution guidelines
-    url: https://github.com/VannaDii/devplat/blob/main/CONTRIBUTING.md
+    url: https://github.com/VannaDii/ironloom/blob/main/CONTRIBUTING.md
     about: Read the repository contribution requirements before opening a pull request.

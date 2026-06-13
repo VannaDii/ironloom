@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SupervisorDecision",
+  "description": "Supervisor routing decision after a gate route.",
+  "type": "object",
+  "properties": {
+    "persisted_artifact_ids": {
+      "description": "Persisted artifact identifiers.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "selected_process_node": {
+      "description": "Selected process node name.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "selected_process_node",
+    "persisted_artifact_ids"
+  ]
+}
