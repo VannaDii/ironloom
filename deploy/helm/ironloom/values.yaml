@@ -32,6 +32,11 @@ runtime:
   stateMountPath: /var/lib/ironloom/.ironloom
   worktreeMountPath: /var/lib/ironloom/worktrees
 
+setup:
+  existingSecret: ironloom-setup
+  configKeyKey: config-key
+  installerTokenKey: installer-token
+
 storage:
   size: 2Gi
   storageClassName: ""
@@ -50,6 +55,11 @@ sonarcloud:
   tokenKey: token
   organization: ""
   projectKey: ""
+
+openai:
+  existingSecret: ironloom-openai
+  apiKeyKey: api-key
+  oauthSessionKey: oauth-session
 
 observability:
   logLevel: info

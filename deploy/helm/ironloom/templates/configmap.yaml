@@ -10,5 +10,9 @@ data:
   IRONLOOM_STATE_ROOT: {{ .Values.runtime.stateMountPath | quote }}
   IRONLOOM_WORKTREE_ROOT: {{ .Values.runtime.worktreeMountPath | quote }}
   IRONLOOM_LOG_LEVEL: {{ .Values.observability.logLevel | quote }}
+{{ if .Values.sonarcloud.organization }}
   IRONLOOM_SONARCLOUD_ORGANIZATION: {{ .Values.sonarcloud.organization | quote }}
+{{ end }}
+{{ if .Values.sonarcloud.projectKey }}
   IRONLOOM_SONARCLOUD_PROJECT_KEY: {{ .Values.sonarcloud.projectKey | quote }}
+{{ end }}

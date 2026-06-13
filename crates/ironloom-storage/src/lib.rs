@@ -1,11 +1,19 @@
 #![forbid(unsafe_code)]
 
 use std::fs;
+use std::fs::OpenOptions;
 use std::io;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
+use aes_gcm::aead::{Aead, KeyInit, OsRng, rand_core::RngCore};
+use aes_gcm::{Aes256Gcm, Nonce};
+use base64::Engine;
+use base64::engine::general_purpose::STANDARD;
 use ironloom_artifacts::ArtifactEnvelope;
+use ironloom_config::StoredSetupConfig;
 use ironloom_core::{ThreadId, WorkItemId};
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 const STATE_DIR: &str = ".ironloom";
@@ -14,6 +22,12 @@ const INDEXES_DIR: &str = "indexes";
 const THREAD_INDEX_DIR: &str = "threads";
 const WORK_ITEM_INDEX_DIR: &str = "work-items";
 const TEMP_DIR: &str = "tmp";
+const SETUP_DIR: &str = "setup";
+const SETUP_CONFIG_FILE: &str = "config.enc.json";
+const SETUP_CONFIG_TEMP_FILE: &str = "config.enc.json.tmp";
+const ENCRYPTED_SETUP_CONFIG_VERSION: u16 = 1;
+const CONFIG_KEY_BYTES: usize = 32;
+const NONCE_BYTES: usize = 12;
 
 /// Storage errors returned by the filesystem implementation.
 #[derive(Debug, Error)]
@@ -28,6 +42,106 @@ pub enum StorageError {
 
 /// Result type for storage operations.
 pub type StorageResult<T> = Result<T, StorageError>;
+
+/// Errors returned by encrypted setup configuration storage.
+#[derive(Debug, Error)]
+pub enum SetupConfigStoreError {
+    /// Filesystem operation failed.
+    #[error("setup config I/O failed: {0}")]
+    Io(#[from] io::Error),
+    /// Setup config serialization failed.
+    #[error("setup config serialization failed: {0}")]
+    Serialization(#[from] serde_json::Error),
+    /// Config key was not valid base64-encoded 256-bit key material.
+    #[error("IRONLOOM_CONFIG_KEY must be base64-encoded 32-byte key material")]
+    InvalidConfigKey,
+    /// Encrypted setup file could not be decrypted with the provided key.
+    #[error("encrypted setup config could not be decrypted")]
+    DecryptionFailed,
+}
+
+/// Filesystem-backed encrypted setup configuration store.
+#[derive(Debug)]
+pub struct SetupConfigStore {
+    state_root: PathBuf,
+}
+
+impl SetupConfigStore {
+    /// Creates a setup config store rooted at the runtime state root.
+    #[must_use]
+    pub fn new(state_root: impl AsRef<Path>) -> Self {
+        Self {
+            state_root: state_root.as_ref().to_path_buf(),
+        }
+    }
+
+    /// Returns the encrypted setup config path.
+    #[must_use]
+    pub fn config_path(&self) -> PathBuf {
+        self.setup_dir().join(SETUP_CONFIG_FILE)
+    }
+
+    /// Reads and decrypts the local setup config when it exists.
+    pub fn read(
+        &self,
+        config_key: &str,
+    ) -> Result<Option<StoredSetupConfig>, SetupConfigStoreError> {
+        let key = decode_config_key(config_key)?;
+        let path = self.config_path();
+        if !path.exists() {
+            return Ok(None);
+        }
+        let encoded = fs::read_to_string(path)?;
+        let payload: EncryptedSetupConfig = serde_json::from_str(&encoded)?;
+        let nonce = STANDARD
+            .decode(payload.nonce)
+            .map_err(|_| SetupConfigStoreError::DecryptionFailed)?;
+        if nonce.len() != NONCE_BYTES {
+            return Err(SetupConfigStoreError::DecryptionFailed);
+        }
+        let ciphertext = STANDARD
+            .decode(payload.ciphertext)
+            .map_err(|_| SetupConfigStoreError::DecryptionFailed)?;
+        let cipher =
+            Aes256Gcm::new_from_slice(&key).map_err(|_| SetupConfigStoreError::InvalidConfigKey)?;
+        let plaintext = cipher
+            .decrypt(Nonce::from_slice(&nonce), ciphertext.as_ref())
+            .map_err(|_| SetupConfigStoreError::DecryptionFailed)?;
+        let config = serde_json::from_slice(&plaintext)?;
+        Ok(Some(config))
+    }
+
+    /// Encrypts and persists the local setup config.
+    pub fn write(
+        &self,
+        config_key: &str,
+        config: &StoredSetupConfig,
+    ) -> Result<(), SetupConfigStoreError> {
+        let key = decode_config_key(config_key)?;
+        fs::create_dir_all(self.setup_dir())?;
+        let plaintext = serde_json::to_vec(config)?;
+        let cipher =
+            Aes256Gcm::new_from_slice(&key).map_err(|_| SetupConfigStoreError::InvalidConfigKey)?;
+        let mut nonce = [0_u8; NONCE_BYTES];
+        OsRng.fill_bytes(&mut nonce);
+        let ciphertext = cipher
+            .encrypt(Nonce::from_slice(&nonce), plaintext.as_ref())
+            .map_err(|_| SetupConfigStoreError::DecryptionFailed)?;
+        let payload = EncryptedSetupConfig {
+            version: ENCRYPTED_SETUP_CONFIG_VERSION,
+            nonce: STANDARD.encode(nonce),
+            ciphertext: STANDARD.encode(ciphertext),
+        };
+        let temporary_path = self.setup_dir().join(SETUP_CONFIG_TEMP_FILE);
+        write_owner_only_file(&temporary_path, &serde_json::to_vec_pretty(&payload)?)?;
+        fs::rename(temporary_path, self.config_path())?;
+        Ok(())
+    }
+
+    fn setup_dir(&self) -> PathBuf {
+        self.state_root.join(SETUP_DIR)
+    }
+}
 
 /// Filesystem-backed implementation of the first Ironloom state store.
 #[derive(Debug)]
@@ -149,4 +263,39 @@ fn safe_file_component(value: &str) -> String {
             }
         })
         .collect()
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct EncryptedSetupConfig {
+    version: u16,
+    nonce: String,
+    ciphertext: String,
+}
+
+fn decode_config_key(config_key: &str) -> Result<[u8; CONFIG_KEY_BYTES], SetupConfigStoreError> {
+    let decoded = STANDARD
+        .decode(config_key)
+        .map_err(|_| SetupConfigStoreError::InvalidConfigKey)?;
+    decoded
+        .try_into()
+        .map_err(|_| SetupConfigStoreError::InvalidConfigKey)
+}
+
+#[cfg(unix)]
+fn write_owner_only_file(path: &Path, content: &[u8]) -> io::Result<()> {
+    use std::os::unix::fs::OpenOptionsExt;
+
+    let mut file = OpenOptions::new()
+        .create(true)
+        .truncate(true)
+        .write(true)
+        .mode(0o600)
+        .open(path)?;
+    file.write_all(content)?;
+    file.sync_all()
+}
+
+#[cfg(not(unix))]
+fn write_owner_only_file(path: &Path, content: &[u8]) -> io::Result<()> {
+    fs::write(path, content)
 }

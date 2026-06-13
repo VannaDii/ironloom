@@ -15,9 +15,9 @@ Ironloom is a Rust supervisor runtime by Veritas Labs for auditable autonomous e
 ## Required Crates
 
 - `ironloom-core`: typed IDs, repository and branch primitives, shared errors.
-- `ironloom-config`: runtime configuration validation.
+- `ironloom-config`: runtime configuration resolution, setup gating, and environment precedence.
 - `ironloom-artifacts`: immutable artifact envelopes and schema contracts.
-- `ironloom-storage`: `.ironloom/` filesystem state and indexes.
+- `ironloom-storage`: `.ironloom/` filesystem state, indexes, and encrypted setup configuration.
 - `ironloom-policy`: fail-closed policy decisions.
 - `ironloom-process-graph`: typed process graph validation and routing.
 - `ironloom-queue`: durable work item lifecycle contracts.
@@ -29,7 +29,7 @@ Ironloom is a Rust supervisor runtime by Veritas Labs for auditable autonomous e
 - `ironloom-discord`: thread-aware operator adapter.
 - `ironloom-github`: GitHub source-of-truth projections.
 - `ironloom-sonarcloud`: SonarCloud quality/compliance normalization.
-- `ironloom-runtime`: service composition, health, and readiness.
+- `ironloom-runtime`: service composition, health, readiness, and first-run setup HTTP surface.
 
 ## First Vertical Slice
 
@@ -72,6 +72,7 @@ Expected publishing gates:
 - Discord lifecycle actions are thread-aware and fail closed when ambiguous.
 - GitHub remains source of truth for repository, pull-request, check, and merge state.
 - SonarCloud bootstrap validation fails closed when required project or token configuration is missing.
+- Setup requires `IRONLOOM_CONFIG_KEY` before accepting credential inputs, and runtime configuration can resolve from environment variables or encrypted local setup with environment values taking precedence.
 - Docker image contains no Node runtime and runs as a non-root user.
 - Helm chart deploys Ironloom directly with PVC-backed `.ironloom` state.
 - Docs build through the approved Node-free static documentation toolchain.

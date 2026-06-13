@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "StoredSetupConfig",
+  "description": "Setup values persisted in the encrypted local setup file.",
+  "type": "object",
+  "properties": {
+    "discord_public_key_ref": {
+      "description": "Discord public key secret reference or secret value.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "discord_token_ref": {
+      "description": "Discord token secret reference or secret value.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "github_token_ref": {
+      "description": "GitHub credential secret reference or secret value.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "openai_api_key_ref": {
+      "description": "OpenAI API key secret reference or secret value.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "openai_oauth_session_ref": {
+      "description": "ChatGPT OAuth session reference or serialized session state.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "runtime_url": {
+      "description": "Public runtime base URL.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "sonarcloud_organization": {
+      "description": "SonarCloud organization.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "sonarcloud_project_key": {
+      "description": "SonarCloud project key.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "sonarcloud_token_ref": {
+      "description": "SonarCloud token secret reference or secret value.",
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}

@@ -4,9 +4,11 @@
   "required": [
     "image",
     "runtime",
+    "setup",
     "discord",
     "github",
     "sonarcloud",
+    "openai",
     "storage",
     "service",
     "resources",
@@ -45,6 +47,15 @@
         "storageClassName": { "type": "string" }
       }
     },
+    "setup": {
+      "type": "object",
+      "required": ["existingSecret", "configKeyKey", "installerTokenKey"],
+      "properties": {
+        "existingSecret": { "type": "string", "minLength": 1 },
+        "configKeyKey": { "type": "string", "minLength": 1 },
+        "installerTokenKey": { "type": "string", "minLength": 1 }
+      }
+    },
     "discord": {
       "type": "object",
       "required": ["existingSecret", "tokenKey", "publicKeyKey"],
@@ -70,6 +81,15 @@
         "tokenKey": { "type": "string", "minLength": 1 },
         "organization": { "type": "string" },
         "projectKey": { "type": "string" }
+      }
+    },
+    "openai": {
+      "type": "object",
+      "required": ["existingSecret", "apiKeyKey", "oauthSessionKey"],
+      "properties": {
+        "existingSecret": { "type": "string", "minLength": 1 },
+        "apiKeyKey": { "type": "string", "minLength": 1 },
+        "oauthSessionKey": { "type": "string", "minLength": 1 }
       }
     },
     "service": {

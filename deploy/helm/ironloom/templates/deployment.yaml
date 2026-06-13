@@ -32,26 +32,54 @@ spec:
             - configMapRef:
                 name: {{ include "ironloom.fullname" . }}-config
           env:
+            - name: IRONLOOM_CONFIG_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.setup.existingSecret }}
+                  key: {{ .Values.setup.configKeyKey }}
+                  optional: true
+            - name: IRONLOOM_INSTALLER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.setup.existingSecret }}
+                  key: {{ .Values.setup.installerTokenKey }}
+                  optional: true
             - name: IRONLOOM_DISCORD_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.discord.existingSecret }}
                   key: {{ .Values.discord.tokenKey }}
+                  optional: true
             - name: IRONLOOM_DISCORD_PUBLIC_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.discord.existingSecret }}
                   key: {{ .Values.discord.publicKeyKey }}
+                  optional: true
             - name: IRONLOOM_GITHUB_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.github.existingSecret }}
                   key: {{ .Values.github.tokenKey }}
+                  optional: true
             - name: IRONLOOM_SONARCLOUD_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.sonarcloud.existingSecret }}
                   key: {{ .Values.sonarcloud.tokenKey }}
+                  optional: true
+            - name: IRONLOOM_OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.openai.existingSecret }}
+                  key: {{ .Values.openai.apiKeyKey }}
+                  optional: true
+            - name: IRONLOOM_OPENAI_OAUTH_SESSION
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.openai.existingSecret }}
+                  key: {{ .Values.openai.oauthSessionKey }}
+                  optional: true
           volumeMounts:
             - name: state
               mountPath: {{ .Values.runtime.stateMountPath }}

@@ -4,6 +4,10 @@
   "description": "Runtime configuration required before accepting work.",
   "type": "object",
   "properties": {
+    "discord_public_key_ref": {
+      "description": "Discord public key secret reference.",
+      "type": "string"
+    },
     "discord_token_ref": {
       "description": "Discord token secret reference.",
       "type": "string"
@@ -12,8 +16,20 @@
       "description": "GitHub credential secret reference.",
       "type": "string"
     },
+    "openai_auth": {
+      "description": "OpenAI authentication settings.",
+      "$ref": "#/$defs/OpenAiAuthConfig"
+    },
     "runtime_url": {
       "description": "Public runtime base URL.",
+      "type": "string"
+    },
+    "sonarcloud_organization": {
+      "description": "SonarCloud organization.",
+      "type": "string"
+    },
+    "sonarcloud_project_key": {
+      "description": "SonarCloud project key.",
       "type": "string"
     },
     "sonarcloud_token_ref": {
@@ -29,7 +45,54 @@
     "runtime_url",
     "state_root",
     "discord_token_ref",
+    "discord_public_key_ref",
     "github_token_ref",
-    "sonarcloud_token_ref"
-  ]
+    "sonarcloud_token_ref",
+    "sonarcloud_organization",
+    "sonarcloud_project_key",
+    "openai_auth"
+  ],
+  "$defs": {
+    "OpenAiAuthConfig": {
+      "description": "OpenAI authentication method selected for coding-agent work.",
+      "oneOf": [
+        {
+          "description": "Authenticate with an OpenAI API key.",
+          "type": "object",
+          "properties": {
+            "api_key_ref": {
+              "description": "API key secret reference or secret value.",
+              "type": "string"
+            },
+            "method": {
+              "type": "string",
+              "const": "api_key"
+            }
+          },
+          "required": [
+            "method",
+            "api_key_ref"
+          ]
+        },
+        {
+          "description": "Authenticate with a ChatGPT-managed OAuth session.",
+          "type": "object",
+          "properties": {
+            "method": {
+              "type": "string",
+              "const": "chat_gpt_o_auth"
+            },
+            "session_ref": {
+              "description": "OAuth session reference or serialized session state.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "method",
+            "session_ref"
+          ]
+        }
+      ]
+    }
+  }
 }

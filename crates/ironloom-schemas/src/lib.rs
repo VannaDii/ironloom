@@ -4,7 +4,7 @@ use std::fs;
 use std::path::Path;
 
 use ironloom_artifacts::{ArtifactEnvelope, ArtifactKind};
-use ironloom_config::RuntimeConfig;
+use ironloom_config::{RuntimeConfig, StoredSetupConfig};
 use ironloom_core::{
     ActorId, ArtifactId, BranchName, CorrelationId, RepositorySlug, RunId, ThreadId, WorkItemId,
 };
@@ -88,6 +88,9 @@ fn schema_files() -> SchemaResult<Vec<SchemaFile>> {
             "crates/ironloom-artifacts/schemas/artifact-envelope.schema.json",
         )?,
         schema::<RuntimeConfig>("crates/ironloom-config/schemas/runtime-config.schema.json")?,
+        schema::<StoredSetupConfig>(
+            "crates/ironloom-config/schemas/stored-setup-config.schema.json",
+        )?,
         schema::<DiscordCommand>("crates/ironloom-discord/schemas/discord-command.schema.json")?,
         schema::<GateStatus>("crates/ironloom-gates/schemas/gate-status.schema.json")?,
         schema::<GateResult>("crates/ironloom-gates/schemas/gate-result.schema.json")?,

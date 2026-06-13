@@ -21,6 +21,7 @@ ironloom-storage = { path = "../ironloom-storage", version = "0.1.0" }
 ironloom-supervisor = { path = "../ironloom-supervisor", version = "0.1.0" }
 serde_json.workspace = true
 thiserror.workspace = true
+url.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

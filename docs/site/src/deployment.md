@@ -1,15 +1,23 @@
 # Deployment
 
-The runtime image is `ghcr.io/vannadii/ironloom` unless the registry owner changes. The Helm chart deploys the `ironloom` binary with PVC-backed `.ironloom` state, secret references for Discord, GitHub, and SonarCloud credentials, and health/readiness probes.
+The runtime image is `ghcr.io/vannadii/ironloom` unless the registry owner changes. The Helm chart deploys the `ironloom` binary with PVC-backed `.ironloom` state, setup-time encrypted local configuration, optional secret references for Discord, GitHub, SonarCloud, and OpenAI credentials, and health/readiness probes.
 
 Use the Helm chart under `deploy/helm/ironloom` for k3s deployments.
 
 ## Runtime Secrets
 
-Create the runtime secrets in the target namespace before installing the chart.
+Create the setup secret in the target namespace before installing the chart. `IRONLOOM_CONFIG_KEY` must be base64-encoded 32-byte key material. `IRONLOOM_INSTALLER_TOKEN` authorizes first-run setup form submissions.
 
 ```sh
 kubectl create namespace ironloom
+kubectl -n ironloom create secret generic ironloom-setup \
+  --from-literal=config-key="$(openssl rand -base64 32)" \
+  --from-literal=installer-token="$(openssl rand -base64 32)"
+```
+
+Runtime credentials can be provided through Kubernetes secrets, through the setup page, or through both. Environment-bound secrets take precedence over encrypted local setup values.
+
+```sh
 kubectl -n ironloom create secret generic ironloom-discord \
   --from-literal=token="${IRONLOOM_DISCORD_TOKEN}" \
   --from-literal=public-key="${IRONLOOM_DISCORD_PUBLIC_KEY}"
@@ -17,7 +25,13 @@ kubectl -n ironloom create secret generic ironloom-github \
   --from-literal=token="${IRONLOOM_GITHUB_TOKEN}"
 kubectl -n ironloom create secret generic ironloom-sonarcloud \
   --from-literal=token="${IRONLOOM_SONARCLOUD_TOKEN}"
+kubectl -n ironloom create secret generic ironloom-openai \
+  --from-literal=api-key="${IRONLOOM_OPENAI_API_KEY}"
 ```
+
+For OpenAI authentication, provide either `IRONLOOM_OPENAI_API_KEY` or `IRONLOOM_OPENAI_OAUTH_SESSION`. The setup page also supports both modes. The OAuth start action shows the ChatGPT device-code request shape for the local app-server flow and returns the operator to the setup page to save the resulting OAuth session reference.
+
+If `IRONLOOM_CONFIG_KEY` is not present, the runtime still serves HTTP and shows setup-key instructions instead of credential inputs. `/readyz` returns `503` until required runtime configuration resolves from environment variables or the encrypted setup file under `IRONLOOM_STATE_ROOT`.
 
 ## k3s Dry Run
 
