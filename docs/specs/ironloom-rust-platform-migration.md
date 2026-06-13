@@ -1403,7 +1403,7 @@ Quality:
 
 1. Should the GitHub repository be renamed/transferred from `VannaDii/devplat` to a Veritas Labs organization/repository, or should the migration happen in place first?
 2. What is the exact GitHub organization or registry owner for GHCR image and Helm chart publication?
-3. What SonarCloud organization and project key should replace `vannadii_devplat`?
+3. What SonarCloud organization and project key should replace `vannadii_devplat` after the Ironloom project is provisioned?
 4. Should Ironloom publish Rust crates, or are Docker image and Helm chart the only release artifacts?
 5. Which hostname should GitHub Pages use for the docs-hosted landing page and operator/developer docs?
 6. Should `ironloom.dev` redirect to the docs-hosted landing page in the first release, and who owns that DNS change?
