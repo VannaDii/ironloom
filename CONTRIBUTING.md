@@ -2,7 +2,7 @@
 
 ## Runtime Baseline
 
-Ironloom develops on stable Rust with Cargo. Install the Rust toolchain described by `rust-toolchain.toml`, plus `cargo-deny`, `cargo-audit`, `mdbook`, `trunk`, Docker, and Helm for full local validation.
+Ironloom develops on stable Rust with Cargo. Install the Rust toolchain described by `rust-toolchain.toml`, plus `cargo-deny`, `cargo-audit`, `mdbook`, Docker, and Helm for full local validation.
 
 Use [`PLATFORM.md`](./PLATFORM.md) as the authoritative foundation-scope document for required crates, workflows, delivery surfaces, and acceptance criteria.
 
@@ -26,8 +26,6 @@ cargo test --workspace --all-features
 cargo deny check
 cargo audit
 mdbook build docs/site
-cd website && NO_COLOR=false trunk build --release
-cd .. && cargo run -p ironloom-website-prerender -- --dist website/dist --validate
 helm lint deploy/helm/ironloom
 helm template ironloom deploy/helm/ironloom
 ```
@@ -36,7 +34,7 @@ helm template ironloom deploy/helm/ironloom
 
 - Pull request bodies must use `.github/pull_request_template.md` and populate every section.
 - Do not hide significant behavior changes behind formatting-only commits.
-- Keep release surfaces aligned across GHCR Docker, GHCR Helm, GitHub Releases, GitHub Pages docs, and the public website.
+- Keep release surfaces aligned across GHCR Docker, GHCR Helm, GitHub Releases, and the GitHub Pages docs landing page.
 
 ## Security
 
