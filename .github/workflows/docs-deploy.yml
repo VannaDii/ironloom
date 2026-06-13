@@ -29,7 +29,7 @@ jobs:
           mdbook-version: latest
 
       - name: Build docs
-        run: mdbook build docs/site --dest-dir ../../public
+        run: mdbook build docs/site --dest-dir public
 
       - name: Write custom domain
         run: echo "docs.ironloom.dev" > public/CNAME
