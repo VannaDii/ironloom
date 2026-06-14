@@ -6,7 +6,7 @@ Ironloom is a Rust supervisor runtime by Veritas Labs for auditable autonomous e
 
 - Rust workspace under `crates/*`.
 - Deployable runtime binary in `crates/ironloom-runtime`.
-- Public landing page, operator docs, and developer docs in `docs/site`.
+- Public landing page, guides, developer docs, LLM support, JSON-LD SEO, and API docs in `site/guide-docs`.
 - Docker image in `docker/ironloom-runtime`.
 - Helm chart in `deploy/helm/ironloom`.
 - Artifact Hub metadata in `deploy/artifacthub/ironloom`.
@@ -52,7 +52,7 @@ Required:
 - `cargo test --workspace --all-features`
 - `cargo deny check`
 - `cargo audit`
-- `mdbook build docs/site`
+- `npm run docs:build`
 - `helm lint deploy/helm/ironloom`
 - `helm template ironloom deploy/helm/ironloom`
 
@@ -60,7 +60,7 @@ Expected publishing gates:
 
 - Docker Buildx builds `docker/ironloom-runtime/Dockerfile`.
 - Helm publishes `deploy/helm/ironloom` as an OCI chart.
-- GitHub Pages publishes the docs-hosted public landing page.
+- GitHub Pages publishes the VitePress public site at `https://ironloom.dev`.
 - SonarCloud receives Rust LCOV coverage from `cargo llvm-cov`.
 
 ## Acceptance Criteria
@@ -75,4 +75,4 @@ Expected publishing gates:
 - Setup requires `IRONLOOM_CONFIG_KEY` before accepting credential inputs, and runtime configuration can resolve from environment variables or encrypted local setup with environment values taking precedence.
 - Docker image contains no Node runtime and runs as a non-root user.
 - Helm chart deploys Ironloom directly with PVC-backed `.ironloom` state.
-- Docs build through the approved Node-free static documentation toolchain.
+- Docs build through the approved VitePress static documentation toolchain.

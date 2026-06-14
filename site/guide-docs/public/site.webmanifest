@@ -1,0 +1,46 @@
+{
+  "name": "Ironloom",
+  "short_name": "Ironloom",
+  "description": "Auditable engineering operations for Discord, GitHub, SonarCloud, and k3s.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "browser"
+  ],
+  "orientation": "any",
+  "background_color": "#0b0f14",
+  "theme_color": "#0b0f14",
+  "categories": [
+    "developer",
+    "productivity"
+  ],
+  "lang": "en-US",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/ironloom-favicon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/ironloom-favicon-256x256.png",
+      "sizes": "256x256",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/ironloom-favicon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -10,7 +10,7 @@ Ironloom is a Rust supervisor runtime for auditable autonomous engineering opera
 - `crates/ironloom-github`: GitHub source-of-truth projections.
 - `crates/ironloom-sonarcloud`: SonarCloud bootstrap and quality contracts.
 - `crates/ironloom-storage`: `.ironloom` filesystem-backed state.
-- `docs/site`: mdBook public landing page, operator docs, and developer docs.
+- `site/guide-docs`: VitePress public landing page, guides, developer docs, LLM output, and API docs.
 - `docker/ironloom-runtime`: runtime image.
 - `deploy/helm/ironloom`: k3s-friendly Helm chart.
 
@@ -23,7 +23,7 @@ cargo test --workspace --all-features
 cargo run -p ironloom-schemas -- --check
 cargo deny check
 cargo audit
-mdbook build docs/site
+npm run docs:build
 helm lint deploy/helm/ironloom
 helm template ironloom deploy/helm/ironloom
 ```

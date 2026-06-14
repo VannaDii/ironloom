@@ -1,6 +1,6 @@
-# Developer Guide
+# Contributing
 
-Run the Rust validation gates before publishing changes:
+Run the Rust and documentation validation gates before publishing changes.
 
 ```sh
 cargo fmt --check
@@ -8,6 +8,7 @@ cargo clippy --workspace --all-targets --all-features -- -D warnings
 cargo test --workspace --all-features
 cargo deny check
 cargo audit
+npm run docs:build
 ```
 
 Public contracts live near their owning crates and are represented by committed schema files under `crates/*/schemas`.
@@ -22,4 +23,18 @@ Verify committed schema files have no drift:
 
 ```sh
 cargo run -p ironloom-schemas -- --check
+```
+
+## Documentation Development
+
+Run the VitePress development server with:
+
+```sh
+npm run docs:dev
+```
+
+Build the static site with:
+
+```sh
+npm run docs:build
 ```

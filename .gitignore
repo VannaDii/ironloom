@@ -1,5 +1,8 @@
 target/
-website/dist/
+node_modules/
+site/guide-docs/.vitepress/dist/
+site/guide-docs/.vitepress/.temp/
+site/guide-docs/.vitepress/cache/
 docs/site/book/
 .artifacts/
 .scannerwork/

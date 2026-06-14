@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4096 4096" role="img" aria-label="Ironloom logo mark">
+  <title>Ironloom logo mark</title>
+  <defs>
+    <linearGradient id="ironloom-orange" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ff8800"/>
+      <stop offset="1" stop-color="#e83f12"/>
+    </linearGradient>
+  </defs>
+  <g fill="url(#ironloom-orange)" transform="translate(1175.445764 327.680000) scale(4.957694524)">
+    <polygon points="10,10 84,10 84,183 10,125"/>
+    <polygon points="139,10 213,10 213,262 207,269 171,295 139,268"/>
+    <polygon points="268,10 341,10 341,294 338,305 84,512 84,683 12,683 12,478 25,460 265,267"/>
+    <polygon points="10,180 186,318 128,366 86,336 84,376 26,421 10,396"/>
+    <polygon points="262,380 328,430 340,449 341,683 268,683 268,489 266,481 204,430 204,427"/>
+    <polygon points="170,454 206,480 212,490 213,683 139,683 139,480"/>
+  </g>
+</svg>

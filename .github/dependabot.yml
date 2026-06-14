@@ -42,3 +42,23 @@ updates:
       gha:
         patterns:
           - '*'
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:30'
+      timezone: America/Los_Angeles
+    open-pull-requests-limit: 5
+    rebase-strategy: auto
+    commit-message:
+      prefix: chore
+      include: scope
+    labels:
+      - dependencies
+      - docs
+    groups:
+      docs:
+        patterns:
+          - '*'

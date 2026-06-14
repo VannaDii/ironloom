@@ -46,7 +46,7 @@ cargo test --workspace --all-features
 cargo run -p ironloom-schemas -- --check
 cargo deny check
 cargo audit
-mdbook build docs/site
+npm run docs:build
 helm lint deploy/helm/ironloom
 helm template ironloom deploy/helm/ironloom
 ```

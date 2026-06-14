@@ -37,6 +37,6 @@
 - [ ] `cargo test --workspace --all-features`
 - [ ] `cargo deny check`
 - [ ] `cargo audit`
-- [ ] `mdbook build docs/site`
+- [ ] `npm run docs:build`
 - [ ] `helm lint deploy/helm/ironloom`
 - [ ] `helm template ironloom deploy/helm/ironloom`

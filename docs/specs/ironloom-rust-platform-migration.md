@@ -10,7 +10,7 @@
 
 **Architecture:** Ironloom is a containerized Rust workspace whose core product is the supervisor runtime. Discord remains the primary operator interface, GitHub remains the source of truth for repository and pull-request state, SonarCloud remains the quality and compliance system, Kubernetes delivery targets k3s through a direct Ironloom Helm chart, and the public landing page lives on the GitHub Pages documentation site.
 
-**Tech stack:** Rust workspace, Cargo, Alpine Linux container runtime, Helm OCI on GHCR, GitHub Actions, GitHub Pages documentation, mdBook, Discord API, GitHub API, SonarCloud API.
+**Tech stack:** Rust workspace, Cargo, Alpine Linux container runtime, Helm OCI on GHCR, GitHub Actions, GitHub Pages documentation, VitePress, Discord API, GitHub API, SonarCloud API.
 
 ---
 
@@ -20,7 +20,7 @@ The current repository is a strict native-ESM TypeScript monorepo named DevPlat.
 
 The target repository is a Rust workspace named Ironloom. The OpenClaw adapter is removed entirely. TypeScript and Node are removed as the runtime platform. The supervisor becomes the central runtime service and routes work through a typed process graph. Worker modules start as functional Rust modules in one process, but the boundary is designed so workers can later move into separate processes or containers without changing the supervisor contract.
 
-Ironloom also gets a public landing page on `docs/site`. The landing page is part of the static GitHub Pages documentation site, keeps operator controls out of public content, and avoids reintroducing a separate web application stack.
+Ironloom also gets a public landing page on `site/guide-docs`. The landing page is part of the static VitePress GitHub Pages documentation site, keeps operator controls out of public content, and avoids adding a separate runtime web application.
 
 Migration must be staged. The first safe route is to add the Rust workspace and prove the first Discord-to-supervisor-to-gate vertical slice before deleting the existing TypeScript/OpenClaw runtime. CI must preserve the repository's strict validation posture throughout the transition.
 
@@ -33,7 +33,7 @@ Current important surfaces:
 - OpenClaw runtime: `packages/openclaw`, generated OpenClaw manifest, `docker/openclaw-runtime`, OpenClaw live-lab workflows and scripts.
 - Deployment: `deploy/helm/devplat`, `deploy/artifacthub/devplat`, Docker and Helm publishing workflows.
 - Documentation: `site/guide-docs` VitePress site and guide pages.
-- Public landing page target: `docs/site`, published by GitHub Pages with the operator and developer documentation.
+- Public landing page target: `site/guide-docs`, published by GitHub Pages with guides, developer documentation, LLM output, JSON-LD SEO, and API docs.
 - CI/CD: `.github/workflows/ci.yml`, `typescript-matrix.yml`, `docker-publish.yml`, `helm-publish.yml`, `docs-deploy.yml`, `release.yml`, `publish-release.yml`, `sonar-bootstrap-check.yml`, OpenClaw/Discord live-lab workflows.
 - Quality system: SonarCloud configured through `sonar-project.properties`, coverage from Vitest LCOV, strict generated-artifact checks.
 
@@ -135,11 +135,16 @@ Current important surfaces:
 |           |-- values.schema.json
 |           `-- templates/
 |-- docs
-|   |-- specs
-|   |   `-- ironloom-rust-platform-migration.md
-|   `-- site
-|       |-- book.toml
-|       `-- src/
+|   `-- specs
+|       `-- ironloom-rust-platform-migration.md
+|-- site
+|   `-- guide-docs
+|       |-- .vitepress/
+|       |-- api/
+|       |-- developers/
+|       |-- guides/
+|       |-- public/
+|       `-- index.md
 `-- .github
     |-- actions/
     |-- instructions/
@@ -149,9 +154,9 @@ Current important surfaces:
 
 Notes:
 
-- `docs/site` should replace the VitePress app with a Node-free static documentation build, preferably `mdBook`, unless Veritas Labs explicitly chooses another non-Node documentation generator.
-- `docs/site/src/introduction.md` is the public landing page. It must remain static, public-safe, and separate from runtime/operator control flows.
-- `docs/site` owns both product-facing introduction content and operator/developer documentation so GitHub Pages is the only first-release public web surface.
+- `site/guide-docs` is the VitePress documentation and landing-page surface.
+- `site/guide-docs/index.md` is the public landing page. It must remain static, public-safe, and separate from runtime/operator control flows.
+- `site/guide-docs` owns product-facing landing content, guides, developer docs, LLM output, JSON-LD SEO, and API docs so GitHub Pages is the first-release public web surface.
 - `crates/*/schemas` remains the committed contract surface. Rust types should generate JSON Schema with `schemars` or an equivalent generator.
 - `.devplat` runtime data paths should become `.ironloom`. The migration must decide whether to import old `.devplat` records or start clean.
 
@@ -586,7 +591,7 @@ Depends on:
 | `@vannadii/devplat-remediation`   | `ironloom-workers`, `ironloom-artifacts`, future crate only if needed | Remediation is a worker family and process graph route.                                  |
 | `@vannadii/devplat-prs`           | `ironloom-github`, `ironloom-artifacts`                               | PR lifecycle state is GitHub adapter plus artifacts.                                     |
 | `@vannadii/devplat-branching`     | `ironloom-worktrees`, `ironloom-github`, `ironloom-workers`           | Branch refresh and rebase behavior crosses worktree and GitHub boundaries.               |
-| `site/guide-docs`                 | `docs/site`                                                           | Rewrite for Ironloom, include the public landing page, and remove Node/VitePress.        |
+| `site/guide-docs`                 | `site/guide-docs`                                                           | Rewrite for Ironloom with VitePress, landing page, guides, LLM support, SEO, and API docs. |
 | `docker/openclaw-runtime`         | `docker/ironloom-runtime`                                             | Runtime image becomes direct Ironloom service.                                           |
 | `deploy/helm/devplat`             | `deploy/helm/ironloom`                                                | Chart deploys Ironloom directly.                                                         |
 
@@ -668,21 +673,21 @@ Every operator action, policy decision, supervisor route, worker execution, arti
 
 ## Docs-Hosted Landing Page Architecture
 
-The public landing page is a static mdBook page under `docs/site`, published through GitHub Pages with the operator and developer documentation. It is not part of the supervisor runtime, does not read `.ironloom`, and does not hold Discord, GitHub, SonarCloud, or AI credentials. It may link users to documentation and support channels, but all operator actions remain in Discord, GitHub, and the runtime control plane.
+The public landing page is a static VitePress page under `site/guide-docs`, published through GitHub Pages with the operator and developer documentation. It is not part of the supervisor runtime, does not read `.ironloom`, and does not hold Discord, GitHub, SonarCloud, or AI credentials. It may link users to documentation and support channels, but all operator actions remain in Discord, GitHub, and the runtime control plane.
 
 The implementation should stay intentionally small:
 
-- mdBook source under `docs/site/src`.
-- A first-page product introduction in `docs/site/src/introduction.md`.
-- Operator and developer runbooks in sibling mdBook chapters.
-- A GitHub Pages workflow that builds mdBook, writes the approved `CNAME`, and uploads the generated static site.
+- VitePress source under `site/guide-docs`.
+- A first-page product landing page in `site/guide-docs/index.md`.
+- Guides, developer docs, and API docs in sibling VitePress chapters.
+- A GitHub Pages workflow that builds VitePress, writes the approved `CNAME`, and uploads the generated static site.
 - No Rust web app package, WebAssembly target, separate web build, prerenderer, or static-hosting infrastructure in the first release.
 - Public-safe content review for the landing page and guide pages before publication.
 
 Docs and landing-page quality gates:
 
-- `mdbook build docs/site`.
-- GitHub Pages artifact upload from the generated mdBook output.
+- `npm run docs:build`.
+- GitHub Pages artifact upload from the generated VitePress output.
 - Link and content review for public-safe copy, credentials, and operator-only details.
 - Optional post-publish smoke checks for the root landing page and representative guide pages once Pages is live.
 
@@ -944,10 +949,10 @@ Required work:
 
 Acceptance criteria:
 
-- Pull request CI has no Node, npm, TypeScript, ESLint, Vitest, Turbo, Husky, or OpenClaw dependency.
+- Pull request CI has no TypeScript, ESLint, Vitest, Turbo, Husky, or OpenClaw runtime dependency. Node/npm remain only for the VitePress docs site.
 - Main branch publishing still produces GHCR Docker images.
 - Helm publish still pushes an OCI chart to GHCR.
-- Docs deploy publishes the landing page and documentation to GitHub Pages without Node.
+- Docs deploy publishes the VitePress landing page and documentation to GitHub Pages.
 - SonarCloud receives Rust source, test, coverage, and exclusion configuration.
 - PR template validation references Rust gates and Ironloom operator impact.
 
@@ -1010,9 +1015,9 @@ File changes:
 - Rewrite `PLATFORM.md`.
 - Rewrite `AGENTS.md`.
 - Rewrite `SECURITY.md` if contact, domains, or runtime assumptions change.
-- Replace `site/guide-docs/` with `docs/site/`.
+- Keep `site/guide-docs/` as the VitePress documentation surface.
 - Rewrite guide pages for Ironloom.
-- Add docs-site landing page content, page metadata, public-safe copy, and GitHub Pages publishing configuration.
+- Add landing page content, page metadata, public-safe copy, LLM output, JSON-LD SEO, API docs, and GitHub Pages publishing configuration.
 - Update `.github/instructions/*.md`.
 - Update `.github/ISSUE_TEMPLATE/*.yml`.
 - Update `.github/CODEOWNERS` if ownership changes.
@@ -1034,12 +1039,12 @@ Required work:
 - Add Rust developer guide.
 - Add migration notes for operators moving from `.devplat` to `.ironloom`.
 - Add the landing page copy, metadata, and support/documentation links needed for the approved public docs host.
-- Keep `docs/site` as the combined public landing, operator documentation, and developer documentation surface.
+- Keep `site/guide-docs` as the combined public landing, operator documentation, and developer documentation surface.
 - Validate that public-facing docs pages do not expose credentials, private repository internals, or Discord/GitHub/SonarCloud control actions.
 
 Acceptance criteria:
 
-- Documentation builds without Node.
+- Documentation builds with `npm run docs:build`.
 - No public guide page describes OpenClaw as an active runtime.
 - Docs explain the first vertical slice and production deployment model.
 - Docs preserve the strict validation philosophy.
@@ -1143,7 +1148,7 @@ Target jobs:
 - `coverage`: `cargo llvm-cov --workspace --all-features --lcov --output-path target/lcov.info`
 - `security`: `cargo deny check` and `cargo audit`
 - `schemas`: generate JSON schemas and fail if git diff is non-empty
-- `docs`: build `docs/site` and confirm the Pages artifact includes the landing page
+- `docs`: build `site/guide-docs` and confirm the Pages artifact includes the landing page
 - `docker`: build Ironloom image without pushing for PRs
 - `helm`: lint and template `deploy/helm/ironloom`
 - `sonar`: SonarCloud scan with quality gate wait, excluding generated artifacts and deployment files as appropriate
@@ -1245,35 +1250,35 @@ New docs required:
 
 ## Docs-Hosted Landing Page Migration Details
 
-The public landing page should be part of `docs/site`, not a separate application. This keeps the first release static, Node-free, and governed by the same GitHub Pages workflow as the operator and developer documentation.
+The public landing page should be part of `site/guide-docs`, not a separate runtime application. This keeps the first release static and governed by the same GitHub Pages workflow as the operator and developer documentation.
 
 Landing-page source layout:
 
-- `docs/site/book.toml` for mdBook configuration.
-- `docs/site/src/SUMMARY.md` for navigation.
-- `docs/site/src/introduction.md` for the public landing page.
-- Focused guide pages under `docs/site/src/` for architecture, operations, deployment, quality, and release content.
-- `docs-deploy.yml` for GitHub Pages publication and `CNAME` writing after the docs hostname is approved.
+- `site/guide-docs/.vitepress/config.mts` for VitePress configuration.
+- `site/guide-docs/.vitepress/config.mts` for navigation, search, sitemap, LLM output, JSON-LD, and metadata configuration.
+- `site/guide-docs/index.md` for the public landing page.
+- Focused guide pages under `site/guide-docs/guides/`, developer pages under `site/guide-docs/developers/`, and API docs under `site/guide-docs/api/`.
+- `docs-deploy.yml` for GitHub Pages publication and `CNAME` writing after the hostname is approved.
 
 Landing-page deployment model:
 
-- Pull requests build mdBook through CI.
-- Main publishes the mdBook output to GitHub Pages.
-- Production publishing writes the approved docs hostname into `CNAME`.
+- Pull requests build VitePress through CI.
+- Main publishes the VitePress output to GitHub Pages.
+- Production publishing writes `ironloom.dev` into `CNAME`.
 - Post-publish smoke tests should fetch the landing page and representative guide pages once Pages is live.
 
 Landing-page content model:
 
-- Public copy lives in the mdBook introduction and supporting guide pages.
+- Public copy lives in the VitePress introduction and supporting guide pages.
 - The first release is English-only unless Veritas Labs approves a localization plan.
 - Public content should emphasize product identity, architecture, security/compliance posture, deployment model, and links to docs/support.
-- Operator-only procedures can remain in `docs/site`, but pages linked from the landing page must avoid credentials, private-only repository details, and active control instructions.
+- Operator-only procedures can remain in `site/guide-docs`, but pages linked from the landing page must avoid credentials, private-only repository details, and active control instructions.
 
 Landing-page validation:
 
-- `mdbook build docs/site` must pass locally and in CI.
+- `npm run docs:build` must pass locally and in CI.
 - CI should keep docs publishing independent from runtime image and Helm publishing.
-- Optional link checks and post-publish smoke checks may be added without reintroducing Node.
+- Optional link checks and post-publish smoke checks may be added.
 
 ## Branding Rename Checklist
 
@@ -1293,8 +1298,8 @@ Company and domains:
 
 - Replace VannaDii ownership references with Veritas Labs where the repository and publication ownership actually moves.
 - Use `veritaslabs.dev` for company pages, support, legal, and organization-level docs.
-- Use `docs.ironloom.dev`, GitHub Pages under the repository path, or another approved docs URL for the docs-hosted landing page and operator/developer docs.
-- Reserve `ironloom.dev` for a future redirect or separate public site only after a later approved product decision.
+- Use `ironloom.dev` for the public landing page, guides, developer docs, LLM output, and API docs.
+- Use repository-path GitHub Pages or `docs.ironloom.dev` only as a compatibility redirect if needed later.
 - Add GitHub Pages `CNAME` only after DNS ownership and target domain are approved.
 
 Publishing:
@@ -1324,7 +1329,7 @@ High risks:
 - Alpine/musl builds can expose native TLS, OpenSSL, git, or CA certificate issues. Build and run container smoke tests early.
 - Removing Changesets requires a replacement release/version discipline before release workflows are deleted.
 - Docs generator migration can accidentally break GitHub Pages URLs.
-- Docs-hosted landing-page work can accidentally mix product marketing, operator documentation, and runtime control concerns unless public-safe content rules are enforced in `docs/site`.
+- Docs-hosted landing-page work can accidentally mix product marketing, operator documentation, and runtime control concerns unless public-safe content rules are enforced in `site/guide-docs`.
 - GitHub Pages publishing can break domain cutover or certificate validation if DNS ownership is not approved before the `CNAME` is enabled.
 - Repository rename or transfer can break GHCR image paths, Pages, SonarCloud project keys, GitHub App installation, Discord OAuth redirect URLs, and webhook endpoints.
 

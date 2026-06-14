@@ -29,13 +29,11 @@ kubectl -n ironloom create secret generic ironloom-openai \
   --from-literal=api-key="${IRONLOOM_OPENAI_API_KEY}"
 ```
 
-For OpenAI authentication, provide either `IRONLOOM_OPENAI_API_KEY` or `IRONLOOM_OPENAI_OAUTH_SESSION`. The setup page also supports both modes. The OAuth start action shows the ChatGPT device-code request shape for the local app-server flow and returns the operator to the setup page to save the resulting OAuth session reference.
-
-If `IRONLOOM_CONFIG_KEY` is not present, the runtime still serves HTTP and shows setup-key instructions instead of credential inputs. `/readyz` returns `503` until required runtime configuration resolves from environment variables or the encrypted setup file under `IRONLOOM_STATE_ROOT`.
+For OpenAI authentication, provide either `IRONLOOM_OPENAI_API_KEY` or `IRONLOOM_OPENAI_OAUTH_SESSION`. The setup page also supports both modes.
 
 ## k3s Dry Run
 
-Run a server-side dry run before changing the cluster. This proves the current k3s API accepts the ServiceAccount, ConfigMap, PVC, Service, Deployment, and optional Ingress objects.
+Run a server-side dry run before changing the cluster.
 
 ```sh
 helm upgrade --install ironloom deploy/helm/ironloom \
@@ -65,8 +63,6 @@ helm upgrade --install ironloom oci://ghcr.io/vannadii/charts/ironloom \
 
 ## Smoke Checks
 
-Verify the rollout, health endpoint, PVC-backed state, and first vertical slice harness.
-
 ```sh
 kubectl -n ironloom rollout status deployment/ironloom
 kubectl -n ironloom port-forward service/ironloom 8080:8080
@@ -85,6 +81,6 @@ helm -n ironloom rollback ironloom <revision>
 kubectl -n ironloom rollout status deployment/ironloom
 ```
 
-## Docs Publishing
+## Site Publishing
 
-`.github/workflows/docs-deploy.yml` publishes the mdBook public landing page and documentation to GitHub Pages on `main`.
+`.github/workflows/docs-deploy.yml` publishes the VitePress site to GitHub Pages at `https://ironloom.dev` on `main`.

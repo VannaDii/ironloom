@@ -2,7 +2,7 @@
 
 ## Runtime Baseline
 
-Ironloom develops on stable Rust with Cargo. Install the Rust toolchain described by `rust-toolchain.toml`, plus `cargo-deny`, `cargo-audit`, `mdbook`, Docker, and Helm for full local validation.
+Ironloom develops on stable Rust with Cargo. Install the Rust toolchain described by `rust-toolchain.toml`, plus Node.js/npm for VitePress docs, `cargo-deny`, `cargo-audit`, Docker, and Helm for full local validation.
 
 Use [`PLATFORM.md`](./PLATFORM.md) as the authoritative foundation-scope document for required crates, workflows, delivery surfaces, and acceptance criteria.
 
@@ -25,7 +25,7 @@ cargo clippy --workspace --all-targets --all-features -- -D warnings
 cargo test --workspace --all-features
 cargo deny check
 cargo audit
-mdbook build docs/site
+npm run docs:build
 helm lint deploy/helm/ironloom
 helm template ironloom deploy/helm/ironloom
 ```

@@ -1,0 +1,48 @@
+{
+  "name": "ironloom-site",
+  "private": true,
+  "description": "Ironloom public site and documentation.",
+  "scripts": {
+    "build": "npm run docs:build",
+    "dev": "npm run docs:dev",
+    "preview": "npm run docs:preview",
+    "test": "npm run docs:build",
+    "docs:build": "vitepress build site/guide-docs",
+    "docs:dev": "vitepress dev site/guide-docs --host 127.0.0.1",
+    "docs:preview": "vitepress preview site/guide-docs --host 127.0.0.1"
+  },
+  "keywords": [
+    "automation",
+    "discord",
+    "github",
+    "ironloom",
+    "kubernetes",
+    "rust",
+    "sonarcloud"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/VannaDii/ironloom.git"
+  },
+  "engines": {
+    "node": ">=22.0.0",
+    "npm": ">=10.0.0"
+  },
+  "engineStrict": true,
+  "packageManager": "npm@11.12.1",
+  "devDependencies": {
+    "@nolebase/vitepress-plugin-git-changelog": "^2.18.2",
+    "esbuild": "^0.28.1",
+    "sass": "^1.98.0",
+    "vitepress": "^1.6.4",
+    "vitepress-plugin-group-icons": "^1.7.5",
+    "vitepress-plugin-llms": "^1.12.1",
+    "vue": "^3.5.30"
+  },
+  "overrides": {
+    "@vitejs/plugin-vue": "^6.0.7",
+    "esbuild": "^0.28.1",
+    "vite": "^6.4.2"
+  }
+}
