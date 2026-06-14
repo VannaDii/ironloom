@@ -2,6 +2,37 @@
 
 Lifecycle-changing Discord actions must be bound to exactly one persisted work item and thread. Missing or ambiguous thread context fails closed before any worker runs.
 
+## Command Sequence
+
+```mermaid
+sequenceDiagram
+  participant Operator as Discord operator
+  participant Discord as ironloom-discord
+  participant Runtime as ironloom-runtime
+  participant Supervisor as ironloom-supervisor
+  participant GitHub as ironloom-github
+  participant Worker as ironloom-workers
+  participant Storage as ironloom-storage
+
+  Operator->>Discord: Submit thread command
+  Discord->>Runtime: Send bound request
+  Runtime->>Supervisor: Resolve route
+  Supervisor->>GitHub: Refresh source-of-truth state
+  GitHub-->>Supervisor: Current repository state
+  Supervisor->>Supervisor: Apply policy and process graph
+  alt Thread binding is missing or ambiguous
+    Supervisor-->>Discord: Reject action
+    Discord-->>Operator: Explain failed binding
+  else Thread binding is unambiguous
+    Supervisor->>Worker: Dispatch work
+    Worker-->>Supervisor: Return structured result
+    Supervisor->>Storage: Write immutable artifact
+    Storage-->>Supervisor: Artifact index updated
+    Supervisor-->>Discord: Return audited outcome
+    Discord-->>Operator: Reply in originating thread
+  end
+```
+
 ## Thread Binding
 
 Ironloom treats the Discord thread as the operator context. A command must resolve to a single work item before policy or worker dispatch runs.

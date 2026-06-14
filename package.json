@@ -34,10 +34,12 @@
   "devDependencies": {
     "@nolebase/vitepress-plugin-git-changelog": "^2.18.2",
     "esbuild": "^0.28.1",
+    "mermaid": "^11.15.0",
     "sass": "^1.98.0",
     "vitepress": "^1.6.4",
     "vitepress-plugin-group-icons": "^1.7.5",
     "vitepress-plugin-llms": "^1.12.1",
+    "vitepress-plugin-mermaid": "^2.0.17",
     "vue": "^3.5.30"
   },
   "overrides": {

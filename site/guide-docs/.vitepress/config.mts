@@ -6,6 +6,7 @@ import type { DefaultTheme } from 'vitepress'
 import { GitChangelog, GitChangelogMarkdownSection } from '@nolebase/vitepress-plugin-git-changelog/vite'
 import { groupIconMdPlugin, groupIconVitePlugin } from 'vitepress-plugin-group-icons'
 import llmstxt from 'vitepress-plugin-llms'
+import { withMermaid } from 'vitepress-plugin-mermaid'
 
 import {
   ACCENT_COLOR,
@@ -28,6 +29,28 @@ const docsEditBranch = process.env.DOCS_EDIT_BRANCH || 'main'
 const docsEditLinkPattern = `${repositoryUrl}/edit/${docsEditBranch}/site/guide-docs/:path`
 const socialImageUrl = new URL('/ironloom-social.png', siteHomeUrl).toString()
 const logoUrl = new URL('/ironloom-mark.svg', siteHomeUrl).toString()
+const localeDefinitions = [
+  { key: 'root', label: 'English', lang: 'en-US', ogLocale: 'en_US', dir: 'ltr', link: '/' },
+  { key: 'zh-hans', label: '简体中文', lang: 'zh-CN', ogLocale: 'zh_CN', dir: 'ltr', link: '/zh-hans/' },
+  { key: 'hi', label: 'हिन्दी', lang: 'hi-IN', ogLocale: 'hi_IN', dir: 'ltr', link: '/hi/' },
+  { key: 'es', label: 'Español', lang: 'es-ES', ogLocale: 'es_ES', dir: 'ltr', link: '/es/' },
+  { key: 'ar', label: 'العربية', lang: 'ar', ogLocale: 'ar_AR', dir: 'rtl', link: '/ar/' },
+] as const
+
+const generatedLocaleKeys = localeDefinitions.filter(locale => locale.key !== 'root').map(locale => locale.key)
+const localeBaseConfigs = Object.fromEntries(
+  localeDefinitions.map(locale => [
+    locale.key,
+    {
+      label: locale.label,
+      lang: locale.lang,
+      dir: locale.dir,
+      title: siteName,
+      description: siteDescription,
+      link: locale.link,
+    },
+  ]),
+)
 const githubIconSvg = `
   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
     <path fill="currentColor" d="M8 1.3a6.665 6.665 0 0 1 5.413 10.56 6.677 6.677 0 0 1-3.288 2.432c-.333.067-.458-.142-.458-.316 0-.226.008-.942.008-1.834 0-.625-.208-1.025-.45-1.233 1.483-.167 3.042-.734 3.042-3.292a2.58 2.58 0 0 0-.684-1.792c.067-.166.3-.85-.066-1.766 0 0-.559-.184-1.834.683a6.186 6.186 0 0 0-1.666-.225c-.567 0-1.134.075-1.667.225-1.275-.858-1.833-.683-1.833-.683-.367.916-.134 1.6-.067 1.766a2.594 2.594 0 0 0-.683 1.792c0 2.55 1.55 3.125 3.033 3.292-.192.166-.367.458-.425.891-.383.175-1.342.459-1.942-.55-.125-.2-.5-.691-1.025-.683-.558.008-.225.317.009.442.283.158.608.75.683.941.133.376.567 1.092 2.242.784 0 .558.008 1.083.008 1.242 0 .174-.125.374-.458.316a6.662 6.662 0 0 1-4.559-6.325A6.665 6.665 0 0 1 8 1.3Z"/>
@@ -140,8 +163,304 @@ const llmsSidebar: DefaultTheme.Sidebar = {
   ],
 }
 
+type LocaleKey = (typeof localeDefinitions)[number]['key']
+
+const localizedLabels: Record<
+  LocaleKey,
+  {
+    nav: { guides: string; developers: string; api: string; llm: string }
+    sidebar: {
+      introduction: string
+      gettingStarted: string
+      guides: string
+      initialSetup: string
+      deployment: string
+      operatorWorkflows: string
+      developers: string
+      architecture: string
+      contributing: string
+      qualityGates: string
+      migrationNotes: string
+      api: string
+      overview: string
+      configuration: string
+      runtimeHttp: string
+      storage: string
+      schemas: string
+      crates: string
+    }
+    ui: {
+      outline: string
+      edit: string
+      footerMessage: string
+      footerCopyright: string
+    }
+  }
+> = {
+  root: {
+    nav: { guides: 'Guides', developers: 'Developer Docs', api: 'API Docs', llm: 'LLM' },
+    sidebar: {
+      introduction: 'Introduction',
+      gettingStarted: 'Getting Started',
+      guides: 'Guides',
+      initialSetup: 'Initial Setup',
+      deployment: 'Deployment',
+      operatorWorkflows: 'Operator Workflows',
+      developers: 'Developer Docs',
+      architecture: 'Architecture',
+      contributing: 'Contributing',
+      qualityGates: 'Quality Gates',
+      migrationNotes: 'Migration Notes',
+      api: 'API Docs',
+      overview: 'Overview',
+      configuration: 'Configuration',
+      runtimeHttp: 'Runtime HTTP',
+      storage: 'Storage',
+      schemas: 'Schemas',
+      crates: 'Crates',
+    },
+    ui: {
+      outline: 'On this page',
+      edit: 'Suggest edits to this page',
+      footerMessage: 'Auditable engineering operations for Discord, GitHub, SonarCloud, and k3s.',
+      footerCopyright: 'Released under the MIT License.',
+    },
+  },
+  'zh-hans': {
+    nav: { guides: '指南', developers: '开发者文档', api: 'API 文档', llm: 'LLM' },
+    sidebar: {
+      introduction: '简介',
+      gettingStarted: '快速开始',
+      guides: '指南',
+      initialSetup: '初始设置',
+      deployment: '部署',
+      operatorWorkflows: '操作员工作流',
+      developers: '开发者文档',
+      architecture: '架构',
+      contributing: '贡献',
+      qualityGates: '质量关卡',
+      migrationNotes: '迁移说明',
+      api: 'API 文档',
+      overview: '概览',
+      configuration: '配置',
+      runtimeHttp: '运行时 HTTP',
+      storage: '存储',
+      schemas: '模式',
+      crates: 'Crate',
+    },
+    ui: {
+      outline: '本页内容',
+      edit: '建议编辑此页',
+      footerMessage: '面向 Discord、GitHub、SonarCloud 和 k3s 的可审计工程运营。',
+      footerCopyright: '基于 MIT 许可证发布。',
+    },
+  },
+  hi: {
+    nav: { guides: 'मार्गदर्शिकाएं', developers: 'डेवलपर दस्तावेज', api: 'API दस्तावेज', llm: 'LLM' },
+    sidebar: {
+      introduction: 'परिचय',
+      gettingStarted: 'शुरू करना',
+      guides: 'मार्गदर्शिकाएं',
+      initialSetup: 'आरंभिक सेटअप',
+      deployment: 'डिप्लॉयमेंट',
+      operatorWorkflows: 'ऑपरेटर वर्कफ्लो',
+      developers: 'डेवलपर दस्तावेज',
+      architecture: 'आर्किटेक्चर',
+      contributing: 'योगदान',
+      qualityGates: 'क्वालिटी गेट',
+      migrationNotes: 'माइग्रेशन नोट्स',
+      api: 'API दस्तावेज',
+      overview: 'अवलोकन',
+      configuration: 'कॉन्फिगरेशन',
+      runtimeHttp: 'रनटाइम HTTP',
+      storage: 'स्टोरेज',
+      schemas: 'स्कीमा',
+      crates: 'क्रेट',
+    },
+    ui: {
+      outline: 'इस पृष्ठ पर',
+      edit: 'इस पृष्ठ में बदलाव सुझाएं',
+      footerMessage: 'Discord, GitHub, SonarCloud और k3s के लिए ऑडिट योग्य इंजीनियरिंग ऑपरेशन.',
+      footerCopyright: 'MIT लाइसेंस के तहत जारी.',
+    },
+  },
+  es: {
+    nav: { guides: 'Guías', developers: 'Docs para desarrollo', api: 'Docs de API', llm: 'LLM' },
+    sidebar: {
+      introduction: 'Introducción',
+      gettingStarted: 'Primeros pasos',
+      guides: 'Guías',
+      initialSetup: 'Configuración inicial',
+      deployment: 'Despliegue',
+      operatorWorkflows: 'Flujos de operación',
+      developers: 'Docs para desarrollo',
+      architecture: 'Arquitectura',
+      contributing: 'Contribuir',
+      qualityGates: 'Controles de calidad',
+      migrationNotes: 'Notas de migración',
+      api: 'Docs de API',
+      overview: 'Resumen',
+      configuration: 'Configuración',
+      runtimeHttp: 'HTTP del runtime',
+      storage: 'Almacenamiento',
+      schemas: 'Esquemas',
+      crates: 'Crates',
+    },
+    ui: {
+      outline: 'En esta página',
+      edit: 'Sugerir cambios en esta página',
+      footerMessage: 'Operaciones de ingeniería auditables para Discord, GitHub, SonarCloud y k3s.',
+      footerCopyright: 'Publicado bajo la licencia MIT.',
+    },
+  },
+  ar: {
+    nav: { guides: 'الأدلة', developers: 'وثائق المطورين', api: 'وثائق API', llm: 'LLM' },
+    sidebar: {
+      introduction: 'مقدمة',
+      gettingStarted: 'البدء',
+      guides: 'الأدلة',
+      initialSetup: 'الإعداد الأولي',
+      deployment: 'النشر',
+      operatorWorkflows: 'سير عمل المشغل',
+      developers: 'وثائق المطورين',
+      architecture: 'البنية',
+      contributing: 'المساهمة',
+      qualityGates: 'بوابات الجودة',
+      migrationNotes: 'ملاحظات الترحيل',
+      api: 'وثائق API',
+      overview: 'نظرة عامة',
+      configuration: 'التهيئة',
+      runtimeHttp: 'HTTP وقت التشغيل',
+      storage: 'التخزين',
+      schemas: 'المخططات',
+      crates: 'الحزم',
+    },
+    ui: {
+      outline: 'في هذه الصفحة',
+      edit: 'اقترح تعديلا لهذه الصفحة',
+      footerMessage: 'عمليات هندسية قابلة للتدقيق لـ Discord وGitHub وSonarCloud وk3s.',
+      footerCopyright: 'منشور بموجب رخصة MIT.',
+    },
+  },
+}
+
+function localizeLink(localeKey: LocaleKey, link: string) {
+  if (localeKey === 'root' || link.startsWith('http') || link.startsWith('/llms')) {
+    return link
+  }
+
+  return `/${localeKey}${link}`
+}
+
+function buildLocalizedSidebar(localeKey: LocaleKey): DefaultTheme.Sidebar {
+  const labels = localizedLabels[localeKey].sidebar
+  const guideItems = [
+    { text: labels.gettingStarted, link: localizeLink(localeKey, '/guides/getting-started') },
+    { text: labels.initialSetup, link: localizeLink(localeKey, '/guides/setup') },
+    { text: labels.deployment, link: localizeLink(localeKey, '/guides/deployment') },
+    { text: labels.operatorWorkflows, link: localizeLink(localeKey, '/guides/operator-workflows') },
+  ]
+  const developerItems = [
+    { text: labels.architecture, link: localizeLink(localeKey, '/developers/architecture') },
+    { text: labels.contributing, link: localizeLink(localeKey, '/developers/contributing') },
+    { text: labels.qualityGates, link: localizeLink(localeKey, '/developers/quality-gates') },
+    { text: labels.migrationNotes, link: localizeLink(localeKey, '/developers/migration-notes') },
+  ]
+  const apiItems = [
+    { text: labels.overview, link: localizeLink(localeKey, '/api/') },
+    { text: labels.configuration, link: localizeLink(localeKey, '/api/configuration') },
+    { text: labels.runtimeHttp, link: localizeLink(localeKey, '/api/runtime-http') },
+    { text: labels.storage, link: localizeLink(localeKey, '/api/storage') },
+    { text: labels.schemas, link: localizeLink(localeKey, '/api/schemas') },
+    { text: labels.crates, link: localizeLink(localeKey, '/api/crates') },
+  ]
+  const homeItems = [
+    { text: labels.introduction, link: localizeLink(localeKey, '/introduction') },
+    { text: labels.gettingStarted, link: localizeLink(localeKey, '/guides/getting-started') },
+  ]
+  const prefix = localeKey === 'root' ? '' : `/${localeKey}`
+
+  return {
+    [`${prefix}/guides/`]: [{ text: labels.guides, items: guideItems }],
+    [`${prefix}/developers/`]: [{ text: labels.developers, items: developerItems }],
+    [`${prefix}/api/`]: [{ text: labels.api, items: apiItems }],
+    [`${prefix}/`]: [
+      { text: 'Ironloom', items: homeItems },
+      { text: labels.guides, items: guideItems },
+      { text: labels.developers, items: developerItems },
+      { text: labels.api, items: apiItems },
+    ],
+  }
+}
+
+function buildThemeConfig(localeKey: LocaleKey): DefaultTheme.Config {
+  const labels = localizedLabels[localeKey]
+
+  return {
+    logo: {
+      src: '/ironloom-mark.svg',
+      alt: 'Ironloom logo',
+    },
+    nav: [
+      { text: labels.nav.guides, link: localizeLink(localeKey, '/guides/getting-started') },
+      { text: labels.nav.developers, link: localizeLink(localeKey, '/developers/architecture') },
+      { text: labels.nav.api, link: localizeLink(localeKey, '/api/') },
+      { text: labels.nav.llm, link: '/llms.txt' },
+    ],
+    sidebar: buildLocalizedSidebar(localeKey),
+    outline: {
+      label: labels.ui.outline,
+      level: [2, 3],
+    },
+    editLink: {
+      pattern: docsEditLinkPattern,
+      text: labels.ui.edit,
+    },
+    socialLinks: [{ icon: { svg: githubIconSvg }, link: repositoryUrl, ariaLabel: 'GitHub' }],
+    search: {
+      provider: 'local',
+    },
+    footer: {
+      message: labels.ui.footerMessage,
+      copyright: labels.ui.footerCopyright,
+    },
+  }
+}
+
+const docsLocales = Object.fromEntries(
+  localeDefinitions.map(locale => [
+    locale.key,
+    {
+      ...localeBaseConfigs[locale.key],
+      themeConfig: buildThemeConfig(locale.key),
+    },
+  ]),
+)
+
 function stripTrailingSlash(value: string) {
   return value.replace(/\/$/, '')
+}
+
+function getPageLocale(relativePath: string) {
+  const localeKey = generatedLocaleKeys.find(key => relativePath === `${key}/index.md` || relativePath.startsWith(`${key}/`))
+  return localeDefinitions.find(locale => locale.key === localeKey) ?? localeDefinitions[0]
+}
+
+function getRootRelativePath(relativePath: string) {
+  const localeKey = generatedLocaleKeys.find(key => relativePath === `${key}/index.md` || relativePath.startsWith(`${key}/`))
+  return localeKey ? relativePath.slice(localeKey.length + 1) : relativePath
+}
+
+function getLocaleHomePath(localeKey: string) {
+  return localeKey === 'root' ? 'index.md' : `${localeKey}/index.md`
+}
+
+function getLocaleRelativePath(localeKey: LocaleKey, rootRelativePath: string) {
+  if (localeKey === 'root') {
+    return rootRelativePath
+  }
+
+  return rootRelativePath === 'index.md' ? getLocaleHomePath(localeKey) : `${localeKey}/${rootRelativePath}`
 }
 
 function normalizePagePath(relativePath: string) {
@@ -249,9 +568,9 @@ function getPageSchemaType(relativePath: string) {
   return relativePath.startsWith('api/') ? 'APIReference' : 'TechArticle'
 }
 
-function createStructuredData(relativePath: string, title: string, description: string) {
+function createStructuredData(relativePath: string, title: string, description: string, language: string) {
   const canonicalUrl = getCanonicalUrl(relativePath)
-  const isHomePage = relativePath === 'index.md'
+  const isHomePage = getRootRelativePath(relativePath) === 'index.md'
   const graph: Array<Record<string, unknown>> = [
     {
       '@type': 'Organization',
@@ -273,7 +592,7 @@ function createStructuredData(relativePath: string, title: string, description: 
       publisher: {
         '@id': `${siteHomeUrl}#organization`,
       },
-      inLanguage: 'en-US',
+      inLanguage: language,
     },
     {
       '@type': 'SoftwareSourceCode',
@@ -304,7 +623,7 @@ function createStructuredData(relativePath: string, title: string, description: 
       },
       image: socialImageUrl,
       thumbnailUrl: socialImageUrl,
-      inLanguage: 'en-US',
+      inLanguage: language,
     },
   ]
 
@@ -335,12 +654,13 @@ function createStructuredData(relativePath: string, title: string, description: 
   }).replace(/</g, '\\u003c')
 }
 
-export default defineConfig({
+export default withMermaid(defineConfig({
   title: siteName,
   description: siteDescription,
   base: process.env.BASE_URL || '/',
   cleanUrls: true,
   lastUpdated: true,
+  locales: docsLocales,
   ignoreDeadLinks: [/^https:\/\/ironloom\.dev/],
   markdown: {
     config(md) {
@@ -420,16 +740,18 @@ export default defineConfig({
   },
   transformHead({ pageData }) {
     const isNotFound = Boolean(pageData.isNotFound)
-    const isHomePage = pageData.relativePath === 'index.md'
+    const pageLocale = getPageLocale(pageData.relativePath)
+    const rootRelativePath = getRootRelativePath(pageData.relativePath)
+    const isHomePage = rootRelativePath === 'index.md'
     const canonicalUrl = getCanonicalUrl(pageData.relativePath)
     const pageTitle = isHomePage ? siteName : `${pageData.title} | ${siteName}`
     const description = pageData.description || siteDescription
-    const jsonLd = createStructuredData(pageData.relativePath, pageTitle, description)
+    const jsonLd = createStructuredData(pageData.relativePath, pageTitle, description, pageLocale.lang)
     const head = [
       ['meta', { name: 'robots', content: isNotFound ? 'noindex, nofollow' : 'index, follow, max-image-preview:large' }],
       ['meta', { name: 'googlebot', content: isNotFound ? 'noindex, nofollow' : 'index, follow, max-image-preview:large' }],
       ['meta', { property: 'og:site_name', content: siteName }],
-      ['meta', { property: 'og:locale', content: 'en_US' }],
+      ['meta', { property: 'og:locale', content: pageLocale.ogLocale }],
       ['meta', { property: 'og:type', content: isHomePage ? 'website' : 'article' }],
       ['meta', { property: 'og:title', content: pageTitle }],
       ['meta', { property: 'og:description', content: description }],
@@ -450,37 +772,22 @@ export default defineConfig({
 
     if (!isNotFound) {
       head.unshift(['link', { rel: 'canonical', href: canonicalUrl }])
+
+      for (const alternateLocale of localeDefinitions) {
+        head.unshift([
+          'link',
+          {
+            rel: 'alternate',
+            hreflang: alternateLocale.lang,
+            href: getCanonicalUrl(getLocaleRelativePath(alternateLocale.key, rootRelativePath)),
+          },
+        ])
+      }
+
+      head.unshift(['link', { rel: 'alternate', hreflang: 'x-default', href: getCanonicalUrl(rootRelativePath) }])
     }
 
     return head
   },
-  themeConfig: {
-    logo: {
-      src: '/ironloom-mark.svg',
-      alt: 'Ironloom logo',
-    },
-    nav: [
-      { text: 'Guides', link: '/guides/getting-started' },
-      { text: 'Developer Docs', link: '/developers/architecture' },
-      { text: 'API Docs', link: '/api/' },
-      { text: 'LLM', link: '/llms.txt' },
-    ],
-    sidebar: fullSidebar,
-    outline: {
-      label: 'On this page',
-      level: [2, 3],
-    },
-    editLink: {
-      pattern: docsEditLinkPattern,
-      text: 'Suggest edits to this page',
-    },
-    socialLinks: [{ icon: { svg: githubIconSvg }, link: repositoryUrl, ariaLabel: 'GitHub' }],
-    search: {
-      provider: 'local',
-    },
-    footer: {
-      message: 'Auditable engineering operations for Discord, GitHub, SonarCloud, and k3s.',
-      copyright: 'Released under the MIT License.',
-    },
-  },
-})
+  themeConfig: buildThemeConfig('root'),
+}))

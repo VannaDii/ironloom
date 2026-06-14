@@ -2,6 +2,27 @@
 
 Ironloom accepts setup values from environment variables and from an encrypted local setup file. Environment variables always take precedence.
 
+## Setup Resolution Flow
+
+```mermaid
+flowchart TD
+  start[Runtime starts] --> key{IRONLOOM_CONFIG_KEY present and valid?}
+  key -- No --> keyHelp[Show config key instructions]
+  key -- Yes --> token{IRONLOOM_INSTALLER_TOKEN present?}
+  token -- No --> tokenHelp[Show installer-token instructions]
+  token -- Yes --> env{All required runtime values in environment?}
+  env -- Yes --> ready[Runtime is ready]
+  env -- No --> saved{Encrypted setup file exists?}
+  saved -- Yes --> merge[Merge env values over encrypted setup]
+  saved -- No --> form[Show setup form]
+  form --> submit[Submit installer token and missing values]
+  submit --> encrypt[Encrypt and save setup file]
+  encrypt --> merge
+  merge --> complete{Required values resolved?}
+  complete -- Yes --> ready
+  complete -- No --> blocked[Readiness remains blocked]
+```
+
 ## Required Setup Variables
 
 | Variable | Purpose |

@@ -4,6 +4,28 @@ Ironloom routes work through a typed process graph. The supervisor validates pol
 
 Adapters for Discord, GitHub, and SonarCloud stay at the edges. Business rules live in core crates, policy, the process graph, workers, and the supervisor.
 
+## Runtime Boundaries
+
+```mermaid
+flowchart TB
+  runtime[ironloom-runtime]
+  runtime --> config[ironloom-config]
+  runtime --> supervisor[ironloom-supervisor]
+  runtime --> storage[ironloom-storage]
+  supervisor --> policy[ironloom-policy]
+  supervisor --> graph[ironloom-process-graph]
+  supervisor --> workers[ironloom-workers]
+  workers --> gates[ironloom-gates]
+  workers --> github[ironloom-github]
+  workers --> sonar[ironloom-sonarcloud]
+  storage --> artifacts[(.ironloom state)]
+  discord[ironloom-discord] --> runtime
+  core[ironloom-core] --> config
+  core --> policy
+  core --> graph
+  core --> workers
+```
+
 ## Boundary Rules
 
 - `ironloom-runtime` is the deployable service and composition boundary.

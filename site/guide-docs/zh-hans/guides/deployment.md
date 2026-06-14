@@ -1,30 +1,30 @@
-# Deployment
+# 部署
 
-The runtime image is `ghcr.io/vannadii/ironloom` unless the registry owner changes. The Helm chart deploys the `ironloom` binary with PVC-backed `.ironloom` state, setup-time encrypted local configuration, optional secret references for Discord, GitHub, SonarCloud, and OpenAI credentials, and health/readiness probes.
+除非注册表所有者发生变化，否则运行时镜像是 `ghcr.io/vannadii/ironloom`。Helm chart 部署 `ironloom` 二进制，并使用 PVC 支持的 `.ironloom` 状态、设置时加密的本地配置、Discord、GitHub、SonarCloud 和 OpenAI 凭据的可选密钥引用，以及健康和就绪探针。
 
-Use the Helm chart under `deploy/helm/ironloom` for k3s deployments.
+使用 `deploy/helm/ironloom` 下的 Helm chart 进行 k3s 部署。
 
-## Deployment Flow
+## 部署流程
 
 ```mermaid
 flowchart LR
-  operator[Operator] --> secret[Create setup and runtime secrets]
+  operator[操作员] --> secret[创建设置和运行时密钥]
   secret --> helm[helm upgrade --install]
   helm --> deployment[ironloom Deployment]
-  deployment --> pvc[(PVC-backed .ironloom state)]
-  deployment --> probes[Health and readiness probes]
+  deployment --> pvc[(PVC 支持的 .ironloom 状态)]
+  deployment --> probes[健康和就绪探针]
   probes --> health[/GET /healthz/]
   probes --> ready[/GET /readyz/]
-  deployment --> setup[/Setup page on runtime port/]
-  setup --> encrypted[Encrypted local setup]
+  deployment --> setup[/运行时端口上的设置页面/]
+  setup --> encrypted[加密本地设置]
   encrypted --> pvc
-  ready --> service[Service ready]
-  service --> rollback[Helm history and rollback preserve PVC]
+  ready --> service[服务就绪]
+  service --> rollback[Helm 历史和回滚保留 PVC]
 ```
 
-## Runtime Secrets
+## 运行时密钥
 
-Create the setup secret in the target namespace before installing the chart. `IRONLOOM_CONFIG_KEY` must be base64-encoded 32-byte key material. `IRONLOOM_INSTALLER_TOKEN` authorizes first-run setup form submissions.
+安装 chart 前，请在目标命名空间中创建设置密钥。`IRONLOOM_CONFIG_KEY` 必须是 Base64 编码的 32 字节密钥材料。`IRONLOOM_INSTALLER_TOKEN` 授权首次运行设置表单提交。
 
 ```sh
 kubectl create namespace ironloom
@@ -33,7 +33,7 @@ kubectl -n ironloom create secret generic ironloom-setup \
   --from-literal=installer-token="$(openssl rand -base64 32)"
 ```
 
-Runtime credentials can be provided through Kubernetes secrets, through the setup page, or through both. Environment-bound secrets take precedence over encrypted local setup values.
+运行时凭据可以通过 Kubernetes secrets、设置页面或两者同时提供。环境绑定的密钥优先于加密本地设置值。
 
 ```sh
 kubectl -n ironloom create secret generic ironloom-discord \
@@ -47,11 +47,11 @@ kubectl -n ironloom create secret generic ironloom-openai \
   --from-literal=api-key="${IRONLOOM_OPENAI_API_KEY}"
 ```
 
-For OpenAI authentication, provide either `IRONLOOM_OPENAI_API_KEY` or `IRONLOOM_OPENAI_OAUTH_SESSION`. The setup page also supports both modes.
+对于 OpenAI 身份验证，请提供 `IRONLOOM_OPENAI_API_KEY` 或 `IRONLOOM_OPENAI_OAUTH_SESSION`。设置页面也支持两种模式。
 
-## k3s Dry Run
+## k3s 预演
 
-Run a server-side dry run before changing the cluster.
+更改集群前运行服务器端预演。
 
 ```sh
 helm upgrade --install ironloom deploy/helm/ironloom \
@@ -60,9 +60,9 @@ helm upgrade --install ironloom deploy/helm/ironloom \
   --dry-run=server
 ```
 
-## Install Or Upgrade
+## 安装或升级
 
-Install from the local chart during validation, or from the published OCI chart after release publication.
+验证期间从本地 chart 安装，发布完成后也可以从已发布的 OCI chart 安装。
 
 ```sh
 helm upgrade --install ironloom deploy/helm/ironloom \
@@ -79,7 +79,7 @@ helm upgrade --install ironloom oci://ghcr.io/vannadii/charts/ironloom \
   --version 0.1.0
 ```
 
-## Smoke Checks
+## 冒烟检查
 
 ```sh
 kubectl -n ironloom rollout status deployment/ironloom
@@ -89,9 +89,9 @@ curl -fsS http://127.0.0.1:8080/readyz
 cargo test -p ironloom-runtime --test vertical_slice
 ```
 
-## Rollback
+## 回滚
 
-Keep the PVC unless an operator explicitly approves destructive cleanup.
+除非操作员明确批准破坏性清理，否则保留 PVC。
 
 ```sh
 helm -n ironloom history ironloom
@@ -99,6 +99,6 @@ helm -n ironloom rollback ironloom <revision>
 kubectl -n ironloom rollout status deployment/ironloom
 ```
 
-## Site Publishing
+## 站点发布
 
-`.github/workflows/docs-deploy.yml` publishes the VitePress site to GitHub Pages at `https://ironloom.dev` on `main`.
+`.github/workflows/docs-deploy.yml` 会在 `main` 上将 VitePress 站点发布到 GitHub Pages 的 `https://ironloom.dev`。

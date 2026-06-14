@@ -1,0 +1,24 @@
+# Quality Gates
+
+Ironloom Cargo formatting, Clippy, tests, dependency policy, vulnerability audit, schemas, documentation build, Docker build, Helm render और SonarCloud analysis के माध्यम से strict validation बनाए रखता है।
+
+## Local Gates
+
+```sh
+cargo fmt --check
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+cargo test --workspace --all-features
+cargo run -p ironloom-schemas -- --check
+cargo deny check
+cargo audit
+npm run docs:build
+helm lint deploy/helm/ironloom
+helm template ironloom deploy/helm/ironloom
+```
+
+## Publishing Gates
+
+- Docker Buildx `docker/ironloom-runtime/Dockerfile` build करता है।
+- Helm `deploy/helm/ironloom` को OCI chart के रूप में publish करता है।
+- GitHub Pages VitePress public site publish करता है।
+- SonarCloud को `cargo llvm-cov` से Rust LCOV coverage मिलती है।

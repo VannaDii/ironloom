@@ -38,3 +38,5 @@ Build the static site with:
 ```sh
 npm run docs:build
 ```
+
+When functionality changes affect a documented surface, update the English source docs and every localized docs tree in the same change.

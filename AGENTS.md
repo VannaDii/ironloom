@@ -29,6 +29,7 @@
 - Add Rust documentation comments to every authored public constant, function, type, trait, and module.
 - Every non-trivial unit needs sibling tests that reveal failure source and operational impact.
 - Public contract changes require aligned Rust types, committed schema files, docs, and tests.
+- Functionality changes that affect a documented surface require updates to the English docs and every localized docs tree under `site/guide-docs` in the same change.
 - Keep constants in the owning crate. If more than one crate needs the same constant, define it once in `ironloom-core`.
 - Do not inline repeated literals or magic numbers in authored Rust code.
 - Treat regular expressions as named constants and cover every pattern with matching and non-matching tests.

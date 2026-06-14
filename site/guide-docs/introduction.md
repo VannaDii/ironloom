@@ -4,6 +4,24 @@ Ironloom is a Rust supervisor runtime by Veritas Labs for auditable engineering 
 
 It coordinates Discord operator actions, GitHub source-of-truth state, SonarCloud quality gates, worker execution, immutable artifacts, and k3s deployment through a direct Rust runtime.
 
+## System Flow
+
+```mermaid
+flowchart LR
+  operator[Discord operator] --> discord[ironloom-discord]
+  discord --> runtime[ironloom-runtime]
+  runtime --> supervisor[ironloom-supervisor]
+  supervisor --> policy[ironloom-policy]
+  supervisor --> graph[ironloom-process-graph]
+  graph --> workers[ironloom-workers]
+  workers --> github[GitHub source of truth]
+  workers --> sonar[SonarCloud gates]
+  workers --> storage[ironloom-storage]
+  storage --> artifacts[(.ironloom artifacts)]
+  supervisor --> discord
+  runtime --> k3s[k3s deployment]
+```
+
 ## Platform Shape
 
 - Discord is the primary operator interface.

@@ -20,6 +20,7 @@
   --vp-c-bg-alt: #111827;
   --vp-c-text-1: #f7f3ec;
   --vp-c-text-2: #bac2ce;
+  --vp-home-hero-name-background: linear-gradient(115deg, #f7f3ec 0%, #ffb14d 54%, #ff5a1f 100%);
 }
 
 .VPNavBarTitle .title {
@@ -28,26 +29,32 @@
 
 .VPHomeHero {
   min-height: 520px;
+  padding-top: 88px;
 }
 
 .VPHomeHero .name {
-  font-size: clamp(3rem, 7vw, 6.8rem);
+  font-size: clamp(3.4rem, 7vw, 6.5rem);
   letter-spacing: 0;
+  line-height: 0.94;
 }
 
 .VPHomeHero .text {
+  font-size: clamp(2.2rem, 4.2vw, 4rem);
+  line-height: 1.12;
   max-width: 780px;
   letter-spacing: 0;
 }
 
 .VPHomeHero .tagline {
+  font-size: clamp(1.1rem, 1.5vw, 1.35rem);
   max-width: 680px;
   line-height: 1.6;
 }
 
 .VPHomeHero .image-src {
-  width: min(340px, 68vw);
-  max-height: none;
+  height: clamp(340px, 34vw, 460px);
+  max-height: calc(100svh - 280px);
+  width: auto;
 }
 
 .ironloom-home {
@@ -113,6 +120,24 @@
 @media (max-width: 760px) {
   .VPHomeHero {
     min-height: auto;
+    padding-top: 72px;
+  }
+
+  .VPHomeHero .image-src {
+    height: min(220px, 56vw);
+    max-height: none;
+  }
+
+  .VPHomeHero .name {
+    font-size: 2.9rem;
+  }
+
+  .VPHomeHero .text {
+    font-size: 2.15rem;
+  }
+
+  .VPHomeHero .tagline {
+    font-size: 1.05rem;
   }
 
   .ironloom-section {
