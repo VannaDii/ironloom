@@ -7,20 +7,27 @@ import { GitChangelog, GitChangelogMarkdownSection } from '@nolebase/vitepress-p
 import { groupIconMdPlugin, groupIconVitePlugin } from 'vitepress-plugin-group-icons'
 import llmstxt from 'vitepress-plugin-llms'
 
-const siteName = 'Ironloom'
-const siteDescription =
-  'Ironloom is a Rust supervisor runtime for auditable engineering operations across Discord, GitHub, SonarCloud, and k3s.'
-const defaultSiteUrl = 'https://ironloom.dev'
+import {
+  ACCENT_COLOR,
+  DEFAULT_SITE_URL,
+  LIGHT_THEME_COLOR,
+  REPOSITORY_URL,
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  SOCIAL_PREVIEW_ALT,
+  THEME_COLOR,
+} from '../src/siteMetadata'
+
+const siteName = SITE_NAME
+const siteDescription = SITE_DESCRIPTION
+const defaultSiteUrl = DEFAULT_SITE_URL
 const siteUrl = stripTrailingSlash(process.env.SITE_URL || defaultSiteUrl)
 const siteHomeUrl = new URL('/', siteUrl).toString()
-const repositoryUrl = 'https://github.com/VannaDii/ironloom'
+const repositoryUrl = REPOSITORY_URL
 const docsEditBranch = process.env.DOCS_EDIT_BRANCH || 'main'
 const docsEditLinkPattern = `${repositoryUrl}/edit/${docsEditBranch}/site/guide-docs/:path`
 const socialImageUrl = new URL('/ironloom-social.png', siteHomeUrl).toString()
 const logoUrl = new URL('/ironloom-mark.svg', siteHomeUrl).toString()
-const themeColor = '#0b0f14'
-const lightThemeColor = '#fff8f2'
-const accentColor = '#ff8800'
 const githubIconSvg = `
   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
     <path fill="currentColor" d="M8 1.3a6.665 6.665 0 0 1 5.413 10.56 6.677 6.677 0 0 1-3.288 2.432c-.333.067-.458-.142-.458-.316 0-.226.008-.942.008-1.834 0-.625-.208-1.025-.45-1.233 1.483-.167 3.042-.734 3.042-3.292a2.58 2.58 0 0 0-.684-1.792c.067-.166.3-.85-.066-1.766 0 0-.559-.184-1.834.683a6.186 6.186 0 0 0-1.666-.225c-.567 0-1.134.075-1.667.225-1.275-.858-1.833-.683-1.833-.683-.367.916-.134 1.6-.067 1.766a2.594 2.594 0 0 0-.683 1.792c0 2.55 1.55 3.125 3.033 3.292-.192.166-.367.458-.425.891-.383.175-1.342.459-1.942-.55-.125-.2-.5-.691-1.025-.683-.558.008-.225.317.009.442.283.158.608.75.683.941.133.376.567 1.092 2.242.784 0 .558.008 1.083.008 1.242 0 .174-.125.374-.458.316a6.662 6.662 0 0 1-4.559-6.325A6.665 6.665 0 0 1 8 1.3Z"/>
@@ -348,7 +355,7 @@ export default defineConfig({
     ['link', { rel: 'icon', type: 'image/png', sizes: '64x64', href: '/ironloom-favicon-64x64.png' }],
     ['link', { rel: 'shortcut icon', href: '/favicon.ico', sizes: 'any' }],
     ['link', { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' }],
-    ['link', { rel: 'mask-icon', href: '/ironloom-mark.svg', color: accentColor }],
+    ['link', { rel: 'mask-icon', href: '/ironloom-mark.svg', color: ACCENT_COLOR }],
     ['link', { rel: 'manifest', href: '/site.webmanifest' }],
     ['link', { rel: 'image_src', href: '/ironloom-social.png' }],
     ['meta', { name: 'application-name', content: siteName }],
@@ -357,11 +364,11 @@ export default defineConfig({
     ['meta', { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' }],
     ['meta', { name: 'mobile-web-app-capable', content: 'yes' }],
     ['meta', { name: 'format-detection', content: 'telephone=no' }],
-    ['meta', { name: 'msapplication-TileColor', content: themeColor }],
+    ['meta', { name: 'msapplication-TileColor', content: THEME_COLOR }],
     ['meta', { name: 'color-scheme', content: 'light dark' }],
-    ['meta', { name: 'theme-color', media: '(prefers-color-scheme: light)', content: lightThemeColor }],
-    ['meta', { name: 'theme-color', media: '(prefers-color-scheme: dark)', content: themeColor }],
-    ['meta', { name: 'theme-color', content: themeColor }],
+    ['meta', { name: 'theme-color', media: '(prefers-color-scheme: light)', content: LIGHT_THEME_COLOR }],
+    ['meta', { name: 'theme-color', media: '(prefers-color-scheme: dark)', content: THEME_COLOR }],
+    ['meta', { name: 'theme-color', content: THEME_COLOR }],
   ],
   vite: {
     build: {
@@ -432,12 +439,12 @@ export default defineConfig({
       ['meta', { property: 'og:image:type', content: 'image/png' }],
       ['meta', { property: 'og:image:width', content: '1280' }],
       ['meta', { property: 'og:image:height', content: '640' }],
-      ['meta', { property: 'og:image:alt', content: 'Ironloom platform engineering social preview' }],
+      ['meta', { property: 'og:image:alt', content: SOCIAL_PREVIEW_ALT }],
       ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
       ['meta', { name: 'twitter:title', content: pageTitle }],
       ['meta', { name: 'twitter:description', content: description }],
       ['meta', { name: 'twitter:image', content: socialImageUrl }],
-      ['meta', { name: 'twitter:image:alt', content: 'Ironloom platform engineering social preview' }],
+      ['meta', { name: 'twitter:image:alt', content: SOCIAL_PREVIEW_ALT }],
       ['script', { type: 'application/ld+json' }, jsonLd],
     ] as [string, Record<string, string>, string?][]
 
