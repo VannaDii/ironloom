@@ -6,7 +6,19 @@
 
 - سلسلة أدوات Rust من `rust-toolchain.toml`
 - Cargo
+- Docker
+- `just`
 - shell لديه وصول إلى `openssl`
+
+## تشغيل إثبات Docker
+
+```sh
+just proof
+```
+
+تبني الوصفة صورة وقت التشغيل، وتشغل Ironloom على `http://127.0.0.1:8080`، وترسل قيم الإعداد المحلي إلى نقطة setup، وتكتب تطبيق إثبات ثابتا كاملا في `.ironloom/local-dev/worktrees/ironloom-proof-app`.
+
+استخدم `just setup-url` لطباعة عنوان setup المحلي ورمز التثبيت عندما تريد تنفيذ الإعداد يدويا من المتصفح. استخدم `just docker-stop` لإيقاف حاوية وقت التشغيل المحلية.
 
 ## تشغيل وقت التشغيل
 
@@ -16,6 +28,7 @@ IRONLOOM_PUBLIC_URL=https://ironloom.dev \
 IRONLOOM_STATE_ROOT=/tmp/ironloom/.ironloom \
 IRONLOOM_CONFIG_KEY="$(openssl rand -base64 32)" \
 IRONLOOM_INSTALLER_TOKEN="$(openssl rand -base64 32)" \
+IRONLOOM_DISCORD_APPLICATION_ID=123456789012345678 \
 IRONLOOM_DISCORD_TOKEN=local-discord-token \
 IRONLOOM_DISCORD_PUBLIC_KEY=local-discord-public-key \
 IRONLOOM_GITHUB_TOKEN=local-github-token \

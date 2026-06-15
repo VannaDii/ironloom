@@ -35,3 +35,7 @@ Invalid installer tokens return `403 setup rejected`.
 ## `POST /setup/openai/oauth/start`
 
 Returns the OpenAI OAuth setup instructions used by the config page. The resulting OAuth session reference can be saved through the setup form or bound through `IRONLOOM_OPENAI_OAUTH_SESSION`.
+
+## `POST /setup/discord/oauth/start`
+
+Returns a Discord authorization page for the configured application ID. The generated URL uses the `bot` and `applications.commands` scopes so a Discord server administrator can install Ironloom into the target server.

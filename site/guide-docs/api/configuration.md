@@ -15,6 +15,7 @@ Runtime configuration resolves with environment values taking precedence over en
 | Variable | Required For Readiness | Description |
 | --- | --- | --- |
 | `IRONLOOM_PUBLIC_URL` | Yes | Public runtime URL. |
+| `IRONLOOM_DISCORD_APPLICATION_ID` | Yes | Discord application ID used for server authorization. |
 | `IRONLOOM_DISCORD_TOKEN` | Yes | Discord token or secret reference. |
 | `IRONLOOM_DISCORD_PUBLIC_KEY` | Yes | Discord public key or secret reference. |
 | `IRONLOOM_GITHUB_TOKEN` | Yes | GitHub token or secret reference. |

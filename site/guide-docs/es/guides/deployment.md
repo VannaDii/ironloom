@@ -35,6 +35,7 @@ Las credenciales de runtime pueden entregarse mediante secretos de Kubernetes, l
 
 ```sh
 kubectl -n ironloom create secret generic ironloom-discord \
+  --from-literal=application-id="${IRONLOOM_DISCORD_APPLICATION_ID}" \
   --from-literal=token="${IRONLOOM_DISCORD_TOKEN}" \
   --from-literal=public-key="${IRONLOOM_DISCORD_PUBLIC_KEY}"
 kubectl -n ironloom create secret generic ironloom-github \
@@ -45,7 +46,7 @@ kubectl -n ironloom create secret generic ironloom-openai \
   --from-literal=api-key="${IRONLOOM_OPENAI_API_KEY}"
 ```
 
-Para autenticación de OpenAI, proporciona `IRONLOOM_OPENAI_API_KEY` o `IRONLOOM_OPENAI_OAUTH_SESSION`. La página de configuración también admite ambos modos.
+Para autorización de Discord, proporciona `IRONLOOM_DISCORD_APPLICATION_ID` mediante la clave secreta `application-id` o el valor Helm `--set-string discord.applicationId=...`. Para autenticación de OpenAI, proporciona `IRONLOOM_OPENAI_API_KEY` o `IRONLOOM_OPENAI_OAUTH_SESSION`. La página de configuración también admite ambos modos.
 
 ## Dry run de k3s
 

@@ -10,6 +10,7 @@ fn runtime_config_rejects_missing_secret_references_before_accepting_work() {
     let config = RuntimeConfig {
         runtime_url: "https://ironloom.dev".to_owned(),
         state_root: PathBuf::from("/var/lib/ironloom"),
+        discord_application_id: "123456789012345678".to_owned(),
         discord_token_ref: "discord-token".to_owned(),
         discord_public_key_ref: "discord-public-key".to_owned(),
         github_token_ref: String::new(),
@@ -39,6 +40,7 @@ fn runtime_config_from_environment_pairs_requires_secret_values() {
     let inputs = [
         ("IRONLOOM_PUBLIC_URL", "https://ironloom.dev"),
         ("IRONLOOM_STATE_ROOT", "/var/lib/ironloom/.ironloom"),
+        ("IRONLOOM_DISCORD_APPLICATION_ID", "123456789012345678"),
         ("IRONLOOM_DISCORD_TOKEN", "discord-token"),
         ("IRONLOOM_DISCORD_PUBLIC_KEY", "discord-public-key"),
         ("IRONLOOM_GITHUB_TOKEN", ""),
@@ -96,6 +98,7 @@ fn runtime_config_prefers_environment_values_over_stored_setup_values() {
     let environment = RuntimeConfigInputs::from_environment_pairs([
         ("IRONLOOM_PUBLIC_URL", "https://env.ironloom.dev"),
         ("IRONLOOM_STATE_ROOT", "/var/lib/ironloom/.ironloom"),
+        ("IRONLOOM_DISCORD_APPLICATION_ID", "999999999999999999"),
         ("IRONLOOM_DISCORD_TOKEN", "env-discord-token"),
         ("IRONLOOM_DISCORD_PUBLIC_KEY", "env-discord-public-key"),
         ("IRONLOOM_GITHUB_TOKEN", "env-github-token"),
@@ -106,6 +109,7 @@ fn runtime_config_prefers_environment_values_over_stored_setup_values() {
     ]);
     let stored = StoredSetupConfig {
         runtime_url: Some("https://stored.ironloom.dev".to_owned()),
+        discord_application_id: Some("123456789012345678".to_owned()),
         discord_token_ref: Some("stored-discord-token".to_owned()),
         discord_public_key_ref: Some("stored-discord-public-key".to_owned()),
         github_token_ref: Some("stored-github-token".to_owned()),
@@ -120,6 +124,7 @@ fn runtime_config_prefers_environment_values_over_stored_setup_values() {
         .expect("complete environment config should resolve");
 
     assert_eq!("https://env.ironloom.dev", resolved.runtime_url);
+    assert_eq!("999999999999999999", resolved.discord_application_id);
     assert_eq!("env-discord-token", resolved.discord_token_ref);
     assert_eq!("env-discord-public-key", resolved.discord_public_key_ref);
     assert_eq!("env-github-token", resolved.github_token_ref);
@@ -150,6 +155,7 @@ fn runtime_config_uses_stored_setup_when_environment_is_missing() {
     )]);
     let stored = StoredSetupConfig {
         runtime_url: Some("https://stored.ironloom.dev".to_owned()),
+        discord_application_id: Some("123456789012345678".to_owned()),
         discord_token_ref: Some("stored-discord-token".to_owned()),
         discord_public_key_ref: Some("stored-discord-public-key".to_owned()),
         github_token_ref: Some("stored-github-token".to_owned()),
@@ -164,6 +170,7 @@ fn runtime_config_uses_stored_setup_when_environment_is_missing() {
         .expect("stored setup should complete runtime config when env is absent");
 
     assert_eq!("https://stored.ironloom.dev", resolved.runtime_url);
+    assert_eq!("123456789012345678", resolved.discord_application_id);
     assert_eq!(
         OpenAiAuthConfig::ChatGptOAuth {
             session_ref: "stored-oauth-session".to_owned()
@@ -185,6 +192,7 @@ fn runtime_config_requires_one_openai_auth_method() {
     let environment = RuntimeConfigInputs::from_environment_pairs([
         ("IRONLOOM_PUBLIC_URL", "https://ironloom.dev"),
         ("IRONLOOM_STATE_ROOT", "/var/lib/ironloom/.ironloom"),
+        ("IRONLOOM_DISCORD_APPLICATION_ID", "123456789012345678"),
         ("IRONLOOM_DISCORD_TOKEN", "discord-token"),
         ("IRONLOOM_DISCORD_PUBLIC_KEY", "discord-public-key"),
         ("IRONLOOM_GITHUB_TOKEN", "github-token"),
@@ -209,6 +217,7 @@ fn runtime_config_rejects_empty_state_root() {
     let environment = RuntimeConfigInputs::from_environment_pairs([
         ("IRONLOOM_PUBLIC_URL", "https://ironloom.dev"),
         ("IRONLOOM_STATE_ROOT", ""),
+        ("IRONLOOM_DISCORD_APPLICATION_ID", "123456789012345678"),
         ("IRONLOOM_DISCORD_TOKEN", "discord-token"),
         ("IRONLOOM_DISCORD_PUBLIC_KEY", "discord-public-key"),
         ("IRONLOOM_GITHUB_TOKEN", "github-token"),

@@ -15,6 +15,7 @@ Runtime configuration environment values को encrypted setup values पर �
 | Variable | Required For Readiness | Description |
 | --- | --- | --- |
 | `IRONLOOM_PUBLIC_URL` | Yes | Public runtime URL. |
+| `IRONLOOM_DISCORD_APPLICATION_ID` | Yes | Server authorization के लिए Discord application ID. |
 | `IRONLOOM_DISCORD_TOKEN` | Yes | Discord token या secret reference. |
 | `IRONLOOM_DISCORD_PUBLIC_KEY` | Yes | Discord public key या secret reference. |
 | `IRONLOOM_GITHUB_TOKEN` | Yes | GitHub token या secret reference. |

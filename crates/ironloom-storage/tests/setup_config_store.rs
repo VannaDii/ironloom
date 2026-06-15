@@ -9,6 +9,7 @@ fn setup_config_store_encrypts_local_config_without_plaintext_secret_leakage() {
     let store = SetupConfigStore::new(temp.path());
     let config = StoredSetupConfig {
         runtime_url: Some("https://ironloom.dev".to_owned()),
+        discord_application_id: Some("123456789012345678".to_owned()),
         discord_token_ref: Some("discord-secret-value".to_owned()),
         discord_public_key_ref: Some("discord-public-key".to_owned()),
         github_token_ref: Some("github-secret-value".to_owned()),

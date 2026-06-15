@@ -38,6 +38,7 @@ IRONLOOM_PUBLIC_URL=https://ironloom.dev \
 IRONLOOM_STATE_ROOT=/tmp/ironloom/.ironloom \
 IRONLOOM_CONFIG_KEY="$(openssl rand -base64 32)" \
 IRONLOOM_INSTALLER_TOKEN="$(openssl rand -base64 32)" \
+IRONLOOM_DISCORD_APPLICATION_ID=123456789012345678 \
 IRONLOOM_DISCORD_TOKEN=local-discord-token \
 IRONLOOM_DISCORD_PUBLIC_KEY=local-discord-public-key \
 IRONLOOM_GITHUB_TOKEN=local-github-token \
@@ -54,6 +55,16 @@ Health endpoints:
 - `GET /readyz`
 
 If required runtime credentials are missing, `GET /readyz` returns `503` and `GET /setup` serves the setup page on the same HTTP port. Environment variables take precedence over encrypted local setup values under `IRONLOOM_STATE_ROOT`. OpenAI authentication can use `IRONLOOM_OPENAI_API_KEY` or `IRONLOOM_OPENAI_OAUTH_SESSION`.
+
+## Local Docker Proof
+
+Use the bundled recipes to build the runtime image, start Ironloom on the existing HTTP port, submit local setup values, and generate a complete static proof project:
+
+```sh
+just proof
+```
+
+The recipe writes the generated setup key and installer token to `.ironloom/local-dev/setup.env`, stores encrypted setup state under `.ironloom/local-dev/state`, and writes the generated proof app under `.ironloom/local-dev/worktrees/ironloom-proof-app`. Run `just setup-url` to print the setup URL and installer token for manual setup testing. Run `just docker-stop` when you are done inspecting the local container.
 
 ## Deployment
 

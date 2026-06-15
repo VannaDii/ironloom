@@ -44,6 +44,14 @@ spec:
                   name: {{ .Values.setup.existingSecret }}
                   key: {{ .Values.setup.installerTokenKey }}
                   optional: true
+{{- if not .Values.discord.applicationId }}
+            - name: IRONLOOM_DISCORD_APPLICATION_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.discord.existingSecret }}
+                  key: {{ .Values.discord.applicationIdKey }}
+                  optional: true
+{{- end }}
             - name: IRONLOOM_DISCORD_TOKEN
               valueFrom:
                 secretKeyRef:

@@ -16,6 +16,12 @@ helm lint deploy/helm/ironloom
 helm template ironloom deploy/helm/ironloom
 ```
 
+## Atajos de recetas
+
+- `just proof` construye la imagen del runtime, inicia el contenedor local, envía valores de setup y genera una aplicación de prueba completa.
+- `just gates` ejecuta los controles locales comunes de formato, Clippy, pruebas, esquemas, docs y Helm.
+- `just setup-url` imprime la URL de setup local y el token de instalación para validación manual en el navegador.
+
 ## Controles de publicación
 
 - Docker Buildx construye `docker/ironloom-runtime/Dockerfile`.

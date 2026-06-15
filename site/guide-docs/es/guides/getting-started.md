@@ -6,7 +6,19 @@ Esta guía inicia el runtime de Ironloom localmente, verifica el puerto HTTP exi
 
 - Toolchain de Rust desde `rust-toolchain.toml`
 - Cargo
+- Docker
+- `just`
 - Un shell con acceso a `openssl`
+
+## Ejecutar la prueba con Docker
+
+```sh
+just proof
+```
+
+La receta construye la imagen del runtime, inicia Ironloom en `http://127.0.0.1:8080`, envía valores de configuración local al endpoint de setup y escribe una aplicación estática completa en `.ironloom/local-dev/worktrees/ironloom-proof-app`.
+
+Usa `just setup-url` para imprimir la URL de setup local y el token de instalación cuando quieras completar la configuración manualmente desde el navegador. Usa `just docker-stop` para detener el contenedor local del runtime.
 
 ## Iniciar el runtime
 
@@ -16,6 +28,7 @@ IRONLOOM_PUBLIC_URL=https://ironloom.dev \
 IRONLOOM_STATE_ROOT=/tmp/ironloom/.ironloom \
 IRONLOOM_CONFIG_KEY="$(openssl rand -base64 32)" \
 IRONLOOM_INSTALLER_TOKEN="$(openssl rand -base64 32)" \
+IRONLOOM_DISCORD_APPLICATION_ID=123456789012345678 \
 IRONLOOM_DISCORD_TOKEN=local-discord-token \
 IRONLOOM_DISCORD_PUBLIC_KEY=local-discord-public-key \
 IRONLOOM_GITHUB_TOKEN=local-github-token \

@@ -4,6 +4,10 @@
   "description": "Runtime configuration required before accepting work.",
   "type": "object",
   "properties": {
+    "discord_application_id": {
+      "description": "Discord application ID.",
+      "type": "string"
+    },
     "discord_public_key_ref": {
       "description": "Discord public key secret reference.",
       "type": "string"
@@ -44,6 +48,7 @@
   "required": [
     "runtime_url",
     "state_root",
+    "discord_application_id",
     "discord_token_ref",
     "discord_public_key_ref",
     "github_token_ref",

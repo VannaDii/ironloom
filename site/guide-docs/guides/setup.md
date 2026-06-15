@@ -42,6 +42,7 @@ openssl rand -base64 32
 | Variable | Purpose |
 | --- | --- |
 | `IRONLOOM_PUBLIC_URL` | Public runtime base URL. |
+| `IRONLOOM_DISCORD_APPLICATION_ID` | Discord application ID used to build the server authorization URL. |
 | `IRONLOOM_DISCORD_TOKEN` | Discord token or secret reference. |
 | `IRONLOOM_DISCORD_PUBLIC_KEY` | Discord public key or secret reference. |
 | `IRONLOOM_GITHUB_TOKEN` | GitHub token or secret reference. |
@@ -52,6 +53,12 @@ openssl rand -base64 32
 | `IRONLOOM_OPENAI_OAUTH_SESSION` | OpenAI OAuth session reference for OAuth authentication. |
 
 Provide either `IRONLOOM_OPENAI_API_KEY` or `IRONLOOM_OPENAI_OAUTH_SESSION`.
+
+## Discord Authorization
+
+Create a Discord application in the Discord Developer Portal and copy its application ID into `IRONLOOM_DISCORD_APPLICATION_ID` or the setup page. The setup page can then generate a Discord authorization URL with the `bot` and `applications.commands` scopes so a server administrator can install Ironloom into the target server.
+
+Keep the Discord bot token and public key in environment variables or secret bindings when possible. If they are entered through `/setup`, Ironloom stores them in the encrypted local setup file.
 
 ## Local Encrypted Setup
 

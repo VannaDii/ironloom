@@ -15,6 +15,7 @@ La configuración de runtime se resuelve dando prioridad a los valores del entor
 | Variable | Requerida para readiness | Descripción |
 | --- | --- | --- |
 | `IRONLOOM_PUBLIC_URL` | Sí | URL pública del runtime. |
+| `IRONLOOM_DISCORD_APPLICATION_ID` | Sí | ID de aplicación de Discord usado para la autorización del servidor. |
 | `IRONLOOM_DISCORD_TOKEN` | Sí | Token de Discord o referencia de secreto. |
 | `IRONLOOM_DISCORD_PUBLIC_KEY` | Sí | Clave pública de Discord o referencia de secreto. |
 | `IRONLOOM_GITHUB_TOKEN` | Sí | Token de GitHub o referencia de secreto. |

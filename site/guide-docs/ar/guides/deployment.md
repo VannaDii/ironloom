@@ -35,6 +35,7 @@ kubectl -n ironloom create secret generic ironloom-setup \
 
 ```sh
 kubectl -n ironloom create secret generic ironloom-discord \
+  --from-literal=application-id="${IRONLOOM_DISCORD_APPLICATION_ID}" \
   --from-literal=token="${IRONLOOM_DISCORD_TOKEN}" \
   --from-literal=public-key="${IRONLOOM_DISCORD_PUBLIC_KEY}"
 kubectl -n ironloom create secret generic ironloom-github \
@@ -45,7 +46,7 @@ kubectl -n ironloom create secret generic ironloom-openai \
   --from-literal=api-key="${IRONLOOM_OPENAI_API_KEY}"
 ```
 
-بالنسبة لمصادقة OpenAI، وفر `IRONLOOM_OPENAI_API_KEY` أو `IRONLOOM_OPENAI_OAUTH_SESSION`. تدعم صفحة الإعداد كلا النمطين أيضا.
+بالنسبة لتفويض Discord، وفر `IRONLOOM_DISCORD_APPLICATION_ID` من خلال مفتاح السر `application-id` أو قيمة Helm `--set-string discord.applicationId=...`. بالنسبة لمصادقة OpenAI، وفر `IRONLOOM_OPENAI_API_KEY` أو `IRONLOOM_OPENAI_OAUTH_SESSION`. تدعم صفحة الإعداد كلا النمطين أيضا.
 
 ## تجربة k3s الجافة
 

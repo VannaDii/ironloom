@@ -4,6 +4,13 @@
   "description": "Setup values persisted in the encrypted local setup file.",
   "type": "object",
   "properties": {
+    "discord_application_id": {
+      "description": "Discord application ID.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "discord_public_key_ref": {
       "description": "Discord public key secret reference or secret value.",
       "type": [

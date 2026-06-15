@@ -15,6 +15,7 @@
 | 变量 | 就绪所需 | 描述 |
 | --- | --- | --- |
 | `IRONLOOM_PUBLIC_URL` | 是 | 公共运行时 URL。 |
+| `IRONLOOM_DISCORD_APPLICATION_ID` | 是 | 用于服务器授权的 Discord 应用 ID。 |
 | `IRONLOOM_DISCORD_TOKEN` | 是 | Discord 令牌或密钥引用。 |
 | `IRONLOOM_DISCORD_PUBLIC_KEY` | 是 | Discord 公钥或密钥引用。 |
 | `IRONLOOM_GITHUB_TOKEN` | 是 | GitHub 令牌或密钥引用。 |

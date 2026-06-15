@@ -6,7 +6,19 @@
 
 - `rust-toolchain.toml` से Rust toolchain
 - Cargo
+- Docker
+- `just`
 - `openssl` access वाला shell
+
+## Docker Proof चलाएं
+
+```sh
+just proof
+```
+
+यह recipe runtime image build करती है, Ironloom को `http://127.0.0.1:8080` पर start करती है, setup endpoint पर local setup values submit करती है, और complete static proof app को `.ironloom/local-dev/worktrees/ironloom-proof-app` में लिखती है।
+
+Browser से setup manually test करने के लिए `just setup-url` local setup URL और installer token print करता है। Local runtime container रोकने के लिए `just docker-stop` चलाएं।
 
 ## Runtime Start करें
 
@@ -16,6 +28,7 @@ IRONLOOM_PUBLIC_URL=https://ironloom.dev \
 IRONLOOM_STATE_ROOT=/tmp/ironloom/.ironloom \
 IRONLOOM_CONFIG_KEY="$(openssl rand -base64 32)" \
 IRONLOOM_INSTALLER_TOKEN="$(openssl rand -base64 32)" \
+IRONLOOM_DISCORD_APPLICATION_ID=123456789012345678 \
 IRONLOOM_DISCORD_TOKEN=local-discord-token \
 IRONLOOM_DISCORD_PUBLIC_KEY=local-discord-public-key \
 IRONLOOM_GITHUB_TOKEN=local-github-token \

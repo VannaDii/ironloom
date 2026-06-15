@@ -37,6 +37,7 @@ Runtime credentials Kubernetes secrets, setup page, या दोनों स�
 
 ```sh
 kubectl -n ironloom create secret generic ironloom-discord \
+  --from-literal=application-id="${IRONLOOM_DISCORD_APPLICATION_ID}" \
   --from-literal=token="${IRONLOOM_DISCORD_TOKEN}" \
   --from-literal=public-key="${IRONLOOM_DISCORD_PUBLIC_KEY}"
 kubectl -n ironloom create secret generic ironloom-github \
@@ -47,7 +48,7 @@ kubectl -n ironloom create secret generic ironloom-openai \
   --from-literal=api-key="${IRONLOOM_OPENAI_API_KEY}"
 ```
 
-OpenAI authentication के लिए `IRONLOOM_OPENAI_API_KEY` या `IRONLOOM_OPENAI_OAUTH_SESSION` provide करें। Setup page दोनों modes support करता है।
+Discord authorization के लिए `IRONLOOM_DISCORD_APPLICATION_ID` को `application-id` secret key या Helm value `--set-string discord.applicationId=...` से provide करें। OpenAI authentication के लिए `IRONLOOM_OPENAI_API_KEY` या `IRONLOOM_OPENAI_OAUTH_SESSION` provide करें। Setup page दोनों modes support करता है।
 
 ## k3s Dry Run
 

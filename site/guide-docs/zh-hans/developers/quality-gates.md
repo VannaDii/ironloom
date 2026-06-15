@@ -16,6 +16,12 @@ helm lint deploy/helm/ironloom
 helm template ironloom deploy/helm/ironloom
 ```
 
+## 配方快捷命令
+
+- `just proof` 构建运行时镜像、启动本地容器、提交 setup 值，并生成完整的证明应用。
+- `just gates` 运行常用本地关卡：格式化、Clippy、测试、schema、docs 和 Helm。
+- `just setup-url` 打印本地 setup URL 和安装令牌，用于浏览器手动验证。
+
 ## 发布关卡
 
 - Docker Buildx 构建 `docker/ironloom-runtime/Dockerfile`。

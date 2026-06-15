@@ -15,6 +15,7 @@
 | المتغير | مطلوب للجاهزية | الوصف |
 | --- | --- | --- |
 | `IRONLOOM_PUBLIC_URL` | نعم | عنوان URL العام لوقت التشغيل. |
+| `IRONLOOM_DISCORD_APPLICATION_ID` | نعم | معرف تطبيق Discord المستخدم لتفويض الخادم. |
 | `IRONLOOM_DISCORD_TOKEN` | نعم | رمز Discord أو مرجع سر. |
 | `IRONLOOM_DISCORD_PUBLIC_KEY` | نعم | مفتاح Discord العام أو مرجع سر. |
 | `IRONLOOM_GITHUB_TOKEN` | نعم | رمز GitHub أو مرجع سر. |

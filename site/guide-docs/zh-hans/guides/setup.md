@@ -42,6 +42,7 @@ openssl rand -base64 32
 | 变量 | 用途 |
 | --- | --- |
 | `IRONLOOM_PUBLIC_URL` | 公共运行时基础 URL。 |
+| `IRONLOOM_DISCORD_APPLICATION_ID` | Discord 应用 ID，用于构建服务器授权 URL。 |
 | `IRONLOOM_DISCORD_TOKEN` | Discord 令牌或密钥引用。 |
 | `IRONLOOM_DISCORD_PUBLIC_KEY` | Discord 公钥或密钥引用。 |
 | `IRONLOOM_GITHUB_TOKEN` | GitHub 令牌或密钥引用。 |
@@ -52,6 +53,12 @@ openssl rand -base64 32
 | `IRONLOOM_OPENAI_OAUTH_SESSION` | OAuth 认证使用的 OpenAI OAuth 会话引用。 |
 
 请提供 `IRONLOOM_OPENAI_API_KEY` 或 `IRONLOOM_OPENAI_OAUTH_SESSION`。
+
+## Discord 授权
+
+在 Discord Developer Portal 中创建 Discord 应用，并将它的应用 ID 复制到 `IRONLOOM_DISCORD_APPLICATION_ID` 或 setup 页面。setup 页面可以生成带有 `bot` 和 `applications.commands` scope 的 Discord 授权 URL，让服务器管理员把 Ironloom 安装到目标服务器。
+
+尽可能把 Discord bot 令牌和公钥放在环境变量或密钥绑定中。如果通过 `/setup` 输入，Ironloom 会把它们保存在加密的本地 setup 文件中。
 
 ## 本地加密设置
 

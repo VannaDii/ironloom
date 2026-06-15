@@ -39,6 +39,7 @@ openssl rand -base64 32
 | Variable | Propósito |
 | --- | --- |
 | `IRONLOOM_PUBLIC_URL` | URL base pública del runtime. |
+| `IRONLOOM_DISCORD_APPLICATION_ID` | ID de la aplicación de Discord usado para construir la URL de autorización del servidor. |
 | `IRONLOOM_DISCORD_TOKEN` | Token de Discord o referencia de secreto. |
 | `IRONLOOM_DISCORD_PUBLIC_KEY` | Clave pública de Discord o referencia de secreto. |
 | `IRONLOOM_GITHUB_TOKEN` | Token de GitHub o referencia de secreto. |
@@ -49,6 +50,12 @@ openssl rand -base64 32
 | `IRONLOOM_OPENAI_OAUTH_SESSION` | Referencia de sesión OAuth de OpenAI para autenticación OAuth. |
 
 Proporciona `IRONLOOM_OPENAI_API_KEY` o `IRONLOOM_OPENAI_OAUTH_SESSION`.
+
+## Autorización de Discord
+
+Crea una aplicación de Discord en el Discord Developer Portal y copia su ID de aplicación en `IRONLOOM_DISCORD_APPLICATION_ID` o en la página de setup. La página de setup puede generar una URL de autorización de Discord con los scopes `bot` y `applications.commands` para que un administrador instale Ironloom en el servidor objetivo.
+
+Mantén el token del bot de Discord y la clave pública en variables de entorno o bindings de secretos cuando sea posible. Si se introducen en `/setup`, Ironloom los guarda en el archivo local de setup cifrado.
 
 ## Configuración local cifrada
 

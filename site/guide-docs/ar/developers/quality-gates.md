@@ -16,6 +16,12 @@ helm lint deploy/helm/ironloom
 helm template ironloom deploy/helm/ironloom
 ```
 
+## اختصارات الوصفات
+
+- يبني `just proof` صورة وقت التشغيل، ويشغل الحاوية المحلية، ويرسل قيم setup، وينشئ تطبيق إثبات كامل.
+- يشغل `just gates` البوابات المحلية الشائعة للتنسيق وClippy والاختبارات والمخططات والوثائق وHelm.
+- يطبع `just setup-url` عنوان setup المحلي ورمز التثبيت للتحقق اليدوي في المتصفح.
+
 ## بوابات النشر
 
 - يبني Docker Buildx ملف `docker/ironloom-runtime/Dockerfile`.

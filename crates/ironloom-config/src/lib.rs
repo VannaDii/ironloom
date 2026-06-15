@@ -19,6 +19,8 @@ pub const IRONLOOM_CONFIG_KEY_ENV: &str = "IRONLOOM_CONFIG_KEY";
 pub const IRONLOOM_INSTALLER_TOKEN_ENV: &str = "IRONLOOM_INSTALLER_TOKEN";
 /// Environment variable containing the Discord token.
 pub const IRONLOOM_DISCORD_TOKEN_ENV: &str = "IRONLOOM_DISCORD_TOKEN";
+/// Environment variable containing the Discord application ID.
+pub const IRONLOOM_DISCORD_APPLICATION_ID_ENV: &str = "IRONLOOM_DISCORD_APPLICATION_ID";
 /// Environment variable containing the Discord public key.
 pub const IRONLOOM_DISCORD_PUBLIC_KEY_ENV: &str = "IRONLOOM_DISCORD_PUBLIC_KEY";
 /// Environment variable containing the GitHub token.
@@ -36,6 +38,7 @@ pub const IRONLOOM_OPENAI_OAUTH_SESSION_ENV: &str = "IRONLOOM_OPENAI_OAUTH_SESSI
 
 const FIELD_RUNTIME_URL: &str = "runtime_url";
 const FIELD_STATE_ROOT: &str = "state_root";
+const FIELD_DISCORD_APPLICATION_ID: &str = "discord_application_id";
 const FIELD_DISCORD_TOKEN_REF: &str = "discord_token_ref";
 const FIELD_DISCORD_PUBLIC_KEY_REF: &str = "discord_public_key_ref";
 const FIELD_GITHUB_TOKEN_REF: &str = "github_token_ref";
@@ -78,6 +81,8 @@ pub enum OpenAiAuthConfig {
 pub struct StoredSetupConfig {
     /// Public runtime base URL.
     pub runtime_url: Option<String>,
+    /// Discord application ID.
+    pub discord_application_id: Option<String>,
     /// Discord token secret reference or secret value.
     pub discord_token_ref: Option<String>,
     /// Discord public key secret reference or secret value.
@@ -132,10 +137,18 @@ impl RuntimeConfigInputs {
         self.values.get(name).is_some_and(|value| !is_empty(value))
     }
 
+    /// Returns the Discord application ID when supplied by environment.
+    #[must_use]
+    pub fn discord_application_id(&self) -> Option<String> {
+        self.value(IRONLOOM_DISCORD_APPLICATION_ID_ENV)
+            .filter(|value| !is_empty(value))
+    }
+
     fn from_reader(mut read: impl FnMut(&str) -> Option<String>) -> Self {
         let names = [
             IRONLOOM_PUBLIC_URL_ENV,
             IRONLOOM_STATE_ROOT_ENV,
+            IRONLOOM_DISCORD_APPLICATION_ID_ENV,
             IRONLOOM_DISCORD_TOKEN_ENV,
             IRONLOOM_DISCORD_PUBLIC_KEY_ENV,
             IRONLOOM_GITHUB_TOKEN_ENV,
@@ -209,6 +222,8 @@ pub struct RuntimeConfig {
     pub runtime_url: String,
     /// State root that contains `.ironloom`.
     pub state_root: PathBuf,
+    /// Discord application ID.
+    pub discord_application_id: String,
     /// Discord token secret reference.
     pub discord_token_ref: String,
     /// Discord public key secret reference.
@@ -286,6 +301,14 @@ impl RuntimeConfig {
             |setup| setup.runtime_url.as_ref(),
             &mut sources,
         )?;
+        let discord_application_id = resolve_field(
+            &environment,
+            stored,
+            IRONLOOM_DISCORD_APPLICATION_ID_ENV,
+            FIELD_DISCORD_APPLICATION_ID,
+            |setup| setup.discord_application_id.as_ref(),
+            &mut sources,
+        )?;
         let discord_token_ref = resolve_field(
             &environment,
             stored,
@@ -338,6 +361,7 @@ impl RuntimeConfig {
         let config = Self {
             runtime_url,
             state_root: PathBuf::from(state_root),
+            discord_application_id,
             discord_token_ref,
             discord_public_key_ref,
             github_token_ref,
@@ -359,6 +383,7 @@ impl RuntimeConfig {
                 field: FIELD_STATE_ROOT,
             });
         }
+        validate_secret(FIELD_DISCORD_APPLICATION_ID, &self.discord_application_id)?;
         validate_secret(FIELD_DISCORD_TOKEN_REF, &self.discord_token_ref)?;
         validate_secret(FIELD_DISCORD_PUBLIC_KEY_REF, &self.discord_public_key_ref)?;
         validate_secret(FIELD_GITHUB_TOKEN_REF, &self.github_token_ref)?;

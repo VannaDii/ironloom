@@ -43,6 +43,8 @@ storage:
 
 discord:
   existingSecret: ironloom-discord
+  applicationId: ""
+  applicationIdKey: application-id
   tokenKey: token
   publicKeyKey: public-key
 

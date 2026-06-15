@@ -1,13 +1,14 @@
 #![forbid(unsafe_code)]
 
+use std::fs;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
 
 use ironloom_config::{
-    ConfigError, IRONLOOM_CONFIG_KEY_ENV, IRONLOOM_DISCORD_PUBLIC_KEY_ENV,
-    IRONLOOM_DISCORD_TOKEN_ENV, IRONLOOM_GITHUB_TOKEN_ENV, IRONLOOM_OPENAI_API_KEY_ENV,
-    IRONLOOM_OPENAI_OAUTH_SESSION_ENV, IRONLOOM_PUBLIC_URL_ENV,
+    ConfigError, IRONLOOM_CONFIG_KEY_ENV, IRONLOOM_DISCORD_APPLICATION_ID_ENV,
+    IRONLOOM_DISCORD_PUBLIC_KEY_ENV, IRONLOOM_DISCORD_TOKEN_ENV, IRONLOOM_GITHUB_TOKEN_ENV,
+    IRONLOOM_OPENAI_API_KEY_ENV, IRONLOOM_OPENAI_OAUTH_SESSION_ENV, IRONLOOM_PUBLIC_URL_ENV,
     IRONLOOM_SONARCLOUD_ORGANIZATION_ENV, IRONLOOM_SONARCLOUD_PROJECT_KEY_ENV,
     IRONLOOM_SONARCLOUD_TOKEN_ENV, RuntimeConfig, RuntimeConfigInputs, SetupEnvironment,
     StoredSetupConfig,
@@ -20,6 +21,7 @@ use ironloom_supervisor::{SupervisorError, SupervisorInput, run_gate_work};
 use thiserror::Error;
 
 const FIELD_RUNTIME_URL: &str = "runtime_url";
+const FIELD_DISCORD_APPLICATION_ID: &str = "discord_application_id";
 const FIELD_DISCORD_TOKEN_REF: &str = "discord_token_ref";
 const FIELD_DISCORD_PUBLIC_KEY_REF: &str = "discord_public_key_ref";
 const FIELD_GITHUB_TOKEN_REF: &str = "github_token_ref";
@@ -33,8 +35,313 @@ const FIELD_INSTALLER_TOKEN: &str = "installer_token";
 const FIELD_CONFIG_KEY: &str = "config_key";
 const OPENAI_AUTH_METHOD_API_KEY: &str = "api_key";
 const OPENAI_AUTH_METHOD_CHATGPT_OAUTH: &str = "chatgpt_oauth";
+const DISCORD_AUTHORIZE_URL: &str = "https://discord.com/oauth2/authorize";
+const DISCORD_AUTHORIZE_SCOPE: &str = "bot applications.commands";
+const DISCORD_DEFAULT_PERMISSIONS: &str = "0";
 const DEFAULT_STATE_ROOT: &str = ".ironloom";
 const HTTP_READ_BUFFER_BYTES: usize = 16_384;
+const PROOF_THREAD_ID: &str = "proof-thread";
+const PROOF_WORK_ITEM_ID: &str = "proof-work-item";
+const PROOF_ACTOR_ID: &str = "proof-operator";
+const PROOF_CORRELATION_ID: &str = "proof-correlation";
+const PROOF_COMMAND: &str = "build complete software proof";
+const PROOF_INDEX_FILE: &str = "index.html";
+const PROOF_STYLE_FILE: &str = "style.css";
+const PROOF_SCRIPT_FILE: &str = "app.js";
+const PROOF_README_FILE: &str = "README.md";
+const PROOF_MANIFEST_FILE: &str = "ironloom-proof.json";
+const SETUP_PAGE_STYLE: &str = r#"
+:root {
+  color-scheme: light dark;
+  --page-bg: #f5f1e9;
+  --surface: #fffaf2;
+  --surface-strong: #ffffff;
+  --text: #17130f;
+  --muted: #655f57;
+  --subtle: #857b70;
+  --line: #ded4c6;
+  --accent: #d63b16;
+  --accent-strong: #a82910;
+  --accent-soft: #fff0e4;
+  --code-bg: #201914;
+  --code-text: #fff4e7;
+  --ok-bg: #eaf7ef;
+  --ok-text: #126535;
+  --shadow: 0 24px 70px rgb(87 64 33 / 16%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page-bg: #080a0d;
+    --surface: #11151b;
+    --surface-strong: #171c23;
+    --text: #f8f4ee;
+    --muted: #b9b0a5;
+    --subtle: #8f877d;
+    --line: #2b333d;
+    --accent: #ff7a18;
+    --accent-strong: #ff9b42;
+    --accent-soft: #2d1b10;
+    --code-bg: #050607;
+    --code-text: #ffe7c7;
+    --ok-bg: #13281c;
+    --ok-text: #8ce2a7;
+    --shadow: 0 30px 80px rgb(0 0 0 / 40%);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  color: var(--text);
+  background:
+    radial-gradient(circle at top left, var(--accent-soft), transparent 28rem),
+    linear-gradient(135deg, var(--page-bg), var(--surface));
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.5;
+}
+
+.setup-shell {
+  min-height: 100vh;
+  display: grid;
+  align-items: center;
+  padding: clamp(1rem, 3vw, 3rem);
+}
+
+.setup-page {
+  width: min(58rem, 100%);
+  margin: 0 auto;
+  padding: clamp(1.25rem, 3vw, 2.5rem);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  box-shadow: var(--shadow);
+}
+
+.setup-page--notice {
+  width: min(46rem, 100%);
+}
+
+.setup-header {
+  max-width: 44rem;
+  margin-bottom: 1.5rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.5rem;
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 0.75rem;
+  font-size: clamp(2rem, 5vw, 3.8rem);
+  line-height: 0.95;
+}
+
+h2 {
+  margin-bottom: 0.4rem;
+  font-size: 1rem;
+}
+
+.lede,
+.section-copy,
+.field-note {
+  color: var(--muted);
+}
+
+.setup-form,
+.instruction-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.form-section,
+.instruction-list {
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-strong);
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: 0.85rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+  padding: 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.field--locked {
+  background: var(--ok-bg);
+}
+
+.field-row,
+.action-grid {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.field-row {
+  align-items: center;
+  justify-content: space-between;
+}
+
+.field-label,
+legend {
+  font-weight: 750;
+}
+
+.status-pill {
+  flex: none;
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
+  color: var(--ok-text);
+  background: color-mix(in srgb, var(--ok-bg) 70%, var(--surface));
+  font-size: 0.75rem;
+  font-weight: 750;
+}
+
+input:not([type="radio"]) {
+  width: 100%;
+  min-height: 2.75rem;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 0.75rem 0.85rem;
+  color: var(--text);
+  background: var(--surface-strong);
+  font: inherit;
+}
+
+input:focus-visible,
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 2px;
+}
+
+.action-grid {
+  flex-wrap: wrap;
+}
+
+.action-panel {
+  display: grid;
+  align-content: start;
+  gap: 0.75rem;
+  flex: 1 1 18rem;
+  min-width: min(100%, 18rem);
+  margin: 0;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-strong);
+}
+
+.action-panel p,
+.action-panel h2 {
+  margin-bottom: 0;
+}
+
+.option-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: 0.6rem;
+}
+
+.option-choice {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.65rem;
+  align-items: start;
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.option-choice:has(input:checked) {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent-soft) 55%, var(--surface));
+}
+
+.option-choice input[type="radio"] {
+  width: 1rem;
+  height: 1rem;
+  margin: 0.2rem 0 0;
+  accent-color: var(--accent);
+}
+
+.option-title {
+  display: block;
+  font-weight: 750;
+}
+
+.option-copy {
+  display: block;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+button {
+  min-height: 2.75rem;
+  border: 0;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  color: #ffffff;
+  background: var(--accent);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--accent-strong);
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.primary-action {
+  min-width: 11rem;
+}
+
+pre {
+  overflow-x: auto;
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  color: var(--code-text);
+  background: var(--code-bg);
+}
+
+a {
+  color: var(--accent-strong);
+  overflow-wrap: anywhere;
+}
+"#;
 
 /// Runtime harness for the fake Discord first vertical slice.
 #[derive(Debug)]
@@ -78,6 +385,21 @@ pub struct SliceOutput {
     pub persisted_artifact_ids: Vec<String>,
 }
 
+/// Output from generating the deterministic complete-software proof project.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ProofProjectOutput {
+    /// Directory containing the generated proof project.
+    pub project_dir: PathBuf,
+    /// Generated HTML entrypoint path.
+    pub index_path: PathBuf,
+    /// Generated proof manifest path.
+    pub manifest_path: PathBuf,
+    /// Process node selected by the supervisor graph.
+    pub selected_process_node: String,
+    /// Persisted artifact identifiers.
+    pub persisted_artifact_ids: Vec<String>,
+}
+
 /// Runtime errors surfaced by the local harness.
 #[derive(Debug, Error)]
 pub enum RuntimeError {
@@ -90,6 +412,15 @@ pub enum RuntimeError {
     /// Supervisor failed.
     #[error(transparent)]
     Supervisor(#[from] SupervisorError),
+    /// Domain validation failed while constructing the proof command.
+    #[error(transparent)]
+    Domain(#[from] ironloom_core::IronloomError),
+    /// Proof project filesystem operation failed.
+    #[error("proof project I/O failed: {0}")]
+    Io(#[from] std::io::Error),
+    /// Proof project manifest serialization failed.
+    #[error("proof project serialization failed: {0}")]
+    Serialization(#[from] serde_json::Error),
     /// Supervisor completed without a Discord response.
     #[error("runtime completed without posting a Discord response")]
     MissingResponse,
@@ -190,6 +521,9 @@ pub fn handle_runtime_http_request_with_store(
     }
     if matches!((method, path), ("POST", "/setup/openai/oauth/start")) {
         return handle_openai_oauth_start(context);
+    }
+    if matches!((method, path), ("POST", "/setup/discord/oauth/start")) {
+        return handle_discord_oauth_start(context, request);
     }
     handle_runtime_http_request(context, request)
 }
@@ -313,6 +647,7 @@ pub fn submit_setup_form(
         .unwrap_or_else(|| OPENAI_AUTH_METHOD_API_KEY.to_owned());
     let mut config = StoredSetupConfig {
         runtime_url: submission.value(FIELD_RUNTIME_URL),
+        discord_application_id: submission.value(FIELD_DISCORD_APPLICATION_ID),
         discord_token_ref: submission.value(FIELD_DISCORD_TOKEN_REF),
         discord_public_key_ref: submission.value(FIELD_DISCORD_PUBLIC_KEY_REF),
         github_token_ref: submission.value(FIELD_GITHUB_TOKEN_REF),
@@ -366,6 +701,56 @@ pub fn run_fake_discord_gate_slice(
         response_thread_id: response.thread_id.clone(),
         selected_process_node: supervisor_output.selected_process_node,
         persisted_artifact_ids: supervisor_output.persisted_artifact_ids,
+    })
+}
+
+/// Runs a deterministic proof through the supervisor and writes a complete static app.
+pub fn run_complete_software_proof(
+    runtime_root: impl AsRef<Path>,
+    project_dir: impl AsRef<Path>,
+) -> Result<ProofProjectOutput, RuntimeError> {
+    let project_dir = project_dir.as_ref().to_path_buf();
+    let mut bindings = ThreadBindingRegistry::new();
+    bindings.bind(
+        ThreadId::new(PROOF_THREAD_ID)?,
+        ironloom_core::WorkItemId::new(PROOF_WORK_ITEM_ID)?,
+    )?;
+    let mut harness = RuntimeHarness::new(
+        runtime_root.as_ref(),
+        bindings,
+        FakeDiscordTransport::default(),
+    )?;
+    let slice_output = run_fake_discord_gate_slice(
+        &mut harness,
+        DiscordCommand {
+            thread_id: ThreadId::new(PROOF_THREAD_ID)?,
+            actor_id: ironloom_core::ActorId::new(PROOF_ACTOR_ID)?,
+            correlation_id: ironloom_core::CorrelationId::new(PROOF_CORRELATION_ID)?,
+            command: PROOF_COMMAND.to_owned(),
+        },
+    )?;
+
+    fs::create_dir_all(&project_dir)?;
+    write_proof_file(&project_dir, PROOF_INDEX_FILE, proof_index_html())?;
+    write_proof_file(&project_dir, PROOF_STYLE_FILE, proof_style_css())?;
+    write_proof_file(&project_dir, PROOF_SCRIPT_FILE, proof_app_js())?;
+    write_proof_file(&project_dir, PROOF_README_FILE, proof_readme_md())?;
+    let manifest_path = project_dir.join(PROOF_MANIFEST_FILE);
+    let manifest = serde_json::json!({
+        "kind": "complete_software",
+        "name": "Ironloom Proof App",
+        "selected_process_node": slice_output.selected_process_node.clone(),
+        "persisted_artifact_ids": slice_output.persisted_artifact_ids.clone(),
+        "entrypoint": PROOF_INDEX_FILE,
+    });
+    fs::write(&manifest_path, serde_json::to_vec_pretty(&manifest)?)?;
+
+    Ok(ProofProjectOutput {
+        index_path: project_dir.join(PROOF_INDEX_FILE),
+        manifest_path,
+        project_dir,
+        selected_process_node: slice_output.selected_process_node,
+        persisted_artifact_ids: slice_output.persisted_artifact_ids,
     })
 }
 
@@ -478,6 +863,18 @@ fn handle_openai_oauth_start(context: &RuntimeHttpContext) -> RuntimeHttpRespons
     html_response(200, openai_oauth_start_html())
 }
 
+fn handle_discord_oauth_start(context: &RuntimeHttpContext, request: &str) -> RuntimeHttpResponse {
+    if !matches!(context.setup_gate, RuntimeSetupGate::Available(_)) {
+        return text_response(403, "setup prerequisites required");
+    }
+    let submission = parse_form_submission(request);
+    let Some(application_id) = discord_application_id_for_authorization(context, &submission)
+    else {
+        return text_response(400, "discord application id required");
+    };
+    html_response(200, discord_oauth_start_html(&application_id))
+}
+
 fn parse_form_submission(request: &str) -> SetupFormSubmission {
     let body = request.split("\r\n\r\n").nth(1).unwrap_or_default();
     let values = url::form_urlencoded::parse(body.as_bytes())
@@ -526,6 +923,14 @@ fn setup_fields(
             environment.has_non_empty(IRONLOOM_PUBLIC_URL_ENV),
             stored
                 .and_then(|setup| setup.runtime_url.as_ref())
+                .is_some(),
+        ),
+        field_model(
+            FIELD_DISCORD_APPLICATION_ID,
+            "Discord application ID",
+            environment.has_non_empty(IRONLOOM_DISCORD_APPLICATION_ID_ENV),
+            stored
+                .and_then(|setup| setup.discord_application_id.as_ref())
                 .is_some(),
         ),
         field_model(
@@ -617,12 +1022,17 @@ fn field_model(
 
 fn missing_config_key_html() -> String {
     let body = r#"
-<main>
-  <h1>Setup key required</h1>
-  <p>IRONLOOM_CONFIG_KEY must be configured before setup inputs can be accepted.</p>
-  <pre>openssl rand -base64 32</pre>
-  <pre>docker run -e IRONLOOM_CONFIG_KEY=&lt;base64-key&gt; ...</pre>
-  <pre>kubectl -n ironloom create secret generic ironloom-setup --from-literal=config-key=&lt;base64-key&gt;</pre>
+<main class="setup-page setup-page--notice">
+  <header class="setup-header">
+    <p class="eyebrow">Ironloom setup</p>
+    <h1>Setup key required</h1>
+    <p class="lede">IRONLOOM_CONFIG_KEY must be configured before setup inputs can be accepted.</p>
+  </header>
+  <section class="instruction-list" aria-label="Config key examples">
+    <pre>openssl rand -base64 32</pre>
+    <pre>docker run -e IRONLOOM_CONFIG_KEY=&lt;base64-key&gt; ...</pre>
+    <pre>kubectl -n ironloom create secret generic ironloom-setup --from-literal=config-key=&lt;base64-key&gt;</pre>
+  </section>
 </main>
 "#;
     html_page("Ironloom Setup", body)
@@ -630,11 +1040,16 @@ fn missing_config_key_html() -> String {
 
 fn missing_installer_token_html() -> String {
     let body = r#"
-<main>
-  <h1>Installer token required</h1>
-  <p>IRONLOOM_INSTALLER_TOKEN must be configured before setup inputs can be accepted.</p>
-  <pre>openssl rand -base64 32</pre>
-  <pre>kubectl -n ironloom create secret generic ironloom-setup --from-literal=installer-token=&lt;token&gt;</pre>
+<main class="setup-page setup-page--notice">
+  <header class="setup-header">
+    <p class="eyebrow">Ironloom setup</p>
+    <h1>Installer token required</h1>
+    <p class="lede">IRONLOOM_INSTALLER_TOKEN must be configured before setup inputs can be accepted.</p>
+  </header>
+  <section class="instruction-list" aria-label="Installer token examples">
+    <pre>openssl rand -base64 32</pre>
+    <pre>kubectl -n ironloom create secret generic ironloom-setup --from-literal=installer-token=&lt;token&gt;</pre>
+  </section>
 </main>
 "#;
     html_page("Ironloom Setup", body)
@@ -642,23 +1057,56 @@ fn missing_installer_token_html() -> String {
 
 fn config_form_html(fields: &[SetupFieldModel]) -> String {
     let mut body = String::from(
-        r#"<main>
-  <h1>Ironloom setup</h1>
-  <form method="post" action="/setup">
-    <label>Installer token <input type="password" name="installer_token" autocomplete="off" required></label>
+        r#"<main class="setup-page setup-page--form">
+  <header class="setup-header">
+    <p class="eyebrow">First-run configuration</p>
+    <h1>Ironloom setup</h1>
+    <p class="lede">Bind values from Docker or Kubernetes secrets, or save encrypted local setup values under IRONLOOM_STATE_ROOT.</p>
+  </header>
+  <form class="setup-form" method="post" action="/setup">
+    <section class="form-section">
+      <h2>Installer access</h2>
+      <label class="field field--secret" data-field="installer_token">
+        <span class="field-label">Installer token</span>
+        <input type="password" name="installer_token" autocomplete="off" required>
+      </label>
+    </section>
+    <section class="form-section">
+      <h2>Runtime values</h2>
+      <p class="section-copy">Environment-backed fields are locked and secret values are never displayed.</p>
+      <div class="field-grid">
 "#,
     );
     for field in fields {
         body.push_str(&field_html(field));
     }
     body.push_str(
-        r#"    <fieldset>
-      <legend>OpenAI authentication</legend>
-      <label><input type="radio" name="openai_auth_method" value="api_key" checked> API key</label>
-      <label><input type="radio" name="openai_auth_method" value="chatgpt_oauth"> ChatGPT OAuth</label>
+        r#"      </div>
+    </section>
+    <div class="action-grid">
+    <section class="action-panel" aria-labelledby="discord-auth-heading">
+      <h2 id="discord-auth-heading">Discord app authorization</h2>
+      <p>Use the Discord application ID to create a server install URL with bot and applications.commands scopes.</p>
+      <p><button type="submit" formaction="/setup/discord/oauth/start">Start Discord authorization</button></p>
+    </section>
+    <section class="action-panel" aria-labelledby="openai-auth-heading">
+      <h2 id="openai-auth-heading">OpenAI authentication</h2>
+      <div class="option-list" role="radiogroup" aria-labelledby="openai-auth-heading">
+        <label class="option-choice">
+          <input type="radio" name="openai_auth_method" value="api_key" checked>
+          <span><span class="option-title">API key</span><span class="option-copy">Use a bound API key or local encrypted reference.</span></span>
+        </label>
+        <label class="option-choice">
+          <input type="radio" name="openai_auth_method" value="chatgpt_oauth">
+          <span><span class="option-title">ChatGPT OAuth</span><span class="option-copy">Use the setup flow to save an OAuth session reference.</span></span>
+        </label>
+      </div>
       <p><button type="submit" formaction="/setup/openai/oauth/start">Start ChatGPT OAuth</button></p>
-    </fieldset>
-    <button type="submit">Save setup</button>
+    </section>
+    </div>
+    <div class="form-actions">
+      <button class="primary-action" type="submit">Save setup</button>
+    </div>
   </form>
 </main>
 "#,
@@ -679,27 +1127,174 @@ fn openai_oauth_start_html() -> String {
     html_page("Ironloom OpenAI OAuth Setup", body)
 }
 
+fn discord_oauth_start_html(application_id: &str) -> String {
+    let authorize_url = discord_authorize_url(application_id);
+    let body = format!(
+        r#"
+<main>
+  <h1>Discord authorization</h1>
+  <p>Open this URL in a browser while signed in as a Discord server administrator, then select the server that should host Ironloom.</p>
+  <p><a href="{authorize_url}">{authorize_url}</a></p>
+  <p>The URL requests the <code>bot</code> and <code>applications.commands</code> scopes with the minimal default permission bitfield.</p>
+  <form method="get" action="/setup"><button type="submit">Return to setup</button></form>
+</main>
+"#
+    );
+    html_page("Ironloom Discord Authorization", &body)
+}
+
+fn discord_authorize_url(application_id: &str) -> String {
+    let mut serializer = url::form_urlencoded::Serializer::new(String::new());
+    serializer.append_pair("client_id", application_id);
+    serializer.append_pair("scope", DISCORD_AUTHORIZE_SCOPE);
+    serializer.append_pair("permissions", DISCORD_DEFAULT_PERMISSIONS);
+    format!("{DISCORD_AUTHORIZE_URL}?{}", serializer.finish())
+}
+
+fn discord_application_id_for_authorization(
+    context: &RuntimeHttpContext,
+    submission: &SetupFormSubmission,
+) -> Option<String> {
+    submission
+        .value(FIELD_DISCORD_APPLICATION_ID)
+        .or_else(|| context.environment.discord_application_id())
+        .or_else(|| {
+            context
+                .stored_setup
+                .as_ref()
+                .and_then(|setup| setup.discord_application_id.clone())
+        })
+}
+
 fn field_html(field: &SetupFieldModel) -> String {
     match field.source {
         SetupFieldSource::Environment => format!(
-            "    <p data-field=\"{}\"><strong>{}</strong>: Provided by environment</p>\n",
+            "        <div class=\"field field--locked\" data-field=\"{}\"><div class=\"field-row\"><span class=\"field-label\">{}</span><span class=\"status-pill\">Environment</span></div><p class=\"field-note\">Provided by environment</p></div>\n",
             field.name, field.label
         ),
         SetupFieldSource::Stored => format!(
-            "    <label data-field=\"{}\">{} <input type=\"password\" name=\"{}\" placeholder=\"Stored encrypted value present\"></label>\n",
-            field.name, field.label, field.name
+            "        <label class=\"field field--stored\" data-field=\"{}\"><span class=\"field-row\"><span class=\"field-label\">{}</span><span class=\"status-pill\">Stored</span></span><input type=\"{}\" name=\"{}\" placeholder=\"Stored encrypted value present\" autocomplete=\"off\"></label>\n",
+            field.name,
+            field.label,
+            field_input_type(field.name),
+            field.name
         ),
         SetupFieldSource::Missing => format!(
-            "    <label data-field=\"{}\">{} <input type=\"password\" name=\"{}\" autocomplete=\"off\"></label>\n",
-            field.name, field.label, field.name
+            "        <label class=\"field field--missing\" data-field=\"{}\"><span class=\"field-label\">{}</span><input type=\"{}\" name=\"{}\" autocomplete=\"off\"></label>\n",
+            field.name,
+            field.label,
+            field_input_type(field.name),
+            field.name
         ),
+    }
+}
+
+fn field_input_type(name: &str) -> &'static str {
+    match name {
+        FIELD_RUNTIME_URL
+        | FIELD_DISCORD_APPLICATION_ID
+        | FIELD_SONARCLOUD_ORGANIZATION
+        | FIELD_SONARCLOUD_PROJECT_KEY => "text",
+        _ => "password",
     }
 }
 
 fn html_page(title: &str, body: &str) -> String {
     format!(
-        "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><title>{title}</title></head><body>{body}</body></html>"
+        r#"<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <link rel="icon" href="data:,">
+    <title>{title}</title>
+    <style>{SETUP_PAGE_STYLE}</style>
+  </head>
+  <body>
+    <div class="setup-shell">{body}</div>
+  </body>
+</html>"#
     )
+}
+
+fn write_proof_file(project_dir: &Path, file_name: &str, contents: &str) -> std::io::Result<()> {
+    fs::write(project_dir.join(file_name), contents)
+}
+
+fn proof_index_html() -> &'static str {
+    r#"<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Ironloom Proof App</title>
+    <link rel="stylesheet" href="./style.css">
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">Ironloom proof</p>
+      <h1>Ironloom Proof App</h1>
+      <p id="status">A complete static app generated after a supervisor-gated proof run.</p>
+      <button id="verify" type="button">Verify proof</button>
+    </main>
+    <script src="./app.js"></script>
+  </body>
+</html>
+"#
+}
+
+fn proof_style_css() -> &'static str {
+    r#"body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  font-family: system-ui, sans-serif;
+  color: #f7f4ee;
+  background: #090d12;
+}
+
+main {
+  width: min(42rem, calc(100% - 2rem));
+}
+
+.eyebrow {
+  color: #ff8800;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+button {
+  border: 0;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  color: #090d12;
+  background: #ff8800;
+  font-weight: 700;
+}
+"#
+}
+
+fn proof_app_js() -> &'static str {
+    r##"const status = document.querySelector("#status");
+const verify = document.querySelector("#verify");
+
+verify.addEventListener("click", () => {
+  status.textContent = "Proof manifest and static app files are present.";
+});
+"##
+}
+
+fn proof_readme_md() -> &'static str {
+    r#"# Ironloom Proof App
+
+This complete static app is generated by `ironloom proof` after the runtime
+successfully routes a deterministic work item through the supervisor, process
+graph, gate worker, and artifact store.
+
+Open `index.html` in a browser to run the app.
+"#
 }
 
 #[derive(Debug, Default)]

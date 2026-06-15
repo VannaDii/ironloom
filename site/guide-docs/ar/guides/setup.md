@@ -39,6 +39,7 @@ openssl rand -base64 32
 | المتغير | الغرض |
 | --- | --- |
 | `IRONLOOM_PUBLIC_URL` | عنوان URL الأساسي العام لوقت التشغيل. |
+| `IRONLOOM_DISCORD_APPLICATION_ID` | معرف تطبيق Discord المستخدم لبناء عنوان تفويض الخادم. |
 | `IRONLOOM_DISCORD_TOKEN` | رمز Discord أو مرجع سر. |
 | `IRONLOOM_DISCORD_PUBLIC_KEY` | مفتاح Discord العام أو مرجع سر. |
 | `IRONLOOM_GITHUB_TOKEN` | رمز GitHub أو مرجع سر. |
@@ -49,6 +50,12 @@ openssl rand -base64 32
 | `IRONLOOM_OPENAI_OAUTH_SESSION` | مرجع جلسة OpenAI OAuth لمصادقة OAuth. |
 
 وفر إما `IRONLOOM_OPENAI_API_KEY` أو `IRONLOOM_OPENAI_OAUTH_SESSION`.
+
+## تفويض Discord
+
+أنشئ تطبيق Discord في Discord Developer Portal وانسخ معرف التطبيق إلى `IRONLOOM_DISCORD_APPLICATION_ID` أو صفحة setup. تستطيع صفحة setup إنشاء عنوان تفويض Discord بنطاقي `bot` و`applications.commands` حتى يتمكن مسؤول الخادم من تثبيت Ironloom في الخادم الهدف.
+
+احتفظ برمز bot الخاص ب Discord والمفتاح العام في متغيرات البيئة أو bindings الأسرار عندما يكون ذلك ممكنا. إذا أدخلت عبر `/setup`، يحفظها Ironloom في ملف setup المحلي المشفر.
 
 ## الإعداد المحلي المشفر
 

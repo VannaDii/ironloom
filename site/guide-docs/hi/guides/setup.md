@@ -42,6 +42,7 @@ openssl rand -base64 32
 | Variable | Purpose |
 | --- | --- |
 | `IRONLOOM_PUBLIC_URL` | Public runtime base URL. |
+| `IRONLOOM_DISCORD_APPLICATION_ID` | Discord application ID जिससे server authorization URL बनता है। |
 | `IRONLOOM_DISCORD_TOKEN` | Discord token या secret reference. |
 | `IRONLOOM_DISCORD_PUBLIC_KEY` | Discord public key या secret reference. |
 | `IRONLOOM_GITHUB_TOKEN` | GitHub token या secret reference. |
@@ -52,6 +53,12 @@ openssl rand -base64 32
 | `IRONLOOM_OPENAI_OAUTH_SESSION` | OAuth authentication के लिए OpenAI OAuth session reference. |
 
 `IRONLOOM_OPENAI_API_KEY` या `IRONLOOM_OPENAI_OAUTH_SESSION` provide करें।
+
+## Discord Authorization
+
+Discord Developer Portal में Discord application बनाएं और उसका application ID `IRONLOOM_DISCORD_APPLICATION_ID` या setup page में copy करें। Setup page `bot` और `applications.commands` scopes वाली Discord authorization URL बना सकता है, ताकि server administrator Ironloom को target server में install कर सके।
+
+Discord bot token और public key को संभव हो तो environment variables या secret bindings में रखें। अगर इन्हें `/setup` से enter किया जाता है, Ironloom उन्हें encrypted local setup file में save करता है।
 
 ## Local Encrypted Setup
 

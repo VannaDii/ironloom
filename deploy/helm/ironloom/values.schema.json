@@ -58,9 +58,11 @@
     },
     "discord": {
       "type": "object",
-      "required": ["existingSecret", "tokenKey", "publicKeyKey"],
+      "required": ["existingSecret", "applicationId", "applicationIdKey", "tokenKey", "publicKeyKey"],
       "properties": {
         "existingSecret": { "type": "string", "minLength": 1 },
+        "applicationId": { "type": "string" },
+        "applicationIdKey": { "type": "string", "minLength": 1 },
         "tokenKey": { "type": "string", "minLength": 1 },
         "publicKeyKey": { "type": "string", "minLength": 1 }
       }

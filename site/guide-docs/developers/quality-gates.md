@@ -16,6 +16,12 @@ helm lint deploy/helm/ironloom
 helm template ironloom deploy/helm/ironloom
 ```
 
+## Recipe Shortcuts
+
+- `just proof` builds the runtime image, starts the local container, submits setup values, and generates a complete proof app.
+- `just gates` runs the common local gates for format, Clippy, tests, schemas, docs, and Helm.
+- `just setup-url` prints the local setup URL and installer token for manual browser validation.
+
 ## Publishing Gates
 
 - Docker Buildx builds `docker/ironloom-runtime/Dockerfile`.

@@ -716,6 +716,7 @@ Acceptance criteria for the slice:
 - A test proves the gate artifact is written and indexed by thread ID and work item ID.
 - A test proves the Discord response targets the originating thread ID.
 - A local integration harness can run the whole slice with fake Discord transport and fake gate command.
+- A `just proof` recipe can build the runtime image, start the local container, submit setup values, and write a complete proof project under `.ironloom/local-dev/worktrees`.
 - No OpenClaw package, manifest, tool definition, or runtime participates in the slice.
 
 ## Phased Migration Plan
@@ -895,6 +896,7 @@ Required work:
 - GitHub adapter must read repository/PR/check state from GitHub as source of truth.
 - SonarCloud adapter must normalize quality gate and issue state.
 - Runtime must wire config, storage, queue, supervisor, workers, adapters, and observability.
+- Runtime setup must capture the Discord application ID and generate a Discord authorization URL for the `bot` and `applications.commands` scopes.
 - Implement the first vertical slice:
   Discord thread command -> supervisor route -> gate worker -> artifact written -> response posted back to same Discord thread.
 
@@ -1191,6 +1193,7 @@ Docker requirements:
 - Non-root runtime user.
 - Read-only root filesystem where practical.
 - Explicit writable mounts for state, cache, and worktrees.
+- Entrypoint defaults to serving the runtime and passes explicit runtime commands through for local proof and diagnostics.
 - Health/readiness endpoints.
 - OCI labels for title, description, source, revision, version, license, and vendor.
 
@@ -1201,7 +1204,7 @@ Helm requirements:
 - Image default: `ghcr.io/<registry-owner>/ironloom`.
 - No OpenClaw ports, env vars, config, or labels.
 - Config values for Discord, GitHub, SonarCloud, storage, queue, policy, process graph, worktrees, and observability.
-- Secret references for Discord token/public key, GitHub app credentials/token, SonarCloud token, and optional AI routing credentials.
+- Secret references for Discord application ID, Discord token/public key, GitHub app credentials/token, SonarCloud token, and optional AI routing credentials.
 - PVC for `.ironloom` state.
 - k3s-compatible default resources.
 - Probes for health and readiness.
@@ -1244,7 +1247,9 @@ New docs required:
 - Rust quality gates.
 - Rust release process.
 - k3s operations.
+- Initial setup, local encrypted configuration, Docker proof recipes, and environment-variable binding.
 - Discord thread-binding rules.
+- Discord application authorization and server installation.
 - GitHub source-of-truth rules.
 - SonarCloud compliance workflow.
 

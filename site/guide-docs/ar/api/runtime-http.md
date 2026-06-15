@@ -35,3 +35,7 @@
 ## `POST /setup/openai/oauth/start`
 
 يرجع تعليمات إعداد OpenAI OAuth التي تستخدمها صفحة التهيئة. يمكن حفظ مرجع جلسة OAuth الناتج من خلال نموذج الإعداد أو ربطه عبر `IRONLOOM_OPENAI_OAUTH_SESSION`.
+
+## `POST /setup/discord/oauth/start`
+
+يرجع صفحة تفويض Discord لمعرف التطبيق المهيأ. يستخدم العنوان المولد النطاقين `bot` و`applications.commands` حتى يتمكن مسؤول خادم Discord من تثبيت Ironloom في الخادم الهدف.
