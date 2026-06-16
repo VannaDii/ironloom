@@ -139,6 +139,7 @@ jobs:
         run: scripts/sonarcloud-project-bootstrap.sh
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_MAIN_BRANCH: ${{ github.event.repository.default_branch }}
 
       - name: Sonar Scan
         if:
