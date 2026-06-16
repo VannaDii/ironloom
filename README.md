@@ -23,6 +23,7 @@ cargo test --workspace --all-features
 cargo run -p ironloom-schemas -- --check
 cargo deny check
 cargo audit
+bash tests/scripts/sonarcloud_project_bootstrap_test.sh
 npm run docs:build
 helm lint deploy/helm/ironloom
 helm template ironloom deploy/helm/ironloom

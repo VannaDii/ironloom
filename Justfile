@@ -22,6 +22,9 @@ test:
 schemas:
     cargo run -p ironloom-schemas -- --check
 
+scripts-test:
+    bash tests/scripts/sonarcloud_project_bootstrap_test.sh
+
 docs:
     npm run docs:build
 
@@ -37,7 +40,7 @@ audit:
 
 security: deny audit
 
-gates: fmt clippy test schemas docs helm security
+gates: fmt clippy test schemas scripts-test docs helm security
 
 ensure-local-env:
     @mkdir -p "{{local_state}}"

@@ -132,6 +132,9 @@ jobs:
           mkdir -p target/sonar
           cargo clippy --workspace --all-targets --all-features --message-format=json -- -D warnings > target/sonar/clippy.json
 
+      - name: Script tests
+        run: bash tests/scripts/sonarcloud_project_bootstrap_test.sh
+
       - name: Bootstrap SonarCloud project
         if:
           github.event_name != 'pull_request' || github.event.pull_request.user.login
