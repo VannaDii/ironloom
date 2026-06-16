@@ -32,6 +32,7 @@ helm template ironloom deploy/helm/ironloom
 - GitHub Pages publishes the VitePress public site.
 - SonarCloud receives Rust LCOV coverage from `cargo llvm-cov` and a generated Clippy JSON report from the same lint command enforced by CI.
 - Docs-site files are analyzed by SonarCloud but excluded from coverage accounting so Rust LCOV remains the quality gate signal.
-- When the SonarCloud gate fails, CI prints the authenticated gate status and each condition to the workflow log.
-- CI verifies the `vannadii_ironloom` SonarCloud project before scanning, creates it when SonarCloud returns 404, aligns the SonarCloud main branch with the GitHub default branch, and associates the project with the organization default quality gate. If a stale non-main branch with the target name already exists, CI deletes that branch before renaming the SonarCloud main branch and verifies the result.
-- The `SONAR_TOKEN` secret must be able to create/read the project, associate the default quality gate, submit analysis, and read the quality gate; a token with analyze-only access can upload reports but cannot satisfy the bootstrap or hard gate wait.
+- After the SonarCloud scan, CI waits for the scanner compute-engine task and prints the authenticated quality gate status and each condition to the workflow log.
+- CI verifies the `vannadii_ironloom` SonarCloud project before scanning, creates it when SonarCloud returns 404, and aligns the SonarCloud main branch with the GitHub default branch. If a stale non-main branch with the target name already exists, CI deletes that branch before renaming the SonarCloud main branch and verifies the result.
+- If SonarCloud returns `NONE` because no project quality gate is associated, CI enforces the organization default gate against authenticated project measures and fails closed on missing or violating measures.
+- The `SONAR_TOKEN` secret must be able to create/read the project, manage the main branch, submit analysis, read the quality gate, read organization quality gates, and read project measures; it does not need permission to modify quality gates.

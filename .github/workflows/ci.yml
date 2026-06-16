@@ -136,6 +136,7 @@ jobs:
         run: |
           bash tests/scripts/sonarcloud_project_bootstrap_test.sh
           bash tests/scripts/sonar_project_properties_test.sh
+          bash tests/scripts/sonarcloud_quality_gate_report_test.sh
 
       - name: Bootstrap SonarCloud project
         if:
@@ -151,16 +152,13 @@ jobs:
           github.event_name != 'pull_request' || github.event.pull_request.user.login
           != 'dependabot[bot]'
         uses: SonarSource/sonarqube-scan-action@v8
-        with:
-          args: >
-            -Dsonar.qualitygate.wait=true
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-      - name: Report SonarCloud quality gate
+      - name: Enforce SonarCloud quality gate
         if:
-          failure() && (github.event_name != 'pull_request' ||
-          github.event.pull_request.user.login != 'dependabot[bot]')
+          github.event_name != 'pull_request' || github.event.pull_request.user.login
+          != 'dependabot[bot]'
         run: scripts/sonarcloud-quality-gate-report.sh
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

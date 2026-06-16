@@ -32,6 +32,7 @@ helm template ironloom deploy/helm/ironloom
 - GitHub Pages VitePress public site publish करता है।
 - SonarCloud को `cargo llvm-cov` से Rust LCOV coverage और CI द्वारा enforce किए गए उसी lint command से generated Clippy JSON report मिलती है।
 - SonarCloud docs-site files analyze करता है, लेकिन उन्हें coverage accounting से exclude करता है ताकि Rust LCOV quality gate signal बना रहे।
-- SonarCloud gate fail होने पर CI workflow log में authenticated gate status और हर condition print करता है।
-- CI scan से पहले `vannadii_ironloom` SonarCloud project verify करता है, SonarCloud 404 लौटाए तो उसे create करता है, SonarCloud main branch को GitHub default branch से align करता है, और project को organization default quality gate से associate करता है। अगर target नाम वाली stale non-main branch पहले से मौजूद हो, तो CI SonarCloud main branch rename करने से पहले उस branch को delete करता है और result verify करता है।
-- `SONAR_TOKEN` secret project create/read करने, default quality gate associate करने, analysis submit करने, और quality gate read करने में सक्षम होना चाहिए; analyze-only token reports upload कर सकता है, लेकिन bootstrap या hard gate wait पूरा नहीं कर सकता।
+- SonarCloud scan के बाद CI scanner compute-engine task पूरा होने का इंतजार करता है और workflow log में authenticated quality gate status तथा हर condition print करता है।
+- CI scan से पहले `vannadii_ironloom` SonarCloud project verify करता है, SonarCloud 404 लौटाए तो उसे create करता है, और SonarCloud main branch को GitHub default branch से align करता है। अगर target नाम वाली stale non-main branch पहले से मौजूद हो, तो CI SonarCloud main branch rename करने से पहले उस branch को delete करता है और result verify करता है।
+- अगर SonarCloud `NONE` लौटाता है क्योंकि project quality gate से associated नहीं है, तो CI authenticated project measures के विरुद्ध organization default gate enforce करता है और missing या violating measures पर fail closed करता है।
+- `SONAR_TOKEN` secret project create/read करने, main branch manage करने, analysis submit करने, quality gate पढ़ने, organization quality gates पढ़ने, और project measures पढ़ने में सक्षम होना चाहिए; उसे quality gates modify करने की permission नहीं चाहिए।
