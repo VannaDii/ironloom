@@ -71,6 +71,16 @@ just k3s-acceptance
 
 यह recipe `ironloom:local` build करती है, Docker-backed disposable k3s cluster start करती है, setup और runtime secrets बनाती है, Helm chart install करती है, `/discord/interactions` के माध्यम से signed Discord ping और command handling verify करती है, और Deployment restart करके prove करती है कि PVC-backed thread artifact index persist करता है। Runtime default रूप से `127.0.0.1:18081` पर forward होता है; यह port unavailable हो तो `IRONLOOM_K3S_HTTP_PORT` set करें। Local image builds default रूप से host networking use करती हैं; Docker के default build network के लिए `IRONLOOM_DOCKER_BUILD_NETWORK=default` set करें।
 
+## Live Discord Endpoint Acceptance
+
+Real Discord application ID, bot token, और public key bind करने के बाद Discord endpoint validation proof चलाएं।
+
+```sh
+just discord-endpoint-acceptance
+```
+
+यह recipe local runtime start करती है, उसे `ngrok` के माध्यम से publish करती है, application की Interactions Endpoint URL update करती है, Discord के signed validation `PING` का इंतजार करती है, verify करती है कि Discord ने URL persist किया, और previous endpoint restore करती है। Docker और `ngrok` start किए बिना already deployed public `/discord/interactions` endpoint validate करने के लिए `IRONLOOM_DISCORD_ACCEPTANCE_ENDPOINT_URL` set करें।
+
 ## Live External Probe
 
 Real runtime credentials bind करने के बाद GitHub source-of-truth reads और SonarCloud quality gate polling verify करने के लिए external probe चलाएं।

@@ -69,6 +69,16 @@ just k3s-acceptance
 
 La receta construye `ironloom:local`, inicia un cluster k3s desechable respaldado por Docker, crea secretos de setup y runtime, instala el chart Helm, verifica ping y comando firmados de Discord mediante `/discord/interactions`, y reinicia el Deployment para probar que el índice de artefactos por thread respaldado por PVC persiste. Reenvía el runtime en `127.0.0.1:18081` de forma predeterminada; usa `IRONLOOM_K3S_HTTP_PORT` cuando ese puerto no esté disponible. Las builds locales de imagen usan la red del host de forma predeterminada; define `IRONLOOM_DOCKER_BUILD_NETWORK=default` para usar la red de build predeterminada de Docker.
 
+## Aceptación en vivo del endpoint de Discord
+
+Después de enlazar un ID de aplicación de Discord real, un token de bot y una clave pública, ejecuta la prueba de validación de endpoint de Discord.
+
+```sh
+just discord-endpoint-acceptance
+```
+
+La receta inicia un runtime local, lo publica mediante `ngrok`, actualiza la Interactions Endpoint URL de la aplicación, espera el `PING` de validación firmado de Discord, verifica que Discord haya persistido la URL y restaura el endpoint anterior. Define `IRONLOOM_DISCORD_ACCEPTANCE_ENDPOINT_URL` para validar un endpoint público `/discord/interactions` ya desplegado sin iniciar Docker ni `ngrok`.
+
 ## Probe externo en vivo
 
 Después de enlazar credenciales reales del runtime, ejecuta el probe externo para verificar lecturas fuente de verdad de GitHub y polling del quality gate de SonarCloud.

@@ -21,6 +21,7 @@ helm template ironloom deploy/helm/ironloom
 
 - يبني `just proof` صورة وقت التشغيل، ويشغل الحاوية المحلية، ويرسل قيم setup، وينشئ تطبيق إثبات كامل.
 - يشغل `just k3s-acceptance` حاوية k3s مؤقتة، ويثبت Helm chart، ويتحقق من إدخال Discord الموقع، ويثبت أن فهرس القطع الأثرية المدعوم بـ PVC يبقى بعد إعادة تشغيل pod.
+- يستخدم `just discord-endpoint-acceptance` تطبيق Discord حقيقيا للتحقق من Interactions Endpoint URL عام عبر `PING` تحقق موقع من Discord.
 - يستخدم `just external-probe` بيانات اعتماد وقت التشغيل الحقيقية المربوطة لقراءة حالة مستودع GitHub كمصدر للحقيقة واستطلاع حالة الجودة والمشكلات في SonarCloud.
 - يشغل `just gates` البوابات المحلية الشائعة للتنسيق وClippy والاختبارات والمخططات وسلوك bootstrap في SonarCloud والوثائق وHelm وسياسة الاعتماد وتدقيق الثغرات.
 - يطبع `just setup-url` عنوان setup المحلي ورمز التثبيت للتحقق اليدوي في المتصفح.

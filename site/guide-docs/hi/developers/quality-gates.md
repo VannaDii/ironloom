@@ -21,6 +21,7 @@ helm template ironloom deploy/helm/ironloom
 
 - `just proof` runtime image build करता है, local container start करता है, setup values submit करता है, और complete proof app generate करता है।
 - `just k3s-acceptance` disposable k3s container start करता है, Helm chart install करता है, signed Discord intake verify करता है, और prove करता है कि PVC-backed artifact index pod restart के बाद भी बना रहता है।
+- `just discord-endpoint-acceptance` real Discord application का उपयोग करके public Interactions Endpoint URL को Discord के signed validation `PING` से validate करता है।
 - `just external-probe` real bound runtime credentials का उपयोग करके GitHub source-of-truth repository state read करता है और SonarCloud quality तथा issue state poll करता है।
 - `just gates` format, Clippy, tests, schemas, SonarCloud bootstrap script behavior, docs, Helm, dependency policy, और vulnerability audit के common local gates चलाता है।
 - `just setup-url` manual browser validation के लिए local setup URL और installer token print करता है।

@@ -21,6 +21,7 @@ helm template ironloom deploy/helm/ironloom
 
 - `just proof` builds the runtime image, starts the local container, submits setup values, and generates a complete proof app.
 - `just k3s-acceptance` starts a disposable k3s container, installs the Helm chart, verifies signed Discord intake, and proves the PVC-backed artifact index survives a pod restart.
+- `just discord-endpoint-acceptance` uses a real Discord application to validate a public Interactions Endpoint URL through Discord's signed validation `PING`.
 - `just external-probe` uses real bound runtime credentials to read GitHub source-of-truth repository state and poll SonarCloud quality and issue state.
 - `just gates` runs the common local gates for format, Clippy, tests, schemas, SonarCloud bootstrap script behavior, docs, Helm, dependency policy, and vulnerability audit.
 - `just setup-url` prints the local setup URL and installer token for manual browser validation.

@@ -1442,5 +1442,6 @@ External acceptance still requires live evidence after these changes land on `ma
 - The `vannadii_ironloom` SonarCloud project exists, or CI bootstraps it with `SONAR_TOKEN`, and the SonarCloud quality gate passes with Rust coverage and imported Clippy JSON.
 - GHCR image and Helm chart publication workflows publish the Ironloom artifacts.
 - GitHub Pages publishes `https://ironloom.dev` from the current VitePress site.
+- `just k3s-acceptance` passes, proving the Helm-deployed runtime handles signed thread-bound Discord command traffic and preserves the PVC-backed artifact index after a pod restart.
+- `just discord-endpoint-acceptance` passes with a real Discord application, proving Discord can validate and persist the runtime's public Interactions Endpoint URL through a signed validation `PING`.
 - `just external-probe` passes with real bound GitHub and SonarCloud credentials. When `IRONLOOM_GITHUB_PULL_REQUEST_NUMBER` and `IRONLOOM_GITHUB_CHECK_REF` are set, the probe also proves live pull request merge state and check-run reads.
-- A real Discord application posts signed interaction traffic to the deployed runtime URL and receives same-thread responses.

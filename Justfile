@@ -23,6 +23,7 @@ schemas:
     cargo run -p ironloom-schemas -- --check
 
 scripts-test:
+    bash tests/scripts/discord_endpoint_acceptance_test.sh
     bash tests/scripts/docker_build_runtime_test.sh
     bash tests/scripts/sonarcloud_project_bootstrap_test.sh
     bash tests/scripts/sonar_project_properties_test.sh
@@ -118,6 +119,9 @@ proof: docker-up setup-local
 
 k3s-acceptance:
     ./scripts/k3s-acceptance.sh
+
+discord-endpoint-acceptance:
+    ./scripts/discord-endpoint-acceptance.sh
 
 external-probe:
     cargo run -p ironloom-runtime --bin ironloom -- external-probe "{{github_repository}}"

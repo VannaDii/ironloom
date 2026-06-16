@@ -71,6 +71,16 @@ just k3s-acceptance
 
 该配方会构建 `ironloom:local`，启动由 Docker 支持的一次性 k3s 集群，创建 setup 和 runtime secrets，安装 Helm chart，通过 `/discord/interactions` 验证签名的 Discord ping 和命令处理，并重启 Deployment 以证明 PVC 支持的 thread 工件索引会保留。运行时默认转发到 `127.0.0.1:18081`；该端口不可用时请设置 `IRONLOOM_K3S_HTTP_PORT`。本地镜像构建默认使用 host networking；如需使用 Docker 默认构建网络，请设置 `IRONLOOM_DOCKER_BUILD_NETWORK=default`。
 
+## 实时 Discord Endpoint 验收
+
+绑定真实 Discord 应用 ID、bot token 和 public key 后，运行 Discord endpoint 验证证明。
+
+```sh
+just discord-endpoint-acceptance
+```
+
+该配方会启动本地 runtime，通过 `ngrok` 发布它，更新应用的 Interactions Endpoint URL，等待 Discord 发送签名验证 `PING`，确认 Discord 已保存该 URL，并恢复之前的 endpoint。设置 `IRONLOOM_DISCORD_ACCEPTANCE_ENDPOINT_URL` 可验证已经部署的公开 `/discord/interactions` endpoint，而不启动 Docker 和 `ngrok`。
+
 ## 实时外部探测
 
 绑定真实运行时凭据后，运行外部探测以验证 GitHub 事实源读取和 SonarCloud 质量门轮询。

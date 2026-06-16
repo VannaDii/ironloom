@@ -69,6 +69,16 @@ just k3s-acceptance
 
 تبني الوصفة `ironloom:local`، وتشغل عنقود k3s مؤقتا مدعوما بـ Docker، وتنشئ أسرار setup وruntime، وتثبت Helm chart، وتتحقق من ping وأمر Discord الموقعين عبر `/discord/interactions`، ثم تعيد تشغيل Deployment لإثبات بقاء فهرس قطع thread الأثرية المدعوم بـ PVC. يعاد توجيه وقت التشغيل افتراضيا على `127.0.0.1:18081`؛ اضبط `IRONLOOM_K3S_HTTP_PORT` عندما يكون هذا المنفذ غير متاح. تستخدم builds المحلية للصورة host networking افتراضيا؛ اضبط `IRONLOOM_DOCKER_BUILD_NETWORK=default` لاستخدام شبكة build الافتراضية في Docker.
 
+## قبول endpoint Discord المباشر
+
+بعد ربط معرف تطبيق Discord حقيقي وbot token وpublic key، شغل إثبات تحقق endpoint الخاص بـ Discord.
+
+```sh
+just discord-endpoint-acceptance
+```
+
+تشغل الوصفة runtime محليا، وتنشره عبر `ngrok`، وتحدث Interactions Endpoint URL للتطبيق، وتنتظر `PING` تحقق موقعا من Discord، وتتحقق من أن Discord حفظ URL، ثم تعيد endpoint السابق. اضبط `IRONLOOM_DISCORD_ACCEPTANCE_ENDPOINT_URL` للتحقق من endpoint عام منشور مسبقا على `/discord/interactions` من دون تشغيل Docker أو `ngrok`.
+
 ## probe خارجي مباشر
 
 بعد ربط بيانات اعتماد وقت التشغيل الحقيقية، شغل probe الخارجي للتحقق من قراءات GitHub كمصدر للحقيقة واستطلاع quality gate في SonarCloud.
