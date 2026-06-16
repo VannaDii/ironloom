@@ -248,6 +248,7 @@ where
         Ok(match status {
             "OK" => QualityGateStatus::Passed,
             "ERROR" | "WARN" => QualityGateStatus::Failed,
+            "NONE" => self.enforce_default_quality_gate_fallback()?,
             _ => QualityGateStatus::Pending,
         })
     }
@@ -282,6 +283,45 @@ where
         }
         format!("{path}?{}", serializer.finish())
     }
+
+    fn enforce_default_quality_gate_fallback(&self) -> Result<QualityGateStatus, SonarCloudError> {
+        let gates_response = self.transport.send(SonarCloudHttpRequest {
+            method: "GET".to_owned(),
+            path: self.path(
+                "/api/qualitygates/list",
+                [("organization", self.organization.as_str())],
+            ),
+            headers: sonar_headers(&self.token),
+            body: String::new(),
+        });
+        let gates_payload = parse_success_json(gates_response)?;
+        let gate_id = default_gate_id(&gates_payload)?;
+        let conditions = default_gate_conditions(&gates_payload, &gate_id)?;
+        if conditions.is_empty() {
+            return Err(SonarCloudError::MissingField {
+                field: "quality_gate_conditions",
+            });
+        }
+        let metric_keys = source_metric_keys(&conditions)?;
+        let measures_response = self.transport.send(SonarCloudHttpRequest {
+            method: "GET".to_owned(),
+            path: self.path(
+                "/api/measures/component",
+                [
+                    ("component", self.project_key.as_str()),
+                    ("metricKeys", metric_keys.as_str()),
+                ],
+            ),
+            headers: sonar_headers(&self.token),
+            body: String::new(),
+        });
+        let measures_payload = parse_success_json(measures_response)?;
+        if default_gate_fails(&conditions, &measures_payload)? {
+            Ok(QualityGateStatus::Failed)
+        } else {
+            Ok(QualityGateStatus::Passed)
+        }
+    }
 }
 
 fn parse_success_json(response: SonarCloudHttpResponse) -> Result<Value, SonarCloudError> {
@@ -310,6 +350,125 @@ fn required_str<'a>(value: &'a Value, field: &'static str) -> Result<&'a str, So
         .get(field)
         .and_then(Value::as_str)
         .ok_or(SonarCloudError::MissingField { field })
+}
+
+fn default_gate_id(payload: &Value) -> Result<String, SonarCloudError> {
+    if let Some(default) = payload.get("default").and_then(json_id) {
+        return Ok(default);
+    }
+    payload
+        .get("qualitygates")
+        .and_then(Value::as_array)
+        .and_then(|gates| {
+            gates
+                .iter()
+                .find(|gate| gate.get("isDefault").and_then(Value::as_bool) == Some(true))
+        })
+        .and_then(|gate| gate.get("id"))
+        .and_then(json_id)
+        .ok_or(SonarCloudError::MissingField {
+            field: "default_quality_gate",
+        })
+}
+
+fn default_gate_conditions<'a>(
+    payload: &'a Value,
+    gate_id: &str,
+) -> Result<Vec<&'a Value>, SonarCloudError> {
+    let gates = payload
+        .get("qualitygates")
+        .and_then(Value::as_array)
+        .ok_or(SonarCloudError::MissingField {
+            field: "qualitygates",
+        })?;
+    let gate = gates
+        .iter()
+        .find(|gate| gate.get("id").and_then(json_id).as_deref() == Some(gate_id))
+        .ok_or(SonarCloudError::MissingField {
+            field: "default_quality_gate",
+        })?;
+    let conditions =
+        gate.get("conditions")
+            .and_then(Value::as_array)
+            .ok_or(SonarCloudError::MissingField {
+                field: "quality_gate_conditions",
+            })?;
+    Ok(conditions.iter().collect())
+}
+
+fn source_metric_keys(conditions: &[&Value]) -> Result<String, SonarCloudError> {
+    let mut metrics = Vec::<&str>::new();
+    for condition in conditions {
+        let source_metric = source_metric(required_str(condition, "metric")?);
+        if !metrics.contains(&source_metric) {
+            metrics.push(source_metric);
+        }
+    }
+    Ok(metrics.join(","))
+}
+
+fn default_gate_fails(
+    conditions: &[&Value],
+    measures_payload: &Value,
+) -> Result<bool, SonarCloudError> {
+    for condition in conditions {
+        let source_metric = source_metric(required_str(condition, "metric")?);
+        let comparator = required_str(condition, "op")?;
+        let threshold = required_str(condition, "error")?;
+        let Some(actual) = measure_value(measures_payload, source_metric) else {
+            return Ok(true);
+        };
+        if condition_fails(actual, comparator, threshold) {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+fn measure_value<'a>(payload: &'a Value, metric: &str) -> Option<&'a str> {
+    payload
+        .get("component")
+        .and_then(|component| component.get("measures"))
+        .and_then(Value::as_array)?
+        .iter()
+        .find(|measure| measure.get("metric").and_then(Value::as_str) == Some(metric))?
+        .get("value")
+        .and_then(Value::as_str)
+}
+
+fn condition_fails(actual: &str, comparator: &str, threshold: &str) -> bool {
+    let Ok(actual) = actual.parse::<f64>() else {
+        return true;
+    };
+    let Ok(threshold) = threshold.parse::<f64>() else {
+        return true;
+    };
+    match comparator {
+        "LT" => actual < threshold,
+        "GT" => actual > threshold,
+        "EQ" => actual == threshold,
+        "NE" => (actual - threshold).abs() > f64::EPSILON,
+        _ => true,
+    }
+}
+
+fn source_metric(metric: &str) -> &str {
+    match metric {
+        "new_security_rating" => "security_rating",
+        "new_reliability_rating" => "reliability_rating",
+        "new_maintainability_rating" => "sqale_rating",
+        "new_coverage" => "coverage",
+        "new_duplicated_lines_density" => "duplicated_lines_density",
+        "new_security_hotspots_reviewed" => "security_hotspots_reviewed",
+        _ => metric,
+    }
+}
+
+fn json_id(value: &Value) -> Option<String> {
+    value
+        .as_u64()
+        .map(|id| id.to_string())
+        .or_else(|| value.as_str().map(ToOwned::to_owned))
 }
 
 fn normalize_severity(severity: &str) -> SonarCloudIssueSeverity {

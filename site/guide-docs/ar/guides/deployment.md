@@ -77,7 +77,7 @@ just k3s-acceptance
 IRONLOOM_GITHUB_REPOSITORY=VannaDii/ironloom just external-probe
 ```
 
-يستخدم الأمر قيم بيئة وقت التشغيل `IRONLOOM_*` نفسها التي يستخدمها service، ويطبع ملخص JSON منقحا لإسقاط مستودع GitHub وحالة quality gate في SonarCloud وعدد المشكلات غير المحلولة.
+يستخدم الأمر قيم بيئة وقت التشغيل `IRONLOOM_*` نفسها التي يستخدمها service، ويطبع ملخص JSON منقحا لإسقاط مستودع GitHub وحالة quality gate في SonarCloud وعدد المشكلات غير المحلولة. اضبط `IRONLOOM_GITHUB_PULL_REQUEST_NUMBER` و`IRONLOOM_GITHUB_CHECK_REF` لتضمين حالة merge لطلب السحب وقراءات check-runs المباشرة في الملخص.
 
 ## التثبيت أو الترقية
 

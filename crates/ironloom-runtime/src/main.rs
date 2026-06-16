@@ -2,10 +2,12 @@
 
 use ed25519_dalek::{Signer, SigningKey};
 use ironloom_core::RepositorySlug;
-use ironloom_github::GitHubHttpTransport;
+use ironloom_github::{CheckRunConclusion, CheckRunStatus, GitHubHttpTransport};
 use ironloom_sonarcloud::{QualityGateStatus, SonarCloudHttpTransport, SonarCloudIssueSeverity};
 
 const ED25519_SEED_BYTES: usize = 32;
+const IRONLOOM_GITHUB_PULL_REQUEST_NUMBER_ENV: &str = "IRONLOOM_GITHUB_PULL_REQUEST_NUMBER";
+const IRONLOOM_GITHUB_CHECK_REF_ENV: &str = "IRONLOOM_GITHUB_CHECK_REF";
 
 fn main() {
     let mut args = std::env::args().skip(1);
@@ -83,11 +85,12 @@ fn probe_external_adapters(repository: &str) -> Result<(), String> {
         RepositorySlug::new(repository).map_err(|error| format!("invalid repository: {error}"))?;
     let config = ironloom_config::RuntimeConfig::from_environment()
         .map_err(|error| format!("failed to resolve runtime config: {error}"))?;
-    let summary = ironloom_runtime::probe_runtime_external_services(
+    let summary = ironloom_runtime::probe_runtime_external_services_with_options(
         &config,
         &repository,
         GitHubHttpTransport::public_api(),
         SonarCloudHttpTransport::public_api(),
+        external_probe_options()?,
     )
     .map_err(|error| format!("external probe failed: {error}"))?;
     let issues = summary
@@ -103,7 +106,7 @@ fn probe_external_adapters(repository: &str) -> Result<(), String> {
             })
         })
         .collect::<Vec<_>>();
-    let output = serde_json::json!({
+    let mut output = serde_json::json!({
         "github_repository": {
             "repository": summary.github_repository.repository.as_str(),
             "default_branch": summary.github_repository.default_branch,
@@ -115,6 +118,33 @@ fn probe_external_adapters(repository: &str) -> Result<(), String> {
             "open_issues": issues,
         }
     });
+    if let Some(pull_request) = &summary.github_pull_request {
+        output["github_pull_request"] = serde_json::json!({
+            "repository": pull_request.repository.as_str(),
+            "number": pull_request.number,
+            "head_branch": pull_request.head_branch,
+            "base_branch": pull_request.base_branch,
+            "draft": pull_request.draft,
+            "mergeable": pull_request.mergeable,
+            "mergeable_state": pull_request.mergeable_state,
+            "source_of_truth": pull_request.source_of_truth,
+        });
+    }
+    if !summary.github_check_runs.is_empty() {
+        let check_runs = summary
+            .github_check_runs
+            .iter()
+            .map(|check_run| {
+                serde_json::json!({
+                    "name": check_run.name,
+                    "status": check_run_status(&check_run.status),
+                    "conclusion": check_run.conclusion.as_ref().map(check_run_conclusion),
+                    "source_of_truth": check_run.source_of_truth,
+                })
+            })
+            .collect::<Vec<_>>();
+        output["github_check_runs"] = serde_json::json!(check_runs);
+    }
     println!(
         "{}",
         serde_json::to_string_pretty(&output).map_err(|error| error.to_string())?
@@ -122,11 +152,51 @@ fn probe_external_adapters(repository: &str) -> Result<(), String> {
     Ok(())
 }
 
+fn external_probe_options() -> Result<ironloom_runtime::RuntimeExternalProbeOptions, String> {
+    let pull_request_number = match std::env::var(IRONLOOM_GITHUB_PULL_REQUEST_NUMBER_ENV) {
+        Ok(value) if !value.trim().is_empty() => Some(value.parse::<u64>().map_err(|_| {
+            format!("{IRONLOOM_GITHUB_PULL_REQUEST_NUMBER_ENV} must be an unsigned integer")
+        })?),
+        _ => None,
+    };
+    let check_ref = match std::env::var(IRONLOOM_GITHUB_CHECK_REF_ENV) {
+        Ok(value) if !value.trim().is_empty() => Some(value),
+        _ => None,
+    };
+    Ok(ironloom_runtime::RuntimeExternalProbeOptions {
+        pull_request_number,
+        check_ref,
+    })
+}
+
 fn quality_gate_status(status: &QualityGateStatus) -> &'static str {
     match status {
         QualityGateStatus::Passed => "passed",
         QualityGateStatus::Failed => "failed",
         QualityGateStatus::Pending => "pending",
+    }
+}
+
+fn check_run_status(status: &CheckRunStatus) -> &'static str {
+    match status {
+        CheckRunStatus::Queued => "queued",
+        CheckRunStatus::InProgress => "in_progress",
+        CheckRunStatus::Completed => "completed",
+        CheckRunStatus::Unknown => "unknown",
+    }
+}
+
+fn check_run_conclusion(conclusion: &CheckRunConclusion) -> &'static str {
+    match conclusion {
+        CheckRunConclusion::Success => "success",
+        CheckRunConclusion::Failure => "failure",
+        CheckRunConclusion::Cancelled => "cancelled",
+        CheckRunConclusion::Skipped => "skipped",
+        CheckRunConclusion::TimedOut => "timed_out",
+        CheckRunConclusion::ActionRequired => "action_required",
+        CheckRunConclusion::Neutral => "neutral",
+        CheckRunConclusion::Stale => "stale",
+        CheckRunConclusion::Unknown => "unknown",
     }
 }
 

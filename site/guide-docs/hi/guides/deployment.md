@@ -79,7 +79,7 @@ Real runtime credentials bind करने के बाद GitHub source-of-tru
 IRONLOOM_GITHUB_REPOSITORY=VannaDii/ironloom just external-probe
 ```
 
-यह command service जैसे ही `IRONLOOM_*` runtime environment values उपयोग करती है और GitHub repository projection, SonarCloud quality gate status, और unresolved issue count का redacted JSON summary print करती है।
+यह command service जैसे ही `IRONLOOM_*` runtime environment values उपयोग करती है और GitHub repository projection, SonarCloud quality gate status, और unresolved issue count का redacted JSON summary print करती है। Summary में live pull request merge state और check-run reads शामिल करने के लिए `IRONLOOM_GITHUB_PULL_REQUEST_NUMBER` और `IRONLOOM_GITHUB_CHECK_REF` set करें।
 
 ## Install Or Upgrade
 

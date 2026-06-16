@@ -20,7 +20,10 @@ use ironloom_discord::{
     ThreadBindingRegistry, handle_discord_interaction,
 };
 use ironloom_gates::{CommandGateExecutor, GateCommand, GateExecutor, GateResult};
-use ironloom_github::{GitHubApiClient, GitHubApiError, GitHubTransport, RepositoryProjection};
+use ironloom_github::{
+    CheckRunProjection, GitHubApiClient, GitHubApiError, GitHubTransport, PullRequestProjection,
+    RepositoryProjection,
+};
 use ironloom_sonarcloud::{
     QualityGateStatus, SonarCloudClient, SonarCloudError, SonarCloudIssue, SonarCloudTransport,
 };
@@ -518,10 +521,23 @@ pub struct RuntimeHttpResponse {
 pub struct RuntimeExternalProbeSummary {
     /// Repository projection read directly from GitHub.
     pub github_repository: RepositoryProjection,
+    /// Pull request projection read directly from GitHub when requested.
+    pub github_pull_request: Option<PullRequestProjection>,
+    /// Check runs read directly from GitHub when requested.
+    pub github_check_runs: Vec<CheckRunProjection>,
     /// Current SonarCloud quality gate status.
     pub quality_gate_status: QualityGateStatus,
     /// Current unresolved SonarCloud issues.
     pub open_sonarcloud_issues: Vec<SonarCloudIssue>,
+}
+
+/// Optional live reads included in the runtime external adapter probe.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct RuntimeExternalProbeOptions {
+    /// Pull request number to read from GitHub.
+    pub pull_request_number: Option<u64>,
+    /// Branch, tag, or commit SHA whose GitHub check runs should be read.
+    pub check_ref: Option<String>,
 }
 
 /// Runtime external adapter probe errors.
@@ -546,6 +562,27 @@ where
     GitHub: GitHubTransport,
     SonarCloud: SonarCloudTransport,
 {
+    probe_runtime_external_services_with_options(
+        config,
+        repository,
+        github_transport,
+        sonarcloud_transport,
+        RuntimeExternalProbeOptions::default(),
+    )
+}
+
+/// Probes live adapter clients with optional pull request and check-run reads.
+pub fn probe_runtime_external_services_with_options<GitHub, SonarCloud>(
+    config: &RuntimeConfig,
+    repository: &RepositorySlug,
+    github_transport: GitHub,
+    sonarcloud_transport: SonarCloud,
+    options: RuntimeExternalProbeOptions,
+) -> Result<RuntimeExternalProbeSummary, RuntimeExternalProbeError>
+where
+    GitHub: GitHubTransport,
+    SonarCloud: SonarCloudTransport,
+{
     let github = GitHubApiClient::new(config.github_token_ref.clone(), github_transport);
     let sonarcloud = SonarCloudClient::new(
         config.sonarcloud_token_ref.clone(),
@@ -553,8 +590,19 @@ where
         config.sonarcloud_project_key.clone(),
         sonarcloud_transport,
     );
+    let github_repository = github.read_repository(repository)?;
+    let github_pull_request = match options.pull_request_number {
+        Some(number) => Some(github.read_pull_request(repository, number)?),
+        None => None,
+    };
+    let github_check_runs = match options.check_ref {
+        Some(git_ref) => github.list_check_runs_for_ref(repository, &git_ref)?,
+        None => Vec::new(),
+    };
     Ok(RuntimeExternalProbeSummary {
-        github_repository: github.read_repository(repository)?,
+        github_repository,
+        github_pull_request,
+        github_check_runs,
         quality_gate_status: sonarcloud.poll_quality_gate()?,
         open_sonarcloud_issues: sonarcloud.search_open_issues()?,
     })

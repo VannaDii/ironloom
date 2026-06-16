@@ -94,6 +94,8 @@ IRONLOOM_GITHUB_REPOSITORY=VannaDii/ironloom just external-probe
 ```
 
 The command uses the same `IRONLOOM_*` runtime environment values as the service and prints a redacted JSON summary.
+Set `IRONLOOM_GITHUB_PULL_REQUEST_NUMBER` and `IRONLOOM_GITHUB_CHECK_REF` to include live pull request merge state and check-run reads in the summary.
+When SonarCloud returns `NONE` because no project quality gate is associated, the probe evaluates the organization default gate against project measures and reports `passed` or `failed`.
 
 ## Deployment
 

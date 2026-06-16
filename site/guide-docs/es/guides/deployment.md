@@ -77,7 +77,7 @@ Después de enlazar credenciales reales del runtime, ejecuta el probe externo pa
 IRONLOOM_GITHUB_REPOSITORY=VannaDii/ironloom just external-probe
 ```
 
-El comando usa los mismos valores de entorno `IRONLOOM_*` que el servicio e imprime un resumen JSON redactado de la proyección del repositorio GitHub, el estado del quality gate de SonarCloud y el conteo de incidencias sin resolver.
+El comando usa los mismos valores de entorno `IRONLOOM_*` que el servicio e imprime un resumen JSON redactado de la proyección del repositorio GitHub, el estado del quality gate de SonarCloud y el conteo de incidencias sin resolver. Define `IRONLOOM_GITHUB_PULL_REQUEST_NUMBER` y `IRONLOOM_GITHUB_CHECK_REF` para incluir estado de merge de pull request y lecturas de check-runs en vivo en el resumen.
 
 ## Instalar o actualizar
 

@@ -6,8 +6,9 @@ use ironloom_core::RepositorySlug;
 use ironloom_gates::{GateExecutor, GateResult};
 use ironloom_github::{GitHubHttpRequest, GitHubHttpResponse, GitHubTransport};
 use ironloom_runtime::{
-    RuntimeHttpContext, handle_runtime_http_request, handle_runtime_http_request_with_services,
-    probe_runtime_external_services,
+    RuntimeExternalProbeOptions, RuntimeHttpContext, handle_runtime_http_request,
+    handle_runtime_http_request_with_services, probe_runtime_external_services,
+    probe_runtime_external_services_with_options,
 };
 use ironloom_sonarcloud::{
     QualityGateStatus, SonarCloudHttpRequest, SonarCloudHttpResponse, SonarCloudTransport,
@@ -49,7 +50,7 @@ fn runtime_probe_reads_github_and_sonarcloud_through_configured_adapters() {
     let config = context
         .resolved_config()
         .expect("ready context should resolve config");
-    let github = CapturingGitHubTransport::new(200, r#"{"default_branch":"main"}"#);
+    let github = CapturingGitHubTransport::new([(200, r#"{"default_branch":"main"}"#)]);
     let sonarcloud = CapturingSonarCloudTransport::new([
         (200, r#"{"projectStatus":{"status":"OK"}}"#),
         (200, r#"{"issues":[]}"#),
@@ -92,6 +93,72 @@ fn runtime_probe_reads_github_and_sonarcloud_through_configured_adapters() {
         sonarcloud.requests()[0]
             .headers
             .contains(&("Authorization".to_owned(), "Bearer sonar-token".to_owned()))
+    );
+}
+
+#[test]
+fn runtime_probe_reads_pull_request_and_check_runs_when_requested() {
+    let context = ready_context("discord-public-key");
+    let config = context
+        .resolved_config()
+        .expect("ready context should resolve config");
+    let github = CapturingGitHubTransport::new([
+        (200, r#"{"default_branch":"main"}"#),
+        (
+            200,
+            r#"{
+              "number": 42,
+              "draft": false,
+              "mergeable": true,
+              "mergeable_state": "clean",
+              "head": { "ref": "feature/runtime" },
+              "base": { "ref": "main" }
+            }"#,
+        ),
+        (
+            200,
+            r#"{
+              "check_runs": [
+                {
+                  "name": "CI",
+                  "status": "completed",
+                  "conclusion": "success"
+                }
+              ]
+            }"#,
+        ),
+    ]);
+    let sonarcloud = CapturingSonarCloudTransport::new([
+        (200, r#"{"projectStatus":{"status":"OK"}}"#),
+        (200, r#"{"issues":[]}"#),
+    ]);
+
+    let summary = probe_runtime_external_services_with_options(
+        &config,
+        &RepositorySlug::new("VannaDii/ironloom").expect("repository slug should be valid"),
+        &github,
+        &sonarcloud,
+        RuntimeExternalProbeOptions {
+            pull_request_number: Some(42),
+            check_ref: Some("feature/runtime".to_owned()),
+        },
+    )
+    .expect("runtime probe should complete");
+
+    let pull_request = summary
+        .github_pull_request
+        .expect("pull request should be read");
+    assert_eq!(42, pull_request.number);
+    assert_eq!("clean", pull_request.mergeable_state);
+    assert_eq!(Some(true), pull_request.mergeable);
+    assert_eq!(1, summary.github_check_runs.len());
+    assert_eq!("CI", summary.github_check_runs[0].name);
+    let requests = github.requests();
+    assert_eq!("/repos/VannaDii/ironloom", requests[0].path);
+    assert_eq!("/repos/VannaDii/ironloom/pulls/42", requests[1].path);
+    assert_eq!(
+        "/repos/VannaDii/ironloom/commits/feature%2Fruntime/check-runs",
+        requests[2].path
     );
 }
 
@@ -170,35 +237,40 @@ fn signed_interaction_request(signing_key: &SigningKey, body: &str) -> String {
 }
 
 struct CapturingGitHubTransport {
-    status: u16,
-    body: String,
-    request: RefCell<Option<GitHubHttpRequest>>,
+    responses: RefCell<Vec<(u16, String)>>,
+    requests: RefCell<Vec<GitHubHttpRequest>>,
 }
 
 impl CapturingGitHubTransport {
-    fn new(status: u16, body: &str) -> Self {
+    fn new<const COUNT: usize>(responses: [(u16, &str); COUNT]) -> Self {
         Self {
-            status,
-            body: body.to_owned(),
-            request: RefCell::new(None),
+            responses: RefCell::new(
+                responses
+                    .into_iter()
+                    .map(|(status, body)| (status, body.to_owned()))
+                    .collect(),
+            ),
+            requests: RefCell::new(Vec::new()),
         }
     }
 
     fn request(&self) -> GitHubHttpRequest {
-        self.request
-            .borrow()
-            .clone()
+        self.requests()
+            .into_iter()
+            .next()
             .expect("GitHub request should be captured")
+    }
+
+    fn requests(&self) -> Vec<GitHubHttpRequest> {
+        self.requests.borrow().clone()
     }
 }
 
 impl GitHubTransport for &CapturingGitHubTransport {
     fn send(&self, request: GitHubHttpRequest) -> GitHubHttpResponse {
-        self.request.replace(Some(request));
-        GitHubHttpResponse {
-            status: self.status,
-            body: self.body.clone(),
-        }
+        self.requests.borrow_mut().push(request);
+        let (status, body) = self.responses.borrow_mut().remove(0);
+        GitHubHttpResponse { status, body }
     }
 }
 

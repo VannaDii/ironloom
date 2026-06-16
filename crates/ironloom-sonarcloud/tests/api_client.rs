@@ -47,6 +47,64 @@ fn sonarcloud_client_normalizes_quality_gate_failure() {
 }
 
 #[test]
+fn sonarcloud_client_enforces_default_gate_when_project_gate_is_unassociated() {
+    let transport = RecordingTransport::new(vec![
+        SonarCloudHttpResponse {
+            status: 200,
+            body: r#"{"projectStatus":{"status":"NONE"}}"#.to_owned(),
+        },
+        SonarCloudHttpResponse {
+            status: 200,
+            body: r#"{"default":9,"qualitygates":[{"id":9,"conditions":[{"metric":"new_coverage","op":"LT","error":"80"},{"metric":"new_reliability_rating","op":"GT","error":"1"}]}]}"#.to_owned(),
+        },
+        SonarCloudHttpResponse {
+            status: 200,
+            body: r#"{"component":{"measures":[{"metric":"coverage","value":"81.9"},{"metric":"reliability_rating","value":"1"}]}}"#.to_owned(),
+        },
+    ]);
+    let client = SonarCloudClient::new("sonar-token", "veritas", "ironloom", &transport);
+
+    let status = client
+        .poll_quality_gate()
+        .expect("default gate fallback should parse");
+
+    assert_eq!(QualityGateStatus::Passed, status);
+    assert_eq!(
+        "/api/qualitygates/list?organization=veritas",
+        transport.request_at(1).path
+    );
+    assert_eq!(
+        "/api/measures/component?component=ironloom&metricKeys=coverage%2Creliability_rating",
+        transport.request_at(2).path
+    );
+}
+
+#[test]
+fn sonarcloud_client_fails_default_gate_when_fallback_measure_violates_condition() {
+    let transport = RecordingTransport::new(vec![
+        SonarCloudHttpResponse {
+            status: 200,
+            body: r#"{"projectStatus":{"status":"NONE"}}"#.to_owned(),
+        },
+        SonarCloudHttpResponse {
+            status: 200,
+            body: r#"{"default":9,"qualitygates":[{"id":9,"conditions":[{"metric":"new_coverage","op":"LT","error":"80"}]}]}"#.to_owned(),
+        },
+        SonarCloudHttpResponse {
+            status: 200,
+            body: r#"{"component":{"measures":[{"metric":"coverage","value":"79.5"}]}}"#.to_owned(),
+        },
+    ]);
+    let client = SonarCloudClient::new("sonar-token", "veritas", "ironloom", &transport);
+
+    let status = client
+        .poll_quality_gate()
+        .expect("default gate fallback should parse");
+
+    assert_eq!(QualityGateStatus::Failed, status);
+}
+
+#[test]
 fn sonarcloud_client_normalizes_issue_search_results() {
     let transport = RecordingTransport::new(vec![SonarCloudHttpResponse {
         status: 200,

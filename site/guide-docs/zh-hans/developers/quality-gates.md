@@ -35,4 +35,5 @@ helm template ironloom deploy/helm/ironloom
 - SonarCloud 扫描之后，CI 会等待 scanner 的计算引擎任务完成，并在 workflow 日志中打印经过认证的质量门状态和每个条件。
 - CI 会在扫描前验证 SonarCloud 项目 `vannadii_ironloom`，在 SonarCloud 返回 404 时创建它，并将 SonarCloud 主分支与 GitHub 默认分支对齐。如果已经存在同名的非主分支，CI 会先删除该分支，再重命名 SonarCloud 主分支并验证结果。
 - 如果 SonarCloud 因项目没有关联质量门而返回 `NONE`，CI 会使用经过认证的项目度量来执行组织默认质量门，并在度量缺失或违反条件时失败关闭。
+- 当 SonarCloud 返回 `NONE` 时，运行时外部探测也使用相同的组织默认质量门 fallback，因此实时探测会报告 passed 或 failed，而不是让质量门保持 pending。
 - `SONAR_TOKEN` 密钥必须能够创建/读取项目、管理主分支、提交分析、读取质量门、读取组织质量门并读取项目度量；它不需要修改质量门的权限。

@@ -79,7 +79,7 @@ just k3s-acceptance
 IRONLOOM_GITHUB_REPOSITORY=VannaDii/ironloom just external-probe
 ```
 
-该命令使用与服务相同的 `IRONLOOM_*` 运行时环境值，并打印脱敏 JSON 摘要，其中包含 GitHub 仓库投影、SonarCloud 质量门状态和未解决问题数量。
+该命令使用与服务相同的 `IRONLOOM_*` 运行时环境值，并打印脱敏 JSON 摘要，其中包含 GitHub 仓库投影、SonarCloud 质量门状态和未解决问题数量。设置 `IRONLOOM_GITHUB_PULL_REQUEST_NUMBER` 和 `IRONLOOM_GITHUB_CHECK_REF` 可在摘要中包含实时拉取请求合并状态和 check-run 读取结果。
 
 ## 安装或升级
 
