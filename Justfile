@@ -24,6 +24,7 @@ schemas:
 
 scripts-test:
     bash tests/scripts/sonarcloud_project_bootstrap_test.sh
+    bash tests/scripts/sonar_project_properties_test.sh
 
 docs:
     npm run docs:build

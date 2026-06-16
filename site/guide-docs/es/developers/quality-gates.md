@@ -11,7 +11,7 @@ cargo test --workspace --all-features
 cargo run -p ironloom-schemas -- --check
 cargo deny check
 cargo audit
-bash tests/scripts/sonarcloud_project_bootstrap_test.sh
+just scripts-test
 npm run docs:build
 helm lint deploy/helm/ironloom
 helm template ironloom deploy/helm/ironloom
@@ -31,5 +31,6 @@ helm template ironloom deploy/helm/ironloom
 - Helm publica `deploy/helm/ironloom` como chart OCI.
 - GitHub Pages publica el sitio público VitePress.
 - SonarCloud recibe cobertura Rust LCOV desde `cargo llvm-cov` y un informe JSON de Clippy generado por el mismo comando de lint que exige CI.
+- SonarCloud analiza los archivos del sitio de documentación, pero los excluye del cálculo de cobertura para que Rust LCOV siga siendo la señal del quality gate.
 - CI verifica el proyecto SonarCloud `vannadii_ironloom` antes del análisis, lo crea cuando SonarCloud devuelve 404 y alinea la rama principal de SonarCloud con la rama predeterminada de GitHub. Si ya existe una rama no principal obsoleta con el nombre de destino, CI la elimina antes de renombrar la rama principal de SonarCloud y verifica el resultado.
 - El secreto `SONAR_TOKEN` debe poder crear/leer el proyecto, enviar análisis y leer el quality gate; un token solo con acceso de análisis puede subir informes, pero no puede satisfacer el bootstrap ni la espera estricta del gate.
