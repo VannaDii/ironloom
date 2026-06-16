@@ -20,6 +20,7 @@ PROPERTIES
 cat >"${curl_state}" <<'STATE'
 main_branch=master
 desired_branch_exists=true
+quality_gate_selected=false
 STATE
 
 cat >"${fake_bin}/curl" <<'FAKE_CURL'
@@ -30,6 +31,7 @@ output_file=""
 url=""
 branch_name=""
 rename_name=""
+gate_id=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -47,6 +49,9 @@ while [[ $# -gt 0 ]]; do
           ;;
         name=*)
           rename_name="${2#name=}"
+          ;;
+        gateId=*)
+          gate_id="${2#gateId=}"
           ;;
       esac
       shift 2
@@ -96,6 +101,26 @@ case "${url}" in
     fi
     printf '200'
     ;;
+  */api/qualitygates/list)
+    echo "quality-gates-list" >>"${IRONLOOM_TEST_CURL_LOG}"
+    write_body '{"default":9,"qualitygates":[{"id":9,"name":"Sonar way","isDefault":true}]}'
+    printf '200'
+    ;;
+  */api/qualitygates/select)
+    echo "quality-gates-select:${gate_id}" >>"${IRONLOOM_TEST_CURL_LOG}"
+    if [[ "${gate_id}" != "9" ]]; then
+      write_body '{"errors":[{"msg":"wrong quality gate selected"}]}'
+      printf '400'
+      exit 0
+    fi
+    {
+      echo "main_branch=${main_branch}"
+      echo "desired_branch_exists=${desired_branch_exists}"
+      echo "quality_gate_selected=true"
+    } >"${IRONLOOM_TEST_CURL_STATE}"
+    write_body '{}'
+    printf '204'
+    ;;
   */api/project_branches/delete)
     echo "branch-delete:${branch_name}" >>"${IRONLOOM_TEST_CURL_LOG}"
     if [[ "${branch_name}" != "main" ]]; then
@@ -106,6 +131,7 @@ case "${url}" in
     {
       echo "main_branch=${main_branch}"
       echo "desired_branch_exists=false"
+      echo "quality_gate_selected=${quality_gate_selected}"
     } >"${IRONLOOM_TEST_CURL_STATE}"
     write_body '{}'
     printf '204'
@@ -120,6 +146,7 @@ case "${url}" in
     {
       echo "main_branch=${rename_name}"
       echo "desired_branch_exists=true"
+      echo "quality_gate_selected=${quality_gate_selected}"
     } >"${IRONLOOM_TEST_CURL_STATE}"
     write_body '{}'
     printf '204'
@@ -147,5 +174,7 @@ fi
 
 grep -q "Deleting existing non-main SonarCloud branch main before renaming" <<<"${output}"
 grep -q "SonarCloud main branch renamed to main" <<<"${output}"
+grep -q "SonarCloud quality gate associated: 9" <<<"${output}"
 grep -q '^branch-delete:main$' "${curl_log}"
 grep -q '^branch-rename:main$' "${curl_log}"
+grep -q '^quality-gates-select:9$' "${curl_log}"

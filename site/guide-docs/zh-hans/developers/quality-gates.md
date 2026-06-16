@@ -33,5 +33,5 @@ helm template ironloom deploy/helm/ironloom
 - SonarCloud 接收来自 `cargo llvm-cov` 的 Rust LCOV 覆盖率，以及由 CI 强制执行的同一 lint 命令生成的 Clippy JSON 报告。
 - SonarCloud 会分析文档站点文件，但将它们排除在覆盖率计算之外，使 Rust LCOV 仍然作为质量门信号。
 - 当 SonarCloud 质量门失败时，CI 会在 workflow 日志中打印经过认证的质量门状态和每个条件。
-- CI 会在扫描前验证 SonarCloud 项目 `vannadii_ironloom`，在 SonarCloud 返回 404 时创建它，并将 SonarCloud 主分支与 GitHub 默认分支对齐。如果已经存在同名的非主分支，CI 会先删除该分支，再重命名 SonarCloud 主分支并验证结果。
-- `SONAR_TOKEN` 密钥必须能够创建/读取项目、提交分析并读取质量门；只有分析权限的令牌可以上传报告，但无法满足 bootstrap 或严格的质量门等待。
+- CI 会在扫描前验证 SonarCloud 项目 `vannadii_ironloom`，在 SonarCloud 返回 404 时创建它，将 SonarCloud 主分支与 GitHub 默认分支对齐，并把项目关联到组织默认质量门。如果已经存在同名的非主分支，CI 会先删除该分支，再重命名 SonarCloud 主分支并验证结果。
+- `SONAR_TOKEN` 密钥必须能够创建/读取项目、关联默认质量门、提交分析并读取质量门；只有分析权限的令牌可以上传报告，但无法满足 bootstrap 或严格的质量门等待。

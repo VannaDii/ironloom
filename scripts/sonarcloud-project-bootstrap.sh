@@ -52,6 +52,8 @@ create_body="${tmp_dir}/create.json"
 branches_body="${tmp_dir}/branches.json"
 rename_body="${tmp_dir}/rename.json"
 delete_body="${tmp_dir}/delete.json"
+quality_gates_body="${tmp_dir}/quality-gates.json"
+quality_gate_select_body="${tmp_dir}/quality-gate-select.json"
 
 component_status() {
   curl -sS -G \
@@ -93,6 +95,76 @@ delete_branch() {
     --data-urlencode "project=${project_key}" \
     --data-urlencode "branch=${branch}" \
     "${SONAR_HOST_URL%/}/api/project_branches/delete"
+}
+
+quality_gates_status() {
+  curl -sS -G \
+    -o "${quality_gates_body}" \
+    -w "%{http_code}" \
+    -H "Authorization: Bearer ${SONAR_TOKEN}" \
+    --data-urlencode "organization=${organization}" \
+    "${SONAR_HOST_URL%/}/api/qualitygates/list"
+}
+
+select_quality_gate() {
+  local gate_id="$1"
+
+  curl -sS \
+    -o "${quality_gate_select_body}" \
+    -w "%{http_code}" \
+    -H "Authorization: Bearer ${SONAR_TOKEN}" \
+    -X POST \
+    --data-urlencode "organization=${organization}" \
+    --data-urlencode "gateId=${gate_id}" \
+    --data-urlencode "projectKey=${project_key}" \
+    "${SONAR_HOST_URL%/}/api/qualitygates/select"
+}
+
+ensure_quality_gate() {
+  local status
+  local gate_id
+
+  if ! command -v jq >/dev/null 2>&1; then
+    echo "jq is required to verify the SonarCloud quality gate" >&2
+    exit 1
+  fi
+
+  status="$(quality_gates_status)"
+  case "${status}" in
+    2*)
+      ;;
+    401|403)
+      echo "SONAR_TOKEN cannot list SonarCloud quality gates for ${organization}" >&2
+      cat "${quality_gates_body}" >&2
+      exit 1
+      ;;
+    *)
+      echo "Unexpected SonarCloud quality gate list status ${status}" >&2
+      cat "${quality_gates_body}" >&2
+      exit 1
+      ;;
+  esac
+
+  gate_id="$(jq -r '.default // (.qualitygates[]? | select(.isDefault == true) | .id) // empty' "${quality_gates_body}")"
+  require_value "SonarCloud default quality gate" "${gate_id}"
+
+  status="$(select_quality_gate "${gate_id}")"
+  case "${status}" in
+    2*)
+      echo "SonarCloud quality gate associated: ${gate_id}"
+      ;;
+    401|403)
+      echo "SONAR_TOKEN cannot associate SonarCloud project ${project_key} with quality gate ${gate_id}" >&2
+      echo "The token must have permission to administer quality gates or select the project quality gate." >&2
+      cat "${quality_gate_select_body}" >&2
+      exit 1
+      ;;
+    *)
+      echo "Failed to associate SonarCloud project ${project_key} with quality gate ${gate_id}; status ${status}" >&2
+      cat "${quality_gate_select_body}" >&2
+      exit 1
+      ;;
+  esac
 }
 
 ensure_main_branch() {
@@ -186,6 +258,7 @@ case "${status}" in
   2*)
     echo "SonarCloud project exists: ${project_key}"
     ensure_main_branch
+    ensure_quality_gate
     exit 0
     ;;
   404)
@@ -231,6 +304,7 @@ case "${status}" in
   2*)
     echo "SonarCloud project created and verified: ${project_key}"
     ensure_main_branch
+    ensure_quality_gate
     ;;
   *)
     echo "SonarCloud project ${project_key} was created but could not be verified; status ${status}" >&2
