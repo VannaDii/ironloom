@@ -29,4 +29,5 @@ helm template ironloom deploy/helm/ironloom
 - Docker Buildx `docker/ironloom-runtime/Dockerfile` build करता है।
 - Helm `deploy/helm/ironloom` को OCI chart के रूप में publish करता है।
 - GitHub Pages VitePress public site publish करता है।
-- SonarCloud को `cargo llvm-cov` से Rust LCOV coverage मिलती है।
+- SonarCloud को `cargo llvm-cov` से Rust LCOV coverage और CI द्वारा enforce किए गए उसी lint command से generated Clippy JSON report मिलती है।
+- `SONAR_TOKEN` secret analysis submit करने और `vannadii_ironloom` quality gate read करने में सक्षम होना चाहिए; analyze-only token reports upload कर सकता है, लेकिन hard gate wait पूरा नहीं कर सकता।

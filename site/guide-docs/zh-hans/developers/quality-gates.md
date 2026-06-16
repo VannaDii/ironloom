@@ -29,4 +29,5 @@ helm template ironloom deploy/helm/ironloom
 - Docker Buildx 构建 `docker/ironloom-runtime/Dockerfile`。
 - Helm 将 `deploy/helm/ironloom` 作为 OCI chart 发布。
 - GitHub Pages 发布 VitePress 公共站点。
-- SonarCloud 接收来自 `cargo llvm-cov` 的 Rust LCOV 覆盖率。
+- SonarCloud 接收来自 `cargo llvm-cov` 的 Rust LCOV 覆盖率，以及由 CI 强制执行的同一 lint 命令生成的 Clippy JSON 报告。
+- `SONAR_TOKEN` 密钥必须能够提交分析并读取 `vannadii_ironloom` 质量门；只有分析权限的令牌可以上传报告，但无法满足严格的质量门等待。

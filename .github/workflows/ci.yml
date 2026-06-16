@@ -127,6 +127,11 @@ jobs:
       - name: Coverage
         run: cargo llvm-cov --workspace --all-features --lcov --output-path target/lcov.info
 
+      - name: Clippy report
+        run: |
+          mkdir -p target/sonar
+          cargo clippy --workspace --all-targets --all-features --message-format=json -- -D warnings > target/sonar/clippy.json
+
       - name: Sonar Scan
         if:
           github.event_name != 'pull_request' || github.event.pull_request.user.login

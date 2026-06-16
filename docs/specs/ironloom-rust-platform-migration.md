@@ -943,7 +943,8 @@ Required work:
 - Replace TypeScript matrix with Rust compatibility validation. Candidate lanes are pinned stable, latest stable, and optionally beta. Confirm MSRV before adding an MSRV lane.
 - Replace schema generation checks with Rust schema generation checks.
 - Replace Vitest coverage with Rust LCOV coverage for SonarCloud.
-- Keep SonarCloud quality gate wait behavior.
+- Keep SonarCloud quality gate wait behavior. The CI token must have enough
+  SonarCloud project access to submit analysis and read the quality gate result.
 - Keep Docker image publication to GHCR.
 - Keep Helm chart publication to GHCR OCI.
 - Keep GitHub Pages publication for the rewritten documentation and landing page.
@@ -1180,6 +1181,8 @@ Update `sonar-project.properties`:
 - `sonar.tests=crates`
 - Test inclusions should match Rust test layout.
 - Coverage should point to Rust LCOV output.
+- Clippy should be reported through a generated JSON report so the repository
+  owns the exact lint command that CI enforces.
 - Exclusions should include `target/**`, generated schema files if appropriate, deployment artifacts, docs output, and `.ironloom/**`.
 
 ## Docker And Helm Migration Details
@@ -1415,7 +1418,7 @@ The implementation resolved the plan's original open questions as follows:
 
 1. Repository ownership stays in place for the first Ironloom release at `VannaDii/ironloom`. A later transfer to a Veritas Labs organization is outside this migration.
 2. GHCR ownership follows the GitHub repository owner in the publishing workflows. Current release references are `ghcr.io/vannadii/ironloom` for the runtime image and `oci://ghcr.io/vannadii/charts/ironloom` for the Helm chart.
-3. SonarCloud remains in organization `vannadii` and the Ironloom project key is `vannadii_ironloom`. The old `vannadii_devplat` project is no longer the intended analysis target.
+3. SonarCloud remains in organization `vannadii` and the Ironloom project key is `vannadii_ironloom`. The old `vannadii_devplat` project is no longer the intended analysis target. The `SONAR_TOKEN` GitHub secret must belong to a SonarCloud principal that can both submit analysis and read the project quality gate.
 4. Ironloom does not publish Rust crates in the first release. `publish = false` remains set and Docker image plus Helm chart are the release artifacts.
 5. GitHub Pages uses `https://ironloom.dev` for the docs-hosted landing page, guides, developer documentation, LLM output, JSON-LD SEO, and API docs.
 6. `ironloom.dev` is the first-release public site, not an operator control plane. DNS ownership remains external to the repository, while the repo owns the `CNAME` and Pages workflow.
@@ -1432,7 +1435,7 @@ The implementation resolved the plan's original open questions as follows:
 
 External acceptance still requires live evidence after these changes land on `main`:
 
-- The `vannadii_ironloom` SonarCloud project exists and the SonarCloud quality gate passes with Rust coverage.
+- The `vannadii_ironloom` SonarCloud project exists and the SonarCloud quality gate passes with Rust coverage and imported Clippy JSON.
 - GHCR image and Helm chart publication workflows publish the Ironloom artifacts.
 - GitHub Pages publishes `https://ironloom.dev` from the current VitePress site.
 - `just external-probe` passes with real bound GitHub and SonarCloud credentials.

@@ -29,4 +29,5 @@ helm template ironloom deploy/helm/ironloom
 - يبني Docker Buildx ملف `docker/ironloom-runtime/Dockerfile`.
 - ينشر Helm `deploy/helm/ironloom` كـ OCI chart.
 - ينشر GitHub Pages موقع VitePress العام.
-- يتلقى SonarCloud تغطية Rust LCOV من `cargo llvm-cov`.
+- يتلقى SonarCloud تغطية Rust LCOV من `cargo llvm-cov` وتقرير Clippy JSON مولدا من أمر lint نفسه الذي يفرضه CI.
+- يجب أن يتمكن سر `SONAR_TOKEN` من إرسال التحليل وقراءة quality gate للمشروع `vannadii_ironloom`؛ فالرمز الذي يملك صلاحية التحليل فقط يمكنه رفع التقارير لكنه لا يستطيع اجتياز انتظار البوابة الصارم.
