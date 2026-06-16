@@ -6,6 +6,10 @@ Solo `ironloom-storage` lee o escribe directamente rutas `.ironloom/`.
 
 Los artefactos se persisten bajo la raíz de estado del runtime y se indexan por hilo de Discord y work item. Las escrituras usan un archivo temporal seguido de un rename atómico.
 
+## Vinculaciones de hilo
+
+Las vinculaciones de hilo se persisten bajo el árbol de índices `.ironloom`. La entrada de comandos del runtime resuelve un hilo de Discord a exactamente un work item antes de que puedan ejecutarse política, rutas del process graph o despacho de workers. Los vínculos faltantes, inválidos o ambiguos fallan cerrados.
+
 ## Almacenamiento cifrado de configuración
 
 La configuración local se almacena en:

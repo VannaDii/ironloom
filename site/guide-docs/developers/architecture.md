@@ -29,18 +29,18 @@ flowchart TB
 ## Boundary Rules
 
 - `ironloom-runtime` is the deployable service and composition boundary.
-- `ironloom-supervisor` owns process routing and worker dispatch decisions.
-- `ironloom-discord` is the operator control-plane adapter.
-- `ironloom-github` reads and writes GitHub source-of-truth state through auditable requests.
-- `ironloom-sonarcloud` owns SonarCloud quality and compliance normalization.
+- `ironloom-supervisor` owns process routing and worker registry dispatch decisions.
+- `ironloom-discord` is the operator control-plane adapter and verifies signed Discord HTTP interactions before handling them.
+- `ironloom-github` reads GitHub source-of-truth state through auditable API requests before supervisor decisions.
+- `ironloom-sonarcloud` owns SonarCloud bootstrap validation, quality gate polling, and issue normalization.
 - `ironloom-storage` owns direct `.ironloom/` filesystem access.
 
 ## First Vertical Slice
 
-1. A fake Discord command is bound to exactly one thread and work item.
-2. The Discord adapter fails closed for missing or ambiguous bindings.
-3. The supervisor selects the gate worker through the process graph.
+1. A signed Discord command interaction is accepted on the runtime HTTP port.
+2. The runtime resolves the Discord thread to exactly one persisted work item and fails closed for missing or ambiguous bindings.
+3. The supervisor selects the gate worker through the process graph and dispatches it through the worker registry.
 4. Policy permits only a thread-bound non-destructive gate action.
-5. The gate worker returns a structured result.
+5. The gate worker runs an allow-listed command with controlled environment, timeout, and captured streams, then returns a structured result.
 6. Storage writes an immutable artifact under `.ironloom` and indexes it by thread and work item.
-7. The fake Discord transport replies to the originating thread.
+7. The runtime returns a Discord channel message response to the originating interaction.

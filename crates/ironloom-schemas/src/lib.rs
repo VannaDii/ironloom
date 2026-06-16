@@ -15,7 +15,9 @@ use ironloom_observability::AuditRecord;
 use ironloom_policy::{ActionKind, PolicyContext, PolicyDecision};
 use ironloom_process_graph::{ProcessGraph, ProcessNode, RetryPolicy, Transition};
 use ironloom_queue::{QueueItem, QueueState};
-use ironloom_sonarcloud::SonarCloudConfig;
+use ironloom_sonarcloud::{
+    QualityGateStatus, SonarCloudConfig, SonarCloudIssue, SonarCloudIssueSeverity,
+};
 use ironloom_supervisor::{SupervisorDecision, SupervisorInput};
 use ironloom_workers::{WorkerRequest, WorkerResponse};
 use ironloom_worktrees::WorktreeRequest;
@@ -112,6 +114,15 @@ fn schema_files() -> SchemaResult<Vec<SchemaFile>> {
         )?,
         schema::<SonarCloudConfig>(
             "crates/ironloom-sonarcloud/schemas/sonar-cloud-config.schema.json",
+        )?,
+        schema::<QualityGateStatus>(
+            "crates/ironloom-sonarcloud/schemas/quality-gate-status.schema.json",
+        )?,
+        schema::<SonarCloudIssueSeverity>(
+            "crates/ironloom-sonarcloud/schemas/sonar-cloud-issue-severity.schema.json",
+        )?,
+        schema::<SonarCloudIssue>(
+            "crates/ironloom-sonarcloud/schemas/sonar-cloud-issue.schema.json",
         )?,
         schema::<SupervisorInput>(
             "crates/ironloom-supervisor/schemas/supervisor-input.schema.json",

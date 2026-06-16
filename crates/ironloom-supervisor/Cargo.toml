@@ -16,10 +16,14 @@ ironloom-observability = { path = "../ironloom-observability", version = "0.1.0"
 ironloom-policy = { path = "../ironloom-policy", version = "0.1.0" }
 ironloom-process-graph = { path = "../ironloom-process-graph", version = "0.1.0" }
 ironloom-storage = { path = "../ironloom-storage", version = "0.1.0" }
+ironloom-workers = { path = "../ironloom-workers", version = "0.1.0" }
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
 
 [lints]
 workspace = true

@@ -19,6 +19,8 @@ helm template ironloom deploy/helm/ironloom
 ## 配方快捷命令
 
 - `just proof` 构建运行时镜像、启动本地容器、提交 setup 值，并生成完整的证明应用。
+- `just k3s-acceptance` 启动一次性 k3s 容器、安装 Helm chart、验证签名 Discord 输入，并证明 PVC 支持的工件索引在 pod 重启后仍保留。
+- `just external-probe` 使用真实绑定的运行时凭据读取 GitHub 事实源仓库状态，并轮询 SonarCloud 质量和问题状态。
 - `just gates` 运行常用本地关卡：格式化、Clippy、测试、schema、docs 和 Helm。
 - `just setup-url` 打印本地 setup URL 和安装令牌，用于浏览器手动验证。
 

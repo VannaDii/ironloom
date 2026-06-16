@@ -5,11 +5,11 @@ Ironloom is a Rust supervisor runtime for auditable autonomous engineering opera
 ## Workspace
 
 - `crates/ironloom-runtime`: deployable binary and health/readiness server.
-- `crates/ironloom-supervisor`: process graph route selection and worker dispatch.
-- `crates/ironloom-discord`: thread-aware operator adapter.
-- `crates/ironloom-github`: GitHub source-of-truth projections.
-- `crates/ironloom-sonarcloud`: SonarCloud bootstrap and quality contracts.
-- `crates/ironloom-storage`: `.ironloom` filesystem-backed state.
+- `crates/ironloom-supervisor`: process graph route selection and registry-backed worker dispatch.
+- `crates/ironloom-discord`: thread-aware operator adapter and signed interaction intake.
+- `crates/ironloom-github`: GitHub source-of-truth API reads, HTTP transport, and repository projections.
+- `crates/ironloom-sonarcloud`: SonarCloud bootstrap, HTTP transport, quality gate polling, and issue normalization contracts.
+- `crates/ironloom-storage`: `.ironloom` filesystem-backed state, artifact indexes, encrypted setup config, and thread bindings.
 - `site/guide-docs`: VitePress public landing page, guides, developer docs, LLM output, and API docs.
 - `docker/ironloom-runtime`: runtime image.
 - `deploy/helm/ironloom`: k3s-friendly Helm chart.
@@ -26,6 +26,12 @@ cargo audit
 npm run docs:build
 helm lint deploy/helm/ironloom
 helm template ironloom deploy/helm/ironloom
+```
+
+Or use the local gate shortcut:
+
+```sh
+just gates
 ```
 
 ## Runtime
@@ -65,6 +71,26 @@ just proof
 ```
 
 The recipe writes the generated setup key and installer token to `.ironloom/local-dev/setup.env`, stores encrypted setup state under `.ironloom/local-dev/state`, and writes the generated proof app under `.ironloom/local-dev/worktrees/ironloom-proof-app`. Run `just setup-url` to print the setup URL and installer token for manual setup testing. Run `just docker-stop` when you are done inspecting the local container.
+
+## Local k3s Acceptance
+
+Use the disposable k3s acceptance recipe before publishing or promoting chart changes:
+
+```sh
+just k3s-acceptance
+```
+
+The recipe builds `ironloom:local`, starts a Docker-backed k3s cluster, installs the Helm chart with setup and runtime secrets, verifies signed Discord ping and command handling through `/discord/interactions`, and restarts the deployment to prove the PVC-backed artifact index persists. It forwards the runtime on `127.0.0.1:18081` by default; set `IRONLOOM_K3S_HTTP_PORT` to override the local port.
+
+## Live External Probe
+
+After binding real GitHub and SonarCloud credentials, run the external probe to verify source-of-truth repository reads, SonarCloud quality gate polling, and issue normalization:
+
+```sh
+IRONLOOM_GITHUB_REPOSITORY=VannaDii/ironloom just external-probe
+```
+
+The command uses the same `IRONLOOM_*` runtime environment values as the service and prints a redacted JSON summary.
 
 ## Deployment
 

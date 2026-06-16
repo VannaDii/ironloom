@@ -1409,21 +1409,31 @@ Quality:
 - Optional `cargo nextest` and `cargo machete` are wired if approved.
 - SonarCloud quality gate passes with Rust coverage.
 
-## Open Questions The Worker Cannot Safely Decide Alone
+## Resolved Migration Decisions And External Acceptance
 
-1. Should the GitHub repository be renamed/transferred from `VannaDii/devplat` to a Veritas Labs organization/repository, or should the migration happen in place first?
-2. What is the exact GitHub organization or registry owner for GHCR image and Helm chart publication?
-3. What SonarCloud organization and project key should replace `vannadii_devplat` after the Ironloom project is provisioned?
-4. Should Ironloom publish Rust crates, or are Docker image and Helm chart the only release artifacts?
-5. Which hostname should GitHub Pages use for the docs-hosted landing page and operator/developer docs?
-6. Should `ironloom.dev` redirect to the docs-hosted landing page in the first release, and who owns that DNS change?
-7. Should existing `.devplat` runtime records be imported into `.ironloom`, archived read-only, or discarded as pre-Ironloom state?
-8. What storage backend should follow the first filesystem implementation: SQLite, Postgres, object storage, or none until scale requires it?
-9. Which AI provider, model policy, prompt logging policy, and data-retention constraints are acceptable for AI-assisted supervisor routing?
-10. Which Discord deployment mode should be primary: Gateway-only private runtime, interaction webhook, or both?
-11. Which human approval actions require multi-approver policy rather than single-operator approval?
-12. What is the replacement for Changesets: release-plz, cargo-release, git-cliff, custom release notes, or no crate release process?
-13. Is `Ironloom` considered a registered tool name for branch-name and PR-title restrictions?
-14. What is the minimum supported Rust version, if any, beyond latest stable?
-15. Should process/container worker isolation be deferred entirely, or should the first release include an experimental out-of-process worker transport?
-16. Should the first-release docs site stay English-only, or should localization be planned now for later docs-site content?
+The implementation resolved the plan's original open questions as follows:
+
+1. Repository ownership stays in place for the first Ironloom release at `VannaDii/ironloom`. A later transfer to a Veritas Labs organization is outside this migration.
+2. GHCR ownership follows the GitHub repository owner in the publishing workflows. Current release references are `ghcr.io/vannadii/ironloom` for the runtime image and `oci://ghcr.io/vannadii/charts/ironloom` for the Helm chart.
+3. SonarCloud remains in organization `vannadii` and the Ironloom project key is `vannadii_ironloom`. The old `vannadii_devplat` project is no longer the intended analysis target.
+4. Ironloom does not publish Rust crates in the first release. `publish = false` remains set and Docker image plus Helm chart are the release artifacts.
+5. GitHub Pages uses `https://ironloom.dev` for the docs-hosted landing page, guides, developer documentation, LLM output, JSON-LD SEO, and API docs.
+6. `ironloom.dev` is the first-release public site, not an operator control plane. DNS ownership remains external to the repository, while the repo owns the `CNAME` and Pages workflow.
+7. Existing `.devplat` runtime records are treated as pre-Ironloom state. They are not automatically imported; any future import requires an explicit operator-approved migration.
+8. PVC-backed filesystem state remains the first-release storage backend. SQLite, Postgres, or object storage are deferred until scale requirements justify another backend.
+9. AI-assisted work uses OpenAI authentication through either API key or ChatGPT OAuth session, provided by environment bindings or encrypted setup. Environment values take precedence, and no AI side effect runs before required runtime configuration validates.
+10. Discord interaction webhooks with Ed25519 signature verification are the first-release deployment mode. Gateway operation is deferred.
+11. First-release human approval policy remains fail-closed for ambiguous or destructive actions. Multi-approver policy is deferred until a concrete approval workflow is specified.
+12. Changesets are replaced by GitHub release, Docker publish, and Helm publish workflows. No crate-release workflow is part of the first release.
+13. `Ironloom` is the product name, not a registered tool name for branch-name or PR-title restrictions.
+14. The supported Rust toolchain is latest stable as pinned by `rust-toolchain.toml`; there is no separate MSRV lane yet.
+15. First-release workers run in process through the typed registry. Process/container isolation remains an envelope-compatible future extension.
+16. The first-release docs site includes localized guide and API pages, and documentation must stay updated across affected locales when documented functionality changes.
+
+External acceptance still requires live evidence after these changes land on `main`:
+
+- The `vannadii_ironloom` SonarCloud project exists and the SonarCloud quality gate passes with Rust coverage.
+- GHCR image and Helm chart publication workflows publish the Ironloom artifacts.
+- GitHub Pages publishes `https://ironloom.dev` from the current VitePress site.
+- `just external-probe` passes with real bound GitHub and SonarCloud credentials.
+- A real Discord application posts signed interaction traffic to the deployed runtime URL and receives same-thread responses.

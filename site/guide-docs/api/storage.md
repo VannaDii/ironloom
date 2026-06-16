@@ -6,6 +6,10 @@ Only `ironloom-storage` reads or writes `.ironloom/` paths directly.
 
 Artifacts are persisted under the runtime state root and indexed by Discord thread and work item. Writes use a temporary file followed by an atomic rename.
 
+## Thread Bindings
+
+Thread bindings are persisted under the `.ironloom` index tree. Runtime command intake resolves a Discord thread to exactly one work item before policy, process graph routing, or worker dispatch can run. Missing, invalid, or ambiguous bindings fail closed.
+
 ## Encrypted Setup Storage
 
 Local setup configuration is stored at:

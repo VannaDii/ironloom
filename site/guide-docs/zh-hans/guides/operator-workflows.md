@@ -14,21 +14,23 @@ sequenceDiagram
   participant Worker as ironloom-workers
   participant Storage as ironloom-storage
 
-  Operator->>Discord: 提交线程命令
-  Discord->>Runtime: 发送已绑定请求
-  Runtime->>Supervisor: 解析路由
-  Supervisor->>GitHub: 刷新事实源状态
-  GitHub-->>Supervisor: 当前仓库状态
-  Supervisor->>Supervisor: 应用策略和流程图
+  Operator->>Discord: 在线程中提交 slash command
+  Discord->>Runtime: POST 签名 interaction
+  Runtime->>Runtime: 验证签名并解析线程绑定
   alt 线程绑定缺失或含糊
-    Supervisor-->>Discord: 拒绝动作
-    Discord-->>Operator: 说明绑定失败
+    Runtime-->>Discord: 返回失败关闭的 channel response
+    Discord-->>Operator: 在线程中说明绑定失败
   else 线程绑定明确
-    Supervisor->>Worker: 调度工作
+    Runtime->>Supervisor: 路由线程绑定命令
+    Supervisor->>GitHub: 刷新事实源状态
+    GitHub-->>Supervisor: 当前仓库状态
+    Supervisor->>Supervisor: 应用策略和流程图
+    Supervisor->>Worker: 通过注册表调度工作
     Worker-->>Supervisor: 返回结构化结果
     Supervisor->>Storage: 写入不可变工件
     Storage-->>Supervisor: 工件索引已更新
-    Supervisor-->>Discord: 返回已审计结果
+    Supervisor-->>Runtime: 返回已审计结果
+    Runtime-->>Discord: 返回 channel message response
     Discord-->>Operator: 回复到发起线程
   end
 ```

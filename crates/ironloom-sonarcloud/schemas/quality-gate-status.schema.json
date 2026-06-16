@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "QualityGateStatus",
+  "description": "Normalized quality gate status used by Ironloom.",
+  "oneOf": [
+    {
+      "description": "SonarCloud reported the quality gate passed.",
+      "type": "string",
+      "const": "passed"
+    },
+    {
+      "description": "SonarCloud reported the quality gate failed or warned.",
+      "type": "string",
+      "const": "failed"
+    },
+    {
+      "description": "SonarCloud did not report a terminal quality gate state.",
+      "type": "string",
+      "const": "pending"
+    }
+  ]
+}

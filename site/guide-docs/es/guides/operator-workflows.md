@@ -13,19 +13,21 @@ sequenceDiagram
   participant GitHub as GitHub
   participant Worker as Worker
   participant Storage as Storage
-  Operator->>Discord: Envía comando en un hilo
-  Discord->>Runtime: Entrega comando con contexto de hilo
-  Runtime->>Supervisor: Solicita acción vinculada al hilo
+  Operator->>Discord: Envía slash command en un hilo
+  Discord->>Runtime: POST de interacción firmada
+  Runtime->>Runtime: Verifica firma y resuelve vínculo de hilo
   alt vínculo faltante o ambiguo
-    Supervisor-->>Runtime: Rechaza antes de ejecutar workers
-    Runtime-->>Discord: Responde con error auditable
+    Runtime-->>Discord: Devuelve respuesta fail-closed de canal
+    Discord-->>Operator: Explica el vínculo fallido en el hilo
   else vínculo válido
+    Runtime->>Supervisor: Enruta comando vinculado al hilo
     Supervisor->>GitHub: Refresca estado fuente de verdad
-    Supervisor->>Worker: Despacha worker elegido por el grafo
+    Supervisor->>Worker: Despacha worker elegido por el grafo y el registro
     Worker->>Storage: Escribe artefacto inmutable
     Worker-->>Supervisor: Devuelve resultado estructurado
     Supervisor-->>Runtime: Publica resultado
-    Runtime-->>Discord: Responde al hilo original
+    Runtime-->>Discord: Devuelve respuesta de mensaje de canal
+    Discord-->>Operator: Responde al hilo original
   end
 ```
 

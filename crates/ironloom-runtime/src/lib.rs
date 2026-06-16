@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 
+use std::cell::Cell;
 use std::fs;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
@@ -13,10 +14,17 @@ use ironloom_config::{
     IRONLOOM_SONARCLOUD_TOKEN_ENV, RuntimeConfig, RuntimeConfigInputs, SetupEnvironment,
     StoredSetupConfig,
 };
-use ironloom_core::ThreadId;
-use ironloom_discord::{DiscordCommand, DiscordError, FakeDiscordTransport, ThreadBindingRegistry};
-use ironloom_gates::{GateExecutor, GateResult};
-use ironloom_storage::{FilesystemStore, SetupConfigStore, StorageError};
+use ironloom_core::{ActorId, CorrelationId, RepositorySlug, ThreadId};
+use ironloom_discord::{
+    DiscordCommand, DiscordError, DiscordInteractionRequest, FakeDiscordTransport,
+    ThreadBindingRegistry, handle_discord_interaction,
+};
+use ironloom_gates::{CommandGateExecutor, GateCommand, GateExecutor, GateResult};
+use ironloom_github::{GitHubApiClient, GitHubApiError, GitHubTransport, RepositoryProjection};
+use ironloom_sonarcloud::{
+    QualityGateStatus, SonarCloudClient, SonarCloudError, SonarCloudIssue, SonarCloudTransport,
+};
+use ironloom_storage::{FilesystemStore, SetupConfigStore, StorageError, ThreadBindingError};
 use ironloom_supervisor::{SupervisorError, SupervisorInput, run_gate_work};
 use thiserror::Error;
 
@@ -38,6 +46,8 @@ const OPENAI_AUTH_METHOD_CHATGPT_OAUTH: &str = "chatgpt_oauth";
 const DISCORD_AUTHORIZE_URL: &str = "https://discord.com/oauth2/authorize";
 const DISCORD_AUTHORIZE_SCOPE: &str = "bot applications.commands";
 const DISCORD_DEFAULT_PERMISSIONS: &str = "0";
+const DISCORD_APPLICATION_COMMAND_INTERACTION_TYPE: u64 = 2;
+const DISCORD_CHANNEL_MESSAGE_RESPONSE_TYPE: u64 = 4;
 const DEFAULT_STATE_ROOT: &str = ".ironloom";
 const HTTP_READ_BUFFER_BYTES: usize = 16_384;
 const PROOF_THREAD_ID: &str = "proof-thread";
@@ -45,6 +55,16 @@ const PROOF_WORK_ITEM_ID: &str = "proof-work-item";
 const PROOF_ACTOR_ID: &str = "proof-operator";
 const PROOF_CORRELATION_ID: &str = "proof-correlation";
 const PROOF_COMMAND: &str = "build complete software proof";
+const DEFAULT_GATE_RUNTIME_BANNER: &str = "runtime_banner";
+const DEFAULT_GATE_CARGO_FMT_CHECK: &str = "cargo_fmt_check";
+const DEFAULT_GATE_CARGO_TEST: &str = "cargo_test";
+const IRONLOOM_PROGRAM: &str = "ironloom";
+const CARGO_PROGRAM: &str = "cargo";
+const CARGO_FMT_SUBCOMMAND: &str = "fmt";
+const CARGO_TEST_SUBCOMMAND: &str = "test";
+const CARGO_CHECK_FLAG: &str = "--check";
+const CARGO_WORKSPACE_FLAG: &str = "--workspace";
+const CARGO_ALL_FEATURES_FLAG: &str = "--all-features";
 const PROOF_INDEX_FILE: &str = "index.html";
 const PROOF_STYLE_FILE: &str = "style.css";
 const PROOF_SCRIPT_FILE: &str = "app.js";
@@ -370,7 +390,7 @@ impl RuntimeHarness {
     /// Returns the number of gate executions attempted by the harness.
     #[must_use]
     pub fn gates_run(&self) -> usize {
-        self.gate_executor.runs
+        self.gate_executor.runs.get()
     }
 }
 
@@ -466,7 +486,12 @@ impl RuntimeHttpContext {
     }
 
     fn is_ready(&self) -> bool {
-        RuntimeConfig::resolve(self.environment.clone(), self.stored_setup.as_ref()).is_ok()
+        self.resolved_config().is_ok()
+    }
+
+    /// Resolves the runtime configuration using environment values before stored setup.
+    pub fn resolved_config(&self) -> Result<RuntimeConfig, ConfigError> {
+        RuntimeConfig::resolve(self.environment.clone(), self.stored_setup.as_ref())
     }
 }
 
@@ -488,6 +513,53 @@ pub struct RuntimeHttpResponse {
     pub body: String,
 }
 
+/// Summary produced by probing externally backed runtime adapters.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RuntimeExternalProbeSummary {
+    /// Repository projection read directly from GitHub.
+    pub github_repository: RepositoryProjection,
+    /// Current SonarCloud quality gate status.
+    pub quality_gate_status: QualityGateStatus,
+    /// Current unresolved SonarCloud issues.
+    pub open_sonarcloud_issues: Vec<SonarCloudIssue>,
+}
+
+/// Runtime external adapter probe errors.
+#[derive(Debug, Error)]
+pub enum RuntimeExternalProbeError {
+    /// GitHub API probing failed.
+    #[error(transparent)]
+    GitHub(#[from] GitHubApiError),
+    /// SonarCloud API probing failed.
+    #[error(transparent)]
+    SonarCloud(#[from] SonarCloudError),
+}
+
+/// Probes live adapter clients using the resolved runtime configuration.
+pub fn probe_runtime_external_services<GitHub, SonarCloud>(
+    config: &RuntimeConfig,
+    repository: &RepositorySlug,
+    github_transport: GitHub,
+    sonarcloud_transport: SonarCloud,
+) -> Result<RuntimeExternalProbeSummary, RuntimeExternalProbeError>
+where
+    GitHub: GitHubTransport,
+    SonarCloud: SonarCloudTransport,
+{
+    let github = GitHubApiClient::new(config.github_token_ref.clone(), github_transport);
+    let sonarcloud = SonarCloudClient::new(
+        config.sonarcloud_token_ref.clone(),
+        config.sonarcloud_organization.clone(),
+        config.sonarcloud_project_key.clone(),
+        sonarcloud_transport,
+    );
+    Ok(RuntimeExternalProbeSummary {
+        github_repository: github.read_repository(repository)?,
+        quality_gate_status: sonarcloud.poll_quality_gate()?,
+        open_sonarcloud_issues: sonarcloud.search_open_issues()?,
+    })
+}
+
 /// Handles a runtime HTTP request string.
 #[must_use]
 pub fn handle_runtime_http_request(
@@ -501,6 +573,7 @@ pub fn handle_runtime_http_request(
         ("GET", "/healthz") => text_response(200, "ok"),
         ("GET", "/readyz") if context.is_ready() => text_response(200, "ok"),
         ("GET", "/readyz") => text_response(503, "setup required"),
+        ("POST", "/discord/interactions") => handle_discord_interaction_post(context, request),
         ("GET", "/" | "/setup") => html_response(200, setup_page_for_context(context)),
         _ => text_response(404, "not found"),
     }
@@ -526,6 +599,32 @@ pub fn handle_runtime_http_request_with_store(
         return handle_discord_oauth_start(context, request);
     }
     handle_runtime_http_request(context, request)
+}
+
+/// Handles a runtime HTTP request with setup storage and live work services enabled.
+#[must_use]
+pub fn handle_runtime_http_request_with_services<Executor>(
+    context: &RuntimeHttpContext,
+    setup_store: &SetupConfigStore,
+    work_store: &FilesystemStore,
+    gate_executor: &Executor,
+    request: &str,
+) -> RuntimeHttpResponse
+where
+    Executor: GateExecutor,
+{
+    let Some((method, path)) = parse_request_line(request) else {
+        return text_response(400, "bad request");
+    };
+    if matches!((method, path), ("POST", "/discord/interactions")) {
+        return handle_discord_interaction_post_with_work(
+            context,
+            work_store,
+            gate_executor,
+            request,
+        );
+    }
+    handle_runtime_http_request_with_store(context, setup_store, request)
 }
 
 /// Setup page state rendered by the runtime HTTP surface.
@@ -684,7 +783,7 @@ pub fn run_fake_discord_gate_slice(
             command: command.command,
         },
         &harness.store,
-        &mut harness.gate_executor,
+        &harness.gate_executor,
     )?;
     harness.transport.post_response(
         command.thread_id,
@@ -768,7 +867,16 @@ fn respond_to_runtime_request(mut stream: TcpStream) -> std::io::Result<()> {
     let bytes_read = stream.read(&mut buffer)?;
     let request = String::from_utf8_lossy(&buffer[..bytes_read]);
     let (context, store) = runtime_context_from_environment();
-    let response = handle_runtime_http_request_with_store(&context, &store, &request);
+    let work_root = work_store_root_from_context(&context)?;
+    let work_store = FilesystemStore::new(&work_root).map_err(std::io::Error::other)?;
+    let gate_executor = default_command_gate_executor(&work_root);
+    let response = handle_runtime_http_request_with_services(
+        &context,
+        &store,
+        &work_store,
+        &gate_executor,
+        &request,
+    );
     stream.write_all(encode_http_response(&response).as_bytes())?;
     stream.flush()
 }
@@ -823,6 +931,7 @@ fn status_text(status_code: u16) -> &'static str {
     match status_code {
         200 => "OK",
         400 => "Bad Request",
+        401 => "Unauthorized",
         403 => "Forbidden",
         404 => "Not Found",
         500 => "Internal Server Error",
@@ -836,6 +945,176 @@ fn parse_request_line(request: &str) -> Option<(&str, &str)> {
     let method = parts.next()?;
     let path = parts.next()?;
     Some((method, path))
+}
+
+fn handle_discord_interaction_post(
+    context: &RuntimeHttpContext,
+    request: &str,
+) -> RuntimeHttpResponse {
+    let Ok(config) = context.resolved_config() else {
+        return text_response(503, "setup required");
+    };
+    let Some(signature) = request_header(request, "x-signature-ed25519") else {
+        return text_response(400, "missing Discord signature");
+    };
+    let Some(timestamp) = request_header(request, "x-signature-timestamp") else {
+        return text_response(400, "missing Discord signature timestamp");
+    };
+    let interaction = DiscordInteractionRequest {
+        public_key: config.discord_public_key_ref,
+        signature: signature.to_owned(),
+        timestamp: timestamp.to_owned(),
+        body: request_body(request).to_owned(),
+    };
+    match handle_discord_interaction(&interaction) {
+        Ok(response) => json_response(response.status, response.body),
+        Err(DiscordError::InvalidInteractionSignature | DiscordError::InvalidSignatureEncoding) => {
+            text_response(401, "invalid Discord interaction signature")
+        }
+        Err(error) => text_response(400, &error.to_string()),
+    }
+}
+
+fn handle_discord_interaction_post_with_work<Executor>(
+    context: &RuntimeHttpContext,
+    work_store: &FilesystemStore,
+    gate_executor: &Executor,
+    request: &str,
+) -> RuntimeHttpResponse
+where
+    Executor: GateExecutor,
+{
+    let Ok(config) = context.resolved_config() else {
+        return text_response(503, "setup required");
+    };
+    let Some(signature) = request_header(request, "x-signature-ed25519") else {
+        return text_response(400, "missing Discord signature");
+    };
+    let Some(timestamp) = request_header(request, "x-signature-timestamp") else {
+        return text_response(400, "missing Discord signature timestamp");
+    };
+    let body = request_body(request);
+    let interaction = DiscordInteractionRequest {
+        public_key: config.discord_public_key_ref,
+        signature: signature.to_owned(),
+        timestamp: timestamp.to_owned(),
+        body: body.to_owned(),
+    };
+    if let Err(error) = ironloom_discord::verify_discord_interaction(&interaction) {
+        return match error {
+            DiscordError::InvalidInteractionSignature | DiscordError::InvalidSignatureEncoding => {
+                text_response(401, "invalid Discord interaction signature")
+            }
+            _ => text_response(400, &error.to_string()),
+        };
+    }
+    let Ok(payload) = serde_json::from_str::<serde_json::Value>(body) else {
+        return text_response(400, "invalid Discord interaction JSON");
+    };
+    let interaction_type = payload
+        .get("type")
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or_default();
+    if interaction_type != DISCORD_APPLICATION_COMMAND_INTERACTION_TYPE {
+        return handle_discord_interaction_post(context, request);
+    }
+    let command = match discord_command_from_application_interaction(&payload) {
+        Ok(command) => command,
+        Err(reason) => return discord_channel_message_response(reason),
+    };
+    let work_item_id = match work_store.resolve_thread_binding(&command.thread_id) {
+        Ok(work_item_id) => work_item_id,
+        Err(error) => {
+            return discord_channel_message_response(thread_binding_error_message(&error));
+        }
+    };
+    match run_gate_work(
+        &SupervisorInput {
+            work_item_id,
+            thread_id: command.thread_id,
+            actor_id: command.actor_id,
+            correlation_id: command.correlation_id,
+            command: command.command,
+        },
+        work_store,
+        gate_executor,
+    ) {
+        Ok(output) => discord_channel_message_response(format!(
+            "Gate completed through {}",
+            output.selected_process_node
+        )),
+        Err(error) => discord_channel_message_response(format!("Gate failed: {error}")),
+    }
+}
+
+fn discord_command_from_application_interaction(
+    payload: &serde_json::Value,
+) -> Result<DiscordCommand, String> {
+    let thread_id = required_json_str(payload, "channel_id")?;
+    let actor_id = payload
+        .pointer("/member/user/id")
+        .or_else(|| payload.pointer("/user/id"))
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| "Discord interaction is missing actor id".to_owned())?;
+    let correlation_id = required_json_str(payload, "id")?;
+    let command = payload
+        .pointer("/data/name")
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| "Discord interaction is missing command name".to_owned())?;
+    Ok(DiscordCommand {
+        thread_id: ThreadId::new(thread_id).map_err(|error| error.to_string())?,
+        actor_id: ActorId::new(actor_id).map_err(|error| error.to_string())?,
+        correlation_id: CorrelationId::new(correlation_id).map_err(|error| error.to_string())?,
+        command: command.to_owned(),
+    })
+}
+
+fn required_json_str<'a>(payload: &'a serde_json::Value, field: &str) -> Result<&'a str, String> {
+    payload
+        .get(field)
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| format!("Discord interaction is missing {field}"))
+}
+
+fn thread_binding_error_message(error: &ThreadBindingError) -> String {
+    match error {
+        ThreadBindingError::Missing { .. } => "Missing thread binding".to_owned(),
+        ThreadBindingError::Ambiguous { .. } => "Ambiguous thread binding".to_owned(),
+        ThreadBindingError::Invalid { .. } | ThreadBindingError::Storage(_) => error.to_string(),
+    }
+}
+
+fn discord_channel_message_response(content: impl Into<String>) -> RuntimeHttpResponse {
+    json_response(
+        200,
+        serde_json::json!({
+            "type": DISCORD_CHANNEL_MESSAGE_RESPONSE_TYPE,
+            "data": {
+                "content": content.into()
+            }
+        })
+        .to_string(),
+    )
+}
+
+fn request_header<'a>(request: &'a str, expected_name: &str) -> Option<&'a str> {
+    request
+        .split("\r\n\r\n")
+        .next()?
+        .lines()
+        .skip(1)
+        .find_map(|line| {
+            let (name, value) = line.split_once(':')?;
+            if name.trim().eq_ignore_ascii_case(expected_name) {
+                Some(value.trim())
+            } else {
+                None
+            }
+        })
+}
+
+fn request_body(request: &str) -> &str {
+    request.split("\r\n\r\n").nth(1).unwrap_or_default()
 }
 
 fn handle_setup_post(
@@ -902,6 +1181,52 @@ fn text_response(status_code: u16, body: &str) -> RuntimeHttpResponse {
         content_type: "text/plain",
         body: body.to_owned(),
     }
+}
+
+fn json_response(status_code: u16, body: String) -> RuntimeHttpResponse {
+    RuntimeHttpResponse {
+        status_code,
+        content_type: "application/json",
+        body,
+    }
+}
+
+fn work_store_root_from_context(context: &RuntimeHttpContext) -> std::io::Result<PathBuf> {
+    if let Ok(config) = context.resolved_config() {
+        if config
+            .state_root
+            .file_name()
+            .is_some_and(|name| name == ".ironloom")
+        {
+            return Ok(config
+                .state_root
+                .parent()
+                .map(Path::to_path_buf)
+                .unwrap_or(config.state_root));
+        }
+        return Ok(config.state_root);
+    }
+    std::env::current_dir()
+}
+
+fn default_command_gate_executor(working_dir: &Path) -> CommandGateExecutor {
+    let mut executor = CommandGateExecutor::new(working_dir);
+    executor.allow_command(GateCommand::new(
+        DEFAULT_GATE_RUNTIME_BANNER,
+        IRONLOOM_PROGRAM,
+    ));
+    executor.allow_command(
+        GateCommand::new(DEFAULT_GATE_CARGO_FMT_CHECK, CARGO_PROGRAM)
+            .args([CARGO_FMT_SUBCOMMAND, CARGO_CHECK_FLAG]),
+    );
+    executor.allow_command(
+        GateCommand::new(DEFAULT_GATE_CARGO_TEST, CARGO_PROGRAM).args([
+            CARGO_TEST_SUBCOMMAND,
+            CARGO_WORKSPACE_FLAG,
+            CARGO_ALL_FEATURES_FLAG,
+        ]),
+    );
+    executor
 }
 
 fn html_response(status_code: u16, body: String) -> RuntimeHttpResponse {
@@ -1299,12 +1624,12 @@ Open `index.html` in a browser to run the app.
 
 #[derive(Debug, Default)]
 struct CountingGateExecutor {
-    runs: usize,
+    runs: Cell<usize>,
 }
 
 impl GateExecutor for CountingGateExecutor {
-    fn run_gate(&mut self, command: &str) -> GateResult {
-        self.runs += 1;
+    fn run_gate(&self, command: &str) -> GateResult {
+        self.runs.set(self.runs.get() + 1);
         GateResult::passed(format!("accepted command: {command}"))
     }
 }

@@ -61,6 +61,26 @@ helm upgrade --install ironloom deploy/helm/ironloom \
   --dry-run=server
 ```
 
+## 本地 k3s 验收
+
+发布或提升 chart 变更前，运行一次性本地验收配方。
+
+```sh
+just k3s-acceptance
+```
+
+该配方会构建 `ironloom:local`，启动由 Docker 支持的一次性 k3s 集群，创建 setup 和 runtime secrets，安装 Helm chart，通过 `/discord/interactions` 验证签名的 Discord ping 和命令处理，并重启 Deployment 以证明 PVC 支持的 thread 工件索引会保留。运行时默认转发到 `127.0.0.1:18081`；该端口不可用时请设置 `IRONLOOM_K3S_HTTP_PORT`。
+
+## 实时外部探测
+
+绑定真实运行时凭据后，运行外部探测以验证 GitHub 事实源读取和 SonarCloud 质量门轮询。
+
+```sh
+IRONLOOM_GITHUB_REPOSITORY=VannaDii/ironloom just external-probe
+```
+
+该命令使用与服务相同的 `IRONLOOM_*` 运行时环境值，并打印脱敏 JSON 摘要，其中包含 GitHub 仓库投影、SonarCloud 质量门状态和未解决问题数量。
+
 ## 安装或升级
 
 验证期间从本地 chart 安装，发布完成后也可以从已发布的 OCI chart 安装。

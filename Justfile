@@ -5,6 +5,7 @@ container := env_var_or_default("IRONLOOM_CONTAINER", "ironloom-local")
 http_port := env_var_or_default("IRONLOOM_HTTP_PORT", "8080")
 local_state := env_var_or_default("IRONLOOM_LOCAL_STATE", ".ironloom/local-dev")
 setup_env := local_state + "/setup.env"
+github_repository := env_var_or_default("IRONLOOM_GITHUB_REPOSITORY", "VannaDii/ironloom")
 
 default:
     @just --list
@@ -28,7 +29,15 @@ helm:
     helm lint deploy/helm/ironloom
     helm template ironloom deploy/helm/ironloom >/dev/null
 
-gates: fmt clippy test schemas docs helm
+deny:
+    cargo deny check
+
+audit:
+    cargo audit
+
+security: deny audit
+
+gates: fmt clippy test schemas docs helm security
 
 ensure-local-env:
     @mkdir -p "{{local_state}}"
@@ -100,6 +109,12 @@ proof: docker-up setup-local
       ironloom proof /var/lib/ironloom/worktrees/ironloom-proof-app
     @echo
     @echo "Proof project: {{local_state}}/worktrees/ironloom-proof-app"
+
+k3s-acceptance:
+    ./scripts/k3s-acceptance.sh
+
+external-probe:
+    cargo run -p ironloom-runtime --bin ironloom -- external-probe "{{github_repository}}"
 
 docker-logs:
     docker logs -f "{{container}}"

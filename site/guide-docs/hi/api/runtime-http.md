@@ -39,3 +39,9 @@ Config page द्वारा उपयोग किए जाने वाल�
 ## `POST /setup/discord/oauth/start`
 
 Configured application ID के लिए Discord authorization page लौटाता है। Generated URL `bot` और `applications.commands` scopes उपयोग करता है, ताकि Discord server administrator Ironloom को target server में install कर सके।
+
+## `POST /discord/interactions`
+
+`X-Signature-Ed25519` और `X-Signature-Timestamp` से signed Discord interaction webhooks accept करता है।
+
+Ping interactions Discord pong payload लौटाते हैं। Application command interactions Discord channel को operator thread की तरह resolve करते हैं, exactly one persisted work-item binding require करते हैं, selected gate worker को supervisor के माध्यम से dispatch करते हैं, artifact लिखते हैं और channel message response लौटाते हैं। Invalid signatures किसी work के run होने से पहले `401` लौटाती हैं।

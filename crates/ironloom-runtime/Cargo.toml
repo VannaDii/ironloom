@@ -13,11 +13,15 @@ name = "ironloom"
 path = "src/main.rs"
 
 [dependencies]
+ed25519-dalek.workspace = true
+hex.workspace = true
 ironloom-config = { path = "../ironloom-config", version = "0.1.0" }
 ironloom-core = { path = "../ironloom-core", version = "0.1.0" }
 ironloom-discord = { path = "../ironloom-discord", version = "0.1.0" }
 ironloom-gates = { path = "../ironloom-gates", version = "0.1.0" }
+ironloom-github = { path = "../ironloom-github", version = "0.1.0" }
 ironloom-storage = { path = "../ironloom-storage", version = "0.1.0" }
+ironloom-sonarcloud = { path = "../ironloom-sonarcloud", version = "0.1.0" }
 ironloom-supervisor = { path = "../ironloom-supervisor", version = "0.1.0" }
 serde_json.workspace = true
 thiserror.workspace = true

@@ -39,3 +39,9 @@ Returns the OpenAI OAuth setup instructions used by the config page. The resulti
 ## `POST /setup/discord/oauth/start`
 
 Returns a Discord authorization page for the configured application ID. The generated URL uses the `bot` and `applications.commands` scopes so a Discord server administrator can install Ironloom into the target server.
+
+## `POST /discord/interactions`
+
+Accepts Discord interaction webhooks signed with `X-Signature-Ed25519` and `X-Signature-Timestamp`.
+
+Ping interactions return the Discord pong payload. Application command interactions resolve the Discord channel as the operator thread, require exactly one persisted work-item binding, dispatch the selected gate worker through the supervisor, write an artifact, and return a channel message response. Invalid signatures return `401` before any work runs.

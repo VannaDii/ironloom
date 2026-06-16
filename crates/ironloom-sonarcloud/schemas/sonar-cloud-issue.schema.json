@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SonarCloudIssue",
+  "description": "Normalized SonarCloud issue.",
+  "type": "object",
+  "properties": {
+    "issue_type": {
+      "description": "SonarCloud issue type.",
+      "type": "string"
+    },
+    "key": {
+      "description": "SonarCloud issue key.",
+      "type": "string"
+    },
+    "message": {
+      "description": "Human-facing issue message.",
+      "type": "string"
+    },
+    "severity": {
+      "description": "Normalized severity.",
+      "$ref": "#/$defs/SonarCloudIssueSeverity"
+    },
+    "status": {
+      "description": "SonarCloud issue status.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "key",
+    "severity",
+    "issue_type",
+    "message",
+    "status"
+  ],
+  "$defs": {
+    "SonarCloudIssueSeverity": {
+      "description": "Normalized SonarCloud issue severity.",
+      "oneOf": [
+        {
+          "description": "Blocking severity.",
+          "type": "string",
+          "const": "blocker"
+        },
+        {
+          "description": "Critical severity.",
+          "type": "string",
+          "const": "critical"
+        },
+        {
+          "description": "Major severity.",
+          "type": "string",
+          "const": "major"
+        },
+        {
+          "description": "Minor severity.",
+          "type": "string",
+          "const": "minor"
+        },
+        {
+          "description": "Informational severity.",
+          "type": "string",
+          "const": "info"
+        },
+        {
+          "description": "Unrecognized severity.",
+          "type": "string",
+          "const": "unknown"
+        }
+      ]
+    }
+  }
+}

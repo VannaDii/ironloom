@@ -14,21 +14,23 @@ sequenceDiagram
   participant Worker as ironloom-workers
   participant Storage as ironloom-storage
 
-  Operator->>Discord: Submit thread command
-  Discord->>Runtime: Send bound request
-  Runtime->>Supervisor: Resolve route
-  Supervisor->>GitHub: Refresh source-of-truth state
-  GitHub-->>Supervisor: Current repository state
-  Supervisor->>Supervisor: Apply policy and process graph
+  Operator->>Discord: Submit slash command in thread
+  Discord->>Runtime: POST signed interaction
+  Runtime->>Runtime: Verify signature and resolve thread binding
   alt Thread binding is missing or ambiguous
-    Supervisor-->>Discord: Reject action
-    Discord-->>Operator: Explain failed binding
+    Runtime-->>Discord: Return fail-closed channel response
+    Discord-->>Operator: Explain failed binding in thread
   else Thread binding is unambiguous
-    Supervisor->>Worker: Dispatch work
+    Runtime->>Supervisor: Route thread-bound command
+    Supervisor->>GitHub: Refresh source-of-truth state
+    GitHub-->>Supervisor: Current repository state
+    Supervisor->>Supervisor: Apply policy and process graph
+    Supervisor->>Worker: Dispatch work through registry
     Worker-->>Supervisor: Return structured result
     Supervisor->>Storage: Write immutable artifact
     Storage-->>Supervisor: Artifact index updated
-    Supervisor-->>Discord: Return audited outcome
+    Supervisor-->>Runtime: Return audited outcome
+    Runtime-->>Discord: Return channel message response
     Discord-->>Operator: Reply in originating thread
   end
 ```

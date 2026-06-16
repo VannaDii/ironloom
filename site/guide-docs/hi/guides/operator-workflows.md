@@ -14,21 +14,23 @@ sequenceDiagram
   participant Worker as ironloom-workers
   participant Storage as ironloom-storage
 
-  Operator->>Discord: Thread command submit करें
-  Discord->>Runtime: Bound request भेजें
-  Runtime->>Supervisor: Route resolve करें
-  Supervisor->>GitHub: Source-of-truth state refresh करें
-  GitHub-->>Supervisor: Current repository state
-  Supervisor->>Supervisor: Policy और process graph apply करें
+  Operator->>Discord: Thread में slash command submit करें
+  Discord->>Runtime: Signed interaction POST करें
+  Runtime->>Runtime: Signature verify करें और thread binding resolve करें
   alt Thread binding missing या ambiguous है
-    Supervisor-->>Discord: Action reject करें
-    Discord-->>Operator: Failed binding explain करें
+    Runtime-->>Discord: Fail-closed channel response लौटाएं
+    Discord-->>Operator: Thread में failed binding explain करें
   else Thread binding unambiguous है
-    Supervisor->>Worker: Work dispatch करें
+    Runtime->>Supervisor: Thread-bound command route करें
+    Supervisor->>GitHub: Source-of-truth state refresh करें
+    GitHub-->>Supervisor: Current repository state
+    Supervisor->>Supervisor: Policy और process graph apply करें
+    Supervisor->>Worker: Registry के माध्यम से work dispatch करें
     Worker-->>Supervisor: Structured result लौटाएं
     Supervisor->>Storage: Immutable artifact लिखें
     Storage-->>Supervisor: Artifact index updated
-    Supervisor-->>Discord: Audited outcome लौटाएं
+    Supervisor-->>Runtime: Audited outcome लौटाएं
+    Runtime-->>Discord: Channel message response लौटाएं
     Discord-->>Operator: Originating thread में reply करें
   end
 ```

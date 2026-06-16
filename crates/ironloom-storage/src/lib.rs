@@ -20,6 +20,7 @@ const STATE_DIR: &str = ".ironloom";
 const ARTIFACTS_DIR: &str = "artifacts";
 const INDEXES_DIR: &str = "indexes";
 const THREAD_INDEX_DIR: &str = "threads";
+const THREAD_BINDINGS_INDEX_DIR: &str = "thread-bindings";
 const WORK_ITEM_INDEX_DIR: &str = "work-items";
 const TEMP_DIR: &str = "tmp";
 const SETUP_DIR: &str = "setup";
@@ -42,6 +43,34 @@ pub enum StorageError {
 
 /// Result type for storage operations.
 pub type StorageResult<T> = Result<T, StorageError>;
+
+/// Thread binding lookup errors.
+#[derive(Debug, Error)]
+pub enum ThreadBindingError {
+    /// Thread has no persisted binding.
+    #[error("missing thread binding for {thread_id}")]
+    Missing {
+        /// Discord thread identifier.
+        thread_id: String,
+    },
+    /// Thread has more than one persisted work item binding.
+    #[error("ambiguous thread binding for {thread_id}")]
+    Ambiguous {
+        /// Discord thread identifier.
+        thread_id: String,
+    },
+    /// Persisted binding contained an invalid work item identifier.
+    #[error("invalid thread binding for {thread_id}: {reason}")]
+    Invalid {
+        /// Discord thread identifier.
+        thread_id: String,
+        /// Validation failure reason.
+        reason: String,
+    },
+    /// Filesystem-backed binding lookup failed.
+    #[error(transparent)]
+    Storage(#[from] StorageError),
+}
 
 /// Errors returned by encrypted setup configuration storage.
 #[derive(Debug, Error)]
@@ -157,6 +186,7 @@ impl FilesystemStore {
         };
         fs::create_dir_all(store.artifacts_dir())?;
         fs::create_dir_all(store.thread_index_dir())?;
+        fs::create_dir_all(store.thread_bindings_index_dir())?;
         fs::create_dir_all(store.work_item_index_dir())?;
         fs::create_dir_all(store.temp_dir())?;
         Ok(store)
@@ -190,6 +220,43 @@ impl FilesystemStore {
         self.read_index(&self.work_item_index_path(work_item_id))
     }
 
+    /// Persists a Discord thread to work item binding.
+    pub fn bind_thread_to_work_item(
+        &self,
+        thread_id: &ThreadId,
+        work_item_id: &WorkItemId,
+    ) -> Result<(), ThreadBindingError> {
+        let path = self.thread_binding_path(thread_id);
+        let mut values = self.read_index(&path)?;
+        if !values.iter().any(|value| value == work_item_id.as_str()) {
+            values.push(work_item_id.as_str().to_owned());
+        }
+        fs::write(path, values.join("\n")).map_err(StorageError::from)?;
+        Ok(())
+    }
+
+    /// Resolves exactly one work item binding for a Discord thread.
+    pub fn resolve_thread_binding(
+        &self,
+        thread_id: &ThreadId,
+    ) -> Result<WorkItemId, ThreadBindingError> {
+        let values = self.read_index(&self.thread_binding_path(thread_id))?;
+        match values.as_slice() {
+            [] => Err(ThreadBindingError::Missing {
+                thread_id: thread_id.as_str().to_owned(),
+            }),
+            [work_item_id] => {
+                WorkItemId::new(work_item_id).map_err(|error| ThreadBindingError::Invalid {
+                    thread_id: thread_id.as_str().to_owned(),
+                    reason: error.to_string(),
+                })
+            }
+            _ => Err(ThreadBindingError::Ambiguous {
+                thread_id: thread_id.as_str().to_owned(),
+            }),
+        }
+    }
+
     /// Returns the state root path.
     #[must_use]
     pub fn state_root(&self) -> PathBuf {
@@ -208,6 +275,12 @@ impl FilesystemStore {
         self.state_root().join(INDEXES_DIR).join(THREAD_INDEX_DIR)
     }
 
+    fn thread_bindings_index_dir(&self) -> PathBuf {
+        self.state_root()
+            .join(INDEXES_DIR)
+            .join(THREAD_BINDINGS_INDEX_DIR)
+    }
+
     fn work_item_index_dir(&self) -> PathBuf {
         self.state_root()
             .join(INDEXES_DIR)
@@ -221,6 +294,13 @@ impl FilesystemStore {
     fn thread_index_path(&self, thread_id: &ThreadId) -> PathBuf {
         self.thread_index_dir()
             .join(format!("{}.index", safe_file_component(thread_id.as_str())))
+    }
+
+    fn thread_binding_path(&self, thread_id: &ThreadId) -> PathBuf {
+        self.thread_bindings_index_dir().join(format!(
+            "{}.binding",
+            safe_file_component(thread_id.as_str())
+        ))
     }
 
     fn work_item_index_path(&self, work_item_id: &WorkItemId) -> PathBuf {

@@ -61,6 +61,26 @@ helm upgrade --install ironloom deploy/helm/ironloom \
   --dry-run=server
 ```
 
+## Local k3s Acceptance
+
+Run the disposable local acceptance recipe before publishing or promoting chart changes.
+
+```sh
+just k3s-acceptance
+```
+
+The recipe builds `ironloom:local`, starts a disposable Docker-backed k3s cluster, creates setup and runtime secrets, installs the Helm chart, verifies signed Discord ping and command handling through `/discord/interactions`, and restarts the deployment to prove the PVC-backed thread artifact index persists. It forwards the runtime on `127.0.0.1:18081` by default; set `IRONLOOM_K3S_HTTP_PORT` when that port is unavailable.
+
+## Live External Probe
+
+After binding real runtime credentials, run the external probe to verify GitHub source-of-truth reads and SonarCloud quality gate polling.
+
+```sh
+IRONLOOM_GITHUB_REPOSITORY=VannaDii/ironloom just external-probe
+```
+
+The command uses the same `IRONLOOM_*` runtime environment values as the service and prints a redacted JSON summary of the GitHub repository projection, SonarCloud quality gate status, and unresolved issue count.
+
 ## Install Or Upgrade
 
 Install from the local chart during validation, or from the published OCI chart after release publication.

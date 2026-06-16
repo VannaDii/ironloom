@@ -59,6 +59,26 @@ helm upgrade --install ironloom deploy/helm/ironloom \
   --dry-run=server
 ```
 
+## قبول k3s المحلي
+
+شغل وصفة القبول المحلية المؤقتة قبل نشر تغييرات chart أو ترقيتها.
+
+```sh
+just k3s-acceptance
+```
+
+تبني الوصفة `ironloom:local`، وتشغل عنقود k3s مؤقتا مدعوما بـ Docker، وتنشئ أسرار setup وruntime، وتثبت Helm chart، وتتحقق من ping وأمر Discord الموقعين عبر `/discord/interactions`، ثم تعيد تشغيل Deployment لإثبات بقاء فهرس قطع thread الأثرية المدعوم بـ PVC. يعاد توجيه وقت التشغيل افتراضيا على `127.0.0.1:18081`؛ اضبط `IRONLOOM_K3S_HTTP_PORT` عندما يكون هذا المنفذ غير متاح.
+
+## probe خارجي مباشر
+
+بعد ربط بيانات اعتماد وقت التشغيل الحقيقية، شغل probe الخارجي للتحقق من قراءات GitHub كمصدر للحقيقة واستطلاع quality gate في SonarCloud.
+
+```sh
+IRONLOOM_GITHUB_REPOSITORY=VannaDii/ironloom just external-probe
+```
+
+يستخدم الأمر قيم بيئة وقت التشغيل `IRONLOOM_*` نفسها التي يستخدمها service، ويطبع ملخص JSON منقحا لإسقاط مستودع GitHub وحالة quality gate في SonarCloud وعدد المشكلات غير المحلولة.
+
 ## التثبيت أو الترقية
 
 ثبت من chart المحلي أثناء التحقق، أو من OCI chart المنشور بعد نشر الإصدار.

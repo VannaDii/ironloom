@@ -10,8 +10,11 @@ description = "GitHub source-of-truth projections for Ironloom."
 
 [dependencies]
 ironloom-core = { path = "../ironloom-core", version = "0.1.0" }
+reqwest.workspace = true
 schemars.workspace = true
 serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
 
 [lints]
 workspace = true

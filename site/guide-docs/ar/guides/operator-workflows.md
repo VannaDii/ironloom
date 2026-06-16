@@ -13,19 +13,21 @@ sequenceDiagram
   participant GitHub as GitHub
   participant Worker as العامل
   participant Storage as التخزين
-  Operator->>Discord: يرسل أمرا داخل خيط
-  Discord->>Runtime: يمرر الأمر مع سياق الخيط
-  Runtime->>Supervisor: يطلب إجراء مرتبطا بالخيط
+  Operator->>Discord: يرسل slash command داخل خيط
+  Discord->>Runtime: POST لتفاعل موقع
+  Runtime->>Runtime: يتحقق من التوقيع ويحل ربط الخيط
   alt الربط مفقود أو غامض
-    Supervisor-->>Runtime: يرفض قبل تشغيل العمال
-    Runtime-->>Discord: يرد بخطأ قابل للتدقيق
+    Runtime-->>Discord: يرجع استجابة قناة fail-closed
+    Discord-->>Operator: يشرح فشل الربط داخل الخيط
   else الربط صالح
+    Runtime->>Supervisor: يوجه أمرا مرتبطا بالخيط
     Supervisor->>GitHub: يحدث حالة مصدر الحقيقة
-    Supervisor->>Worker: يوزع العامل الذي اختاره المخطط
+    Supervisor->>Worker: يوزع العامل عبر المخطط والسجل
     Worker->>Storage: يكتب قطعة أثرية غير قابلة للتغيير
     Worker-->>Supervisor: يرجع نتيجة منظمة
     Supervisor-->>Runtime: ينشر النتيجة
-    Runtime-->>Discord: يرد على الخيط الأصلي
+    Runtime-->>Discord: يرجع استجابة رسالة قناة
+    Discord-->>Operator: يرد على الخيط الأصلي
   end
 ```
 
