@@ -69,7 +69,7 @@ helm upgrade --install ironloom deploy/helm/ironloom \
 just k3s-acceptance
 ```
 
-该配方会构建 `ironloom:local`，启动由 Docker 支持的一次性 k3s 集群，创建 setup 和 runtime secrets，安装 Helm chart，通过 `/discord/interactions` 验证签名的 Discord ping 和命令处理，并重启 Deployment 以证明 PVC 支持的 thread 工件索引会保留。运行时默认转发到 `127.0.0.1:18081`；该端口不可用时请设置 `IRONLOOM_K3S_HTTP_PORT`。
+该配方会构建 `ironloom:local`，启动由 Docker 支持的一次性 k3s 集群，创建 setup 和 runtime secrets，安装 Helm chart，通过 `/discord/interactions` 验证签名的 Discord ping 和命令处理，并重启 Deployment 以证明 PVC 支持的 thread 工件索引会保留。运行时默认转发到 `127.0.0.1:18081`；该端口不可用时请设置 `IRONLOOM_K3S_HTTP_PORT`。本地镜像构建默认使用 host networking；如需使用 Docker 默认构建网络，请设置 `IRONLOOM_DOCKER_BUILD_NETWORK=default`。
 
 ## 实时外部探测
 

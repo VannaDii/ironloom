@@ -69,7 +69,7 @@ Run the disposable local acceptance recipe before publishing or promoting chart 
 just k3s-acceptance
 ```
 
-The recipe builds `ironloom:local`, starts a disposable Docker-backed k3s cluster, creates setup and runtime secrets, installs the Helm chart, verifies signed Discord ping and command handling through `/discord/interactions`, and restarts the deployment to prove the PVC-backed thread artifact index persists. It forwards the runtime on `127.0.0.1:18081` by default; set `IRONLOOM_K3S_HTTP_PORT` when that port is unavailable.
+The recipe builds `ironloom:local`, starts a disposable Docker-backed k3s cluster, creates setup and runtime secrets, installs the Helm chart, verifies signed Discord ping and command handling through `/discord/interactions`, and restarts the deployment to prove the PVC-backed thread artifact index persists. It forwards the runtime on `127.0.0.1:18081` by default; set `IRONLOOM_K3S_HTTP_PORT` when that port is unavailable. Local image builds use host networking by default; set `IRONLOOM_DOCKER_BUILD_NETWORK=default` to use Docker's default build network instead.
 
 ## Live External Probe
 

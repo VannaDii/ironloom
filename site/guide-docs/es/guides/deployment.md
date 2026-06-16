@@ -67,7 +67,7 @@ Ejecuta la receta de aceptación local desechable antes de publicar o promover c
 just k3s-acceptance
 ```
 
-La receta construye `ironloom:local`, inicia un cluster k3s desechable respaldado por Docker, crea secretos de setup y runtime, instala el chart Helm, verifica ping y comando firmados de Discord mediante `/discord/interactions`, y reinicia el Deployment para probar que el índice de artefactos por thread respaldado por PVC persiste. Reenvía el runtime en `127.0.0.1:18081` de forma predeterminada; usa `IRONLOOM_K3S_HTTP_PORT` cuando ese puerto no esté disponible.
+La receta construye `ironloom:local`, inicia un cluster k3s desechable respaldado por Docker, crea secretos de setup y runtime, instala el chart Helm, verifica ping y comando firmados de Discord mediante `/discord/interactions`, y reinicia el Deployment para probar que el índice de artefactos por thread respaldado por PVC persiste. Reenvía el runtime en `127.0.0.1:18081` de forma predeterminada; usa `IRONLOOM_K3S_HTTP_PORT` cuando ese puerto no esté disponible. Las builds locales de imagen usan la red del host de forma predeterminada; define `IRONLOOM_DOCKER_BUILD_NETWORK=default` para usar la red de build predeterminada de Docker.
 
 ## Probe externo en vivo
 

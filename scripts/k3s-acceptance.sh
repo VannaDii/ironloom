@@ -94,7 +94,7 @@ cd "${ROOT_DIR}"
 mkdir -p "${STATE_DIR}"
 
 echo "Building ${IMAGE}"
-docker build -f docker/ironloom-runtime/Dockerfile -t "${IMAGE}" .
+IRONLOOM_IMAGE="${IMAGE}" ./scripts/docker-build-runtime.sh
 
 echo "Starting disposable k3s container ${K3S_CONTAINER}"
 docker rm -f "${K3S_CONTAINER}" >/dev/null 2>&1 || true

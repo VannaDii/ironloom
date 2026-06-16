@@ -73,6 +73,8 @@ just proof
 
 The recipe writes the generated setup key and installer token to `.ironloom/local-dev/setup.env`, stores encrypted setup state under `.ironloom/local-dev/state`, and writes the generated proof app under `.ironloom/local-dev/worktrees/ironloom-proof-app`. Run `just setup-url` to print the setup URL and installer token for manual setup testing. Run `just docker-stop` when you are done inspecting the local container.
 
+Local image builds use host networking by default so Docker Desktop DNS issues do not block Cargo dependency downloads. Set `IRONLOOM_DOCKER_BUILD_NETWORK=default` to use Docker's default build network instead.
+
 ## Local k3s Acceptance
 
 Use the disposable k3s acceptance recipe before publishing or promoting chart changes:
@@ -98,7 +100,7 @@ The command uses the same `IRONLOOM_*` runtime environment values as the service
 Build the runtime image:
 
 ```sh
-docker build -f docker/ironloom-runtime/Dockerfile -t ironloom:local .
+./scripts/docker-build-runtime.sh
 ```
 
 Render the chart:

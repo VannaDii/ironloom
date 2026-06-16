@@ -23,6 +23,7 @@ schemas:
     cargo run -p ironloom-schemas -- --check
 
 scripts-test:
+    bash tests/scripts/docker_build_runtime_test.sh
     bash tests/scripts/sonarcloud_project_bootstrap_test.sh
     bash tests/scripts/sonar_project_properties_test.sh
     bash tests/scripts/sonarcloud_quality_gate_report_test.sh
@@ -59,7 +60,7 @@ ensure-local-env:
     fi
 
 docker-build:
-    docker build -f docker/ironloom-runtime/Dockerfile -t "{{image}}" .
+    IRONLOOM_IMAGE="{{image}}" ./scripts/docker-build-runtime.sh
 
 docker-up: docker-build ensure-local-env
     @mkdir -p "{{local_state}}/state" "{{local_state}}/worktrees"
