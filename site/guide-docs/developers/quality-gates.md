@@ -30,4 +30,5 @@ helm template ironloom deploy/helm/ironloom
 - Helm publishes `deploy/helm/ironloom` as an OCI chart.
 - GitHub Pages publishes the VitePress public site.
 - SonarCloud receives Rust LCOV coverage from `cargo llvm-cov` and a generated Clippy JSON report from the same lint command enforced by CI.
-- The `SONAR_TOKEN` secret must be able to submit analysis and read the `vannadii_ironloom` quality gate; a token with analyze-only access can upload reports but cannot satisfy the hard gate wait.
+- CI verifies the `vannadii_ironloom` SonarCloud project before scanning and creates it when SonarCloud returns 404.
+- The `SONAR_TOKEN` secret must be able to create/read the project, submit analysis, and read the quality gate; a token with analyze-only access can upload reports but cannot satisfy the bootstrap or hard gate wait.

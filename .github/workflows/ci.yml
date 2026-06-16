@@ -132,6 +132,14 @@ jobs:
           mkdir -p target/sonar
           cargo clippy --workspace --all-targets --all-features --message-format=json -- -D warnings > target/sonar/clippy.json
 
+      - name: Bootstrap SonarCloud project
+        if:
+          github.event_name != 'pull_request' || github.event.pull_request.user.login
+          != 'dependabot[bot]'
+        run: scripts/sonarcloud-project-bootstrap.sh
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
       - name: Sonar Scan
         if:
           github.event_name != 'pull_request' || github.event.pull_request.user.login
