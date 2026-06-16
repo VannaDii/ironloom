@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CheckRunConclusion",
+  "description": "Normalized GitHub check-run conclusion.",
+  "oneOf": [
+    {
+      "description": "Check run succeeded.",
+      "type": "string",
+      "const": "success"
+    },
+    {
+      "description": "Check run failed.",
+      "type": "string",
+      "const": "failure"
+    },
+    {
+      "description": "Check run was cancelled.",
+      "type": "string",
+      "const": "cancelled"
+    },
+    {
+      "description": "Check run was skipped.",
+      "type": "string",
+      "const": "skipped"
+    },
+    {
+      "description": "Check run timed out.",
+      "type": "string",
+      "const": "timed_out"
+    },
+    {
+      "description": "Check run requires action.",
+      "type": "string",
+      "const": "action_required"
+    },
+    {
+      "description": "Check run completed neutrally.",
+      "type": "string",
+      "const": "neutral"
+    },
+    {
+      "description": "Check run is stale.",
+      "type": "string",
+      "const": "stale"
+    },
+    {
+      "description": "GitHub returned an unrecognized conclusion.",
+      "type": "string",
+      "const": "unknown"
+    }
+  ]
+}

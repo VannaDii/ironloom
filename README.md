@@ -7,7 +7,7 @@ Ironloom is a Rust supervisor runtime for auditable autonomous engineering opera
 - `crates/ironloom-runtime`: deployable binary and health/readiness server.
 - `crates/ironloom-supervisor`: process graph route selection and registry-backed worker dispatch.
 - `crates/ironloom-discord`: thread-aware operator adapter and signed interaction intake.
-- `crates/ironloom-github`: GitHub source-of-truth API reads, HTTP transport, and repository projections.
+- `crates/ironloom-github`: GitHub source-of-truth API reads, HTTP transport, and repository, pull request, and check-run projections.
 - `crates/ironloom-sonarcloud`: SonarCloud bootstrap, HTTP transport, quality gate polling, and issue normalization contracts.
 - `crates/ironloom-storage`: `.ironloom` filesystem-backed state, artifact indexes, encrypted setup config, and thread bindings.
 - `site/guide-docs`: VitePress public landing page, guides, developer docs, LLM output, and API docs.

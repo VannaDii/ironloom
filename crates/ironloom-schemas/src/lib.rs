@@ -10,7 +10,10 @@ use ironloom_core::{
 };
 use ironloom_discord::DiscordCommand;
 use ironloom_gates::{GateResult, GateStatus};
-use ironloom_github::RepositoryProjection;
+use ironloom_github::{
+    CheckRunConclusion, CheckRunProjection, CheckRunStatus, PullRequestProjection,
+    RepositoryProjection,
+};
 use ironloom_observability::AuditRecord;
 use ironloom_policy::{ActionKind, PolicyContext, PolicyDecision};
 use ironloom_process_graph::{ProcessGraph, ProcessNode, RetryPolicy, Transition};
@@ -98,6 +101,16 @@ fn schema_files() -> SchemaResult<Vec<SchemaFile>> {
         schema::<GateResult>("crates/ironloom-gates/schemas/gate-result.schema.json")?,
         schema::<RepositoryProjection>(
             "crates/ironloom-github/schemas/repository-projection.schema.json",
+        )?,
+        schema::<PullRequestProjection>(
+            "crates/ironloom-github/schemas/pull-request-projection.schema.json",
+        )?,
+        schema::<CheckRunStatus>("crates/ironloom-github/schemas/check-run-status.schema.json")?,
+        schema::<CheckRunConclusion>(
+            "crates/ironloom-github/schemas/check-run-conclusion.schema.json",
+        )?,
+        schema::<CheckRunProjection>(
+            "crates/ironloom-github/schemas/check-run-projection.schema.json",
         )?,
         schema::<AuditRecord>("crates/ironloom-observability/schemas/audit-record.schema.json")?,
         schema::<ActionKind>("crates/ironloom-policy/schemas/action-kind.schema.json")?,

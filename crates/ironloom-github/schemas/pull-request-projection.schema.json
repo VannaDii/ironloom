@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PullRequestProjection",
+  "description": "Source-of-truth GitHub pull request projection.",
+  "type": "object",
+  "properties": {
+    "base_branch": {
+      "description": "Pull request base branch.",
+      "type": "string"
+    },
+    "draft": {
+      "description": "Whether GitHub marks the pull request as draft.",
+      "type": "boolean"
+    },
+    "head_branch": {
+      "description": "Pull request head branch.",
+      "type": "string"
+    },
+    "mergeable": {
+      "description": "GitHub mergeability value. `None` means GitHub has not computed it yet.",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "mergeable_state": {
+      "description": "GitHub mergeability state string.",
+      "type": "string"
+    },
+    "number": {
+      "description": "Pull request number.",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0
+    },
+    "repository": {
+      "description": "GitHub repository slug.",
+      "$ref": "#/$defs/RepositorySlug"
+    },
+    "source_of_truth": {
+      "description": "Whether the value came directly from GitHub instead of local cache.",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "repository",
+    "number",
+    "head_branch",
+    "base_branch",
+    "draft",
+    "mergeable_state",
+    "source_of_truth"
+  ],
+  "$defs": {
+    "RepositorySlug": {
+      "description": "Validated `owner/repository` GitHub repository slug.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

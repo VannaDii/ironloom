@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CheckRunStatus",
+  "description": "Normalized GitHub check-run status.",
+  "oneOf": [
+    {
+      "description": "Check run is queued.",
+      "type": "string",
+      "const": "queued"
+    },
+    {
+      "description": "Check run is running.",
+      "type": "string",
+      "const": "in_progress"
+    },
+    {
+      "description": "Check run completed.",
+      "type": "string",
+      "const": "completed"
+    },
+    {
+      "description": "GitHub returned an unrecognized status.",
+      "type": "string",
+      "const": "unknown"
+    }
+  ]
+}

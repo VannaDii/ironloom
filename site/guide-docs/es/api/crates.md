@@ -17,6 +17,6 @@ Ironloom mantiene estrictas las responsabilidades de cada crate para que la orqu
 | `ironloom-workers` | Envoltorios de solicitud/respuesta y registro de workers en proceso. |
 | `ironloom-supervisor` | Selección de rutas del process graph y despacho de workers mediante registro. |
 | `ironloom-discord` | Adaptador de operador consciente de hilos con verificación de interacciones HTTP firmadas. |
-| `ironloom-github` | Solicitudes API de GitHub como fuente de verdad, transporte HTTP y proyecciones de repositorio. |
+| `ironloom-github` | Solicitudes API de GitHub como fuente de verdad, transporte HTTP y proyecciones de repositorio, pull request y check-runs. |
 | `ironloom-sonarcloud` | Bootstrap de SonarCloud, transporte HTTP, polling de quality gate y normalización de issues. |
 | `ironloom-runtime` | Composición del servicio, health, readiness y superficie HTTP de configuración inicial. |

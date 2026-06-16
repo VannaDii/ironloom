@@ -17,6 +17,6 @@ Ironloom crate responsibilities को strict रखता है ताकि r
 | `ironloom-workers` | Worker request/response envelopes और in-process worker registry. |
 | `ironloom-supervisor` | Process graph route selection और registry-backed worker dispatch. |
 | `ironloom-discord` | Signed HTTP interaction verification वाला thread-aware operator adapter. |
-| `ironloom-github` | GitHub source-of-truth API requests, HTTP transport और repository projections. |
+| `ironloom-github` | GitHub source-of-truth API requests, HTTP transport, और repository, pull request, तथा check-run projections. |
 | `ironloom-sonarcloud` | SonarCloud bootstrap, HTTP transport, quality gate polling और issue normalization. |
 | `ironloom-runtime` | Service composition, health, readiness और first-run setup HTTP surface. |

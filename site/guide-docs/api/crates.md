@@ -17,6 +17,6 @@ Ironloom keeps crate responsibilities strict so runtime orchestration stays sepa
 | `ironloom-workers` | Worker request/response envelopes and the in-process worker registry. |
 | `ironloom-supervisor` | Process graph route selection and registry-backed worker dispatch. |
 | `ironloom-discord` | Thread-aware operator adapter with signed HTTP interaction verification. |
-| `ironloom-github` | GitHub source-of-truth API requests, HTTP transport, and repository projections. |
+| `ironloom-github` | GitHub source-of-truth API requests, HTTP transport, and repository, pull request, and check-run projections. |
 | `ironloom-sonarcloud` | SonarCloud bootstrap, HTTP transport, quality gate polling, and issue normalization. |
 | `ironloom-runtime` | Service composition, health, readiness, and first-run setup HTTP surface. |
