@@ -32,5 +32,6 @@ helm template ironloom deploy/helm/ironloom
 - GitHub Pages VitePress public site publish करता है।
 - SonarCloud को `cargo llvm-cov` से Rust LCOV coverage और CI द्वारा enforce किए गए उसी lint command से generated Clippy JSON report मिलती है।
 - SonarCloud docs-site files analyze करता है, लेकिन उन्हें coverage accounting से exclude करता है ताकि Rust LCOV quality gate signal बना रहे।
+- SonarCloud gate fail होने पर CI workflow log में authenticated gate status और हर condition print करता है।
 - CI scan से पहले `vannadii_ironloom` SonarCloud project verify करता है, SonarCloud 404 लौटाए तो उसे create करता है, और SonarCloud main branch को GitHub default branch से align करता है। अगर target नाम वाली stale non-main branch पहले से मौजूद हो, तो CI SonarCloud main branch rename करने से पहले उस branch को delete करता है और result verify करता है।
 - `SONAR_TOKEN` secret project create/read करने, analysis submit करने, और quality gate read करने में सक्षम होना चाहिए; analyze-only token reports upload कर सकता है, लेकिन bootstrap या hard gate wait पूरा नहीं कर सकता।

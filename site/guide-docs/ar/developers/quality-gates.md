@@ -32,5 +32,6 @@ helm template ironloom deploy/helm/ironloom
 - ينشر GitHub Pages موقع VitePress العام.
 - يتلقى SonarCloud تغطية Rust LCOV من `cargo llvm-cov` وتقرير Clippy JSON مولدا من أمر lint نفسه الذي يفرضه CI.
 - يحلل SonarCloud ملفات موقع الوثائق، لكنه يستبعدها من حساب التغطية حتى تبقى Rust LCOV إشارة quality gate.
+- عندما تفشل بوابة SonarCloud، يطبع CI حالة البوابة المصادق عليها وكل شرط في سجل workflow.
 - يتحقق CI من مشروع SonarCloud `vannadii_ironloom` قبل الفحص، وينشئه عندما يعيد SonarCloud الحالة 404، ويطابق الفرع الرئيسي في SonarCloud مع الفرع الافتراضي في GitHub. إذا كان فرع غير رئيسي قديم بالاسم الهدف موجودا بالفعل، يحذفه CI قبل إعادة تسمية الفرع الرئيسي في SonarCloud ويتحقق من النتيجة.
 - يجب أن يتمكن سر `SONAR_TOKEN` من إنشاء/قراءة المشروع وإرسال التحليل وقراءة quality gate؛ فالرمز الذي يملك صلاحية التحليل فقط يمكنه رفع التقارير لكنه لا يستطيع إكمال bootstrap أو انتظار البوابة الصارم.
