@@ -56,15 +56,17 @@ Before asking a similar question, consult applicable prior answers. Remind the o
 
 Persist lessons in PostgreSQL with stable IDs and provenance identifying the originating project, assignment, and source interaction or work. Retention is independent of worktree/artifact cleanup: completing or cleaning up an assignment does not delete its lessons or require a retention question. Authorized explicit deletion remains available. Keep recorded operator answers distinguishable from worker-derived lessons; a lesson does not become approval or override an instruction merely because it is stored or shared.
 
-The operator configures lesson handling through three modes:
+The operator must explicitly choose the default lesson-handling mode during first-time setup. Setup remains incomplete until that choice is saved; do not silently select a mode. This setting controls broader sharing and later management, not whether lessons apply locally. In every mode, lessons apply directly and immediately within their originating project and assignment, subject to explicit per-lesson restrictions and existing permissions. Notify affected active workers of new applicable lessons and include them at the next model/tool decision boundary; no completion or review step is required, and already-dispatched inference cannot be retroactively changed.
+
+The three modes are:
 
 | Mode | Behavior |
 | --- | --- |
 | Keep lessons across projects | New lessons are shared for reuse across projects and assignments within the installation, subject to the configured sharing authority. |
-| Keep lessons isolated to projects | New lessons remain available within their originating project. |
-| Track all; decide later | Store new lessons for review without automatically making them reusable context; the operator chooses their scope later. |
+| Keep lessons isolated to projects | Apply new lessons immediately within their originating project and assignment, without automatic cross-project sharing. |
+| Track all; decide later | Apply new lessons immediately within their originating project and assignment; retain them for the operator to promote or prune later. Do not automatically share across projects. |
 
-Explicit per-lesson decisions take precedence over the configured mode. Record the selected scope on each lesson; changing the mode governs new lessons and does not silently broaden previously restricted records. Configuring automatic sharing requires authority to share the affected lessons; an otherwise unauthorized lesson stays restricted for review. No mode requires the operator to answer a new question at every assignment completion.
+Explicit per-lesson decisions take precedence over the configured mode. Record the selected scope on each lesson; changing the mode governs new lessons and does not silently broaden previously restricted records. Configuring automatic sharing requires authority to share the affected lessons; a lesson that cannot be shared stays within its authorized local scope and still applies there immediately. No mode requires the operator to answer a new question at every assignment completion.
 
 The Flutter interface supports reviewing and managing lessons, showing origin, content, and current scope. Authorized users can delete a lesson, sequester it to a project or assignment, or promote it to an installation-shared lesson visible to all projects and assignments. Enforce view/manage/share permissions through OpenFGA. Sharing a lesson grants access to its approved content, not automatically to private source conversations, files, or credentials. Preserve origin references without exposing inaccessible source content.
 
@@ -91,6 +93,7 @@ Save setup progress and show every remaining required step with its status, reas
 - Connect chosen inference credentials and any model-source account needed for downloads.
 - Assign models and applicable reasoning effort to each enabled role.
 - Confirm the proposed delivery mode or explicitly choose another permitted mode.
+- Explicitly select and save the default lesson-handling mode: share across projects, isolate to projects, or track all for later promotion/pruning. Missing selection blocks setup completion and execution readiness, while web/setup and infrastructure endpoints remain available.
 - Complete native remote-host connection setup when enabling that connection.
 
 Requirements depend on configuration: OAuth-backed inference does not require an API key; remote-only inference does not require a GPU; public downloads do not require unnecessary source accounts. Preserve encrypted credentials, environment precedence, and existing setup-key protections. Do not expose secrets to browsers or worker prompts.
@@ -289,7 +292,7 @@ The agreed delivery split is primary build-out without inference runs on Cinder 
 
 ### 1. Shared contracts before parallel implementation
 
-Resolve the decisions required for the affected work below and establish one shared baseline. Cinder owns common domain/storage/service contracts; Ivy owns transport/provider mapping against them. Agree exact new module/crate paths before concurrent edits. Define operator/project authority, plan and instruction revisions, assignment/worker lifecycle, persisted commands and replayable events, streaming inference/tool requests, cancellation, usage, lesson provenance/handling mode/scope and management permissions, and GPU-engine lifecycle through public Rust contracts and their schemas. Use the selected HTTP/SSE and PostgreSQL stack and choose migrations once; do not let each lane invent its own session or approval model.
+Resolve the decisions required for the affected work below and establish one shared baseline. Cinder owns common domain/storage/service contracts; Ivy owns transport/provider mapping against them. Agree exact new module/crate paths before concurrent edits. Define operator/project authority, plan and instruction revisions, assignment/worker lifecycle, persisted commands and replayable events, streaming inference/tool requests, cancellation, usage, lesson provenance/required setup mode/scope, immediate local propagation, and management permissions, and GPU-engine lifecycle through public Rust contracts and their schemas. Use the selected HTTP/SSE and PostgreSQL stack and choose migrations once; do not let each lane invent its own session or approval model.
 
 Map the existing native-host protocol to these contracts early, using deterministic responses and the working VM setup as the reference. Check session visibility, input, questions/approvals, cancellation, and reconnect without model calls. If the upstream transport imposes a constraint on the shared contracts, resolve it before dependent work is split. This does not reopen whether native remote hosts exist.
 
