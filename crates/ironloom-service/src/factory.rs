@@ -467,6 +467,20 @@ pub trait FactoryService: Send + Sync {
         session: AuthenticatedSession,
         request: NativeConnectionCommand,
     ) -> BoxFuture<'_, Result<NativeConnectionState, ServiceError>>;
+    /// Lists authorized persisted model inventory and independent transfer/integrity/availability state.
+    /// Byte completion is never promoted to verified installation. Private source access stays separate.
+    fn inventory(
+        &self,
+        session: AuthenticatedSession,
+        query: ModelInventoryQuery,
+    ) -> BoxFuture<'_, Result<ModelInventoryPage, ServiceError>>;
+    /// Computes metadata/capability/resource assessments for configured engine placements.
+    /// Unknown facts stay unknown; no load, warm-up or inference probe is permitted.
+    fn assess_model(
+        &self,
+        session: AuthenticatedSession,
+        query: ModelAssessmentQuery,
+    ) -> BoxFuture<'_, Result<Vec<EngineAssessment>, ServiceError>>;
     /// Authorized metadata-only source browsing; continuation is scoped to query and source account.
     fn source_search(
         &self,
@@ -1368,12 +1382,12 @@ NativeConnectionState, NativeConnectionStateData {
     if let Some(enrollment) = &value.enrollment
         && (enrollment.node_id != value.node_id
             || enrollment.authentication_generation != value.generation)
-        {
-            return Err(ValidationErrors::field(
-                "enrollment",
-                "connection_binding_mismatch",
-            ));
-        }
+    {
+        return Err(ValidationErrors::field(
+            "enrollment",
+            "connection_binding_mismatch",
+        ));
+    }
     Ok(())
 }
 }
@@ -1410,6 +1424,167 @@ DownloadCommand, DownloadCommandData {
             "download_id",
             "download_identity_mismatch",
         ));
+    }
+    Ok(())
+}
+}
+ironloom_core::contract! {
+/// Validated factory record.
+ModelAssessmentQuery, ModelAssessmentQueryData {
+    /// Optional authorized project context for profiles/source access.
+    project_id: Option<ProjectId>,
+    /// Selected source repository from the model card.
+    repository_id: ActorId,
+    /// Exact source revision, not an implicit latest selection.
+    revision: ActorId,
+    /// Optional human-selected profile; its bindings restrict placements.
+    profile_id: Option<ModelProfileId>,
+    /// Optional explicit engine/version/backend filter; absence evaluates configured candidates.
+    engine: Option<ironloom_models::factory::EngineIdentity>,
+    /// Explicit context assumption for cache/runtime memory estimates.
+    context_tokens: Counter,
+    /// Explicit concurrent demand assumption.
+    concurrency: Counter,
+} |value| {
+    let _ = value;
+    positive("context_tokens", value.context_tokens)?;
+    positive("concurrency", value.concurrency)
+}
+}
+ironloom_core::contract! {
+/// Validated factory record.
+EngineAssessment, EngineAssessmentData {
+    /// Exact candidate engine/version/backend/configuration identity.
+    engine: ironloom_models::factory::EngineIdentity,
+    /// Canonical matching device/group observations; no ordinal-based duplicate pools.
+    devices: Vec<ironloom_models::factory::DeviceResourceObservation>,
+    /// Compatibility constraints, demand components and estimation assumptions.
+    requirements: ironloom_models::factory::EngineRequirements,
+    /// Compatibility, full demand estimate, fit after safe idle eviction and actual backend qualification remain distinct.
+    fit: ironloom_models::factory::ModelFit,
+} |value| {
+    let _ = value;
+    if value.requirements.compatibility != value.fit.compatibility {
+        return Err(ValidationErrors::field(
+            "fit.compatibility",
+            "assessment_compatibility_mismatch",
+        ));
+    }
+    let ids = value
+        .devices
+        .iter()
+        .map(|device| &device.device_id)
+        .collect::<std::collections::BTreeSet<_>>();
+    if ids.len() != value.devices.len() {
+        return Err(ValidationErrors::field("devices", "duplicate_device"));
+    }
+    if value.fit.fits_after_idle_eviction.is_some()
+        && (value.devices.is_empty() || value.fit.estimated_bytes.is_none())
+    {
+        return Err(ValidationErrors::field(
+            "fit.fits_after_idle_eviction",
+            "device_and_demand_required",
+        ));
+    }
+    Ok(())
+}
+}
+/// Server-owned installation integrity result independent from transfer progress or engine qualification.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ModelVerification {
+    /// Integrity has not been verified, even when transfer bytes are complete.
+    Pending,
+    /// All required files were checked and bound to the persisted checkpoint manifest hash.
+    Verified,
+    /// Integrity validation failed; the installation cannot be used.
+    Failed,
+}
+ironloom_core::contract! {
+/// Validated factory record.
+ModelInventoryQuery, ModelInventoryQueryData {
+    /// Optional authorized project context for private source access.
+    project_id: Option<ProjectId>,
+    /// Opaque stable inventory continuation.
+    after: Option<ActorId>,
+    /// Bounded page size.
+    limit: Counter,
+    /// Original publisher filter.
+    publisher: Option<ActorId>,
+    /// Hosting/source filter.
+    host: Option<ActorId>,
+    /// Optional integrity-state filter, independent of byte completion.
+    verification: Option<ModelVerification>,
+} |value| {
+    let _ = value;
+    positive("limit", value.limit)?;
+    if value.limit.get() > MAX_SESSION_PAGE {
+        return Err(ValidationErrors::field("limit", "page_too_large"));
+    }
+    Ok(())
+}
+}
+ironloom_core::contract! {
+/// Validated factory record.
+ModelInventoryItem, ModelInventoryItemData {
+    /// Stable service-owned inventory identity.
+    inventory_id: ActorId,
+    /// Pinned publisher/host/revision/license/source provenance.
+    model: ironloom_models::factory::ModelCard,
+    /// Associated resumable transfer, if one exists.
+    download_id: Option<ActorId>,
+    /// Owned transfer completion, not inferred solely from matching byte counters.
+    transfer_complete: bool,
+    /// Independent server-owned integrity state.
+    verification: ModelVerification,
+    /// Checkpoint file-hash manifest, not repository revision or engine identity.
+    verified_manifest_hash: Option<ActorId>,
+    /// Time of successful verification; unavailable for pending/failed state.
+    verified_at_ms: Option<Counter>,
+    /// Current shared model files are available; metadata remains when storage is unavailable.
+    storage_available: bool,
+} |value| {
+    let _ = value;
+    let verified = value.verification == ModelVerification::Verified;
+    if verified && !value.transfer_complete {
+        return Err(ValidationErrors::field(
+            "transfer_complete",
+            "verification_requires_completed_transfer",
+        ));
+    }
+    if verified != value.verified_manifest_hash.is_some()
+        || verified != value.verified_at_ms.is_some()
+    {
+        return Err(ValidationErrors::field(
+            "verified_manifest_hash",
+            "verification_manifest_required_only",
+        ));
+    }
+    if let Some(time) = value.verified_at_ms {
+        positive("verified_at_ms", time)?;
+    }
+    Ok(())
+}
+}
+ironloom_core::contract! {
+/// Validated factory record.
+ModelInventoryPage, ModelInventoryPageData {
+    /// Authorized inventory records, including unavailable or unverified entries.
+    models: Vec<ModelInventoryItem>,
+    /// Next inventory continuation; None means exhausted.
+    next_after: Option<ActorId>,
+} |value| {
+    let _ = value;
+    if value.models.len() > MAX_SESSION_PAGE as usize {
+        return Err(ValidationErrors::field("models", "page_too_large"));
+    }
+    let unique = value
+        .models
+        .iter()
+        .map(|model| &model.inventory_id)
+        .collect::<std::collections::BTreeSet<_>>();
+    if unique.len() != value.models.len() {
+        return Err(ValidationErrors::field("models", "duplicate_inventory_id"));
     }
     Ok(())
 }

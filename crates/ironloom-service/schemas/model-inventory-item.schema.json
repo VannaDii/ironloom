@@ -1,0 +1,282 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/ModelInventoryItemData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Counter": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Canonical decimal u64; semantic validation also enforces u64 maximum.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "ModelCardData": {
+      "description": "Unchecked construction draft for `ModelCard`; validate before use.",
+      "type": "object",
+      "properties": {
+        "architecture": {
+          "description": "Unknown when unavailable.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "context_tokens": {
+          "description": "Source-declared context bound when known; not backend qualification.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Counter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "format": {
+          "description": "Known weights format.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "model_id": {
+          "description": "Model identity within its source.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "quantization": {
+          "description": "Known weight quantization.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "repository_id": {
+          "description": "Stable source repository identity used by metadata/download operations.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "source": {
+          "description": "Publisher/host/revision/license/access provenance.",
+          "$ref": "#/$defs/Validated2"
+        },
+        "weight_bytes": {
+          "description": "Download/weights size when known.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Counter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "repository_id",
+        "model_id",
+        "source"
+      ]
+    },
+    "ModelInventoryItemData": {
+      "description": "Unchecked construction draft for `ModelInventoryItem`; validate before use.",
+      "type": "object",
+      "properties": {
+        "download_id": {
+          "description": "Associated resumable transfer, if one exists.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "inventory_id": {
+          "description": "Stable service-owned inventory identity.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "model": {
+          "description": "Pinned publisher/host/revision/license/source provenance.",
+          "$ref": "#/$defs/Validated"
+        },
+        "storage_available": {
+          "description": "Current shared model files are available; metadata remains when storage is unavailable.",
+          "type": "boolean"
+        },
+        "transfer_complete": {
+          "description": "Owned transfer completion, not inferred solely from matching byte counters.",
+          "type": "boolean"
+        },
+        "verification": {
+          "description": "Independent server-owned integrity state.",
+          "$ref": "#/$defs/ModelVerification"
+        },
+        "verified_at_ms": {
+          "description": "Time of successful verification; unavailable for pending/failed state.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Counter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "verified_manifest_hash": {
+          "description": "Checkpoint file-hash manifest, not repository revision or engine identity.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "inventory_id",
+        "model",
+        "transfer_complete",
+        "verification",
+        "storage_available"
+      ]
+    },
+    "ModelSourceData": {
+      "description": "Unchecked construction draft for `ModelSource`; validate before use.",
+      "type": "object",
+      "properties": {
+        "access": {
+          "description": "Current source-specific access.",
+          "$ref": "#/$defs/SourceAccess"
+        },
+        "checksum": {
+          "description": "Verified download/manifest hash.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "host": {
+          "description": "Hosting hub/distribution.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "license": {
+          "description": "License metadata; not automatic acceptance.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "publisher": {
+          "description": "Original publisher distinct from host.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "repository_url": {
+          "description": "Human access and license page.",
+          "type": "string"
+        },
+        "revision": {
+          "description": "Exact source revision.",
+          "$ref": "#/$defs/ActorId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "publisher",
+        "host",
+        "repository_url",
+        "revision",
+        "access"
+      ]
+    },
+    "ModelVerification": {
+      "description": "Server-owned installation integrity result independent from transfer progress or engine qualification.",
+      "oneOf": [
+        {
+          "description": "Integrity has not been verified, even when transfer bytes are complete.",
+          "type": "string",
+          "const": "pending"
+        },
+        {
+          "description": "All required files were checked and bound to the persisted checkpoint manifest hash.",
+          "type": "string",
+          "const": "verified"
+        },
+        {
+          "description": "Integrity validation failed; the installation cannot be used.",
+          "type": "string",
+          "const": "failed"
+        }
+      ]
+    },
+    "SourceAccess": {
+      "description": "Source access distinct from compatibility/fit/qualification.",
+      "oneOf": [
+        {
+          "description": "Download permitted subject to current access recheck.",
+          "type": "string",
+          "const": "accessible"
+        },
+        {
+          "description": "Connect source account.",
+          "type": "string",
+          "const": "authentication_required"
+        },
+        {
+          "description": "Human follows repository link to request access.",
+          "type": "string",
+          "const": "terms_required"
+        },
+        {
+          "description": "Recheck access; download stays disabled.",
+          "type": "string",
+          "const": "awaiting_approval"
+        },
+        {
+          "description": "Access denied or revoked.",
+          "type": "string",
+          "const": "denied"
+        }
+      ]
+    },
+    "Validated": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/ModelCardData"
+    },
+    "Validated2": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/ModelSourceData"
+    }
+  }
+}

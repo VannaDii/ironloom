@@ -36,3 +36,7 @@ Ironloom is unreleased: fresh-schema initialization only, with no old-version co
 `FactoryService::create_conversation` persists an empty authorized conversation before native turn/start, with durable command identity and a zero-cursor snapshot. It submits no input or inference; user input remains nonblank.
 
 Shared service and native enrollment contracts now live in `ironloom-service::factory`; runtime and native adapters depend on this common crate, without old import re-exports. Snapshots include the active assignment for reconnect controls. Project, credential, native-connection and source/download API records are explicit; model profiles save generation controls through configuration.
+
+`POST /api/v1/models/assessments` returns typed engine/version/backend and canonical device placement assessments, with requirement assumptions, memory fit and actual qualification separate. Missing information stays unknown; assessment never loads or runs a model.
+
+`GET /api/v1/models/inventory` exposes authorized provenance, transfer completion, independent checksum/manifest verification and current file availability. Complete bytes remain unverified until the trusted installation pipeline confirms integrity; missing files retain metadata and block use.
