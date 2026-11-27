@@ -5,6 +5,7 @@ Ironloom 严格保持 crate 职责边界，使运行时编排与领域逻辑分�
 | Crate | 职责 |
 | --- | --- |
 | `ironloom-core` | 类型化 ID、仓库和分支原语、共享错误。 |
+| `ironloom-service` | 经过验证的服务、认证、原生注册契约与注入接口，独立于运行时组合。 |
 | `ironloom-config` | 运行时配置解析、设置关卡和环境优先级。 |
 | `ironloom-artifacts` | 不可变工件信封和模式契约。 |
 | `ironloom-storage` | `.ironloom/` 文件系统状态、工件索引、加密设置配置和持久化线程绑定。 |

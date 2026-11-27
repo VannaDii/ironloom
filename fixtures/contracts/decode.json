@@ -1866,7 +1866,8 @@
             "resolved_by": null
           }
         ],
-        "budget": null
+        "budget": null,
+        "active_assignment_id": "assignment-1"
       },
       "expected_errors": []
     },
@@ -1907,7 +1908,8 @@
             "resolved_by": null
           }
         ],
-        "budget": null
+        "budget": null,
+        "active_assignment_id": "assignment-1"
       },
       "expected_errors": [
         {
@@ -1953,7 +1955,8 @@
             "resolved_by": "answer-1"
           }
         ],
-        "budget": null
+        "budget": null,
+        "active_assignment_id": "assignment-1"
       },
       "expected_errors": [
         {
@@ -3095,9 +3098,219 @@
         "plan": null,
         "approval": null,
         "pending_questions": [],
-        "budget": null
+        "budget": null,
+        "active_assignment_id": null
       },
       "expected_errors": []
+    },
+    {
+      "contract": "project_query",
+      "name": "bounded-project-catalog",
+      "input": {
+        "after": null,
+        "limit": "20"
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "project_query",
+      "name": "project-page-limit",
+      "input": {
+        "after": null,
+        "limit": "0"
+      },
+      "expected_errors": [
+        {
+          "field": "limit",
+          "code": "must_be_positive"
+        }
+      ]
+    },
+    {
+      "contract": "create_project",
+      "name": "create-infrastructure-owned-project",
+      "input": {
+        "command_id": "create-project-1",
+        "name": "Factory project",
+        "repository": null,
+        "source_credential_id": null
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "create_project",
+      "name": "empty-project-name",
+      "input": {
+        "command_id": "create-project-1",
+        "name": " ",
+        "repository": null,
+        "source_credential_id": null
+      },
+      "expected_errors": [
+        {
+          "field": "name",
+          "code": "required"
+        }
+      ]
+    },
+    {
+      "contract": "credential_command",
+      "name": "private-credential-create",
+      "input": {
+        "command_id": "credential-command-1",
+        "credential_id": null,
+        "expected_revision": "0",
+        "operation": "create",
+        "label": "source-account",
+        "secret": "fixture-secret-only",
+        "grantee": null,
+        "permissions": [],
+        "revoke": false
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "credential_command",
+      "name": "credential-secret-not-on-delete",
+      "input": {
+        "command_id": "credential-command-1",
+        "credential_id": "credential-1",
+        "expected_revision": "1",
+        "operation": "delete",
+        "label": "source-account",
+        "secret": "fixture-secret-only",
+        "grantee": null,
+        "permissions": [],
+        "revoke": false
+      },
+      "expected_errors": [
+        {
+          "field": "secret",
+          "code": "secret_operation_mismatch"
+        }
+      ]
+    },
+    {
+      "contract": "credential_command",
+      "name": "separate-credential-sharing",
+      "input": {
+        "command_id": "credential-command-1",
+        "credential_id": "credential-1",
+        "expected_revision": "1",
+        "operation": "share",
+        "label": "source-account",
+        "secret": null,
+        "grantee": "operator-2",
+        "permissions": [
+          "use_credential"
+        ],
+        "revoke": false
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "native_connection_command",
+      "name": "protected-control-registration-import",
+      "input": {
+        "command_id": "connect-1",
+        "node_id": "node-1",
+        "expected_generation": "0",
+        "operation": "import",
+        "protected_registration": "protected-fixture-bundle",
+        "enabled": null
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "native_connection_command",
+      "name": "preference-not-import",
+      "input": {
+        "command_id": "connect-1",
+        "node_id": "node-1",
+        "expected_generation": "1",
+        "operation": "set_enabled",
+        "protected_registration": null,
+        "enabled": true
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "download_command",
+      "name": "pinned-model-download",
+      "input": {
+        "command_id": "download-1",
+        "project_id": null,
+        "repository_id": "repo-1",
+        "revision": "exact-revision",
+        "download_id": null,
+        "operation": "start"
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "download_command",
+      "name": "resume-needs-download-id",
+      "input": {
+        "command_id": "download-1",
+        "project_id": null,
+        "repository_id": "repo-1",
+        "revision": "exact-revision",
+        "download_id": null,
+        "operation": "resume"
+      },
+      "expected_errors": [
+        {
+          "field": "download_id",
+          "code": "download_identity_mismatch"
+        }
+      ]
+    },
+    {
+      "contract": "conversation_snapshot",
+      "name": "reconnect-needs-assignment-binding",
+      "input": {
+        "session": {
+          "conversation_id": "conversation-1",
+          "active_turn_id": "turn-1",
+          "project_id": "project-1",
+          "archived": false,
+          "last_human_interaction_ms": "1"
+        },
+        "cursor": {
+          "conversation_id": "conversation-1",
+          "sequence": "9"
+        },
+        "revision": "3",
+        "execution_state": "waiting_for_human",
+        "plan": null,
+        "approval": null,
+        "pending_questions": [
+          {
+            "question_id": "question-1",
+            "assignment_id": "assignment-1",
+            "conversation_id": "conversation-1",
+            "turn_id": "turn-1",
+            "item_id": "item-1",
+            "revision": "1",
+            "text": "What should the fixture cover?",
+            "choices": [
+              "a",
+              "b"
+            ],
+            "allow_multiple": true,
+            "allow_text": true,
+            "resolved_by": null
+          }
+        ],
+        "budget": null,
+        "active_assignment_id": null
+      },
+      "expected_errors": [
+        {
+          "field": "active_assignment_id",
+          "code": "execution_binding_required"
+        }
+      ]
     }
   ]
 }

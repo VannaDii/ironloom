@@ -34,3 +34,5 @@ The same revision defines authorized setup/team/model/device query and mutation 
 Ironloom is unreleased: fresh-schema initialization only, with no old-version compatibility, conversion/backfills, upgrade files or migration history. Obsolete foundation paths are retired during initial build-out.
 
 `FactoryService::create_conversation` persists an empty authorized conversation before native turn/start, with durable command identity and a zero-cursor snapshot. It submits no input or inference; user input remains nonblank.
+
+Shared service and native enrollment contracts now live in `ironloom-service::factory`; runtime and native adapters depend on this common crate, without old import re-exports. Snapshots include the active assignment for reconnect controls. Project, credential, native-connection and source/download API records are explicit; model profiles save generation controls through configuration.

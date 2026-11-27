@@ -5,6 +5,7 @@ Ironloom crate responsibilities को strict रखता है ताकि r
 | Crate | Responsibility |
 | --- | --- |
 | `ironloom-core` | Typed IDs, repository और branch primitives, shared errors. |
+| `ironloom-service` | रनटाइम संयोजन से स्वतंत्र सत्यापित सेवा, प्रमाणीकरण, मूल पंजीकरण अनुबंध और इंजेक्ट किए गए पोर्ट। |
 | `ironloom-config` | Runtime configuration resolution, setup gating और environment precedence. |
 | `ironloom-artifacts` | Immutable artifact envelopes और schema contracts. |
 | `ironloom-storage` | `.ironloom/` filesystem state, artifact indexes, encrypted setup configuration और persisted thread bindings. |

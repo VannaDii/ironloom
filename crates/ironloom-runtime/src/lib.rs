@@ -1682,5 +1682,5 @@ impl GateExecutor for CountingGateExecutor {
     }
 }
 
-/// Software factory contracts for the unreleased application.
-pub mod factory;
+/// HTTP transport codecs and API routing.
+pub mod http;

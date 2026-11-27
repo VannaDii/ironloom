@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Validated",
   "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
-  "$ref": "#/$defs/ConfigurationCommandData",
+  "$ref": "#/$defs/ConfigurationChangeData",
   "$defs": {
     "ActorId": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -31,13 +31,6 @@
         }
       ]
     },
-    "CommandId": {
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "title": "string",
-      "description": "Validated Ironloom CommandId value.",
-      "type": "string",
-      "minLength": 1
-    },
     "ConfigurationChangeData": {
       "description": "Unchecked construction draft for `ConfigurationChange`; validate before use.",
       "type": "object",
@@ -59,7 +52,7 @@
             "null"
           ],
           "items": {
-            "$ref": "#/$defs/Validated4"
+            "$ref": "#/$defs/Validated3"
           }
         },
         "roles": {
@@ -69,14 +62,14 @@
             "null"
           ],
           "items": {
-            "$ref": "#/$defs/Validated3"
+            "$ref": "#/$defs/Validated2"
           }
         },
         "setup": {
           "description": "Explicit installation setup handling/delivery confirmation.",
           "anyOf": [
             {
-              "$ref": "#/$defs/Validated2"
+              "$ref": "#/$defs/Validated"
             },
             {
               "type": "null"
@@ -85,41 +78,6 @@
         }
       },
       "additionalProperties": false
-    },
-    "ConfigurationCommandData": {
-      "description": "Unchecked construction draft for `ConfigurationCommand`; validate before use.",
-      "type": "object",
-      "properties": {
-        "changes": {
-          "description": "Typed settings mutation, never arbitrary filesystem paths or secrets.",
-          "$ref": "#/$defs/Validated"
-        },
-        "command_id": {
-          "description": "Durable idempotency identity scoped to authenticated actor.",
-          "$ref": "#/$defs/CommandId"
-        },
-        "expected_revision": {
-          "description": "Compare-and-swap configuration revision, independent of plan approval.",
-          "$ref": "#/$defs/Counter"
-        },
-        "project_id": {
-          "description": "None for installation settings, Some for project overrides.",
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ProjectId"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      },
-      "additionalProperties": false,
-      "required": [
-        "command_id",
-        "expected_revision",
-        "changes"
-      ]
     },
     "Counter": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -224,6 +182,30 @@
         "deploy"
       ]
     },
+    "GenerationControlsData": {
+      "description": "Unchecked construction draft for `GenerationControls`; validate before use.",
+      "type": "object",
+      "properties": {
+        "max_duration_ms": {
+          "description": "Runaway bound.",
+          "$ref": "#/$defs/Counter"
+        },
+        "max_output_tokens": {
+          "description": "Generation bound independent of monetary budget.",
+          "$ref": "#/$defs/Counter"
+        },
+        "repetition_window": {
+          "description": "Incremental monitoring window; unavailable on nonstreaming engines.",
+          "$ref": "#/$defs/Counter"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "max_output_tokens",
+        "max_duration_ms",
+        "repetition_window"
+      ]
+    },
     "InstructionId": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "title": "string",
@@ -288,6 +270,10 @@
             }
           ]
         },
+        "generation_controls": {
+          "description": "Explicit generation bounds, independent of optional monetary budgets.",
+          "$ref": "#/$defs/Validated4"
+        },
         "model_id": {
           "description": "Configured provider model/checkpoint.",
           "$ref": "#/$defs/ActorId"
@@ -306,6 +292,7 @@
         "profile_id",
         "provider",
         "model_id",
+        "generation_controls",
         "billing",
         "device_bindings"
       ]
@@ -314,13 +301,6 @@
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "title": "string",
       "description": "Validated Ironloom ModelProfileId value.",
-      "type": "string",
-      "minLength": 1
-    },
-    "ProjectId": {
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "title": "string",
-      "description": "Validated Ironloom ProjectId value.",
       "type": "string",
       "minLength": 1
     },
@@ -385,19 +365,19 @@
     },
     "Validated": {
       "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
-      "$ref": "#/$defs/ConfigurationChangeData"
+      "$ref": "#/$defs/FactorySetupData"
     },
     "Validated2": {
       "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
-      "$ref": "#/$defs/FactorySetupData"
+      "$ref": "#/$defs/RoleConfigurationData"
     },
     "Validated3": {
       "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
-      "$ref": "#/$defs/RoleConfigurationData"
+      "$ref": "#/$defs/ModelProfileConfigurationData"
     },
     "Validated4": {
       "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
-      "$ref": "#/$defs/ModelProfileConfigurationData"
+      "$ref": "#/$defs/GenerationControlsData"
     },
     "Validated5": {
       "description": "A validated immutable model; no mutable dereference or unchecked constructor.",

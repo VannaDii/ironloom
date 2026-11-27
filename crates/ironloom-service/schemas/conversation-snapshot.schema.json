@@ -81,6 +81,17 @@
       "description": "Unchecked construction draft for `ConversationSnapshot`; validate before use.",
       "type": "object",
       "properties": {
+        "active_assignment_id": {
+          "description": "Current assignment binding for reconnect controls; absent for an empty/idle conversation.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AssignmentId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "approval": {
           "description": "Approval only for the exact visible plan, if approved.",
           "anyOf": [

@@ -5,6 +5,7 @@ Ironloom mantiene estrictas las responsabilidades de cada crate para que la orqu
 | Crate | Responsabilidad |
 | --- | --- |
 | `ironloom-core` | IDs tipados, primitivas de repositorio y rama, errores compartidos. |
+| `ironloom-service` | Contratos validados del servicio, autenticación y registro nativo, y puertos independientes de la composición. |
 | `ironloom-config` | Resolución de configuración de runtime, controles de configuración y precedencia del entorno. |
 | `ironloom-artifacts` | Envoltorios de artefactos inmutables y contratos de esquema. |
 | `ironloom-storage` | Estado del sistema de archivos `.ironloom/`, índices de artefactos, configuración cifrada y vínculos persistidos de hilo. |

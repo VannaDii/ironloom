@@ -9,8 +9,8 @@ publish.workspace = true
 description = "Ironloom JSON Schema generation and drift checks."
 
 [dependencies]
+ironloom-service.workspace = true
 ironloom-storage = { path = "../ironloom-storage", version = "0.1.0" }
-ironloom-native = { path = "../ironloom-native", version = "0.1.0" }
 ironloom-models = { path = "../ironloom-models", version = "0.1.0" }
 ironloom-runtime = { path = "../ironloom-runtime", version = "0.1.0" }
 ironloom-artifacts = { path = "../ironloom-artifacts", version = "0.1.0" }

@@ -1,0 +1,275 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/NativeConnectionStateData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Counter": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Canonical decimal u64; semantic validation also enforces u64 maximum.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "CredentialId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom CredentialId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "EnvironmentId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom EnvironmentId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "InstallationId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom InstallationId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "NativeConnectionStateData": {
+      "description": "Unchecked construction draft for `NativeConnectionState`; validate before use.",
+      "type": "object",
+      "properties": {
+        "enrollment": {
+          "description": "Present after successful enrollment.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Validated"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "generation": {
+          "description": "Current authentication generation; zero before first import.",
+          "$ref": "#/$defs/Counter"
+        },
+        "node_id": {
+          "description": "Enrolled node.",
+          "$ref": "#/$defs/NodeId"
+        },
+        "status": {
+          "description": "Current connection state.",
+          "$ref": "#/$defs/NativeConnectionStatus"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "node_id",
+        "generation",
+        "status"
+      ]
+    },
+    "NativeConnectionStatus": {
+      "description": "Current native connection state without exposure of protected registration.",
+      "oneOf": [
+        {
+          "description": "No active control registration.",
+          "type": "string",
+          "const": "disconnected"
+        },
+        {
+          "description": "Protected registration import/enrollment is pending.",
+          "type": "string",
+          "const": "connecting"
+        },
+        {
+          "description": "Current enrollment and authentication are ready.",
+          "type": "string",
+          "const": "connected"
+        },
+        {
+          "description": "Connection failed; no silent credential replacement.",
+          "type": "string",
+          "const": "failed"
+        }
+      ]
+    },
+    "NativeEnrollmentData": {
+      "description": "Unchecked construction draft for `NativeEnrollment`; validate before use.",
+      "type": "object",
+      "properties": {
+        "authentication_generation": {
+          "description": "Reject stale token-refresh results.",
+          "$ref": "#/$defs/Counter"
+        },
+        "control_registration_ref": {
+          "description": "Protected imported control registration.",
+          "$ref": "#/$defs/CredentialId"
+        },
+        "enabled": {
+          "description": "Persisted user preference.",
+          "type": "boolean"
+        },
+        "environment_id": {
+          "description": "Distinct upstream environment ID used for session visibility.",
+          "$ref": "#/$defs/EnvironmentId"
+        },
+        "external_account_id": {
+          "description": "Connected external account.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "inference_credential_ref": {
+          "description": "Separate eligible inference credentials; no billing fallback.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CredentialId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "installation_id": {
+          "description": "Existing shared installation.",
+          "$ref": "#/$defs/InstallationId"
+        },
+        "node_id": {
+          "description": "Enrolled service node.",
+          "$ref": "#/$defs/NodeId"
+        },
+        "operator_id": {
+          "description": "Authorized human mapping; host does not grant access.",
+          "$ref": "#/$defs/OperatorId"
+        },
+        "persistence_key": {
+          "description": "Persisted enrollment/preference key; independent from server and environment IDs.",
+          "$ref": "#/$defs/Validated3"
+        },
+        "relay_target": {
+          "description": "Normalized relay endpoint set.",
+          "$ref": "#/$defs/Validated2"
+        },
+        "server_id": {
+          "description": "Upstream server ID returned by enrollment/refresh.",
+          "$ref": "#/$defs/ServerId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "installation_id",
+        "node_id",
+        "server_id",
+        "environment_id",
+        "relay_target",
+        "persistence_key",
+        "external_account_id",
+        "operator_id",
+        "enabled",
+        "authentication_generation",
+        "control_registration_ref"
+      ]
+    },
+    "NativePersistenceKeyData": {
+      "description": "Unchecked construction draft for `NativePersistenceKey`; validate before use.",
+      "type": "object",
+      "properties": {
+        "client_name": {
+          "description": "Optional pairing/client preference namespace, matching upstream lookup.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "external_account_id": {
+          "description": "Authenticated external account; never an unrestricted host identity.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "websocket_url": {
+          "description": "Exact normalized relay WebSocket target, as in upstream persisted lookup.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "websocket_url",
+        "external_account_id"
+      ]
+    },
+    "NodeId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom NodeId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "OperatorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom OperatorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "RelayTargetData": {
+      "description": "Unchecked construction draft for `RelayTarget`; validate before use.",
+      "type": "object",
+      "properties": {
+        "enroll_url": {
+          "description": "Enrollment endpoint.",
+          "type": "string"
+        },
+        "pair_status_url": {
+          "description": "Pairing-status endpoint.",
+          "type": "string"
+        },
+        "pair_url": {
+          "description": "Pairing endpoint.",
+          "type": "string"
+        },
+        "refresh_url": {
+          "description": "Server registration refresh endpoint.",
+          "type": "string"
+        },
+        "websocket_url": {
+          "description": "Normalized relay WebSocket endpoint.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "websocket_url",
+        "enroll_url",
+        "refresh_url",
+        "pair_url",
+        "pair_status_url"
+      ]
+    },
+    "ServerId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ServerId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Validated": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/NativeEnrollmentData"
+    },
+    "Validated2": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/RelayTargetData"
+    },
+    "Validated3": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/NativePersistenceKeyData"
+    }
+  }
+}

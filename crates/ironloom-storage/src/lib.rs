@@ -382,3 +382,6 @@ fn write_owner_only_file(path: &Path, content: &[u8]) -> io::Result<()> {
 
 /// Software factory contracts for the unreleased application.
 pub mod factory;
+
+/// Durable PostgreSQL records, transactions, identities and replay storage.
+pub mod postgres;
