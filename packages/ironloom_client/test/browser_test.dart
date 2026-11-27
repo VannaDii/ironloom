@@ -144,4 +144,28 @@ void main() {
       );
     },
   );
+  test('empty conversation creation remains independent from user input', () {
+    final request = CreateConversation(
+      commandId: CommandId('create-1'),
+      projectId: ProjectId('project-1'),
+    );
+    expect(
+      decode(
+        '{"command_id":"create-1","project_id":"project-1"}',
+        CreateConversation.fromJson,
+      ).toJson(),
+      request.toJson(),
+    );
+    expect(
+      () => CreateConversation.fromJson({
+        ...request.toJson(),
+        'text': 'hidden input',
+      }),
+      throwsA(isA<ValidationErrors>()),
+    );
+    expect(
+      () => InputCommand(conversationId: ConversationId('c'), text: ''),
+      throwsA(isA<ValidationErrors>()),
+    );
+  });
 }

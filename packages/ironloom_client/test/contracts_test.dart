@@ -5,6 +5,7 @@ import 'package:ironloom_client/ironloom_client.dart';
 import 'package:test/test.dart';
 
 final Map<String, WireModel Function(Object?)> decoders = {
+  'create_conversation': CreateConversation.fromJson,
   'source_query': SourceQuery.fromJson,
   'source_page': SourcePage.fromJson,
   'engine_load_options': EngineLoadOptions.fromJson,

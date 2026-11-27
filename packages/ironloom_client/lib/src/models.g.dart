@@ -1015,6 +1015,23 @@ enum RecordScope implements WireModel {
   void validate() {}
 }
 
+enum InitializationError implements WireModel {
+  alreadyInitialized('already_initialized'),
+  databaseUnavailable('database_unavailable'),
+  initializationFailed('initialization_failed');
+
+  const InitializationError(this.value);
+  final String value;
+  static InitializationError fromJson(Object? json) => values.firstWhere(
+    (v) => v.value == json,
+    orElse: () => _fail(r'$', 'invalid_structure'),
+  );
+  @override
+  String toJson() => value;
+  @override
+  void validate() {}
+}
+
 enum CommandClaim implements WireModel {
   newValue('new'),
   existing('existing'),
@@ -5000,6 +5017,38 @@ final class LessonPage implements WireModel {
   Map<String, Object?> toJson() => {
     'lessons': _json(lessons),
     'next_after': _json(nextAfter),
+  };
+}
+
+final class CreateConversation implements WireModel {
+  factory CreateConversation({
+    required CommandId commandId,
+    required ProjectId projectId,
+  }) => CreateConversation.fromJson({
+    'command_id': _json(commandId),
+    'project_id': _json(projectId),
+  });
+  CreateConversation._(this.commandId, this.projectId);
+  factory CreateConversation.fromJson(Object? json) {
+    final r = _Reader(json, ["command_id", "project_id"]);
+    final value = CreateConversation._(
+      r.read('command_id', CommandId.fromJson),
+      r.read('project_id', ProjectId.fromJson),
+    );
+    value.validate();
+    return value;
+  }
+  final CommandId commandId;
+  final ProjectId projectId;
+  @override
+  void validate() {
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'command_id': _json(commandId),
+    'project_id': _json(projectId),
   };
 }
 
