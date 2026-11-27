@@ -40,6 +40,7 @@ Ironloom's target is a Rust software factory and persistent background harness s
 ## Runtime and Package Boundaries
 
 - Keep the Rust workspace under `crates/*`; `ironloom-runtime` remains the deployable service and composition boundary.
+- Every Rust/Dart wire model implements the shared validation contract. Decode and validate fields, nested models, and cross-field invariants before use; service validation is independent of client validation. Keep schemas and focused decode-path tests aligned.
 - `ironloom-core` owns shared typed identities and domain values; `ironloom-config` owns configuration and setup completeness.
 - `ironloom-supervisor` owns routing and dispatch; `ironloom-process-graph`, `ironloom-queue`, `ironloom-policy`, and `ironloom-workers` own their existing domain boundaries as durable execution is added.
 - `ironloom-storage` owns persistence abstractions, managed artifacts, and direct `.ironloom/` access. `ironloom-artifacts` owns domain record/schema contracts; `ironloom-worktrees` owns Git workspace lifecycle.
@@ -68,7 +69,7 @@ This is a target slice, not an accepted implementation result. Resource grants a
 
 ## Implementation Phases
 
-Agree shared contracts before dividing work. Cinder and Ivy have no GPUs. Primary build-out runs there with deterministic model/provider/engine/device fixtures and no Ironloom inference, including no hosted generation or embeddings. Proposed ownership: Cinder owns durable service/execution and shared composition; Ivy owns operator UX and external/model adapters. Exact new paths and interfaces must be agreed before concurrent edits. Coding agents may use their own configured models to perform development.
+Agree shared contracts before dividing work. Cinder and Ivy have no GPUs. Primary build-out runs there with deterministic model/provider/engine/device fixtures and no Ironloom inference, including no hosted generation or embeddings. Agreed ownership: Cinder owns initial shared contracts, durable service/execution, artifacts, HTTP/SSE and authentication backend, and shared composition; Ivy owns Flutter and native/model/source/device adapters and checks their needs against the initial interfaces. Exact new paths and interfaces must be agreed before concurrent edits. Coding agents may use their own configured models to perform development.
 
 Platform-specific compilation and actual device discovery that require Mac hardware/toolchains happen on the Mac. Combine both lanes there and validate the integrated service without inference first. Real inference and related fixes follow on the Mac only after that phase is authorized and the human configures the models. Planning does not dispatch work or authorize inference. Keep all existing quality gates and Python/engine-porting approval requirements.
 
