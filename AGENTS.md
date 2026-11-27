@@ -2,6 +2,8 @@
 
 ## Non-Negotiable Rules
 
+- Ironloom is unreleased. Use fresh-schema initialization only. Do not add backward compatibility shims, legacy wire/artifact formats or runtime adapters, data conversion/backfills, schema upgrades, migration history, or migration frameworks. Obsolete foundation code may remain only until its replacement lands during initial build-out; it must not become supported old-version behavior.
+
 - Work directly on the checked-out branch only when the user explicitly asks for it.
 - Do not weaken Rust formatting, Clippy, test, schema, SonarCloud, policy, audit, Docker, Helm, or docs validation requirements.
 - Branch names and pull request titles must not include any registered tool name.

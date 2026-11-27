@@ -23,5 +23,5 @@ pub struct AuditRecord {
     pub artifact_ids: Vec<String>,
 }
 
-/// Software factory contracts; legacy foundation contracts remain readable.
+/// Software factory contracts for the unreleased application.
 pub mod factory;

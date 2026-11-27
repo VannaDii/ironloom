@@ -176,5 +176,5 @@ pub fn default_gate_graph() -> ProcessGraph {
     )
 }
 
-/// Software factory contracts; legacy foundation contracts remain readable.
+/// Software factory contracts for the unreleased application.
 pub mod factory;

@@ -23,8 +23,8 @@ pub enum ArtifactKind {
     PolicyDecision,
 }
 
-/// Historical version-one artifact envelope, retaining its original Discord thread and checksum.
-/// New factory records use [`factory::FactoryArtifact`] without thread binding.
+/// Temporary foundation runtime artifact, retired when the factory runtime replaces this path.
+/// This is not a compatibility reader or a supported prior-release format.
 #[derive(Clone, Debug, JsonSchema, PartialEq, Deserialize, Serialize)]
 pub struct ArtifactEnvelope {
     id: ArtifactId,
@@ -117,5 +117,5 @@ fn checksum_payload(
     hex::encode(Sha256::digest(encoded))
 }
 
-/// Software factory contracts; legacy foundation contracts remain readable.
+/// Software factory contracts for the unreleased application.
 pub mod factory;

@@ -80,6 +80,9 @@ pub fn check_schema_files(root: &Path) -> SchemaResult<()> {
 
 fn schema_files() -> SchemaResult<Vec<SchemaFile>> {
     Ok(vec![
+        schema::<ironloom_runtime::factory::CreateConversation>(
+            "crates/ironloom-runtime/schemas/create-conversation.schema.json",
+        )?,
         schema::<ironloom_config::factory::ModelProfileConfiguration>(
             "crates/ironloom-config/schemas/model-profile-configuration.schema.json",
         )?,

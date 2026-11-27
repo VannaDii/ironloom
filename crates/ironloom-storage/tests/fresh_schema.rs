@@ -1,17 +1,14 @@
+use ironloom_storage::factory::{InitializationError, initialize_schema};
 use sqlx::Executor;
 
 #[tokio::test]
 #[ignore = "requires a disposable PostgreSQL 18 database via IRONLOOM_TEST_DATABASE_URL"]
-async fn bootstrap_commands_and_replay_preserve_durable_identity() {
+async fn fresh_schema_enforces_bootstrap_commands_and_replay() {
     let url =
         std::env::var("IRONLOOM_TEST_DATABASE_URL").expect("explicit disposable test database");
     let pool = sqlx::PgPool::connect(&url).await.unwrap();
     let mut tx = pool.begin().await.unwrap();
-    tx.execute(sqlx::raw_sql(include_str!(
-        "../migrations/0001_factory_contracts.sql"
-    )))
-    .await
-    .unwrap();
+    initialize_schema(&mut tx).await.unwrap();
     tx.execute("INSERT INTO ironloom.operators VALUES ('human-a'), ('human-b')")
         .await
         .unwrap();
@@ -62,6 +59,16 @@ async fn bootstrap_commands_and_replay_preserve_durable_identity() {
             .await
             .unwrap();
     assert_eq!(administrator, "human-a");
+    assert_eq!(
+        initialize_schema(&mut tx).await.unwrap_err(),
+        InitializationError::AlreadyInitialized
+    );
+    let unchanged: String =
+        sqlx::query_scalar("SELECT administrator_id FROM ironloom.installation")
+            .fetch_one(&mut *tx)
+            .await
+            .unwrap();
+    assert_eq!(unchanged, "human-a");
     tx.execute("UPDATE ironloom.installation SET grants_initialized_at = now()")
         .await
         .unwrap();

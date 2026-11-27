@@ -2218,7 +2218,7 @@
     },
     {
       "contract": "native_enrollment",
-      "name": "ambiguous-identity-field-rejected",
+      "name": "unknown-enrollment-field-rejected",
       "input": {
         "installation_id": "installation-1",
         "node_id": "node-1",
@@ -2242,11 +2242,11 @@
         "authentication_generation": "2",
         "control_registration_ref": "protected-registration-1",
         "inference_credential_ref": null,
-        "server_environment_id": "old-ambiguous-id"
+        "unexpected_field": "old-ambiguous-id"
       },
       "expected_errors": [
         {
-          "field": "server_environment_id",
+          "field": "unexpected_field",
           "code": "invalid_structure"
         }
       ]
@@ -3037,6 +3037,67 @@
           "code": "relative_normal_path_required"
         }
       ]
+    },
+    {
+      "contract": "create_conversation",
+      "name": "native-thread-start-without-input",
+      "input": {
+        "command_id": "create-conversation-1",
+        "project_id": "project-1"
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "create_conversation",
+      "name": "empty-conversation-needs-project",
+      "input": {
+        "command_id": "create-conversation-1"
+      },
+      "expected_errors": [
+        {
+          "field": "$",
+          "code": "invalid_structure"
+        }
+      ]
+    },
+    {
+      "contract": "create_conversation",
+      "name": "conversation-creation-cannot-smuggle-input",
+      "input": {
+        "command_id": "create-conversation-1",
+        "project_id": "project-1",
+        "text": "hidden input"
+      },
+      "expected_errors": [
+        {
+          "field": "text",
+          "code": "invalid_structure"
+        }
+      ]
+    },
+    {
+      "contract": "conversation_snapshot",
+      "name": "new-empty-conversation-snapshot",
+      "input": {
+        "session": {
+          "conversation_id": "new-conversation-1",
+          "active_turn_id": null,
+          "project_id": "project-1",
+          "archived": false,
+          "last_human_interaction_ms": "1"
+        },
+        "cursor": {
+          "conversation_id": "new-conversation-1",
+          "sequence": "0"
+        },
+        "revision": "1",
+        "execution_state": null,
+        "plan": null,
+        "approval": null,
+        "pending_questions": [],
+        "budget": null
+      },
+      "expected_errors": []
     }
   ]
 }
