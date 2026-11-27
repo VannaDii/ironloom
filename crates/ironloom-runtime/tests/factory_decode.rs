@@ -32,6 +32,34 @@ fn rust_and_dart_shared_decode_fixtures() {
         serde_json::from_str(include_str!("../../../fixtures/contracts/decode.json")).unwrap();
     for case in &fixtures.cases {
         match case.contract.as_str() {
+            "source_query" => check::<ironloom_models::factory::SourceQuery>(case),
+            "source_page" => check::<ironloom_models::factory::SourcePage>(case),
+            "engine_load_options" => check::<ironloom_models::factory::EngineLoadOptions>(case),
+            "engine_requirements" => check::<ironloom_models::factory::EngineRequirements>(case),
+            "engine_observation" => check::<ironloom_models::factory::EngineObservation>(case),
+            "device_observation" => {
+                check::<ironloom_models::factory::DeviceResourceObservation>(case)
+            }
+            "configuration_command" => {
+                check::<ironloom_runtime::factory::ConfigurationCommand>(case)
+            }
+            "configuration_snapshot" => {
+                check::<ironloom_runtime::factory::ConfigurationSnapshot>(case)
+            }
+            "lesson_mutation" => check::<ironloom_runtime::factory::LessonMutation>(case),
+
+            "question_answer" => check::<ironloom_runtime::factory::QuestionAnswer>(case),
+            "pending_question" => check::<ironloom_workers::factory::PendingQuestion>(case),
+            "inference_message" => check::<ironloom_models::factory::InferenceMessage>(case),
+            "tool_definition" => check::<ironloom_models::factory::ToolDefinition>(case),
+            "inference_request" => check::<ironloom_models::factory::InferenceRequest>(case),
+            "conversation_snapshot" => {
+                check::<ironloom_runtime::factory::ConversationSnapshot>(case)
+            }
+            "history_query" => check::<ironloom_runtime::factory::HistoryQuery>(case),
+            "history_page" => check::<ironloom_runtime::factory::HistoryPage>(case),
+            "native_enrollment" => check::<ironloom_native::factory::NativeEnrollment>(case),
+
             "role_configuration" => check::<ironloom_config::factory::RoleConfiguration>(case),
             "factory_setup" => check::<ironloom_config::factory::FactorySetup>(case),
             "instruction_copy" => check::<ironloom_process_graph::factory::InstructionCopy>(case),
@@ -124,5 +152,85 @@ fn durable_sse_cursor_roundtrips_without_resubmitting_commands() {
     assert!(decode_cursor("not!a!cursor").is_err());
     assert!(
         decode::<ReplayCursor>(br#"{"conversation_id":"session:1","sequence":"1"} {}"#).is_err()
+    );
+}
+
+#[test]
+fn pending_question_modes_validate_choices_and_text_against_recorded_options() {
+    use ironloom_core::ActorId;
+    use ironloom_workers::factory::{PendingQuestion, PendingQuestionData};
+    let fixture: Fixtures =
+        serde_json::from_str(include_str!("../../../fixtures/contracts/decode.json")).unwrap();
+    let data = &fixture
+        .cases
+        .iter()
+        .find(|case| case.name == "multiple-question")
+        .unwrap()
+        .input;
+    let multiple: PendingQuestion = decode(&serde_json::to_vec(data).unwrap()).unwrap();
+    let choices = vec![ActorId::new("a").unwrap(), ActorId::new("b").unwrap()];
+    multiple
+        .validate_response(&choices, Some("Additional detail."))
+        .unwrap();
+    multiple
+        .validate_response(&[], Some("Free-text response."))
+        .unwrap();
+    let mut single_data: PendingQuestionData = serde_json::from_value(data.clone()).unwrap();
+    single_data.allow_multiple = false;
+    single_data.allow_text = false;
+    let single = PendingQuestion::new(single_data).unwrap();
+    assert_eq!(
+        single.validate_response(&choices, None).unwrap_err().fields[0].code,
+        "multiple_choices_forbidden"
+    );
+    assert_eq!(
+        single
+            .validate_response(&[], Some("Not permitted."))
+            .unwrap_err()
+            .fields[0]
+            .code,
+        "text_forbidden"
+    );
+    assert_eq!(
+        single
+            .validate_response(&[ActorId::new("unknown").unwrap()], None)
+            .unwrap_err()
+            .fields[0]
+            .code,
+        "unknown_choice"
+    );
+}
+#[test]
+fn provider_message_constructor_and_serde_reject_the_same_invalid_tool_role() {
+    use ironloom_models::factory::{InferenceMessage, InferenceMessageData, MessageRole};
+    let data = InferenceMessageData {
+        role: MessageRole::Tool,
+        text: Some("raw untyped result".into()),
+        tool_calls: vec![],
+        tool_result: None,
+    };
+    let json = serde_json::to_vec(&data).unwrap();
+    let expected = InferenceMessage::new(data).unwrap_err();
+    assert_eq!(decode::<InferenceMessage>(&json).unwrap_err(), expected);
+    assert!(serde_json::from_slice::<InferenceMessage>(&json).is_err());
+}
+#[test]
+fn native_refresh_is_bound_to_current_enabled_generation() {
+    use ironloom_core::Counter;
+    use ironloom_native::factory::NativeEnrollment;
+    let fixture: Fixtures =
+        serde_json::from_str(include_str!("../../../fixtures/contracts/decode.json")).unwrap();
+    let data = &fixture
+        .cases
+        .iter()
+        .find(|case| case.name == "distinct-relay-and-native-identities")
+        .unwrap()
+        .input;
+    let enrollment: NativeEnrollment = decode(&serde_json::to_vec(data).unwrap()).unwrap();
+    assert!(enrollment.accepts_refresh(Counter::new(2)));
+    assert!(!enrollment.accepts_refresh(Counter::new(1)));
+    assert_ne!(
+        enrollment.server_id.as_str(),
+        enrollment.environment_id.as_str()
     );
 }

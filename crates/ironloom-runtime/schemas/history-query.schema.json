@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/HistoryQueryData",
+  "$defs": {
+    "ConversationId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ConversationId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Counter": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Canonical decimal u64; semantic validation also enforces u64 maximum.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "HistoryQueryData": {
+      "description": "Unchecked construction draft for `HistoryQuery`; validate before use.",
+      "type": "object",
+      "properties": {
+        "as_of": {
+          "description": "Consistent snapshot watermark and authorized conversation.",
+          "$ref": "#/$defs/Validated"
+        },
+        "before": {
+          "description": "Exclusive stable item cursor; absent returns latest page at the watermark.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ItemId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "limit": {
+          "description": "Bounded page size.",
+          "$ref": "#/$defs/Counter"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "as_of",
+        "limit"
+      ]
+    },
+    "ItemId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ItemId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ReplayCursorData": {
+      "description": "Unchecked construction draft for `ReplayCursor`; validate before use.",
+      "type": "object",
+      "properties": {
+        "conversation_id": {
+          "description": "Stream scope; cursor cannot grant access.",
+          "$ref": "#/$defs/ConversationId"
+        },
+        "sequence": {
+          "description": "Persisted monotonically increasing sequence; zero requests from start.",
+          "$ref": "#/$defs/Counter"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "conversation_id",
+        "sequence"
+      ]
+    },
+    "Validated": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/ReplayCursorData"
+    }
+  }
+}

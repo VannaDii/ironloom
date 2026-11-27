@@ -171,11 +171,29 @@
           ]
         },
         {
-          "description": "Edit budget independently of plan revision.",
+          "description": "Manage lesson content/scope/deletion within the origin project authority.",
           "type": "object",
           "properties": {
             "data": {
               "$ref": "#/$defs/Validated7"
+            },
+            "type": {
+              "type": "string",
+              "const": "lesson"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "data"
+          ]
+        },
+        {
+          "description": "Edit budget independently of plan revision.",
+          "type": "object",
+          "properties": {
+            "data": {
+              "$ref": "#/$defs/Validated8"
             },
             "type": {
               "type": "string",
@@ -305,6 +323,75 @@
       "type": "string",
       "minLength": 1
     },
+    "LessonId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom LessonId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "LessonMutationData": {
+      "description": "Unchecked construction draft for `LessonMutation`; validate before use.",
+      "type": "object",
+      "properties": {
+        "content": {
+          "description": "Present exactly for edit.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "expected_revision": {
+          "description": "Reject stale concurrent updates.",
+          "$ref": "#/$defs/Counter"
+        },
+        "lesson_id": {
+          "description": "Stored lesson in the outer command origin project.",
+          "$ref": "#/$defs/LessonId"
+        },
+        "operation": {
+          "description": "Content/scope/delete action.",
+          "$ref": "#/$defs/LessonOperation"
+        },
+        "scope": {
+          "description": "Present exactly for scope changes; installation promotes sharing.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RecordScope"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "lesson_id",
+        "expected_revision",
+        "operation"
+      ]
+    },
+    "LessonOperation": {
+      "description": "Lesson management operation; no action grants approval or private-source access.",
+      "oneOf": [
+        {
+          "description": "Update stored lesson content at an expected revision.",
+          "type": "string",
+          "const": "edit"
+        },
+        {
+          "description": "Restrict or promote scope; broadening requires share authority.",
+          "type": "string",
+          "const": "set_scope"
+        },
+        {
+          "description": "Explicit authorized deletion independent of worktree cleanup.",
+          "type": "string",
+          "const": "delete"
+        }
+      ]
+    },
     "OperatorId": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "title": "string",
@@ -359,9 +446,12 @@
       "description": "Unchecked construction draft for `QuestionAnswer`; validate before use.",
       "type": "object",
       "properties": {
-        "choice": {
-          "description": "One of the persisted allowed choices.",
-          "$ref": "#/$defs/ActorId"
+        "choices": {
+          "description": "Zero or more selected persisted choices; single/multiple policy comes from the pending question.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ActorId"
+          }
         },
         "expected_revision": {
           "description": "Reject stale/replaced/resolved requests.",
@@ -375,6 +465,13 @@
           "description": "Pending request identity.",
           "$ref": "#/$defs/QuestionId"
         },
+        "text": {
+          "description": "Optional free-text response, when permitted by the pending question.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "turn_id": {
           "description": "Expected active turn.",
           "$ref": "#/$defs/TurnId"
@@ -385,7 +482,7 @@
         "question_id",
         "turn_id",
         "item_id",
-        "choice",
+        "choices",
         "expected_revision"
       ]
     },
@@ -395,6 +492,26 @@
       "description": "Validated Ironloom QuestionId value.",
       "type": "string",
       "minLength": 1
+    },
+    "RecordScope": {
+      "description": "Stored scope; similarity and shared lessons are never approval.",
+      "oneOf": [
+        {
+          "description": "Restricted to the origin assignment.",
+          "type": "string",
+          "const": "assignment"
+        },
+        {
+          "description": "Available in the origin project.",
+          "type": "string",
+          "const": "project"
+        },
+        {
+          "description": "Explicitly shared content; source access is still checked separately.",
+          "type": "string",
+          "const": "installation"
+        }
+      ]
     },
     "SteeringInputData": {
       "description": "Unchecked construction draft for `SteeringInput`; validate before use.",
@@ -452,6 +569,10 @@
       "$ref": "#/$defs/ControlCommandData"
     },
     "Validated7": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/LessonMutationData"
+    },
+    "Validated8": {
       "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
       "$ref": "#/$defs/BudgetData"
     }

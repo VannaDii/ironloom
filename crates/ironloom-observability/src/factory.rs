@@ -48,6 +48,12 @@ Usage, UsageData {
     calculation_basis: Option<ActorId>,
 } |value| {
     let _ = value;
+    if value.basis == UsageBasis::Estimated && value.calculation_basis.is_none() {
+        return Err(ValidationErrors::field(
+            "calculation_basis",
+            "estimate_basis_required",
+        ));
+    }
     if value.cost_micros.is_some()
         && (value.currency.is_none() || value.calculation_basis.is_none())
     {
@@ -59,6 +65,7 @@ Usage, UsageData {
     if value.basis == UsageBasis::Unknown
         && (value.input_tokens.is_some()
             || value.output_tokens.is_some()
+            || value.cached_tokens.is_some()
             || value.cost_micros.is_some())
     {
         return Err(ValidationErrors::field(

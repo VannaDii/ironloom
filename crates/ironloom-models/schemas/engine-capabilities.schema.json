@@ -11,6 +11,26 @@
       "type": "string",
       "minLength": 1
     },
+    "CapabilitySupport": {
+      "description": "Explicit optional capability status; unknown is distinct from unsupported.",
+      "oneOf": [
+        {
+          "description": "Supported by this engine/version/backend.",
+          "type": "string",
+          "const": "supported"
+        },
+        {
+          "description": "Known absent; do not invent an adaptation.",
+          "type": "string",
+          "const": "unsupported"
+        },
+        {
+          "description": "Insufficient metadata; no inference capability probe.",
+          "type": "string",
+          "const": "unknown"
+        }
+      ]
+    },
     "Counter": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "title": "string",
@@ -38,15 +58,15 @@
         },
         "batching": {
           "description": "Concurrent request capability.",
-          "type": "boolean"
+          "$ref": "#/$defs/CapabilitySupport"
         },
         "context_cache": {
           "description": "Request-scoped cache support.",
-          "type": "boolean"
+          "$ref": "#/$defs/CapabilitySupport"
         },
         "draft_models": {
           "description": "Speculative decoding with explicit paired requirements.",
-          "type": "boolean"
+          "$ref": "#/$defs/CapabilitySupport"
         },
         "engine": {
           "description": "Selected exact engine/version/backend.",
@@ -72,7 +92,7 @@
         },
         "multi_gpu": {
           "description": "Coordinated placements supported.",
-          "type": "boolean"
+          "$ref": "#/$defs/CapabilitySupport"
         },
         "quantizations": {
           "description": "Supported quantizations.",

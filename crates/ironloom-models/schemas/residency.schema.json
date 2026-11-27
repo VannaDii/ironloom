@@ -92,6 +92,52 @@
         "reconciled"
       ]
     },
+    "DraftModelData": {
+      "description": "Unchecked construction draft for `DraftModel`; validate before use.",
+      "type": "object",
+      "properties": {
+        "checkpoint_hash": {
+          "description": "Verified draft manifest hash.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "model_id": {
+          "description": "Explicit optional draft checkpoint, never a fallback target.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "quantization": {
+          "description": "Draft quantization where applicable.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "revision": {
+          "description": "Exact draft revision.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "weight_bytes": {
+          "description": "Draft memory estimate; unknown is not zero.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Counter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "model_id",
+        "revision",
+        "checkpoint_hash"
+      ]
+    },
     "EngineIdentityData": {
       "description": "Unchecked construction draft for `EngineIdentity`; validate before use.",
       "type": "object",
@@ -246,9 +292,31 @@
           "description": "Protects residency while nonzero, independent of worker lifetime.",
           "$ref": "#/$defs/Counter"
         },
+        "draft": {
+          "description": "Optional resident draft weights, included in central reservation and residency identity.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Validated4"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "last_used_at_ms": {
           "description": "LRU ordering when inactive.",
           "$ref": "#/$defs/Counter"
+        },
+        "observed_cache_bytes": {
+          "description": "Observed isolated cache allocation, unknown when unavailable.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Counter"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "reserved_bytes": {
           "description": "Weights, caches, draft and overhead reservation.",
@@ -290,6 +358,10 @@
     "Validated3": {
       "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
       "$ref": "#/$defs/DeviceIdentityData"
+    },
+    "Validated4": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/DraftModelData"
     }
   }
 }

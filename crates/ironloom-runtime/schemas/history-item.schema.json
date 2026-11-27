@@ -1,0 +1,216 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/HistoryItemData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ConversationId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ConversationId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "HistoryItemData": {
+      "description": "Unchecked construction draft for `HistoryItem`; validate before use.",
+      "type": "object",
+      "properties": {
+        "conversation_id": {
+          "description": "Authorized source conversation.",
+          "$ref": "#/$defs/ConversationId"
+        },
+        "item_id": {
+          "description": "Stable item cursor.",
+          "$ref": "#/$defs/ItemId"
+        },
+        "message": {
+          "description": "Role-bearing text/tool content, not raw provider data.",
+          "$ref": "#/$defs/Validated"
+        },
+        "turn_id": {
+          "description": "Stable source turn.",
+          "$ref": "#/$defs/TurnId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "conversation_id",
+        "turn_id",
+        "item_id",
+        "message"
+      ]
+    },
+    "InferenceMessageData": {
+      "description": "Unchecked construction draft for `InferenceMessage`; validate before use.",
+      "type": "object",
+      "properties": {
+        "role": {
+          "description": "Provider-independent role.",
+          "$ref": "#/$defs/MessageRole"
+        },
+        "text": {
+          "description": "Optional nonblank text; tool-only assistant messages need no text.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tool_calls": {
+          "description": "Complete assistant-proposed tool calls, never directly executed by adapters.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Validated2"
+          }
+        },
+        "tool_result": {
+          "description": "One result when role is tool.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Validated3"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "tool_calls"
+      ]
+    },
+    "ItemId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ItemId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "MessageRole": {
+      "description": "Provider-neutral conversation message role.",
+      "oneOf": [
+        {
+          "description": "Service-controlled system context.",
+          "type": "string",
+          "const": "system"
+        },
+        {
+          "description": "Authorized role instructions.",
+          "type": "string",
+          "const": "developer"
+        },
+        {
+          "description": "Human input.",
+          "type": "string",
+          "const": "user"
+        },
+        {
+          "description": "Model text and/or proposed tool calls.",
+          "type": "string",
+          "const": "assistant"
+        },
+        {
+          "description": "Gateway-produced result for one prior tool call.",
+          "type": "string",
+          "const": "tool"
+        }
+      ]
+    },
+    "ToolCallId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ToolCallId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ToolInvocationData": {
+      "description": "Unchecked construction draft for `ToolInvocation`; validate before use.",
+      "type": "object",
+      "properties": {
+        "arguments": {
+          "description": "Complete parsed arguments; partial streaming fragments never enter this model."
+        },
+        "name": {
+          "description": "Proposed tool name, independently authorized at dispatch.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "tool_call_id": {
+          "description": "Stable correlation identity; shared with its result.",
+          "$ref": "#/$defs/ToolCallId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "tool_call_id",
+        "name",
+        "arguments"
+      ]
+    },
+    "ToolResultData": {
+      "description": "Unchecked construction draft for `ToolResult`; validate before use.",
+      "type": "object",
+      "properties": {
+        "content": {
+          "description": "Tool output; an empty output is valid.",
+          "type": "string"
+        },
+        "status": {
+          "description": "Observed completion outcome.",
+          "$ref": "#/$defs/ToolResultStatus"
+        },
+        "tool_call_id": {
+          "description": "Previously requested tool call.",
+          "$ref": "#/$defs/ToolCallId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "tool_call_id",
+        "status",
+        "content"
+      ]
+    },
+    "ToolResultStatus": {
+      "description": "Observed tool outcome, not an inference cancellation acknowledgment.",
+      "oneOf": [
+        {
+          "description": "Tool completed successfully.",
+          "type": "string",
+          "const": "succeeded"
+        },
+        {
+          "description": "Tool failed; content is a redacted error/result.",
+          "type": "string",
+          "const": "failed"
+        }
+      ]
+    },
+    "TurnId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom TurnId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Validated": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/InferenceMessageData"
+    },
+    "Validated2": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/ToolInvocationData"
+    },
+    "Validated3": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/ToolResultData"
+    }
+  }
+}

@@ -67,6 +67,8 @@ pub enum CommandAction {
     Approve(ApprovalCommand),
     /// Pause/resume/cancel assignment.
     Control(ControlCommand),
+    /// Manage lesson content/scope/deletion within the origin project authority.
+    Lesson(LessonMutation),
     /// Edit budget independently of plan revision.
     Budget(ironloom_observability::factory::Budget),
 }
@@ -103,6 +105,7 @@ impl<'de> Deserialize<'de> for CommandAction {
             "approve" => payload(&envelope.data).map(Self::Approve),
             "control" => payload(&envelope.data).map(Self::Control),
             "budget" => payload(&envelope.data).map(Self::Budget),
+            "lesson" => payload(&envelope.data).map(Self::Lesson),
             _ => Err(serde::de::Error::custom(ValidationErrors::field(
                 "type",
                 "invalid_structure",
@@ -295,13 +298,29 @@ QuestionAnswer, QuestionAnswerData {
     turn_id: TurnId,
     /// Originating question or approval item.
     item_id: ItemId,
-    /// One of the persisted allowed choices.
-    choice: ActorId,
+    /// Zero or more selected persisted choices; single/multiple policy comes from the pending question.
+    choices: Vec<ActorId>,
+    /// Optional free-text response, when permitted by the pending question.
+    text: Option<String>,
     /// Reject stale/replaced/resolved requests.
     expected_revision: Counter,
 } |value| {
     let _ = value;
-    positive("expected_revision", value.expected_revision)
+    positive("expected_revision", value.expected_revision)?;
+    if value.choices.is_empty() && value.text.is_none() {
+        return Err(ValidationErrors::field("choices", "answer_required"));
+    }
+    if let Some(text) = &value.text {
+        required("text", text)?;
+    }
+    let unique = value
+        .choices
+        .iter()
+        .collect::<std::collections::BTreeSet<_>>();
+    if unique.len() != value.choices.len() {
+        return Err(ValidationErrors::field("choices", "duplicate_choice"));
+    }
+    Ok(())
 }
 }
 ironloom_core::contract! {
@@ -406,6 +425,49 @@ pub trait Authentication: Send + Sync {
 }
 /// Web/native service operations. Caller identity must be resolved by trusted authentication.
 pub trait FactoryService: Send + Sync {
+    /// Returns authorized setup/team/profile/device settings and independent execution readiness.
+    /// None selects installation settings; Some selects authorized project settings.
+    fn configuration(
+        &self,
+        session: AuthenticatedSession,
+        project: Option<ProjectId>,
+    ) -> BoxFuture<'_, Result<ConfigurationSnapshot, ServiceError>>;
+    /// Atomically persists an actor-scoped idempotent configuration command and its outcome.
+    /// Installation setup changes require installation authority; references never grant secret access.
+    /// Recheck manage/share/device authority, notify active workers and invalidate relevant readiness.
+    fn configure(
+        &self,
+        session: AuthenticatedSession,
+        request: ConfigurationCommand,
+    ) -> BoxFuture<'_, Result<ConfigurationSnapshot, ServiceError>>;
+    /// Returns only currently viewable lesson content with stable pagination; source records require
+    /// independent access. Missing lesson handling setup never delays authorized local application.
+    fn lessons(
+        &self,
+        session: AuthenticatedSession,
+        query: LessonQuery,
+    ) -> BoxFuture<'_, Result<LessonPage, ServiceError>>;
+    /// Returns authorized state and a durable watermark from one consistent snapshot.
+    fn snapshot(
+        &self,
+        session: AuthenticatedSession,
+        conversation: ConversationId,
+    ) -> BoxFuture<'_, Result<ConversationSnapshot, ServiceError>>;
+    /// Returns authorized items at the requested snapshot watermark, oldest first within the page.
+    fn history(
+        &self,
+        session: AuthenticatedSession,
+        query: HistoryQuery,
+    ) -> BoxFuture<'_, Result<HistoryPage, ServiceError>>;
+    /// Atomically bridges durable replay after the cursor into an ordered, bounded live feed.
+    /// No gap is allowed between replay and subscription. Recheck live resource grants;
+    /// overflow/revocation returns an error and closes the feed. Disconnect/EOF never completes
+    /// or cancels background work; reconnect from the last consumed durable cursor.
+    fn subscribe(
+        &self,
+        session: AuthenticatedSession,
+        after: ReplayCursor,
+    ) -> BoxFuture<'_, Result<EventSubscription, ServiceError>>;
     /// Persists actor/key/payload identity and initial event in one transaction; replay never dispatches.
     fn command(
         &self,
@@ -437,6 +499,8 @@ pub enum ServiceError {
     Conflict,
     /// Requested history no longer retained; fetch snapshot before reconnect.
     CursorExpired,
+    /// Bounded live feed overflowed; reconnect after the last consumed cursor without resubmitting work.
+    ResyncRequired,
     /// Dependencies unavailable; never initialize replacement state.
     Unavailable,
 }
@@ -471,4 +535,335 @@ pub fn sse_event(event: &ServiceEvent) -> Result<axum::response::sse::Event, Ser
         .event("ironloom.event")
         .json_data(event)
         .map_err(|_| ServiceError::Unavailable)
+}
+
+/// Bounded live delivery after durable replay; receiver ownership is not execution ownership.
+pub struct EventSubscription {
+    /// Durable ordered events, followed by a safe error on revocation/overflow when deliverable.
+    /// Abrupt closure is a transport interruption, never an execution terminal outcome.
+    pub events: tokio::sync::mpsc::Receiver<Result<ServiceEvent, ServiceError>>,
+}
+ironloom_core::contract! {
+/// Validated factory record.
+ConversationSnapshot, ConversationSnapshotData {
+    /// Authorized session metadata.
+    session: SessionSummary,
+    /// Durable watermark of this consistent snapshot.
+    cursor: ReplayCursor,
+    /// Optimistic command revision at the watermark.
+    revision: Counter,
+    /// Current execution state; absence means no active assignment.
+    execution_state: Option<ironloom_queue::factory::ExecutionState>,
+    /// Current visible plan revision.
+    plan: Option<ironloom_process_graph::factory::PlanRevision>,
+    /// Approval only for the exact visible plan, if approved.
+    approval: Option<ironloom_process_graph::factory::PlanApproval>,
+    /// Unresolved questions as of the same watermark.
+    pending_questions: Vec<ironloom_workers::factory::PendingQuestion>,
+    /// Current budget independent of plan approval.
+    budget: Option<ironloom_observability::factory::Budget>,
+} |value| {
+    let _ = value;
+    positive("revision", value.revision)?;
+    if value.session.conversation_id != value.cursor.conversation_id {
+        return Err(ValidationErrors::field(
+            "cursor.conversation_id",
+            "conversation_mismatch",
+        ));
+    }
+    for question in &value.pending_questions {
+        if question.conversation_id != value.session.conversation_id
+            || question.resolved_by.is_some()
+        {
+            return Err(ValidationErrors::field(
+                "pending_questions",
+                "pending_conversation_required",
+            ));
+        }
+    }
+    if let Some(plan) = &value.plan
+        && plan.project_id != value.session.project_id {
+            return Err(ValidationErrors::field(
+                "plan.project_id",
+                "project_mismatch",
+            ));
+        }
+    if let Some(approval) = &value.approval {
+        let matches = value.plan.as_ref().is_some_and(|plan| {
+            plan.plan_id == approval.plan_id
+                && plan.revision == approval.revision
+                && plan.content_hash == approval.content_hash
+        });
+        if !matches {
+            return Err(ValidationErrors::field(
+                "approval",
+                "plan_revision_mismatch",
+            ));
+        }
+    }
+    Ok(())
+}
+}
+ironloom_core::contract! {
+/// Validated factory record.
+HistoryQuery, HistoryQueryData {
+    /// Consistent snapshot watermark and authorized conversation.
+    as_of: ReplayCursor,
+    /// Exclusive stable item cursor; absent returns latest page at the watermark.
+    before: Option<ItemId>,
+    /// Bounded page size.
+    limit: Counter,
+} |value| {
+    let _ = value;
+    positive("limit", value.limit)?;
+    if value.limit.get() > MAX_SESSION_PAGE {
+        return Err(ValidationErrors::field("limit", "page_too_large"));
+    }
+    Ok(())
+}
+}
+ironloom_core::contract! {
+/// Validated factory record.
+HistoryItem, HistoryItemData {
+    /// Authorized source conversation.
+    conversation_id: ConversationId,
+    /// Stable source turn.
+    turn_id: TurnId,
+    /// Stable item cursor.
+    item_id: ItemId,
+    /// Role-bearing text/tool content, not raw provider data.
+    message: ironloom_models::factory::InferenceMessage,
+} |value| {
+    let _ = value;
+    Ok(())
+}
+}
+ironloom_core::contract! {
+/// Validated factory record.
+HistoryPage, HistoryPageData {
+    /// Same watermark as the request, even if new work arrives.
+    as_of: ReplayCursor,
+    /// Ordered oldest to newest within this bounded page.
+    items: Vec<HistoryItem>,
+    /// Exclusive cursor for the next older page; None means history exhausted.
+    next_before: Option<ItemId>,
+} |value| {
+    let _ = value;
+    if value.items.len() > MAX_SESSION_PAGE as usize {
+        return Err(ValidationErrors::field("items", "page_too_large"));
+    }
+    let mut ids = std::collections::BTreeSet::new();
+    for item in &value.items {
+        if item.conversation_id != value.as_of.conversation_id {
+            return Err(ValidationErrors::field("items", "conversation_mismatch"));
+        }
+        if !ids.insert(&item.item_id) {
+            return Err(ValidationErrors::field("items", "duplicate_item"));
+        }
+    }
+    if let Some(before) = &value.next_before
+        && value
+            .items
+            .first()
+            .is_none_or(|item| &item.item_id != before)
+        {
+            return Err(ValidationErrors::field(
+                "next_before",
+                "oldest_item_required",
+            ));
+        }
+    Ok(())
+}
+}
+ironloom_core::contract! {
+/// Validated factory record.
+ConfigurationChange, ConfigurationChangeData {
+    /// Explicit installation setup handling/delivery confirmation.
+    setup: Option<ironloom_config::factory::FactorySetup>,
+    /// Replace enabled/custom team settings in the chosen scope.
+    roles: Option<Vec<ironloom_config::factory::RoleConfiguration>>,
+    /// Replace explicitly selected provider/model/engine/billing profiles.
+    models: Option<Vec<ironloom_config::factory::ModelProfileConfiguration>>,
+    /// Explicit enable/disable choices; never accept client-supplied discovery facts.
+    device_preferences: Option<Vec<ironloom_config::factory::DevicePreference>>,
+} |value| {
+    let _ = value;
+    if value.setup.is_none()
+        && value.roles.is_none()
+        && value.models.is_none()
+        && value.device_preferences.is_none()
+    {
+        return Err(ValidationErrors::field(
+            "$",
+            "configuration_change_required",
+        ));
+    }
+    Ok(())
+}
+}
+ironloom_core::contract! {
+/// Validated factory record.
+ConfigurationCommand, ConfigurationCommandData {
+    /// Durable idempotency identity scoped to authenticated actor.
+    command_id: CommandId,
+    /// None for installation settings, Some for project overrides.
+    project_id: Option<ProjectId>,
+    /// Compare-and-swap configuration revision, independent of plan approval.
+    expected_revision: Counter,
+    /// Typed settings mutation, never arbitrary filesystem paths or secrets.
+    changes: ConfigurationChange,
+} |value| {
+    let _ = value;
+    positive("expected_revision", value.expected_revision)?;
+    if value.project_id.is_some() && value.changes.setup.is_some() {
+        return Err(ValidationErrors::field(
+            "changes.setup",
+            "installation_scope_required",
+        ));
+    }
+    Ok(())
+}
+}
+ironloom_core::contract! {
+/// Validated factory record.
+ConfigurationSnapshot, ConfigurationSnapshotData {
+    /// Installation or project settings scope.
+    project_id: Option<ProjectId>,
+    /// Durable configuration revision for subsequent mutations.
+    revision: Counter,
+    /// Absent until required lesson handling and delivery mode have been saved.
+    setup: Option<ironloom_config::factory::FactorySetup>,
+    /// Configured team, including orchestration.
+    roles: Vec<ironloom_config::factory::RoleConfiguration>,
+    /// Human-selected model profiles visible to this account.
+    models: Vec<ironloom_config::factory::ModelProfileConfiguration>,
+    /// Explicit enable/disable settings.
+    device_preferences: Vec<ironloom_config::factory::DevicePreference>,
+    /// Server-resolved device identities; simulations remain unqualified.
+    discovered_devices: Vec<ironloom_models::factory::DeviceIdentity>,
+    /// Execution readiness independent of functioning setup/web readiness.
+    execution_ready: bool,
+    /// Visible configuration/capability/permission blockers.
+    unmet_prerequisites: Vec<ActorId>,
+} |value| {
+    let _ = value;
+    positive("revision", value.revision)?;
+    if value.execution_ready != value.unmet_prerequisites.is_empty() {
+        return Err(ValidationErrors::field(
+            "execution_ready",
+            "prerequisite_mismatch",
+        ));
+    }
+    if value.execution_ready && value.setup.is_none() {
+        return Err(ValidationErrors::field("setup", "setup_required"));
+    }
+    let model_ids = value
+        .models
+        .iter()
+        .map(|model| &model.profile_id)
+        .collect::<std::collections::BTreeSet<_>>();
+    if model_ids.len() != value.models.len() {
+        return Err(ValidationErrors::field("models", "duplicate_profile"));
+    }
+    if value.roles.iter().any(|role| {
+        role.enabled
+            && role
+                .model_profile_id
+                .as_ref()
+                .is_none_or(|profile| !model_ids.contains(profile))
+    }) {
+        return Err(ValidationErrors::field("roles", "unknown_model_profile"));
+    }
+    Ok(())
+}
+}
+/// Lesson management operation; no action grants approval or private-source access.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum LessonOperation {
+    /// Update stored lesson content at an expected revision.
+    Edit,
+    /// Restrict or promote scope; broadening requires share authority.
+    SetScope,
+    /// Explicit authorized deletion independent of worktree cleanup.
+    Delete,
+}
+ironloom_core::contract! {
+/// Validated factory record.
+LessonMutation, LessonMutationData {
+    /// Stored lesson in the outer command origin project.
+    lesson_id: LessonId,
+    /// Reject stale concurrent updates.
+    expected_revision: Counter,
+    /// Content/scope/delete action.
+    operation: LessonOperation,
+    /// Present exactly for edit.
+    content: Option<String>,
+    /// Present exactly for scope changes; installation promotes sharing.
+    scope: Option<ironloom_storage::factory::RecordScope>,
+} |value| {
+    let _ = value;
+    positive("expected_revision", value.expected_revision)?;
+    if (value.operation == LessonOperation::Edit) != value.content.is_some() {
+        return Err(ValidationErrors::field(
+            "content",
+            "edit_content_required_only",
+        ));
+    }
+    if (value.operation == LessonOperation::SetScope) != value.scope.is_some() {
+        return Err(ValidationErrors::field(
+            "scope",
+            "scope_change_required_only",
+        ));
+    }
+    if let Some(content) = &value.content {
+        required("content", content)?;
+    }
+    Ok(())
+}
+}
+ironloom_core::contract! {
+/// Validated factory record.
+LessonQuery, LessonQueryData {
+    /// Authorized project including its applicable shared lessons.
+    project_id: ProjectId,
+    /// Optional authorized assignment scope.
+    assignment_id: Option<AssignmentId>,
+    /// Optional current-scope filter.
+    scope: Option<ironloom_storage::factory::RecordScope>,
+    /// Exclusive stable lesson cursor.
+    after: Option<LessonId>,
+    /// Bounded page size.
+    limit: Counter,
+} |value| {
+    let _ = value;
+    positive("limit", value.limit)?;
+    if value.limit.get() > MAX_SESSION_PAGE {
+        return Err(ValidationErrors::field("limit", "page_too_large"));
+    }
+    Ok(())
+}
+}
+ironloom_core::contract! {
+/// Validated factory record.
+LessonPage, LessonPageData {
+    /// Authorized lesson content only; origin references do not reveal source contents.
+    lessons: Vec<ironloom_storage::factory::Lesson>,
+    /// Next cursor, absent when exhausted.
+    next_after: Option<LessonId>,
+} |value| {
+    let _ = value;
+    if value.lessons.len() > MAX_SESSION_PAGE as usize {
+        return Err(ValidationErrors::field("lessons", "page_too_large"));
+    }
+    let ids = value
+        .lessons
+        .iter()
+        .map(|lesson| &lesson.lesson_id)
+        .collect::<std::collections::BTreeSet<_>>();
+    if ids.len() != value.lessons.len() {
+        return Err(ValidationErrors::field("lessons", "duplicate_lesson"));
+    }
+    Ok(())
+}
 }

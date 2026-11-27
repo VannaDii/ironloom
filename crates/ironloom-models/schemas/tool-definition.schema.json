@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/ToolDefinitionData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ToolDefinitionData": {
+      "description": "Unchecked construction draft for `ToolDefinition`; validate before use.",
+      "type": "object",
+      "properties": {
+        "description": {
+          "description": "Tool purpose visible to the model.",
+          "type": "string"
+        },
+        "input_schema": {
+          "description": "JSON Schema object for arguments; the gateway compiles/checks it before dispatch."
+        },
+        "name": {
+          "description": "Authorized tool name, never an alternate execution channel.",
+          "$ref": "#/$defs/ActorId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "description",
+        "input_schema"
+      ]
+    }
+  }
+}

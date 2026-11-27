@@ -126,6 +126,8 @@ macro_rules! contract {
 }
 
 fn nested_error(path: &str, message: &str) -> ValidationErrors {
+    let canonical_path = path.replace('[', ".").replace(']', "");
+    let path = canonical_path.as_str();
     if let Some(json) = message.strip_prefix("ironloom-validation:") {
         let mut stream = serde_json::Deserializer::from_str(json).into_iter::<ValidationErrors>();
         if let Some(Ok(mut errors)) = stream.next() {

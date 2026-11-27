@@ -26,3 +26,7 @@ cargo run -p ironloom-schemas
 ## 工厂契约候选版本
 
 新的工厂契约位于各 crate 的 `src/factory.rs` 模块。`Validated<T>` 在构造和解码时执行相同的嵌套字段及跨字段检查；结构化错误不会泄露机密。计数器和修订号使用规范十进制字符串，避免浏览器精度丢失。Rust 和 Dart 共用 `fixtures/contracts/decode.json`。新的 `FactoryArtifact` 记录无需 Discord 线程，历史第一版记录仍可读取。这些契约和适配器接口尚未实现工厂、登录、原生中继或推理功能。[共享契约规范](https://github.com/VannaDii/ironloom/blob/feat/shared-factory-contracts/docs/specs/ironloom-shared-contracts.md) 说明文件归属、API 路径、迁移边界和验证范围。
+
+修订版新增绑定快照的历史记录及有界重放到实时订阅接口、多选与自由文本回答、包含角色及工具模式和结果的推理消息，以及独立的原生服务器和环境标识与中继持久化键。这些是经过验证的接口，相关后端与适配器实现尚未完成。
+
+同一修订版还定义了经过授权的设置、团队、模型和设备查询与修改接口，经验记录的查看、编辑、范围调整、删除和提升操作，分页模型源搜索，以及显式的引擎草稿模型、缓存、资源和恢复数据。未知能力或内存数据保持未知；失败和取消请求并不确认终止或释放预留资源。后端与适配器实现尚未完成。

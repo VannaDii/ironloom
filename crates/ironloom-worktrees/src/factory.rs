@@ -34,12 +34,13 @@ WorkerPaths, WorkerPathsData {
     artifact_area: String,
 } |value| {
     let _ = value;
-    for path in value
+    for (field, path) in value
         .write_paths
         .iter()
-        .chain(std::iter::once(&value.artifact_area))
+        .map(|path| ("write_paths", path))
+        .chain(std::iter::once(("artifact_area", &value.artifact_area)))
     {
-        required("write_paths", path)?;
+        required(field, path)?;
         let path = std::path::Path::new(path);
         if path.is_absolute()
             || path
@@ -47,7 +48,7 @@ WorkerPaths, WorkerPathsData {
                 .any(|part| !matches!(part, std::path::Component::Normal(_)))
         {
             return Err(ValidationErrors::field(
-                "write_paths",
+                field,
                 "relative_normal_path_required",
             ));
         }

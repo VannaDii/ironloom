@@ -50,6 +50,14 @@
       "description": "Unchecked construction draft for `PendingQuestion`; validate before use.",
       "type": "object",
       "properties": {
+        "allow_multiple": {
+          "description": "True permits more than one selected choice.",
+          "type": "boolean"
+        },
+        "allow_text": {
+          "description": "True permits a nonblank free-text response, with or without selected choices.",
+          "type": "boolean"
+        },
         "assignment_id": {
           "description": "Original assignment.",
           "$ref": "#/$defs/AssignmentId"
@@ -106,7 +114,9 @@
         "item_id",
         "revision",
         "text",
-        "choices"
+        "choices",
+        "allow_multiple",
+        "allow_text"
       ]
     },
     "QuestionId": {

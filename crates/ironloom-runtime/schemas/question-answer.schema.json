@@ -29,9 +29,12 @@
       "description": "Unchecked construction draft for `QuestionAnswer`; validate before use.",
       "type": "object",
       "properties": {
-        "choice": {
-          "description": "One of the persisted allowed choices.",
-          "$ref": "#/$defs/ActorId"
+        "choices": {
+          "description": "Zero or more selected persisted choices; single/multiple policy comes from the pending question.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ActorId"
+          }
         },
         "expected_revision": {
           "description": "Reject stale/replaced/resolved requests.",
@@ -45,6 +48,13 @@
           "description": "Pending request identity.",
           "$ref": "#/$defs/QuestionId"
         },
+        "text": {
+          "description": "Optional free-text response, when permitted by the pending question.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "turn_id": {
           "description": "Expected active turn.",
           "$ref": "#/$defs/TurnId"
@@ -55,7 +65,7 @@
         "question_id",
         "turn_id",
         "item_id",
-        "choice",
+        "choices",
         "expected_revision"
       ]
     },

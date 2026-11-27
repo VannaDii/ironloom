@@ -25,6 +25,13 @@
       "type": "string",
       "minLength": 1
     },
+    "EnvironmentId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom EnvironmentId value.",
+      "type": "string",
+      "minLength": 1
+    },
     "InstallationId": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "title": "string",
@@ -47,6 +54,10 @@
         "enabled": {
           "description": "Persisted user preference.",
           "type": "boolean"
+        },
+        "environment_id": {
+          "description": "Distinct upstream environment ID used for session visibility.",
+          "$ref": "#/$defs/EnvironmentId"
         },
         "external_account_id": {
           "description": "Connected external account.",
@@ -75,21 +86,62 @@
           "description": "Authorized human mapping; host does not grant access.",
           "$ref": "#/$defs/OperatorId"
         },
-        "server_environment_id": {
-          "description": "Native server/environment mapping.",
-          "$ref": "#/$defs/ActorId"
+        "persistence_key": {
+          "description": "Persisted enrollment/preference key; independent from server and environment IDs.",
+          "$ref": "#/$defs/Validated2"
+        },
+        "relay_target": {
+          "description": "Normalized relay endpoint set.",
+          "$ref": "#/$defs/Validated"
+        },
+        "server_id": {
+          "description": "Upstream server ID returned by enrollment/refresh.",
+          "$ref": "#/$defs/ServerId"
         }
       },
       "additionalProperties": false,
       "required": [
         "installation_id",
         "node_id",
-        "server_environment_id",
+        "server_id",
+        "environment_id",
+        "relay_target",
+        "persistence_key",
         "external_account_id",
         "operator_id",
         "enabled",
         "authentication_generation",
         "control_registration_ref"
+      ]
+    },
+    "NativePersistenceKeyData": {
+      "description": "Unchecked construction draft for `NativePersistenceKey`; validate before use.",
+      "type": "object",
+      "properties": {
+        "client_name": {
+          "description": "Optional pairing/client preference namespace, matching upstream lookup.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "external_account_id": {
+          "description": "Authenticated external account; never an unrestricted host identity.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "websocket_url": {
+          "description": "Exact normalized relay WebSocket target, as in upstream persisted lookup.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "websocket_url",
+        "external_account_id"
       ]
     },
     "NodeId": {
@@ -105,6 +157,55 @@
       "description": "Validated Ironloom OperatorId value.",
       "type": "string",
       "minLength": 1
+    },
+    "RelayTargetData": {
+      "description": "Unchecked construction draft for `RelayTarget`; validate before use.",
+      "type": "object",
+      "properties": {
+        "enroll_url": {
+          "description": "Enrollment endpoint.",
+          "type": "string"
+        },
+        "pair_status_url": {
+          "description": "Pairing-status endpoint.",
+          "type": "string"
+        },
+        "pair_url": {
+          "description": "Pairing endpoint.",
+          "type": "string"
+        },
+        "refresh_url": {
+          "description": "Server registration refresh endpoint.",
+          "type": "string"
+        },
+        "websocket_url": {
+          "description": "Normalized relay WebSocket endpoint.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "websocket_url",
+        "enroll_url",
+        "refresh_url",
+        "pair_url",
+        "pair_status_url"
+      ]
+    },
+    "ServerId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ServerId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Validated": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/RelayTargetData"
+    },
+    "Validated2": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/NativePersistenceKeyData"
     }
   }
 }

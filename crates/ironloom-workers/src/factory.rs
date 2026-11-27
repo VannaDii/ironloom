@@ -109,13 +109,17 @@ PendingQuestion, PendingQuestionData {
     text: String,
     /// Allowed persisted choices.
     choices: Vec<ActorId>,
+    /// True permits more than one selected choice.
+    allow_multiple: bool,
+    /// True permits a nonblank free-text response, with or without selected choices.
+    allow_text: bool,
     /// Durable resolution, absent while pending.
     resolved_by: Option<AnswerId>,
 } |value| {
     let _ = value;
     positive("revision", value.revision)?;
     required("text", &value.text)?;
-    if value.choices.is_empty() {
+    if value.choices.is_empty() && !value.allow_text {
         return Err(ValidationErrors::field("choices", "required"));
     }
     let unique = value
@@ -127,4 +131,41 @@ PendingQuestion, PendingQuestionData {
     }
     Ok(())
 }
+}
+
+impl PendingQuestionData {
+    /// Validates a response against the persisted choices/mode. Authentication, expected revision,
+    /// question/turn/item matching and atomic resolution are still required by the service.
+    pub fn validate_response(
+        &self,
+        choices: &[ActorId],
+        text: Option<&str>,
+    ) -> Result<(), ValidationErrors> {
+        if self.resolved_by.is_some() {
+            return Err(ValidationErrors::field("question_id", "already_resolved"));
+        }
+        if choices.is_empty() && text.is_none() {
+            return Err(ValidationErrors::field("choices", "answer_required"));
+        }
+        if !self.allow_multiple && choices.len() > 1 {
+            return Err(ValidationErrors::field(
+                "choices",
+                "multiple_choices_forbidden",
+            ));
+        }
+        let unique = choices.iter().collect::<std::collections::BTreeSet<_>>();
+        if unique.len() != choices.len() {
+            return Err(ValidationErrors::field("choices", "duplicate_choice"));
+        }
+        if choices.iter().any(|choice| !self.choices.contains(choice)) {
+            return Err(ValidationErrors::field("choices", "unknown_choice"));
+        }
+        if let Some(text) = text {
+            if !self.allow_text {
+                return Err(ValidationErrors::field("text", "text_forbidden"));
+            }
+            required("text", text)?;
+        }
+        Ok(())
+    }
 }
