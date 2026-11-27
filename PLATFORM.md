@@ -15,6 +15,7 @@ Ironloom's target is a Rust software factory and persistent background harness s
 - OpenAI OAuth usable for remote control only or additionally for eligible inference; API keys are optional when OAuth covers inference. Anthropic BYOK and local inference remain separate choices.
 - Native remote-host control of Ironloom-owned sessions, not a plugin substitute. Vanna's connected VM services establish that the Codex Desktop remote-host mechanism works; the first integration task is mapping Ironloom to that mechanism and verifying its own client/relay compatibility.
 - Authenticated, durable, streaming web chat and configuration; background work survives browser disconnection. Incomplete setup defaults to a small resumable setup screen without restricting access to other available pages. Completed setup defaults to a project dashboard ordered by most recent human interaction. Service health/readiness remains separate from assignment execution readiness.
+- Support multiple human accounts with local login and OpenID Connect from the first release. Either login path requires the initial setup token to establish an administrator; authentication alone grants no administrator authority. Define project permissions and native-client identity mapping before implementing those contracts.
 - Persist work on graceful shutdown and make a best effort on catchable termination signals. Forced termination may lose recent progress and require repeated inference; reconcile uncertain external mutations before retrying. Startup distinguishes missing configuration from storage, corruption, and decryption failures and presents completion/correction guidance without resetting identity.
 - Stream command output and inference where supported, with bounded buffering and configurable runaway/repetition monitoring. Keep generation controls independent of optional monetary budgets.
 - Model discovery/download access through Hugging Face, ModelScope, Kaggle Models, and official Alibaba/Qwen, Mistral, and DeepSeek catalogs/distributions. Preserve publisher/host distinctions and access/license requirements.
@@ -24,6 +25,7 @@ Ironloom's target is a Rust software factory and persistent background harness s
 - Configurable project storage with assignment worktrees and sibling role artifacts. Roles may write concurrently in the same worktree within enforced path boundaries; all worker commands go through Ironloom tools and enforced execution permissions.
 - Coordinated Git mutations, content-specific tests/review, durable ownership, and cleanup that preserves needed work and shared models. Pause assignment source edits during final validation/commit; relevant subsequent edits invalidate affected results. Cancellation and timeout clean up owned descendant processes.
 - The planner sets merge order with implementors. Each implementor owns its merge, conflict resolution, final integrated testing, and repairs before declaring the merge complete; runtime coordination and existing gates enforce safe execution.
+- Default delivery permits pushing a branch and opening a pull request; merge and deployment require operator approval unless explicitly configured otherwise.
 - OpenTelemetry context across operations: project ID/name, worker ID/role/name, model mode/ID/provider/provenance, execution IDs, timing, outcomes/errors, and usage. Durable budget accounting requires no extra inference and must not wait for telemetry collectors.
 - Budget limits are optional and editable throughout active work. Usage tracking continues without limits; changes govern subsequent dispatch while accounting for in-flight work and uncertain usage.
 - GitHub remains the source of truth for published specs, repository state, pull requests, reviews, checks, and merges. SonarCloud remains the quality/compliance integration.
@@ -39,6 +41,7 @@ Ironloom's target is a Rust software factory and persistent background harness s
 - Remove `ironloom-discord` and its configuration, schemas, workflows, deployment fields, and active documentation as replacement behavior lands. Preserve needed historical domain records.
 - Keep the public landing page and VitePress guides/API docs in `site/guide-docs`, separate from the service-hosted operator UX. Update English and every affected localized tree with behavior changes.
 - Support native macOS and native Linux as well as Alpine-targeted containers. Retain the non-root runtime image in `docker/ironloom-runtime`, direct k3s Helm chart in `deploy/helm/ironloom`, Artifact Hub metadata, and GitHub Actions publishing. Isolate platform-specific GPU/inference and execution mechanisms from shared domain logic; qualify their hardware/backend coverage explicitly.
+- Linux/Alpine GPU backends may ship explicitly unqualified until tested on the corresponding hardware. Mac inference and simulated GPU behavior cannot qualify them; show this separately from estimated model fit.
 - Persist complete project folders and shared model storage across pod replacement, and keep database/service identity outside project storage. Do not use temporary worktree volumes for durable assignments.
 
 ## First Complete Factory Slice
@@ -52,7 +55,13 @@ After Ironloom's native-host integration and required configuration are qualifie
 5. Results and usage are persisted and streamed to the operator with OTel correlation.
 6. Delivery follows configured owner authority; worktree cleanup waits for worker release and preservation of required changes.
 
-This is a target slice, not an accepted implementation result. Ironloom-specific native client compatibility, detailed hardware/backend coverage for the required platforms, engine selection, and first-release operator topology remain open in the detailed plan.
+This is a target slice, not an accepted implementation result. Administrator enrollment lifecycle, project permissions, shared implementation contracts, Ironloom-specific native client compatibility, detailed platform/backend coverage, and engine selection remain open in the detailed plan.
+
+## Implementation Phases
+
+Agree shared contracts before dividing work. Primary build-out runs on Cinder and Ivy with deterministic model/provider/engine fixtures and no Ironloom inference, including no hosted generation or embeddings. Proposed ownership: Cinder owns durable service/execution and shared composition; Ivy owns operator UX and external/model adapters. Exact new paths and interfaces must be agreed before concurrent edits. Coding agents may use their own configured models to perform development.
+
+Combine both lanes on the Mac and validate the integrated service without inference first. Real inference and related fixes follow on the Mac only after that phase is authorized and the human configures the models. Planning does not dispatch work or authorize inference. Keep all existing quality gates and Python/engine-porting approval requirements.
 
 ## Quality Gates
 

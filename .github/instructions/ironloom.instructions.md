@@ -9,6 +9,7 @@ applyTo: '**/*'
 - Use typed IDs and fail-closed policy results for operator-visible workflows.
 - Only `ironloom-storage` may read or write `.ironloom/` paths directly.
 - Follow `docs/specs/ironloom-software-factory.md` for the planned factory direction; do not treat planned behavior as implemented or as authorization to implement.
+- Primary build-out on Cinder/Ivy uses deterministic provider/engine fixtures, with no Ironloom inference or embedding runs. Integrate on the Mac before separately authorized real inference; do not confuse coding agents' own model use with testing Ironloom inference.
 - Retire Discord control and thread binding; new operator actions require authenticated identity, assignment authority, and applicable approval.
 - Python embedding and inference-engine porting each require Vanna's explicit approval before adoption.
 - GitHub state must be refreshed before source-of-truth decisions.

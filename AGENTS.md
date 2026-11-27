@@ -9,6 +9,7 @@
 - Pull request bodies must follow `.github/pull_request_template.md` and fill every section with repo-specific content.
 - Keep GitHub as the source of truth for specs, pull requests, reviews, and merge history.
 - Follow the software factory direction in `docs/specs/ironloom-software-factory.md`; it is a plan, not a claim of implemented behavior or authorization to implement.
+- Follow its phased build split: Cinder/Ivy implementation and tests use deterministic model/engine fixtures without Ironloom generation or embedding calls; combine on the Mac before separately authorized real inference. This does not prohibit coding agents from using their configured development models.
 - Use `PLATFORM.md` as the authoritative foundation-scope document.
 
 ## Boundaries

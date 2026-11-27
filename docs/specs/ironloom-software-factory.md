@@ -24,6 +24,8 @@ Remove Discord control and its thread-to-work-item binding requirement. Preserve
 6. Orchestrate workers to develop tests, implement, review, document, and complete the approved work. Repair loops remain within configured bounds.
 7. Deliver according to the owner's instructions and configured publication, merge, and deployment permissions.
 
+Ship with permission to push a branch and open a pull request; merge and deployment require operator approval by default. Operators can explicitly configure different delivery authority. Planning merge order does not itself grant permission to merge into a protected delivery branch or deploy.
+
 Authorized work proceeds without repeated permission requests. Material scope or authority changes return to the human. A genuine design flaw requires an explanation, recommendation, tradeoff, and decision before the affected design changes; implementation difficulty alone is not a design flaw.
 
 | Concept | Responsibility |
@@ -53,6 +55,8 @@ Before asking a similar question, consult applicable prior answers. Remind the o
 ## Web service and setup
 
 Ironloom owns authenticated configuration and interaction through a runtime web application, separate from the static public documentation site. Provide durable chat history, streamed messages and tool activity, worker progress, clarification questions, plan approval, follow-up steering, cancellation, pause/resume, and reconnection. Work continues when the browser disconnects. Client reconnection restores persisted state without itself resubmitting work; web and native clients share execution state.
+
+Support multiple human accounts from the first release, with both Ironloom-managed login and external OpenID Connect login. Either login path must require presentation of the initial setup token to establish an administrator on the installed instance; successful login alone is not administrator enrollment. Keep service login separate from provider inference credentials. Define project access and approval authority explicitly, and map native-client actions to an authorized human account rather than treating a connected host as unrestricted authority. The setup-token lifecycle and subsequent administrator enrollment rules remain decisions below.
 
 Graceful shutdown stops new dispatch and persists current work state. Handle SIGINT, SIGTERM, and other catchable shutdown requests with best-effort persistence and owned-process cleanup within the available shutdown time. Forced termination, a crash, or power loss may prevent any final write: resume from the latest durable state, accepting that recent or active inference may need to run again. Do not promise exactly-once inference or persistence after an uncatchable termination. Reconcile uncertain external mutations before retrying them; repeating inference does not authorize blindly repeating a merge, publication, or deployment.
 
@@ -236,30 +240,64 @@ Remove `ironloom-discord`, Discord credentials/setup/routes, thread-binding sche
 
 Preserve GitHub refresh rules, SonarCloud normalization/bootstrap checks, runtime non-root packaging, Docker/Helm delivery, and public VitePress documentation. Support native macOS and native Linux operation as well as containerized deployment targeting Alpine. Keep shared orchestration/domain behavior independent of platform-specific GPU discovery, device access, inference-engine integration, and execution sandbox implementations. GPU families, CPU architectures, engine coverage, and the exact platform matrix still require qualification; do not assume identical GPU support across native and container deployments. Alpine remains a target, not permission to silently substitute another base image when integration is difficult.
 
+Linux/Alpine GPU backends may be included in the first release as explicitly unqualified until tested on the corresponding hardware. Compilation, simulated devices, and Mac inference do not establish Linux GPU qualification. Distinguish backend qualification status from model memory-fit estimates in the UX; do not label an untested backend as verified support. Native service operation and applicable non-inference checks still need validation on each target.
+
 Deployment instructions must configure the persistent roots by type and distinguish service readiness from execution readiness. Update affected English and all localized product docs with implementation changes. Planning updates do not claim these behaviors already ship.
 
-## Proposed delivery sequence
+## Build-out on Cinder and Ivy, then inference on the Mac
 
-| Stage | Outcome |
-| --- | --- |
-| 1. Native-host integration mapping | Map the existing working remote-host mechanism to Ironloom-owned sessions and verify client/relay compatibility using deterministic protocol behavior; raise any actual design flaw for a human decision |
-| 2. Durable service and setup | Database-backed identity/state, infrastructure-configured persistent roots, explicit startup error/correction handling, resumable setup and project dashboard, separate service/execution readiness, authenticated web chat/streaming, and replacement of Discord-specific coupling |
-| 3. Team and inference configuration | Required model/effort assignments, OpenAI OAuth/BYOK and Anthropic BYOK, configurable endpoint support, source discovery/downloads, and GPU selection |
-| 4. Local runtime and refinement | Qualify the approved Rust engine/hardware scope, GPU estimates and LRU residency; deliver instruction-led refinement, remembered operator answers and relevant suggestions, versioned plans, and approval |
-| 5. Complete assignment | Shared worktree with enforced worker paths and process-tree cleanup; tests, implementation, review, documentation, planner-led merge order, implementor-owned integration, stable final validation/commit, configured delivery, and safe cleanup |
-| 6. Operational completion | Cross-client resume/steering, concurrent assignments, recovery, retention, OTel correlation, and budget behavior across supported configurations |
+The agreed delivery split is primary build-out without inference runs on Cinder and Ivy, followed by combined integration and final inference work on the Mac. This describes how to build Ironloom, not a distributed-host architecture for the product. The work allocation below is proposed; implementation and dispatch are not authorized by this planning document.
 
-Storage, permissions, instruction-update handling, shutdown/recovery, streaming controls, telemetry, and optional budget enforcement accompany the stages that introduce operations; they are not postponed until the last stage. This sequence is proposed, not authorization to implement.
+### 1. Shared contracts before parallel implementation
+
+Resolve the decisions required for the affected work below and establish one shared baseline. Cinder owns common domain/storage/service contracts; Ivy owns transport/provider mapping against them. Agree exact new module/crate paths before concurrent edits. Define operator/project authority, plan and instruction revisions, assignment/worker lifecycle, persisted commands and replayable events, streaming inference/tool requests, cancellation, usage, and GPU-engine lifecycle through public Rust contracts and their schemas. Choose database migrations and the web transport once; do not let each lane invent its own session or approval model.
+
+Map the existing native-host protocol to these contracts early, using deterministic responses and the working VM setup as the reference. Check session visibility, input, questions/approvals, cancellation, and reconnect without model calls. If the upstream transport imposes a constraint on the shared contracts, resolve it before dependent work is split. This does not reopen whether native remote hosts exist.
+
+### 2. Primary build-out: no Ironloom inference runs
+
+Use scripted model responses, simulated engine/device events, and provider HTTP fixtures. No local or hosted generation, embedding calls, model warm-up, or inference-based capability probes may run through Ironloom or its tests in this phase. This restriction concerns the software under development; it does not prohibit the coding agents on Cinder and Ivy from using their configured models to implement it. Build real adapters and engine integration where selected, but keep inference execution out of startup, ordinary tests, and CI. Do not treat simulations as model qualification.
+
+| Proposed owner | Owned work and existing paths | Dependency and handoff |
+| --- | --- | --- |
+| Cinder: service and execution | `crates/ironloom-{core,config,storage,policy,queue,process-graph,supervisor,workers,worktrees,gates,observability,schemas}`; runtime composition; workspace Cargo manifests/lockfile; Docker/Helm and CI | SQLite/PostgreSQL, multi-user authorization, durable lifecycle/recovery, copied instructions and remembered answers, editable standard roles, controlled tools/shared worktrees, merge coordination, streaming commands, OTel/accounting, and persistent deployment. Export service interfaces for Ivy; integrate adapter wiring after its implementation lands. |
+| Ivy: operator UX and adapters | New web/operator assets and web/native/model adapter modules, with exact paths agreed in the shared baseline; their package manifests, tests, and schemas | Local/OIDC login UI and transport, setup/dashboard/streaming chat, team/model/source/device/budget controls, native remote-host transport, OpenAI/Anthropic/configurable endpoint adapters, source discovery/downloads, and engine/GPU integration with simulated LRU behavior. Use Cinder's service/policy/storage interfaces; keep business decisions out of transport code. |
+
+Each owner writes the focused tests for its behavior. Cinder owns shared runtime wiring and root manifests so both lanes do not overwrite them; Ivy supplies its integration requirements through the agreed contracts. Assign affected English/localized documentation files to one owner per change or hand them off sequentially. Discord removal spans both lanes and is completed in the combined build, including contracts, setup, deployment, scripts, and active documentation.
+
+Use dedicated Ironloom checkouts on the two hosts, based on the same published planning/contracts baseline. Do not repurpose their other active project checkouts. Remote Ironloom checkouts and toolchains still need preparation; they were not present in the app's project inventory during this review. Each implementor integrates in the agreed order, repairs its conflicts, and reruns affected combined checks. Do not dispatch both lanes against unpublished or differing contracts.
+
+Primary build-out exercises real database operations, Git worktrees, filesystem/command enforcement, streaming/reconnect, multi-user permissions, shutdown/recovery, instruction updates, remembered answers, usage accounting, and both adapters together with deterministic responses. Include scripted idea-to-questions-to-approved-plan-to-delivery scenarios. Existing formatting, Clippy, test, schema, policy, audit, docs, Docker, Helm, and SonarCloud checks remain required; preserve their purpose while replacing Discord-specific cases.
+
+### 3. Combine on the Mac without inference first
+
+Bring both lanes onto one integration revision. Resolve wiring and platform issues, run the applicable existing checks, exercise native macOS process/filesystem enforcement, and connect the native client to the real service using deterministic responses. Verify the UI, persistence, workflow, tools, model adapters, and telemetry work together before loading models. Keep Linux/Alpine backend qualification status explicit.
+
+### 4. Final inference work on the Mac
+
+After explicit authorization for this phase, use the approved Rust engine and human-selected role models/effort to run real local and configured frontier inference from the Mac. Verify streaming/tool calling, refinement and clarification, approved work with concurrent roles, integrated tests/review/docs, interruption/recovery, LRU load/reuse/eviction, generation controls, and usage/accounting. Tune instructions and model settings through the operator-controlled update flow. Keep Python embedding and engine porting subject to Vanna's explicit approval.
+
+The current Mac reports Apple M5 Max, 128 GiB memory, arm64, and macOS 27.2.1. This is a qualification host, not a declared minimum platform or proof that any particular model fits. Select exact model revisions, quantizations, context sizes, concurrency, and working-memory allowance before live runs. Real inference and any related fixes are part of this final phase, not implied by passing deterministic tests. Mac qualification does not qualify Linux/Alpine GPU execution.
+
+Storage, permissions, instruction updates, shutdown/recovery, streaming controls, telemetry, and optional budget enforcement accompany the operations that need them; they are not deferred to inference qualification.
 
 Use focused functional regression tests and existing gates for approval revision handling, streaming reconnect without repeated execution, shared-worktree path enforcement, stable validation state, database/backend behavior, missing storage, source-access transitions, GPU placement/LRU active-use protection, model capability adaptation, and usage accounting. Preserve all existing formatting, Clippy, test, schema, policy, audit, docs, Docker, Helm, and SonarCloud requirements. Do not create proof packages, independent auditors, saved test transcripts, or bespoke evidence generators.
 
-## Remaining decisions
+## Remaining decisions before implementation
 
-- Native macOS, native Linux, and Alpine container deployment are required. Supported OS versions, CPU architectures, GPU families, and engine/backend combinations remain to be selected and qualified.
-- Ironloom-specific client/relay compatibility and the exact adapter for the existing native remote-host mechanism, including any upstream support needed.
-- Rust inference engine selection and supported model architectures/formats. Python embedding and engine porting each require Vanna's explicit approval if proposed.
-- First-release operator/account topology and default delivery authority. A single-owner deployment and delivery to a reviewed pull request were proposals, not accepted constraints.
-- Concrete web transport/framework, execution sandbox mechanisms per supported OS, database schema/migration details, and deployment packaging belong in the implementation plan.
+Settled: multiple human accounts; local login and OIDC; setup-token proof for administrator enrollment; default branch/PR publication with approval for merge/deploy; native macOS/Linux and Alpine targets; untested Linux/Alpine GPU backends may ship explicitly unqualified; no Ironloom inference runs during Cinder/Ivy build-out; final inference work on the Mac.
+
+| Decision | Recommendation or required resolution | Needed before |
+| --- | --- | --- |
+| Administrator enrollment | Decide whether the initial setup token is single-use or reusable, how it is rotated/recovered, and how later administrators enroll. Both login methods require token proof under the agreed rule; do not silently grant admin from an OIDC claim or a first-login heuristic. | Authentication/storage contracts |
+| Project access and credential sharing | Define who can view, operate, approve, and administer a project, and who receives unanswered questions. Recommend creator-owned projects with explicit membership, questions routed to the requesting operator, and provider credentials private unless deliberately shared. Confirm administrator access to project content and cross-project answer reuse. | Authorization/database contracts |
+| Web/database stack and public contracts | Proposed: Tokio/Axum, HTTP commands plus replayable SSE, a separate Vue/TypeScript operator app using the existing Vue ecosystem, and SQLx-backed SQLite/PostgreSQL. Fix exact adapter boundaries, identity mapping, schema/migrations, event/request semantics, and dependency versions once. These are proposals, not selected dependencies. | Parallel build-out |
+| Native protocol integration | Select and pin the upstream transport/components or compatible adapter after inspecting their actual interfaces; map native identities and sessions to Ironloom's multi-user service. Resolve missing upstream support without substituting plugin control. | Dependent session/auth implementation |
+| Platform enforcement and build matrix | Choose minimum OS versions/architectures and concrete command/filesystem sandbox mechanisms for macOS, Linux, and Alpine. Prove enforcement with ordinary processes, without inference. Target-specific dependencies must preserve the existing Rust/CI gates. | Execution and deployment implementation |
+| Rust engine and backend scope | Evaluate the existing `mistral.rs` candidate through source/build checks first; choose a pinned engine, initial model formats/architectures, and Linux GPU families to implement. Rust SDK availability is not proof of Alpine compatibility. Keep engine choice open until that assessment; Python/porting still require approval. | Concrete local-engine driver; service/UX work can use the agreed simulated interface |
+| Live-run configuration | Human-selected role models and reasoning effort, exact local weights/revisions/quantization, memory/context/concurrency and generation controls, credentials, project, and any optional budget. | Mac inference phase, not primary build-out |
+
+Do not turn implementation choices into additional operator workflow rules. The planner and implementors retain the agreed role-level judgment; resolve shared technical interfaces before dividing work, and ask the operator when instructions leave uncertainty.
 
 ## Integration references
 
@@ -272,4 +310,5 @@ These references inform feasibility; they do not establish implemented or qualif
 - [Hugging Face model access](https://huggingface.co/docs/hub/models-gated), [ModelScope](https://github.com/modelscope/modelscope_hub), and [Kaggle Models](https://www.kaggle.com/docs/models).
 - [Alibaba/Qwen official releases](https://qwen.ai/), [Mistral model catalog](https://docs.mistral.ai/), and [DeepSeek official repositories](https://github.com/deepseek-ai).
 - [Rust engine candidate: mistral.rs](https://github.com/EricLBuehler/mistral.rs).
+- Proposed implementation libraries: [Axum](https://docs.rs/axum/latest/axum/), [SQLx](https://github.com/transact-rs/sqlx), and [Vue](https://vuejs.org/guide/introduction.html).
 - [Rust instrumentation](https://docs.rs/tracing/latest/tracing/attr.instrument.html) and [OpenTelemetry context integration](https://docs.rs/tracing-opentelemetry/latest/tracing_opentelemetry/trait.OpenTelemetrySpanExt.html).
