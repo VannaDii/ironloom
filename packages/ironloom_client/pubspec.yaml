@@ -1,0 +1,9 @@
+name: ironloom_client
+description: Validated shared Ironloom wire contracts for web and native clients.
+version: 0.1.0
+publish_to: none
+environment:
+  sdk: '>=3.13.0 <4.0.0'
+dev_dependencies:
+  test: ^1.26.0
+  lints: ^6.0.0

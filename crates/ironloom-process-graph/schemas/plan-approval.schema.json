@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/PlanApprovalData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Counter": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Canonical decimal u64; semantic validation also enforces u64 maximum.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "OperatorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom OperatorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "PlanApprovalData": {
+      "description": "Unchecked construction draft for `PlanApproval`; validate before use.",
+      "type": "object",
+      "properties": {
+        "approved_by": {
+          "description": "Authenticated approver; recheck grant on dispatch.",
+          "$ref": "#/$defs/OperatorId"
+        },
+        "content_hash": {
+          "description": "Hash of approved scope and permissions.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "plan_id": {
+          "description": "Approved plan.",
+          "$ref": "#/$defs/PlanId"
+        },
+        "revision": {
+          "description": "Exact revision.",
+          "$ref": "#/$defs/Counter"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "plan_id",
+        "revision",
+        "content_hash",
+        "approved_by"
+      ]
+    },
+    "PlanId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom PlanId value.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

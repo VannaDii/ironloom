@@ -23,7 +23,8 @@ pub enum ArtifactKind {
     PolicyDecision,
 }
 
-/// Immutable artifact envelope stored under `.ironloom/artifacts`.
+/// Temporary foundation runtime artifact, retired when the factory runtime replaces this path.
+/// This is not a compatibility reader or a supported prior-release format.
 #[derive(Clone, Debug, JsonSchema, PartialEq, Deserialize, Serialize)]
 pub struct ArtifactEnvelope {
     id: ArtifactId,
@@ -115,3 +116,6 @@ fn checksum_payload(
     let encoded = serde_json::to_vec(&stable_payload).unwrap_or_default();
     hex::encode(Sha256::digest(encoded))
 }
+
+/// Software factory contracts for the unreleased application.
+pub mod factory;

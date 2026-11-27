@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/ExecutionClaimData",
+  "$defs": {
+    "AssignmentId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom AssignmentId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Counter": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Canonical decimal u64; semantic validation also enforces u64 maximum.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "ExecutionClaimData": {
+      "description": "Unchecked construction draft for `ExecutionClaim`; validate before use.",
+      "type": "object",
+      "properties": {
+        "assignment_id": {
+          "description": "Claimed assignment.",
+          "$ref": "#/$defs/AssignmentId"
+        },
+        "expires_at_ms": {
+          "description": "Renewable claim expiry, not proof of termination.",
+          "$ref": "#/$defs/Counter"
+        },
+        "fence": {
+          "description": "Monotonically increasing ownership token.",
+          "$ref": "#/$defs/Counter"
+        },
+        "node_id": {
+          "description": "Workspace owner.",
+          "$ref": "#/$defs/NodeId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "assignment_id",
+        "node_id",
+        "fence",
+        "expires_at_ms"
+      ]
+    },
+    "NodeId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom NodeId value.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

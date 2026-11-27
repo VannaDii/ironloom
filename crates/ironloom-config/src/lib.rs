@@ -488,3 +488,6 @@ fn validate_config_key(value: &str) -> Result<(), ConfigError> {
 fn is_empty(value: &str) -> bool {
     value.trim().is_empty()
 }
+
+/// Software factory contracts for the unreleased application.
+pub mod factory;

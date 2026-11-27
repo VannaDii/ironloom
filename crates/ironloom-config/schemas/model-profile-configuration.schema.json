@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/ModelProfileConfigurationData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "BillingMode": {
+      "description": "Explicit cost basis; no silent billing fallback.",
+      "oneOf": [
+        {
+          "description": "API key billing.",
+          "type": "string",
+          "const": "api_key"
+        },
+        {
+          "description": "Account-backed OAuth usage; not API-key charges.",
+          "type": "string",
+          "const": "account"
+        },
+        {
+          "description": "Configured local compute cost estimate.",
+          "type": "string",
+          "const": "local_estimate"
+        }
+      ]
+    },
+    "CredentialId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom CredentialId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "DeviceId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom DeviceId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "EngineIdentityData": {
+      "description": "Unchecked construction draft for `EngineIdentity`; validate before use.",
+      "type": "object",
+      "properties": {
+        "backend": {
+          "description": "Selected accelerator backend.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "configuration_hash": {
+          "description": "Engine configuration identity.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "name": {
+          "description": "Explicit selected engine, never silently substituted.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "version": {
+          "description": "Pinned version.",
+          "$ref": "#/$defs/ActorId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version",
+        "backend",
+        "configuration_hash"
+      ]
+    },
+    "ModelProfileConfigurationData": {
+      "description": "Unchecked construction draft for `ModelProfileConfiguration`; validate before use.",
+      "type": "object",
+      "properties": {
+        "billing": {
+          "description": "Explicit account/API/local estimate billing choice.",
+          "$ref": "#/$defs/BillingMode"
+        },
+        "credential_id": {
+          "description": "Private credential reference; separate use/share/replace/delete grants.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CredentialId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "device_bindings": {
+          "description": "Desired configured local devices; discovery and admission recheck identity.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DeviceId"
+          }
+        },
+        "engine": {
+          "description": "Explicit local engine/version/backend; no default engine fallback.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Validated"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "model_id": {
+          "description": "Configured provider model/checkpoint.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "profile_id": {
+          "description": "Stable human-selected profile identity.",
+          "$ref": "#/$defs/ModelProfileId"
+        },
+        "provider": {
+          "description": "Explicit provider; no silent substitute.",
+          "$ref": "#/$defs/ActorId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "profile_id",
+        "provider",
+        "model_id",
+        "billing",
+        "device_bindings"
+      ]
+    },
+    "ModelProfileId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ModelProfileId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Validated": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/EngineIdentityData"
+    }
+  }
+}

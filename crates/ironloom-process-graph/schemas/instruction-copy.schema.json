@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/InstructionCopyData",
+  "$defs": {
+    "AssignmentId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom AssignmentId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Counter": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Canonical decimal u64; semantic validation also enforces u64 maximum.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "InstructionCopyData": {
+      "description": "Unchecked construction draft for `InstructionCopy`; validate before use.",
+      "type": "object",
+      "properties": {
+        "acknowledged_revision": {
+          "description": "Revision consumed at worker decision boundary; zero means none.",
+          "$ref": "#/$defs/Counter"
+        },
+        "assignment_id": {
+          "description": "Owning assignment storage.",
+          "$ref": "#/$defs/AssignmentId"
+        },
+        "content": {
+          "description": "Effective copied instructions.",
+          "type": "string"
+        },
+        "instruction_id": {
+          "description": "Copied template identity.",
+          "$ref": "#/$defs/InstructionId"
+        },
+        "revision": {
+          "description": "Applied copy revision.",
+          "$ref": "#/$defs/Counter"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "instruction_id",
+        "assignment_id",
+        "revision",
+        "acknowledged_revision",
+        "content"
+      ]
+    },
+    "InstructionId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom InstructionId value.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

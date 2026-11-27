@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/DeviceIdentityData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "DeviceId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom DeviceId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "DeviceIdentityData": {
+      "description": "Unchecked construction draft for `DeviceIdentity`; validate before use.",
+      "type": "object",
+      "properties": {
+        "device_id": {
+          "description": "Canonical capacity pool identity reconciled across views.",
+          "$ref": "#/$defs/DeviceId"
+        },
+        "hardware_key": {
+          "description": "Vendor UUID or reconciled host-scoped hardware identity.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "host_id": {
+          "description": "Physical host identity distinct from node ID.",
+          "$ref": "#/$defs/HostId"
+        },
+        "parent_id": {
+          "description": "Parent physical GPU for partition/virtual views.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DeviceId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reconciled": {
+          "description": "False blocks admission; ordinals never establish identity.",
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "device_id",
+        "host_id",
+        "hardware_key",
+        "reconciled"
+      ]
+    },
+    "HostId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom HostId value.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/LoginRequestData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "LoginRequestData": {
+      "description": "Unchecked construction draft for `LoginRequest`; validate before use.",
+      "type": "object",
+      "properties": {
+        "password": {
+          "description": "Only accepted by local authentication; never logged.",
+          "$ref": "#/$defs/SecretInput"
+        },
+        "username": {
+          "description": "Local account identity.",
+          "$ref": "#/$defs/ActorId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "username",
+        "password"
+      ]
+    },
+    "SecretInput": {
+      "description": "Secret submitted only to the authentication backend; Debug is always redacted.",
+      "type": "string"
+    }
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EngineOperation",
+  "description": "Adapter lifecycle operation; central service owns admission and LRU.",
+  "oneOf": [
+    {
+      "description": "Static discovery without warm-up or inference probes.",
+      "type": "string",
+      "const": "capabilities"
+    },
+    {
+      "description": "Reserve first; load optional draft with target.",
+      "type": "string",
+      "const": "load"
+    },
+    {
+      "description": "Reuse weights with isolated request/session state.",
+      "type": "string",
+      "const": "reuse"
+    },
+    {
+      "description": "Release memory while retaining downloaded weights.",
+      "type": "string",
+      "const": "unload"
+    },
+    {
+      "description": "Request scoped cancellation; confirmation is separate.",
+      "type": "string",
+      "const": "cancel_request"
+    },
+    {
+      "description": "Observe memory and external pressure.",
+      "type": "string",
+      "const": "observe_resources"
+    },
+    {
+      "description": "Reconcile requests and capacity before reuse.",
+      "type": "string",
+      "const": "restart"
+    }
+  ]
+}

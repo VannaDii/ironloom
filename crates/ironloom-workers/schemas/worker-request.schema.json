@@ -33,11 +33,15 @@
   ],
   "$defs": {
     "CorrelationId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
       "description": "Validated Ironloom CorrelationId value.",
       "type": "string",
       "minLength": 1
     },
     "WorkItemId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
       "description": "Validated Ironloom WorkItemId value.",
       "type": "string",
       "minLength": 1

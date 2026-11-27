@@ -53,6 +53,8 @@
   ],
   "$defs": {
     "RepositorySlug": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
       "description": "Validated `owner/repository` GitHub repository slug.",
       "type": "string",
       "minLength": 1

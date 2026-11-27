@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/OidcCallbackData",
+  "$defs": {
+    "OidcCallbackData": {
+      "description": "Unchecked construction draft for `OidcCallback`; validate before use.",
+      "type": "object",
+      "properties": {
+        "code": {
+          "description": "Single-use issuer authorization code.",
+          "$ref": "#/$defs/SecretInput"
+        },
+        "state": {
+          "description": "One-time CSRF and connection-bound state.",
+          "$ref": "#/$defs/SecretInput"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "code"
+      ]
+    },
+    "SecretInput": {
+      "description": "Secret submitted only to the authentication backend; Debug is always redacted.",
+      "type": "string"
+    }
+  }
+}

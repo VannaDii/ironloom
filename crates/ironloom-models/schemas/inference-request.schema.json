@@ -1,0 +1,722 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/InferenceRequestData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "AssignmentId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom AssignmentId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "BillingMode": {
+      "description": "Explicit cost basis; no silent billing fallback.",
+      "oneOf": [
+        {
+          "description": "API key billing.",
+          "type": "string",
+          "const": "api_key"
+        },
+        {
+          "description": "Account-backed OAuth usage; not API-key charges.",
+          "type": "string",
+          "const": "account"
+        },
+        {
+          "description": "Configured local compute cost estimate.",
+          "type": "string",
+          "const": "local_estimate"
+        }
+      ]
+    },
+    "ContextCacheData": {
+      "description": "Unchecked construction draft for `ContextCache`; validate before use.",
+      "type": "object",
+      "properties": {
+        "cache_id": {
+          "description": "Request/session-scoped cache identity, separate from resident weights.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "capacity_bytes": {
+          "description": "Configured bound if known.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Counter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "conversation_id": {
+          "description": "Authorized conversation boundary; sharing weights does not share this context.",
+          "$ref": "#/$defs/ConversationId"
+        },
+        "owner": {
+          "description": "Authorized human scope; resolve independently at dispatch.",
+          "$ref": "#/$defs/OperatorId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "cache_id",
+        "conversation_id",
+        "owner"
+      ]
+    },
+    "ConversationId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ConversationId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Counter": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Canonical decimal u64; semantic validation also enforces u64 maximum.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "CredentialId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom CredentialId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "DeviceId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom DeviceId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "DeviceIdentityData": {
+      "description": "Unchecked construction draft for `DeviceIdentity`; validate before use.",
+      "type": "object",
+      "properties": {
+        "device_id": {
+          "description": "Canonical capacity pool identity reconciled across views.",
+          "$ref": "#/$defs/DeviceId"
+        },
+        "hardware_key": {
+          "description": "Vendor UUID or reconciled host-scoped hardware identity.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "host_id": {
+          "description": "Physical host identity distinct from node ID.",
+          "$ref": "#/$defs/HostId"
+        },
+        "parent_id": {
+          "description": "Parent physical GPU for partition/virtual views.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DeviceId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reconciled": {
+          "description": "False blocks admission; ordinals never establish identity.",
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "device_id",
+        "host_id",
+        "hardware_key",
+        "reconciled"
+      ]
+    },
+    "DraftModelData": {
+      "description": "Unchecked construction draft for `DraftModel`; validate before use.",
+      "type": "object",
+      "properties": {
+        "checkpoint_hash": {
+          "description": "Verified draft manifest hash.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "model_id": {
+          "description": "Explicit optional draft checkpoint, never a fallback target.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "quantization": {
+          "description": "Draft quantization where applicable.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "revision": {
+          "description": "Exact draft revision.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "weight_bytes": {
+          "description": "Draft memory estimate; unknown is not zero.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Counter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "model_id",
+        "revision",
+        "checkpoint_hash"
+      ]
+    },
+    "EngineIdentityData": {
+      "description": "Unchecked construction draft for `EngineIdentity`; validate before use.",
+      "type": "object",
+      "properties": {
+        "backend": {
+          "description": "Selected accelerator backend.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "configuration_hash": {
+          "description": "Engine configuration identity.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "name": {
+          "description": "Explicit selected engine, never silently substituted.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "version": {
+          "description": "Pinned version.",
+          "$ref": "#/$defs/ActorId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version",
+        "backend",
+        "configuration_hash"
+      ]
+    },
+    "EngineLoadOptionsData": {
+      "description": "Unchecked construction draft for `EngineLoadOptions`; validate before use.",
+      "type": "object",
+      "properties": {
+        "accelerators": {
+          "description": "Explicit additional accelerators; engine may report unsupported.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ActorId"
+          }
+        },
+        "cache": {
+          "description": "Optional isolated context cache; absence does not imply cross-session reuse.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Validated7"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "concurrency": {
+          "description": "Configured concurrent demand.",
+          "$ref": "#/$defs/Counter"
+        },
+        "context_tokens": {
+          "description": "Configured context demand for estimates/admission.",
+          "$ref": "#/$defs/Counter"
+        },
+        "draft": {
+          "description": "Explicit optional draft model.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Validated6"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "context_tokens",
+        "concurrency",
+        "accelerators"
+      ]
+    },
+    "GenerationControlsData": {
+      "description": "Unchecked construction draft for `GenerationControls`; validate before use.",
+      "type": "object",
+      "properties": {
+        "max_duration_ms": {
+          "description": "Runaway bound.",
+          "$ref": "#/$defs/Counter"
+        },
+        "max_output_tokens": {
+          "description": "Generation bound independent of monetary budget.",
+          "$ref": "#/$defs/Counter"
+        },
+        "repetition_window": {
+          "description": "Incremental monitoring window; unavailable on nonstreaming engines.",
+          "$ref": "#/$defs/Counter"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "max_output_tokens",
+        "max_duration_ms",
+        "repetition_window"
+      ]
+    },
+    "HostId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom HostId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "InferenceId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom InferenceId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "InferenceMessageData": {
+      "description": "Unchecked construction draft for `InferenceMessage`; validate before use.",
+      "type": "object",
+      "properties": {
+        "role": {
+          "description": "Provider-independent role.",
+          "$ref": "#/$defs/MessageRole"
+        },
+        "text": {
+          "description": "Optional nonblank text; tool-only assistant messages need no text.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tool_calls": {
+          "description": "Complete assistant-proposed tool calls, never directly executed by adapters.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Validated9"
+          }
+        },
+        "tool_result": {
+          "description": "One result when role is tool.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Validated10"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "tool_calls"
+      ]
+    },
+    "InferenceRequestData": {
+      "description": "Unchecked construction draft for `InferenceRequest`; validate before use.",
+      "type": "object",
+      "properties": {
+        "assignment_id": {
+          "description": "Approved assignment.",
+          "$ref": "#/$defs/AssignmentId"
+        },
+        "controls": {
+          "description": "Independent generation bounds.",
+          "$ref": "#/$defs/Validated4"
+        },
+        "engine_options": {
+          "description": "Optional local draft/cache/context/accelerator request, rejected on remote selections.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Validated5"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "inference_id": {
+          "description": "Isolated request identity, distinct from resident model.",
+          "$ref": "#/$defs/InferenceId"
+        },
+        "item_id": {
+          "description": "Target assistant item, stable across stream fragments.",
+          "$ref": "#/$defs/ItemId"
+        },
+        "messages": {
+          "description": "Ordered role-bearing context including prior tool calls/results.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Validated8"
+          }
+        },
+        "selection": {
+          "description": "Explicit selected provider/model/billing/placement.",
+          "$ref": "#/$defs/Validated"
+        },
+        "tools": {
+          "description": "Currently authorized tool schemas; adapters never execute these tools.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Validated11"
+          }
+        },
+        "turn_id": {
+          "description": "Target turn for streamed progress and cancellation correlation.",
+          "$ref": "#/$defs/TurnId"
+        },
+        "worker_id": {
+          "description": "Authorized worker.",
+          "$ref": "#/$defs/WorkerId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "inference_id",
+        "assignment_id",
+        "worker_id",
+        "turn_id",
+        "item_id",
+        "selection",
+        "controls",
+        "messages",
+        "tools"
+      ]
+    },
+    "ItemId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ItemId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "MessageRole": {
+      "description": "Provider-neutral conversation message role.",
+      "oneOf": [
+        {
+          "description": "Service-controlled system context.",
+          "type": "string",
+          "const": "system"
+        },
+        {
+          "description": "Authorized role instructions.",
+          "type": "string",
+          "const": "developer"
+        },
+        {
+          "description": "Human input.",
+          "type": "string",
+          "const": "user"
+        },
+        {
+          "description": "Model text and/or proposed tool calls.",
+          "type": "string",
+          "const": "assistant"
+        },
+        {
+          "description": "Gateway-produced result for one prior tool call.",
+          "type": "string",
+          "const": "tool"
+        }
+      ]
+    },
+    "ModelProfileId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ModelProfileId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ModelSelectionData": {
+      "description": "Unchecked construction draft for `ModelSelection`; validate before use.",
+      "type": "object",
+      "properties": {
+        "billing": {
+          "description": "Selected billing basis, independent of remote control authentication.",
+          "$ref": "#/$defs/BillingMode"
+        },
+        "checkpoint_hash": {
+          "description": "Verified checkpoint manifest hash; not repository revision.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "credential_id": {
+          "description": "Opaque credential reference only.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CredentialId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "devices": {
+          "description": "Selected placement; no capacity summation assumption.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Validated3"
+          }
+        },
+        "engine": {
+          "description": "Required for local; absent for remote.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Validated2"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "model_id": {
+          "description": "Provider model or local checkpoint identity.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "profile_id": {
+          "description": "Human-selected profile.",
+          "$ref": "#/$defs/ModelProfileId"
+        },
+        "provider": {
+          "description": "Explicit provider identity, including local engine providers.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "quantization": {
+          "description": "Local quantization.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning_effort": {
+          "description": "Human-selected where applicable.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "revision": {
+          "description": "Exact weights revision if available.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "profile_id",
+        "provider",
+        "billing",
+        "model_id",
+        "devices"
+      ]
+    },
+    "OperatorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom OperatorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ToolCallId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ToolCallId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ToolDefinitionData": {
+      "description": "Unchecked construction draft for `ToolDefinition`; validate before use.",
+      "type": "object",
+      "properties": {
+        "description": {
+          "description": "Tool purpose visible to the model.",
+          "type": "string"
+        },
+        "input_schema": {
+          "description": "JSON Schema object for arguments; the gateway compiles/checks it before dispatch."
+        },
+        "name": {
+          "description": "Authorized tool name, never an alternate execution channel.",
+          "$ref": "#/$defs/ActorId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "description",
+        "input_schema"
+      ]
+    },
+    "ToolInvocationData": {
+      "description": "Unchecked construction draft for `ToolInvocation`; validate before use.",
+      "type": "object",
+      "properties": {
+        "arguments": {
+          "description": "Complete parsed arguments; partial streaming fragments never enter this model."
+        },
+        "name": {
+          "description": "Proposed tool name, independently authorized at dispatch.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "tool_call_id": {
+          "description": "Stable correlation identity; shared with its result.",
+          "$ref": "#/$defs/ToolCallId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "tool_call_id",
+        "name",
+        "arguments"
+      ]
+    },
+    "ToolResultData": {
+      "description": "Unchecked construction draft for `ToolResult`; validate before use.",
+      "type": "object",
+      "properties": {
+        "content": {
+          "description": "Tool output; an empty output is valid.",
+          "type": "string"
+        },
+        "status": {
+          "description": "Observed completion outcome.",
+          "$ref": "#/$defs/ToolResultStatus"
+        },
+        "tool_call_id": {
+          "description": "Previously requested tool call.",
+          "$ref": "#/$defs/ToolCallId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "tool_call_id",
+        "status",
+        "content"
+      ]
+    },
+    "ToolResultStatus": {
+      "description": "Observed tool outcome, not an inference cancellation acknowledgment.",
+      "oneOf": [
+        {
+          "description": "Tool completed successfully.",
+          "type": "string",
+          "const": "succeeded"
+        },
+        {
+          "description": "Tool failed; content is a redacted error/result.",
+          "type": "string",
+          "const": "failed"
+        }
+      ]
+    },
+    "TurnId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom TurnId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Validated": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/ModelSelectionData"
+    },
+    "Validated10": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/ToolResultData"
+    },
+    "Validated11": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/ToolDefinitionData"
+    },
+    "Validated2": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/EngineIdentityData"
+    },
+    "Validated3": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/DeviceIdentityData"
+    },
+    "Validated4": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/GenerationControlsData"
+    },
+    "Validated5": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/EngineLoadOptionsData"
+    },
+    "Validated6": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/DraftModelData"
+    },
+    "Validated7": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/ContextCacheData"
+    },
+    "Validated8": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/InferenceMessageData"
+    },
+    "Validated9": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/ToolInvocationData"
+    },
+    "WorkerId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom WorkerId value.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

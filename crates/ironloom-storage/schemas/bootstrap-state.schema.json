@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/BootstrapStateData",
+  "$defs": {
+    "BootstrapStateData": {
+      "description": "Unchecked construction draft for `BootstrapState`; validate before use.",
+      "type": "object",
+      "properties": {
+        "administrator": {
+          "description": "Sole first administrator; never reopened.",
+          "$ref": "#/$defs/OperatorId"
+        },
+        "grants_initialized": {
+          "description": "Retry OpenFGA grants for this account when false.",
+          "type": "boolean"
+        },
+        "installation_id": {
+          "description": "Durable installation identity.",
+          "$ref": "#/$defs/InstallationId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "installation_id",
+        "administrator",
+        "grants_initialized"
+      ]
+    },
+    "InstallationId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom InstallationId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "OperatorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom OperatorId value.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

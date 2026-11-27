@@ -1,0 +1,367 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/ResidencyData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "BillingMode": {
+      "description": "Explicit cost basis; no silent billing fallback.",
+      "oneOf": [
+        {
+          "description": "API key billing.",
+          "type": "string",
+          "const": "api_key"
+        },
+        {
+          "description": "Account-backed OAuth usage; not API-key charges.",
+          "type": "string",
+          "const": "account"
+        },
+        {
+          "description": "Configured local compute cost estimate.",
+          "type": "string",
+          "const": "local_estimate"
+        }
+      ]
+    },
+    "Counter": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Canonical decimal u64; semantic validation also enforces u64 maximum.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "CredentialId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom CredentialId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "DeviceId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom DeviceId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "DeviceIdentityData": {
+      "description": "Unchecked construction draft for `DeviceIdentity`; validate before use.",
+      "type": "object",
+      "properties": {
+        "device_id": {
+          "description": "Canonical capacity pool identity reconciled across views.",
+          "$ref": "#/$defs/DeviceId"
+        },
+        "hardware_key": {
+          "description": "Vendor UUID or reconciled host-scoped hardware identity.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "host_id": {
+          "description": "Physical host identity distinct from node ID.",
+          "$ref": "#/$defs/HostId"
+        },
+        "parent_id": {
+          "description": "Parent physical GPU for partition/virtual views.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DeviceId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reconciled": {
+          "description": "False blocks admission; ordinals never establish identity.",
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "device_id",
+        "host_id",
+        "hardware_key",
+        "reconciled"
+      ]
+    },
+    "DraftModelData": {
+      "description": "Unchecked construction draft for `DraftModel`; validate before use.",
+      "type": "object",
+      "properties": {
+        "checkpoint_hash": {
+          "description": "Verified draft manifest hash.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "model_id": {
+          "description": "Explicit optional draft checkpoint, never a fallback target.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "quantization": {
+          "description": "Draft quantization where applicable.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "revision": {
+          "description": "Exact draft revision.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "weight_bytes": {
+          "description": "Draft memory estimate; unknown is not zero.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Counter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "model_id",
+        "revision",
+        "checkpoint_hash"
+      ]
+    },
+    "EngineIdentityData": {
+      "description": "Unchecked construction draft for `EngineIdentity`; validate before use.",
+      "type": "object",
+      "properties": {
+        "backend": {
+          "description": "Selected accelerator backend.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "configuration_hash": {
+          "description": "Engine configuration identity.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "name": {
+          "description": "Explicit selected engine, never silently substituted.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "version": {
+          "description": "Pinned version.",
+          "$ref": "#/$defs/ActorId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version",
+        "backend",
+        "configuration_hash"
+      ]
+    },
+    "HostId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom HostId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ModelProfileId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ModelProfileId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ModelSelectionData": {
+      "description": "Unchecked construction draft for `ModelSelection`; validate before use.",
+      "type": "object",
+      "properties": {
+        "billing": {
+          "description": "Selected billing basis, independent of remote control authentication.",
+          "$ref": "#/$defs/BillingMode"
+        },
+        "checkpoint_hash": {
+          "description": "Verified checkpoint manifest hash; not repository revision.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "credential_id": {
+          "description": "Opaque credential reference only.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CredentialId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "devices": {
+          "description": "Selected placement; no capacity summation assumption.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Validated3"
+          }
+        },
+        "engine": {
+          "description": "Required for local; absent for remote.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Validated2"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "model_id": {
+          "description": "Provider model or local checkpoint identity.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "profile_id": {
+          "description": "Human-selected profile.",
+          "$ref": "#/$defs/ModelProfileId"
+        },
+        "provider": {
+          "description": "Explicit provider identity, including local engine providers.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "quantization": {
+          "description": "Local quantization.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning_effort": {
+          "description": "Human-selected where applicable.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "revision": {
+          "description": "Exact weights revision if available.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "profile_id",
+        "provider",
+        "billing",
+        "model_id",
+        "devices"
+      ]
+    },
+    "ResidencyData": {
+      "description": "Unchecked construction draft for `Residency`; validate before use.",
+      "type": "object",
+      "properties": {
+        "active_requests": {
+          "description": "Protects residency while nonzero, independent of worker lifetime.",
+          "$ref": "#/$defs/Counter"
+        },
+        "draft": {
+          "description": "Optional resident draft weights, included in central reservation and residency identity.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Validated4"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "last_used_at_ms": {
+          "description": "LRU ordering when inactive.",
+          "$ref": "#/$defs/Counter"
+        },
+        "observed_cache_bytes": {
+          "description": "Observed isolated cache allocation, unknown when unavailable.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Counter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reserved_bytes": {
+          "description": "Weights, caches, draft and overhead reservation.",
+          "$ref": "#/$defs/Counter"
+        },
+        "resident_id": {
+          "description": "Reusable loaded weights identity.",
+          "$ref": "#/$defs/ResidentModelId"
+        },
+        "selection": {
+          "description": "Checkpoint/quantization/engine/placement identity.",
+          "$ref": "#/$defs/Validated"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "resident_id",
+        "selection",
+        "active_requests",
+        "last_used_at_ms",
+        "reserved_bytes"
+      ]
+    },
+    "ResidentModelId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ResidentModelId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Validated": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/ModelSelectionData"
+    },
+    "Validated2": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/EngineIdentityData"
+    },
+    "Validated3": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/DeviceIdentityData"
+    },
+    "Validated4": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/DraftModelData"
+    }
+  }
+}

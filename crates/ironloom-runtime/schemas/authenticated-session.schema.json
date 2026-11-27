@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/AuthenticatedSessionData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "AuthenticatedSessionData": {
+      "description": "Unchecked construction draft for `AuthenticatedSession`; validate before use.",
+      "type": "object",
+      "properties": {
+        "expires_at_ms": {
+          "description": "Session expiry.",
+          "$ref": "#/$defs/Counter"
+        },
+        "method": {
+          "description": "Service authentication method.",
+          "$ref": "#/$defs/LoginMethod"
+        },
+        "operator_id": {
+          "description": "Server-resolved human identity.",
+          "$ref": "#/$defs/OperatorId"
+        },
+        "session_id": {
+          "description": "Opaque server-managed session; not a provider token.",
+          "$ref": "#/$defs/ActorId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "operator_id",
+        "session_id",
+        "method",
+        "expires_at_ms"
+      ]
+    },
+    "Counter": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Canonical decimal u64; semantic validation also enforces u64 maximum.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "LoginMethod": {
+      "description": "Service login separate from inference credentials.",
+      "oneOf": [
+        {
+          "description": "Password-backed local account authentication.",
+          "type": "string",
+          "const": "local"
+        },
+        {
+          "description": "Validated external issuer/subject; never automatic administrator.",
+          "type": "string",
+          "const": "oidc"
+        }
+      ]
+    },
+    "OperatorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom OperatorId value.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

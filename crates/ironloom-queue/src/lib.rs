@@ -65,3 +65,6 @@ impl QueueItem {
         }
     }
 }
+
+/// Software factory contracts for the unreleased application.
+pub mod factory;

@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/PlanRevisionData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Counter": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Canonical decimal u64; semantic validation also enforces u64 maximum.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "ModelProfileId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ModelProfileId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "PlanId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom PlanId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "PlanRevisionData": {
+      "description": "Unchecked construction draft for `PlanRevision`; validate before use.",
+      "type": "object",
+      "properties": {
+        "acceptance_criteria": {
+          "description": "Content-specific validation expectations.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "allowed_permissions": {
+          "description": "Explicit versioned operation scope, checked by policy.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ActorId"
+          }
+        },
+        "assumptions": {
+          "description": "Visible unanswered assumptions.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "content_hash": {
+          "description": "Canonical hash including model assignments and permissions.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "model_assignments": {
+          "description": "Human-selected configured role profiles.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ModelProfileId"
+          }
+        },
+        "plan_id": {
+          "description": "Stable plan identity.",
+          "$ref": "#/$defs/PlanId"
+        },
+        "project_id": {
+          "description": "Authority scope.",
+          "$ref": "#/$defs/ProjectId"
+        },
+        "revision": {
+          "description": "Specific immutable revision.",
+          "$ref": "#/$defs/Counter"
+        },
+        "scope": {
+          "description": "Human-readable approved work scope.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "plan_id",
+        "revision",
+        "project_id",
+        "scope",
+        "assumptions",
+        "acceptance_criteria",
+        "content_hash",
+        "model_assignments",
+        "allowed_permissions"
+      ]
+    },
+    "ProjectId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ProjectId value.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

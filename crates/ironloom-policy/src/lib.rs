@@ -56,3 +56,6 @@ pub fn evaluate_policy(context: &PolicyContext) -> PolicyDecision {
         reason: "thread-bound non-destructive action is allowed".to_owned(),
     }
 }
+
+/// Software factory contracts for the unreleased application.
+pub mod factory;

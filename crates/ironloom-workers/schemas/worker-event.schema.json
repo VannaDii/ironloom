@@ -1,0 +1,401 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/WorkerEventData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "AssignmentId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom AssignmentId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "BillingMode": {
+      "description": "Explicit cost basis; no silent billing fallback.",
+      "oneOf": [
+        {
+          "description": "API key billing.",
+          "type": "string",
+          "const": "api_key"
+        },
+        {
+          "description": "Account-backed OAuth usage; not API-key charges.",
+          "type": "string",
+          "const": "account"
+        },
+        {
+          "description": "Configured local compute cost estimate.",
+          "type": "string",
+          "const": "local_estimate"
+        }
+      ]
+    },
+    "Counter": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Canonical decimal u64; semantic validation also enforces u64 maximum.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "ExecutionState": {
+      "description": "Assignment and worker streaming lifecycle; disconnect is not a transition.",
+      "oneOf": [
+        {
+          "description": "Waiting for a fenced dispatch claim.",
+          "type": "string",
+          "const": "queued"
+        },
+        {
+          "description": "Actively executing.",
+          "type": "string",
+          "const": "running"
+        },
+        {
+          "description": "Durable question or approval is pending.",
+          "type": "string",
+          "const": "waiting_for_human"
+        },
+        {
+          "description": "Capacity unavailable; no model fallback.",
+          "type": "string",
+          "const": "waiting_for_resources"
+        },
+        {
+          "description": "Paused at a controllable boundary.",
+          "type": "string",
+          "const": "paused"
+        },
+        {
+          "description": "Stop requested; execution may still be active.",
+          "type": "string",
+          "const": "cancellation_requested"
+        },
+        {
+          "description": "Owned execution confirmed stopped.",
+          "type": "string",
+          "const": "terminated"
+        },
+        {
+          "description": "Successful operation completion persisted.",
+          "type": "string",
+          "const": "completed"
+        },
+        {
+          "description": "Failure recorded; surviving work must be reconciled.",
+          "type": "string",
+          "const": "failed"
+        }
+      ]
+    },
+    "InferenceId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom InferenceId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ItemId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ItemId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "StreamKind": {
+      "description": "Normalized provider, engine and command streaming payload kind.",
+      "oneOf": [
+        {
+          "description": "Operation/turn began.",
+          "type": "string",
+          "const": "started"
+        },
+        {
+          "description": "Operation completed, independent of stream EOF.",
+          "type": "string",
+          "const": "completed"
+        },
+        {
+          "description": "Terminal operation failure.",
+          "type": "string",
+          "const": "failed"
+        },
+        {
+          "description": "Pending human question or approval.",
+          "type": "string",
+          "const": "waiting_for_human"
+        },
+        {
+          "description": "Incremental inference output.",
+          "type": "string",
+          "const": "text_delta"
+        },
+        {
+          "description": "Incremental arguments; never execute until complete and validated.",
+          "type": "string",
+          "const": "tool_arguments_delta"
+        },
+        {
+          "description": "Complete tool call; gateway independently checks authority.",
+          "type": "string",
+          "const": "tool_ready"
+        },
+        {
+          "description": "Bounded command stdout chunk.",
+          "type": "string",
+          "const": "stdout"
+        },
+        {
+          "description": "Bounded command stderr chunk.",
+          "type": "string",
+          "const": "stderr"
+        },
+        {
+          "description": "Worker progress.",
+          "type": "string",
+          "const": "progress"
+        },
+        {
+          "description": "Incremental durable accounting update.",
+          "type": "string",
+          "const": "usage"
+        },
+        {
+          "description": "Persisted execution transition.",
+          "type": "string",
+          "const": "state_changed"
+        },
+        {
+          "description": "Owned process/request stopped; distinct from cancel request.",
+          "type": "string",
+          "const": "termination_confirmed"
+        }
+      ]
+    },
+    "ToolCallId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ToolCallId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "TurnId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom TurnId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "UsageBasis": {
+      "description": "Durable accounting precision.",
+      "oneOf": [
+        {
+          "description": "Provider or engine counters.",
+          "type": "string",
+          "const": "reported"
+        },
+        {
+          "description": "Deterministic estimate with an explicit basis.",
+          "type": "string",
+          "const": "estimated"
+        },
+        {
+          "description": "Interrupted or unavailable counters; never treated as zero.",
+          "type": "string",
+          "const": "unknown"
+        }
+      ]
+    },
+    "UsageData": {
+      "description": "Unchecked construction draft for `Usage`; validate before use.",
+      "type": "object",
+      "properties": {
+        "basis": {
+          "description": "Precision of measurement.",
+          "$ref": "#/$defs/UsageBasis"
+        },
+        "billing": {
+          "description": "Configured billing mode.",
+          "$ref": "#/$defs/BillingMode"
+        },
+        "cached_tokens": {
+          "description": "Reported cache usage where available.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Counter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "calculation_basis": {
+          "description": "Rate/version or local estimate basis.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cost_micros": {
+          "description": "Optional cost in currency millionths.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Counter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "currency": {
+          "description": "Explicit currency when cost is present.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "inference_id": {
+          "description": "Idempotent request accounting key.",
+          "$ref": "#/$defs/InferenceId"
+        },
+        "input_tokens": {
+          "description": "Absent when unknown.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Counter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "output_tokens": {
+          "description": "Absent when unknown.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Counter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "inference_id",
+        "basis",
+        "billing"
+      ]
+    },
+    "Validated": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/UsageData"
+    },
+    "WorkerEventData": {
+      "description": "Unchecked construction draft for `WorkerEvent`; validate before use.",
+      "type": "object",
+      "properties": {
+        "assignment_id": {
+          "description": "Owning assignment.",
+          "$ref": "#/$defs/AssignmentId"
+        },
+        "inference_id": {
+          "description": "Present for inference output.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InferenceId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "item_id": {
+          "description": "Stable stream item identity.",
+          "$ref": "#/$defs/ItemId"
+        },
+        "kind": {
+          "description": "Normalized event kind.",
+          "$ref": "#/$defs/StreamKind"
+        },
+        "state": {
+          "description": "Present exactly for state events.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExecutionState"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "text": {
+          "description": "Bounded output chunk; no credentials.",
+          "type": "string"
+        },
+        "tool_call_id": {
+          "description": "Present for complete or partial tool calls.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ToolCallId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "turn_id": {
+          "description": "Stable active turn.",
+          "$ref": "#/$defs/TurnId"
+        },
+        "usage": {
+          "description": "Typed reported, estimated or unknown counters.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Validated"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "worker_id": {
+          "description": "Worker identity.",
+          "$ref": "#/$defs/WorkerId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "worker_id",
+        "turn_id",
+        "item_id",
+        "assignment_id",
+        "kind",
+        "text"
+      ]
+    },
+    "WorkerId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom WorkerId value.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

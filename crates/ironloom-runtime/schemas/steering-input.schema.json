@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/SteeringInputData",
+  "$defs": {
+    "ConversationId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ConversationId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "SteeringInputData": {
+      "description": "Unchecked construction draft for `SteeringInput`; validate before use.",
+      "type": "object",
+      "properties": {
+        "conversation_id": {
+          "description": "Authorized conversation.",
+          "$ref": "#/$defs/ConversationId"
+        },
+        "expected_turn_id": {
+          "description": "Reject stale input after another turn starts.",
+          "$ref": "#/$defs/TurnId"
+        },
+        "text": {
+          "description": "Human steering.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "conversation_id",
+        "expected_turn_id",
+        "text"
+      ]
+    },
+    "TurnId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom TurnId value.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

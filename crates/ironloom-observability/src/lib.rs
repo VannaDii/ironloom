@@ -22,3 +22,6 @@ pub struct AuditRecord {
     /// Artifact identifiers produced by the action.
     pub artifact_ids: Vec<String>,
 }
+
+/// Software factory contracts for the unreleased application.
+pub mod factory;

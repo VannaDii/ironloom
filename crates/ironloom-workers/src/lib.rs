@@ -104,3 +104,6 @@ pub struct WorkerResponse {
     /// Worker-specific JSON payload.
     pub payload: Value,
 }
+
+/// Software factory contracts for the unreleased application.
+pub mod factory;

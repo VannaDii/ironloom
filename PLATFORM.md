@@ -2,7 +2,7 @@
 
 Ironloom's target is a Rust software factory and persistent background harness service by Veritas Labs. Humans refine ideas, answer questions, approve plans, and configure a role-based digital team. The service owns a streaming web UX and must support native ChatGPT/Codex remote-host control. Discord control and thread binding are retired from the target design.
 
-**Status:** This is the agreed direction, not the current implementation. The [Software Factory Plan](docs/specs/ironloom-software-factory.md) records requirements, migration stages, and unresolved decisions. Implementation remains pending approval. The [Rust migration plan](docs/specs/ironloom-rust-platform-migration.md) is historical.
+**Status:** This is the agreed direction, not the current implementation. The [Software Factory Plan](docs/specs/ironloom-software-factory.md) records requirements, implementation stages, and unresolved decisions. Implementation remains pending approval. The [Rust migration plan](docs/specs/ironloom-rust-platform-migration.md) is historical.
 
 ## Required Product Scope
 
@@ -28,7 +28,7 @@ Ironloom's target is a Rust software factory and persistent background harness s
 - Canonically identify physical GPUs across service instances and container views; never allocate separate capacity merely because device ordinals differ. Reconcile partition/parent identity and coordinate memory, concurrency, and LRU across all consumers of each GPU. Unknown identity blocks admission until resolved.
 - Prefer Rust inference. Python embedding and engine porting each require Vanna's explicit approval; neither is an automatic fallback.
 - PostgreSQL-only organizational/execution and authorization storage. Use the configured connection string or manage PostgreSQL locally when none is configured; connection failures must not initialize a replacement database. Infrastructure configures separate persistent roots for models, managed PostgreSQL data (unused with an external server), and projects/Git. Stable project IDs, names, and service identity remain available independently of project folders.
-- Multiple service instances share one installation, including users, projects, runs, authorization, and the one-time administrator bootstrap. Track node-specific workspace/GPU ownership and coordinate dispatch without duplicate execution. Shared metadata does not imply shared local files. Administrators enroll nodes; tools stay with their workspace while inference can use another configured node. Initial upgrades are coordinated. Managed PostgreSQL port exposure is explicit, and client shutdown must preserve a database still serving other instances.
+- Multiple service instances share one installation, including users, projects, runs, authorization, and the one-time administrator bootstrap. Track node-specific workspace/GPU ownership and coordinate dispatch without duplicate execution. Shared metadata does not imply shared local files. Administrators enroll nodes; tools stay with their workspace while inference can use another configured node. All service nodes use the same current build; mixed-version operation is unsupported. Managed PostgreSQL port exposure is explicit, and client shutdown must preserve a database still serving other instances.
 - Configurable project storage with assignment worktrees and sibling role artifacts. Roles may write concurrently in the same worktree within enforced path boundaries; all worker commands go through Ironloom tools and enforced execution permissions.
 - Coordinated Git mutations, content-specific tests/review, durable ownership, and cleanup that preserves needed work and shared models. Pause assignment source edits during final validation/commit; relevant subsequent edits invalidate affected results. Cancellation and timeout clean up owned descendant processes.
 - The planner sets merge order with implementors. Each implementor owns its merge, conflict resolution, final integrated testing, and repairs before declaring the merge complete; runtime coordination and existing gates enforce safe execution.
@@ -39,6 +39,8 @@ Ironloom's target is a Rust software factory and persistent background harness s
 
 ## Runtime and Package Boundaries
 
+Ironloom is unreleased. Use fresh-schema initialization only. Do not add backward compatibility shims, legacy wire/artifact formats or runtime adapters, data conversion/backfills, schema upgrades, migration history, or migration frameworks. Obsolete foundation code may remain only until its replacement lands during initial build-out; it must not become supported old-version behavior.
+
 - Keep the Rust workspace under `crates/*`; `ironloom-runtime` remains the deployable service and composition boundary.
 - Every Rust/Dart wire model implements the shared validation contract. Decode and validate fields, nested models, and cross-field invariants before use; service validation is independent of client validation. Keep schemas and focused decode-path tests aligned.
 - `ironloom-core` owns shared typed identities and domain values; `ironloom-config` owns configuration and setup completeness.
@@ -46,7 +48,7 @@ Ironloom's target is a Rust software factory and persistent background harness s
 - `ironloom-storage` owns persistence abstractions, managed artifacts, and direct `.ironloom/` access. `ironloom-artifacts` owns domain record/schema contracts; `ironloom-worktrees` owns Git workspace lifecycle.
 - `ironloom-gates`, `ironloom-github`, `ironloom-sonarcloud`, and `ironloom-observability` retain their validation, source-of-truth, normalization, and telemetry ownership.
 - Separate web/native protocol transport and model/inference adapters from business logic. Exact new crate boundaries remain an implementation-plan decision.
-- Remove `ironloom-discord` and its configuration, schemas, workflows, deployment fields, and active documentation as replacement behavior lands. Preserve needed historical domain records.
+- Remove `ironloom-discord` and its configuration, schemas, workflows, deployment fields, and active documentation as replacement behavior lands. Do not preserve obsolete domain formats or add readers/converters for them.
 - Keep the public landing page and VitePress guides/API docs in `site/guide-docs`, separate from the service-hosted operator UX. Update English and every affected localized tree with behavior changes.
 - Package PostgreSQL 18 and OpenFGA as managed native processes and separately supervised container services. Publish the Helm chart with those services included, retaining external PostgreSQL configuration.
 - Use bubblewrap/seccomp for Linux/Alpine execution; provisionally retain custom Seatbelt profiles on macOS, with deprecated-interface risk and Mac enforcement validation explicit. No replacement architecture is automatically authorized.

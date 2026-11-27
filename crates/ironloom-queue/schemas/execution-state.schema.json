@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ExecutionState",
+  "description": "Assignment and worker streaming lifecycle; disconnect is not a transition.",
+  "oneOf": [
+    {
+      "description": "Waiting for a fenced dispatch claim.",
+      "type": "string",
+      "const": "queued"
+    },
+    {
+      "description": "Actively executing.",
+      "type": "string",
+      "const": "running"
+    },
+    {
+      "description": "Durable question or approval is pending.",
+      "type": "string",
+      "const": "waiting_for_human"
+    },
+    {
+      "description": "Capacity unavailable; no model fallback.",
+      "type": "string",
+      "const": "waiting_for_resources"
+    },
+    {
+      "description": "Paused at a controllable boundary.",
+      "type": "string",
+      "const": "paused"
+    },
+    {
+      "description": "Stop requested; execution may still be active.",
+      "type": "string",
+      "const": "cancellation_requested"
+    },
+    {
+      "description": "Owned execution confirmed stopped.",
+      "type": "string",
+      "const": "terminated"
+    },
+    {
+      "description": "Successful operation completion persisted.",
+      "type": "string",
+      "const": "completed"
+    },
+    {
+      "description": "Failure recorded; surviving work must be reconciled.",
+      "type": "string",
+      "const": "failed"
+    }
+  ]
+}

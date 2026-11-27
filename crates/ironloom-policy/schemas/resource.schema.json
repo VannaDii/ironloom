@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/ResourceData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ProjectId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ProjectId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ResourceData": {
+      "description": "Unchecked construction draft for `Resource`; validate before use.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Stable resource identity.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "kind": {
+          "description": "Resource type.",
+          "$ref": "#/$defs/ResourceKind"
+        },
+        "project_id": {
+          "description": "Owning project for inheritance; absent for installation records.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProjectId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "id"
+      ]
+    },
+    "ResourceKind": {
+      "description": "Explicit resource type; never a transport thread binding.",
+      "oneOf": [
+        {
+          "description": "Installation resource.",
+          "type": "string",
+          "const": "installation"
+        },
+        {
+          "description": "Project resource.",
+          "type": "string",
+          "const": "project"
+        },
+        {
+          "description": "Assignment resource.",
+          "type": "string",
+          "const": "assignment"
+        },
+        {
+          "description": "Conversation resource.",
+          "type": "string",
+          "const": "conversation"
+        },
+        {
+          "description": "File resource.",
+          "type": "string",
+          "const": "file"
+        },
+        {
+          "description": "Credential resource.",
+          "type": "string",
+          "const": "credential"
+        },
+        {
+          "description": "Lesson resource.",
+          "type": "string",
+          "const": "lesson"
+        },
+        {
+          "description": "Node resource.",
+          "type": "string",
+          "const": "node"
+        }
+      ]
+    }
+  }
+}

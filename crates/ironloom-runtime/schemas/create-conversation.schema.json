@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/CreateConversationData",
+  "$defs": {
+    "CommandId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom CommandId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "CreateConversationData": {
+      "description": "Unchecked construction draft for `CreateConversation`; validate before use.",
+      "type": "object",
+      "properties": {
+        "command_id": {
+          "description": "Durable authenticated-actor-scoped idempotency identity.",
+          "$ref": "#/$defs/CommandId"
+        },
+        "project_id": {
+          "description": "Existing project requiring current operate authority.",
+          "$ref": "#/$defs/ProjectId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "command_id",
+        "project_id"
+      ]
+    },
+    "ProjectId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ProjectId value.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

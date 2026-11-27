@@ -13,6 +13,17 @@ name = "ironloom"
 path = "src/main.rs"
 
 [dependencies]
+base64.workspace = true
+axum.workspace = true
+tokio.workspace = true
+schemars.workspace = true
+serde.workspace = true
+ironloom-observability = { path = "../ironloom-observability", version = "0.1.0" }
+ironloom-workers = { path = "../ironloom-workers", version = "0.1.0" }
+ironloom-queue = { path = "../ironloom-queue", version = "0.1.0" }
+ironloom-process-graph = { path = "../ironloom-process-graph", version = "0.1.0" }
+ironloom-policy = { path = "../ironloom-policy", version = "0.1.0" }
+ironloom-models = { path = "../ironloom-models", version = "0.1.0" }
 ed25519-dalek.workspace = true
 hex.workspace = true
 ironloom-config = { path = "../ironloom-config", version = "0.1.0" }
@@ -28,6 +39,9 @@ thiserror.workspace = true
 url.workspace = true
 
 [dev-dependencies]
+ironloom-native = { path = "../ironloom-native", version = "0.1.0" }
+ironloom-artifacts = { path = "../ironloom-artifacts", version = "0.1.0" }
+ironloom-worktrees = { path = "../ironloom-worktrees", version = "0.1.0" }
 tempfile.workspace = true
 
 [lints]

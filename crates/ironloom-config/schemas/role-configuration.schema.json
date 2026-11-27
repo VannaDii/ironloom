@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/RoleConfigurationData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "DeviceId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom DeviceId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "InstructionId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom InstructionId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ModelProfileId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ModelProfileId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "RoleConfigurationData": {
+      "description": "Unchecked construction draft for `RoleConfiguration`; validate before use.",
+      "type": "object",
+      "properties": {
+        "device_bindings": {
+          "description": "Optional role device restrictions, intersected with its model profile placement.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DeviceId"
+          }
+        },
+        "enabled": {
+          "description": "Disabled roles do not dispatch.",
+          "type": "boolean"
+        },
+        "instructions_id": {
+          "description": "Template copied into assignments.",
+          "$ref": "#/$defs/InstructionId"
+        },
+        "model_profile_id": {
+          "description": "Explicit human-selected model; no implicit default.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ModelProfileId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning_applicable": {
+          "description": "Selected model supports reasoning effort.",
+          "type": "boolean"
+        },
+        "reasoning_effort": {
+          "description": "Explicit human choice where applicable.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "role_id": {
+          "description": "Editable standard or custom role identity.",
+          "$ref": "#/$defs/ActorId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "role_id",
+        "enabled",
+        "reasoning_applicable",
+        "device_bindings",
+        "instructions_id"
+      ]
+    }
+  }
+}

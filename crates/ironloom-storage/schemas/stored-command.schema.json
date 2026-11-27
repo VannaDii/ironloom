@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/StoredCommandData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "CommandId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom CommandId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ConversationId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ConversationId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "OperatorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom OperatorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ProjectId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ProjectId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "StoredCommandData": {
+      "description": "Unchecked construction draft for `StoredCommand`; validate before use.",
+      "type": "object",
+      "properties": {
+        "command_id": {
+          "description": "Client-persisted command identity.",
+          "$ref": "#/$defs/CommandId"
+        },
+        "conversation_id": {
+          "description": "Authorized event stream.",
+          "$ref": "#/$defs/ConversationId"
+        },
+        "first_event": {
+          "description": "Validated first event committed with command and outbox."
+        },
+        "operator_id": {
+          "description": "Authenticated actor idempotency scope.",
+          "$ref": "#/$defs/OperatorId"
+        },
+        "payload_hash": {
+          "description": "Canonical validated request fingerprint.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "project_id": {
+          "description": "Project authority scope.",
+          "$ref": "#/$defs/ProjectId"
+        },
+        "receipt": {
+          "description": "Validated service receipt serialized by composition."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "operator_id",
+        "command_id",
+        "conversation_id",
+        "project_id",
+        "payload_hash",
+        "receipt",
+        "first_event"
+      ]
+    }
+  }
+}

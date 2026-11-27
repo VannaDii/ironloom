@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ValidationErrors",
+  "description": "Structured errors safe to return to clients.",
+  "type": "object",
+  "properties": {
+    "fields": {
+      "description": "Independent field failures.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/FieldError"
+      }
+    }
+  },
+  "required": [
+    "fields"
+  ],
+  "$defs": {
+    "FieldError": {
+      "description": "Redacted validation failure at a model field, without submitted values.",
+      "type": "object",
+      "properties": {
+        "code": {
+          "description": "Stable machine-readable reason; never a raw parser error.",
+          "type": "string"
+        },
+        "field": {
+          "description": "Dot-separated field path, including nested fields.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "field",
+        "code"
+      ]
+    }
+  }
+}

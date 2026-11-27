@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/SessionQueryData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ConversationId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ConversationId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Counter": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Canonical decimal u64; semantic validation also enforces u64 maximum.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "SessionQueryData": {
+      "description": "Unchecked construction draft for `SessionQuery`; validate before use.",
+      "type": "object",
+      "properties": {
+        "after": {
+          "description": "Exclusive stable pagination cursor.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ConversationId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "archived": {
+          "description": "Explicit archive state.",
+          "type": "boolean"
+        },
+        "limit": {
+          "description": "Bounded page size.",
+          "$ref": "#/$defs/Counter"
+        },
+        "provider": {
+          "description": "Provider filter.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source": {
+          "description": "Source filter.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "limit",
+        "archived"
+      ]
+    }
+  }
+}

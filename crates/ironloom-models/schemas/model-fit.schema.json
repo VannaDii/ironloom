@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/ModelFitData",
+  "$defs": {
+    "BackendQualification": {
+      "description": "Separate from compatibility and estimated fit.",
+      "oneOf": [
+        {
+          "description": "No hardware execution qualification.",
+          "type": "string",
+          "const": "unqualified"
+        },
+        {
+          "description": "Qualified only on recorded hardware/backend/version.",
+          "type": "string",
+          "const": "qualified"
+        }
+      ]
+    },
+    "Compatibility": {
+      "description": "Static engine compatibility independent of memory estimates.",
+      "oneOf": [
+        {
+          "description": "Engine/version/model requirements match.",
+          "type": "string",
+          "const": "supported"
+        },
+        {
+          "description": "Known incompatibility with explanation.",
+          "type": "string",
+          "const": "unsupported"
+        },
+        {
+          "description": "Metadata insufficient; no inference probe.",
+          "type": "string",
+          "const": "unknown"
+        }
+      ]
+    },
+    "Counter": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Canonical decimal u64; semantic validation also enforces u64 maximum.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "ModelFitData": {
+      "description": "Unchecked construction draft for `ModelFit`; validate before use.",
+      "type": "object",
+      "properties": {
+        "compatibility": {
+          "description": "Engine/model compatibility.",
+          "$ref": "#/$defs/Compatibility"
+        },
+        "estimated_bytes": {
+          "description": "Weights, KV/cache, draft, overhead and concurrency assumptions.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Counter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fits_after_idle_eviction": {
+          "description": "None means unknown; no automatic model change.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "qualification": {
+          "description": "Hardware qualification separate from estimates.",
+          "$ref": "#/$defs/BackendQualification"
+        },
+        "reason": {
+          "description": "Visible constraints and estimate assumptions.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "compatibility",
+        "qualification",
+        "reason"
+      ]
+    }
+  }
+}

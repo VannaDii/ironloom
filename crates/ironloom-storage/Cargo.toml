@@ -9,6 +9,8 @@ publish.workspace = true
 description = "Filesystem-backed Ironloom state and artifact storage."
 
 [dependencies]
+schemars.workspace = true
+sqlx.workspace = true
 aes-gcm.workspace = true
 base64.workspace = true
 ironloom-artifacts = { path = "../ironloom-artifacts", version = "0.1.0" }
@@ -19,6 +21,7 @@ serde_json.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+tokio.workspace = true
 tempfile.workspace = true
 
 [lints]

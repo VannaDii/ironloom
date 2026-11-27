@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/NodeEnrollmentData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Counter": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Canonical decimal u64; semantic validation also enforces u64 maximum.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "CredentialId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom CredentialId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "HostId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom HostId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "InstallationId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom InstallationId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "NodeEnrollmentData": {
+      "description": "Unchecked construction draft for `NodeEnrollment`; validate before use.",
+      "type": "object",
+      "properties": {
+        "approved_by": {
+          "description": "Administrator with EnrollNode permission.",
+          "$ref": "#/$defs/OperatorId"
+        },
+        "host_id": {
+          "description": "Provisioned physical host identity shared across containers.",
+          "$ref": "#/$defs/HostId"
+        },
+        "installation_id": {
+          "description": "Existing installation, not a new bootstrap.",
+          "$ref": "#/$defs/InstallationId"
+        },
+        "key_access_ref": {
+          "description": "Infrastructure-controlled wrapped key access reference.",
+          "$ref": "#/$defs/CredentialId"
+        },
+        "node_id": {
+          "description": "Stable service identity.",
+          "$ref": "#/$defs/NodeId"
+        },
+        "protocol_revision": {
+          "description": "Coordinated installation protocol version.",
+          "$ref": "#/$defs/Counter"
+        },
+        "public_key": {
+          "description": "Node authentication public key; no private key on wire.",
+          "$ref": "#/$defs/ActorId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "installation_id",
+        "node_id",
+        "host_id",
+        "approved_by",
+        "public_key",
+        "key_access_ref",
+        "protocol_revision"
+      ]
+    },
+    "NodeId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom NodeId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "OperatorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom OperatorId value.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

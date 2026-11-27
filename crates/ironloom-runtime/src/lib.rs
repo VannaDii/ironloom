@@ -1681,3 +1681,6 @@ impl GateExecutor for CountingGateExecutor {
         GateResult::passed(format!("accepted command: {command}"))
     }
 }
+
+/// Software factory contracts for the unreleased application.
+pub mod factory;

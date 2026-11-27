@@ -11,6 +11,10 @@ homepage = "https://ironloom.dev"
 publish = false
 
 [workspace.dependencies]
+axum = { version = "=0.8.9", default-features = false, features = ["http1", "json", "tokio"] }
+tokio = { version = "=1.54.1", features = ["macros", "rt-multi-thread", "sync", "signal"] }
+sqlx = { version = "=0.9.1", default-features = false, features = ["runtime-tokio", "tls-rustls-ring", "postgres", "json"] }
+serde_path_to_error = "=0.1.20"
 aes-gcm = "0.10.3"
 base64 = "0.22.1"
 ed25519-dalek = "2.2.0"

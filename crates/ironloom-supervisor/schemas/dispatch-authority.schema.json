@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/DispatchAuthorityData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "AssignmentId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom AssignmentId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Counter": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Canonical decimal u64; semantic validation also enforces u64 maximum.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "DispatchAuthorityData": {
+      "description": "Unchecked construction draft for `DispatchAuthority`; validate before use.",
+      "type": "object",
+      "properties": {
+        "assignment_id": {
+          "description": "Approved assignment.",
+          "$ref": "#/$defs/AssignmentId"
+        },
+        "authorization_model": {
+          "description": "Current shared OpenFGA model revision.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "budget_revision": {
+          "description": "Most recent budget, independently editable.",
+          "$ref": "#/$defs/Counter"
+        },
+        "claim_fence": {
+          "description": "Current workspace owner fence.",
+          "$ref": "#/$defs/Counter"
+        },
+        "instruction_revision": {
+          "description": "Copied and acknowledged at next decision boundary.",
+          "$ref": "#/$defs/Counter"
+        },
+        "operator_id": {
+          "description": "Authorizing human.",
+          "$ref": "#/$defs/OperatorId"
+        },
+        "plan_revision": {
+          "description": "Must match current approved plan revision.",
+          "$ref": "#/$defs/Counter"
+        },
+        "worker_id": {
+          "description": "Delegated worker.",
+          "$ref": "#/$defs/WorkerId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "assignment_id",
+        "worker_id",
+        "operator_id",
+        "plan_revision",
+        "instruction_revision",
+        "claim_fence",
+        "budget_revision",
+        "authorization_model"
+      ]
+    },
+    "OperatorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom OperatorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "WorkerId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom WorkerId value.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

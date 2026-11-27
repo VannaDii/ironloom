@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/LessonPageData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "AssignmentId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom AssignmentId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Counter": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Canonical decimal u64; semantic validation also enforces u64 maximum.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "LessonData": {
+      "description": "Unchecked construction draft for `Lesson`; validate before use.",
+      "type": "object",
+      "properties": {
+        "content": {
+          "description": "Approved lesson content.",
+          "type": "string"
+        },
+        "lesson_id": {
+          "description": "Durable independent record.",
+          "$ref": "#/$defs/LessonId"
+        },
+        "origin_assignment": {
+          "description": "Origin retained after cleanup.",
+          "$ref": "#/$defs/AssignmentId"
+        },
+        "origin_project": {
+          "description": "Origin retained after cleanup.",
+          "$ref": "#/$defs/ProjectId"
+        },
+        "revision": {
+          "description": "Invalidates worker context at next decision boundary.",
+          "$ref": "#/$defs/Counter"
+        },
+        "scope": {
+          "description": "Per-lesson override beats setup default.",
+          "$ref": "#/$defs/RecordScope"
+        },
+        "source": {
+          "description": "Opaque provenance reference, no implicit source access.",
+          "$ref": "#/$defs/ActorId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "lesson_id",
+        "revision",
+        "origin_project",
+        "origin_assignment",
+        "source",
+        "scope",
+        "content"
+      ]
+    },
+    "LessonId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom LessonId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "LessonPageData": {
+      "description": "Unchecked construction draft for `LessonPage`; validate before use.",
+      "type": "object",
+      "properties": {
+        "lessons": {
+          "description": "Authorized lesson content only; origin references do not reveal source contents.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Validated"
+          }
+        },
+        "next_after": {
+          "description": "Next cursor, absent when exhausted.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LessonId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "lessons"
+      ]
+    },
+    "ProjectId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ProjectId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "RecordScope": {
+      "description": "Stored scope; similarity and shared lessons are never approval.",
+      "oneOf": [
+        {
+          "description": "Restricted to the origin assignment.",
+          "type": "string",
+          "const": "assignment"
+        },
+        {
+          "description": "Available in the origin project.",
+          "type": "string",
+          "const": "project"
+        },
+        {
+          "description": "Explicitly shared content; source access is still checked separately.",
+          "type": "string",
+          "const": "installation"
+        }
+      ]
+    },
+    "Validated": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/LessonData"
+    }
+  }
+}

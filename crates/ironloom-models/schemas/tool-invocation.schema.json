@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/ToolInvocationData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ToolCallId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ToolCallId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ToolInvocationData": {
+      "description": "Unchecked construction draft for `ToolInvocation`; validate before use.",
+      "type": "object",
+      "properties": {
+        "arguments": {
+          "description": "Complete parsed arguments; partial streaming fragments never enter this model."
+        },
+        "name": {
+          "description": "Proposed tool name, independently authorized at dispatch.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "tool_call_id": {
+          "description": "Stable correlation identity; shared with its result.",
+          "$ref": "#/$defs/ToolCallId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "tool_call_id",
+        "name",
+        "arguments"
+      ]
+    }
+  }
+}
