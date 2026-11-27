@@ -3311,6 +3311,309 @@
           "code": "execution_binding_required"
         }
       ]
+    },
+    {
+      "contract": "model_assessment_query",
+      "name": "explicit-fit-assumptions",
+      "input": {
+        "project_id": null,
+        "repository_id": "repo-1",
+        "revision": "revision-1",
+        "profile_id": null,
+        "engine": null,
+        "context_tokens": "4096",
+        "concurrency": "1"
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "model_assessment_query",
+      "name": "zero-context-is-not-an-estimate",
+      "input": {
+        "project_id": null,
+        "repository_id": "repo-1",
+        "revision": "revision-1",
+        "profile_id": null,
+        "engine": null,
+        "context_tokens": "0",
+        "concurrency": "1"
+      },
+      "expected_errors": [
+        {
+          "field": "context_tokens",
+          "code": "must_be_positive"
+        }
+      ]
+    },
+    {
+      "contract": "engine_assessment",
+      "name": "unknown-is-not-unsupported-or-qualified",
+      "input": {
+        "engine": {
+          "name": "fixture-engine",
+          "version": "1",
+          "backend": "simulated",
+          "configuration_hash": "engine-config-1"
+        },
+        "devices": [],
+        "requirements": {
+          "compatibility": "unknown",
+          "reason": "Cache/runtime metadata or device authority unavailable.",
+          "target_weight_bytes": null,
+          "draft_weight_bytes": null,
+          "cache_bytes": null,
+          "runtime_overhead_bytes": null,
+          "accelerator_bytes": null
+        },
+        "fit": {
+          "compatibility": "unknown",
+          "estimated_bytes": null,
+          "fits_after_idle_eviction": null,
+          "qualification": "unqualified",
+          "reason": "Missing facts stay unknown; capability metadata is not qualification."
+        }
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "engine_assessment",
+      "name": "assessment-does-not-invent-compatibility",
+      "input": {
+        "engine": {
+          "name": "fixture-engine",
+          "version": "1",
+          "backend": "simulated",
+          "configuration_hash": "engine-config-1"
+        },
+        "devices": [],
+        "requirements": {
+          "compatibility": "unknown",
+          "reason": "Cache/runtime metadata or device authority unavailable.",
+          "target_weight_bytes": null,
+          "draft_weight_bytes": null,
+          "cache_bytes": null,
+          "runtime_overhead_bytes": null,
+          "accelerator_bytes": null
+        },
+        "fit": {
+          "compatibility": "supported",
+          "estimated_bytes": null,
+          "fits_after_idle_eviction": null,
+          "qualification": "unqualified",
+          "reason": "Missing facts stay unknown; capability metadata is not qualification."
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "fit.compatibility",
+          "code": "assessment_compatibility_mismatch"
+        }
+      ]
+    },
+    {
+      "contract": "engine_assessment",
+      "name": "fit-needs-device-and-complete-demand",
+      "input": {
+        "engine": {
+          "name": "fixture-engine",
+          "version": "1",
+          "backend": "simulated",
+          "configuration_hash": "engine-config-1"
+        },
+        "devices": [],
+        "requirements": {
+          "compatibility": "unknown",
+          "reason": "Cache/runtime metadata or device authority unavailable.",
+          "target_weight_bytes": null,
+          "draft_weight_bytes": null,
+          "cache_bytes": null,
+          "runtime_overhead_bytes": null,
+          "accelerator_bytes": null
+        },
+        "fit": {
+          "compatibility": "unknown",
+          "estimated_bytes": null,
+          "fits_after_idle_eviction": true,
+          "qualification": "unqualified",
+          "reason": "Missing facts stay unknown; capability metadata is not qualification."
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "fit.fits_after_idle_eviction",
+          "code": "device_and_demand_required"
+        }
+      ]
+    },
+    {
+      "contract": "model_inventory_item",
+      "name": "complete-bytes-remain-unverified",
+      "input": {
+        "inventory_id": "inventory-1",
+        "model": {
+          "repository_id": "repo-1",
+          "model_id": "model-1",
+          "source": {
+            "publisher": "publisher-1",
+            "host": "hub-1",
+            "repository_url": "https://example.org/models/model-1",
+            "revision": "revision-1",
+            "checksum": null,
+            "access": "accessible",
+            "license": "license-1"
+          },
+          "architecture": null,
+          "format": null,
+          "quantization": null,
+          "weight_bytes": null,
+          "context_tokens": null
+        },
+        "download_id": "download-1",
+        "transfer_complete": true,
+        "verification": "pending",
+        "verified_manifest_hash": null,
+        "verified_at_ms": null,
+        "storage_available": true
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "model_inventory_item",
+      "name": "verified-checkpoint-provenance",
+      "input": {
+        "inventory_id": "inventory-1",
+        "model": {
+          "repository_id": "repo-1",
+          "model_id": "model-1",
+          "source": {
+            "publisher": "publisher-1",
+            "host": "hub-1",
+            "repository_url": "https://example.org/models/model-1",
+            "revision": "revision-1",
+            "checksum": null,
+            "access": "accessible",
+            "license": "license-1"
+          },
+          "architecture": null,
+          "format": null,
+          "quantization": null,
+          "weight_bytes": null,
+          "context_tokens": null
+        },
+        "download_id": "download-1",
+        "transfer_complete": true,
+        "verification": "verified",
+        "verified_manifest_hash": "checkpoint-manifest-hash",
+        "verified_at_ms": "10",
+        "storage_available": true
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "model_inventory_item",
+      "name": "missing-storage-keeps-provenance",
+      "input": {
+        "inventory_id": "inventory-1",
+        "model": {
+          "repository_id": "repo-1",
+          "model_id": "model-1",
+          "source": {
+            "publisher": "publisher-1",
+            "host": "hub-1",
+            "repository_url": "https://example.org/models/model-1",
+            "revision": "revision-1",
+            "checksum": null,
+            "access": "accessible",
+            "license": "license-1"
+          },
+          "architecture": null,
+          "format": null,
+          "quantization": null,
+          "weight_bytes": null,
+          "context_tokens": null
+        },
+        "download_id": "download-1",
+        "transfer_complete": true,
+        "verification": "verified",
+        "verified_manifest_hash": "checkpoint-manifest-hash",
+        "verified_at_ms": "10",
+        "storage_available": false
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "model_inventory_item",
+      "name": "verification-needs-manifest",
+      "input": {
+        "inventory_id": "inventory-1",
+        "model": {
+          "repository_id": "repo-1",
+          "model_id": "model-1",
+          "source": {
+            "publisher": "publisher-1",
+            "host": "hub-1",
+            "repository_url": "https://example.org/models/model-1",
+            "revision": "revision-1",
+            "checksum": null,
+            "access": "accessible",
+            "license": "license-1"
+          },
+          "architecture": null,
+          "format": null,
+          "quantization": null,
+          "weight_bytes": null,
+          "context_tokens": null
+        },
+        "download_id": "download-1",
+        "transfer_complete": true,
+        "verification": "verified",
+        "verified_manifest_hash": null,
+        "verified_at_ms": null,
+        "storage_available": true
+      },
+      "expected_errors": [
+        {
+          "field": "verified_manifest_hash",
+          "code": "verification_manifest_required_only"
+        }
+      ]
+    },
+    {
+      "contract": "model_inventory_item",
+      "name": "verification-is-not-partial-transfer",
+      "input": {
+        "inventory_id": "inventory-1",
+        "model": {
+          "repository_id": "repo-1",
+          "model_id": "model-1",
+          "source": {
+            "publisher": "publisher-1",
+            "host": "hub-1",
+            "repository_url": "https://example.org/models/model-1",
+            "revision": "revision-1",
+            "checksum": null,
+            "access": "accessible",
+            "license": "license-1"
+          },
+          "architecture": null,
+          "format": null,
+          "quantization": null,
+          "weight_bytes": null,
+          "context_tokens": null
+        },
+        "download_id": "download-1",
+        "transfer_complete": false,
+        "verification": "verified",
+        "verified_manifest_hash": "checkpoint-manifest-hash",
+        "verified_at_ms": "10",
+        "storage_available": true
+      },
+      "expected_errors": [
+        {
+          "field": "transfer_complete",
+          "code": "verification_requires_completed_transfer"
+        }
+      ]
     }
   ]
 }

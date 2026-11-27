@@ -36,3 +36,7 @@ Ironloom aún no se ha publicado: solo se inicializan esquemas nuevos, sin compa
 `FactoryService::create_conversation` guarda una conversación vacía autorizada antes de iniciar un turno nativo, con identidad de comando duradera e instantánea con cursor cero. No envía texto ni inicia inferencia; el texto del usuario sigue siendo obligatorio.
 
 Los contratos compartidos del servicio y del registro nativo ahora están en `ironloom-service::factory`; el runtime y los adaptadores nativos dependen de este crate común, sin alias de importación antiguos. Las instantáneas incluyen la asignación activa para reconectar. Hay registros explícitos para proyectos, credenciales, conexiones nativas y fuentes/descargas; los perfiles guardan controles de generación mediante la configuración.
+
+`POST /api/v1/models/assessments` devuelve evaluaciones tipadas por motor, versión, backend y dispositivos canónicos, separando supuestos, ajuste de memoria y validación real. Lo desconocido sigue siendo desconocido; la evaluación no carga ni ejecuta modelos.
+
+`GET /api/v1/models/inventory` muestra procedencia autorizada, finalización de transferencia, verificación independiente de integridad/manifiesto y disponibilidad actual. Los bytes completos no equivalen a instalación verificada; los archivos ausentes conservan metadatos y bloquean el uso.

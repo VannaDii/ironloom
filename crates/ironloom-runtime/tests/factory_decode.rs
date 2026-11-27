@@ -32,6 +32,11 @@ fn rust_and_dart_shared_decode_fixtures() {
         serde_json::from_str(include_str!("../../../fixtures/contracts/decode.json")).unwrap();
     for case in &fixtures.cases {
         match case.contract.as_str() {
+            "model_inventory_item" => check::<ironloom_service::factory::ModelInventoryItem>(case),
+            "model_assessment_query" => {
+                check::<ironloom_service::factory::ModelAssessmentQuery>(case)
+            }
+            "engine_assessment" => check::<ironloom_service::factory::EngineAssessment>(case),
             "project_query" => check::<ironloom_service::factory::ProjectQuery>(case),
             "create_project" => check::<ironloom_service::factory::CreateProject>(case),
             "credential_command" => check::<ironloom_service::factory::CredentialCommand>(case),

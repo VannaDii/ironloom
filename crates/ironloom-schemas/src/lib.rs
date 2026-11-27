@@ -80,6 +80,21 @@ pub fn check_schema_files(root: &Path) -> SchemaResult<()> {
 
 fn schema_files() -> SchemaResult<Vec<SchemaFile>> {
     Ok(vec![
+        schema::<ironloom_service::factory::ModelInventoryQuery>(
+            "crates/ironloom-service/schemas/model-inventory-query.schema.json",
+        )?,
+        schema::<ironloom_service::factory::ModelInventoryItem>(
+            "crates/ironloom-service/schemas/model-inventory-item.schema.json",
+        )?,
+        schema::<ironloom_service::factory::ModelInventoryPage>(
+            "crates/ironloom-service/schemas/model-inventory-page.schema.json",
+        )?,
+        schema::<ironloom_service::factory::ModelAssessmentQuery>(
+            "crates/ironloom-service/schemas/model-assessment-query.schema.json",
+        )?,
+        schema::<ironloom_service::factory::EngineAssessment>(
+            "crates/ironloom-service/schemas/engine-assessment.schema.json",
+        )?,
         schema::<ironloom_service::factory::ProjectQuery>(
             "crates/ironloom-service/schemas/project-query.schema.json",
         )?,
