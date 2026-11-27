@@ -17,6 +17,12 @@ CREATE TABLE ironloom.installation (
 -- No replacement token or reopened bootstrap after administrator_id is fixed.
 CREATE FUNCTION ironloom.preserve_bootstrap() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
+    IF TG_OP = 'DELETE' THEN
+        RAISE EXCEPTION 'installation identity cannot be removed';
+    END IF;
+    IF NEW.installation_id IS DISTINCT FROM OLD.installation_id THEN
+        RAISE EXCEPTION 'installation identity cannot be changed';
+    END IF;
     IF OLD.administrator_id IS NOT NULL AND
        (NEW.administrator_id IS DISTINCT FROM OLD.administrator_id OR
         NEW.bootstrap_consumed_at IS DISTINCT FROM OLD.bootstrap_consumed_at OR
@@ -26,8 +32,15 @@ BEGIN
     RETURN NEW;
 END;
 $$;
-CREATE TRIGGER preserve_bootstrap BEFORE UPDATE ON ironloom.installation
+CREATE TRIGGER preserve_bootstrap BEFORE UPDATE OR DELETE ON ironloom.installation
 FOR EACH ROW EXECUTE FUNCTION ironloom.preserve_bootstrap();
+CREATE FUNCTION ironloom.prevent_installation_truncate() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+    RAISE EXCEPTION 'installation identity cannot be truncated';
+END;
+$$;
+CREATE TRIGGER prevent_installation_truncate BEFORE TRUNCATE ON ironloom.installation
+FOR EACH STATEMENT EXECUTE FUNCTION ironloom.prevent_installation_truncate();
 CREATE TABLE ironloom.local_logins (
     operator_id text PRIMARY KEY REFERENCES ironloom.operators,
     username text NOT NULL UNIQUE CHECK (btrim(username) <> ''),

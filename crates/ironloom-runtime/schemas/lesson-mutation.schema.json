@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/LessonMutationData",
+  "$defs": {
+    "Counter": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Canonical decimal u64; semantic validation also enforces u64 maximum.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "LessonId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom LessonId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "LessonMutationData": {
+      "description": "Unchecked construction draft for `LessonMutation`; validate before use.",
+      "type": "object",
+      "properties": {
+        "content": {
+          "description": "Present exactly for edit.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "expected_revision": {
+          "description": "Reject stale concurrent updates.",
+          "$ref": "#/$defs/Counter"
+        },
+        "lesson_id": {
+          "description": "Stored lesson in the outer command origin project.",
+          "$ref": "#/$defs/LessonId"
+        },
+        "operation": {
+          "description": "Content/scope/delete action.",
+          "$ref": "#/$defs/LessonOperation"
+        },
+        "scope": {
+          "description": "Present exactly for scope changes; installation promotes sharing.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RecordScope"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "lesson_id",
+        "expected_revision",
+        "operation"
+      ]
+    },
+    "LessonOperation": {
+      "description": "Lesson management operation; no action grants approval or private-source access.",
+      "oneOf": [
+        {
+          "description": "Update stored lesson content at an expected revision.",
+          "type": "string",
+          "const": "edit"
+        },
+        {
+          "description": "Restrict or promote scope; broadening requires share authority.",
+          "type": "string",
+          "const": "set_scope"
+        },
+        {
+          "description": "Explicit authorized deletion independent of worktree cleanup.",
+          "type": "string",
+          "const": "delete"
+        }
+      ]
+    },
+    "RecordScope": {
+      "description": "Stored scope; similarity and shared lessons are never approval.",
+      "oneOf": [
+        {
+          "description": "Restricted to the origin assignment.",
+          "type": "string",
+          "const": "assignment"
+        },
+        {
+          "description": "Available in the origin project.",
+          "type": "string",
+          "const": "project"
+        },
+        {
+          "description": "Explicitly shared content; source access is still checked separately.",
+          "type": "string",
+          "const": "installation"
+        }
+      ]
+    }
+  }
+}

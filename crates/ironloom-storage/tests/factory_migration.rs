@@ -44,6 +44,24 @@ async fn bootstrap_commands_and_replay_preserve_durable_identity() {
     tx.execute("ROLLBACK TO SAVEPOINT expected_failure")
         .await
         .unwrap();
+    for reset in [
+        "DELETE FROM ironloom.installation",
+        "TRUNCATE ironloom.installation",
+        "UPDATE ironloom.installation SET installation_id = 'replacement-installation'",
+        "UPDATE ironloom.installation SET administrator_id = NULL, bootstrap_consumed_at = NULL, bootstrap_token_hash = decode('abcdef', 'hex')",
+    ] {
+        tx.execute("SAVEPOINT reset_attempt").await.unwrap();
+        assert!(tx.execute(reset).await.is_err(), "reset must fail: {reset}");
+        tx.execute("ROLLBACK TO SAVEPOINT reset_attempt")
+            .await
+            .unwrap();
+    }
+    let administrator: String =
+        sqlx::query_scalar("SELECT administrator_id FROM ironloom.installation")
+            .fetch_one(&mut *tx)
+            .await
+            .unwrap();
+    assert_eq!(administrator, "human-a");
     tx.execute("UPDATE ironloom.installation SET grants_initialized_at = now()")
         .await
         .unwrap();

@@ -976,6 +976,8 @@ version = "0.1.0"
 dependencies = [
  "base64",
  "ironloom-core",
+ "ironloom-models",
+ "ironloom-observability",
  "schemars",
  "serde",
  "thiserror",
@@ -1056,6 +1058,7 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
+ "url",
 ]
 
 [[package]]

@@ -9,6 +9,7 @@ publish.workspace = true
 description = "Ironloom native remote protocol adapter contracts."
 
 [dependencies]
+url.workspace = true
 ironloom-core = { path = "../ironloom-core", version = "0.1.0" }
 schemars.workspace = true
 serde.workspace = true

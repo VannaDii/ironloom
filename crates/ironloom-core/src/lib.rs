@@ -212,3 +212,6 @@ impl JsonSchema for RepositorySlug {
         nonempty_string_schema("Validated `owner/repository` GitHub repository slug.")
     }
 }
+
+typed_id!(ServerId, "server_id");
+typed_id!(EnvironmentId, "environment_id");

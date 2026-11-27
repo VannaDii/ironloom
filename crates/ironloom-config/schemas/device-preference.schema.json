@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/DevicePreferenceData",
+  "$defs": {
+    "DeviceId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom DeviceId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "DevicePreferenceData": {
+      "description": "Unchecked construction draft for `DevicePreference`; validate before use.",
+      "type": "object",
+      "properties": {
+        "device_id": {
+          "description": "Desired canonical device, resolved against service discovery records.",
+          "$ref": "#/$defs/DeviceId"
+        },
+        "enabled": {
+          "description": "Explicit operator enable/disable choice; never capacity authority.",
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "device_id",
+        "enabled"
+      ]
+    }
+  }
+}

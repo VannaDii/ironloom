@@ -11,6 +11,13 @@
       "type": "string",
       "minLength": 1
     },
+    "DeviceId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom DeviceId value.",
+      "type": "string",
+      "minLength": 1
+    },
     "InstructionId": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "title": "string",
@@ -29,6 +36,13 @@
       "description": "Unchecked construction draft for `RoleConfiguration`; validate before use.",
       "type": "object",
       "properties": {
+        "device_bindings": {
+          "description": "Optional role device restrictions, intersected with its model profile placement.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DeviceId"
+          }
+        },
         "enabled": {
           "description": "Disabled roles do not dispatch.",
           "type": "boolean"
@@ -73,6 +87,7 @@
         "role_id",
         "enabled",
         "reasoning_applicable",
+        "device_bindings",
         "instructions_id"
       ]
     }

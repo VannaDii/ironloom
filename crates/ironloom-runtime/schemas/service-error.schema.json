@@ -40,6 +40,11 @@
       "const": "cursor_expired"
     },
     {
+      "description": "Bounded live feed overflowed; reconnect after the last consumed cursor without resubmitting work.",
+      "type": "string",
+      "const": "resync_required"
+    },
+    {
       "description": "Dependencies unavailable; never initialize replacement state.",
       "type": "string",
       "const": "unavailable"

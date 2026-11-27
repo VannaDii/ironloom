@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/RelayTargetData",
+  "$defs": {
+    "RelayTargetData": {
+      "description": "Unchecked construction draft for `RelayTarget`; validate before use.",
+      "type": "object",
+      "properties": {
+        "enroll_url": {
+          "description": "Enrollment endpoint.",
+          "type": "string"
+        },
+        "pair_status_url": {
+          "description": "Pairing-status endpoint.",
+          "type": "string"
+        },
+        "pair_url": {
+          "description": "Pairing endpoint.",
+          "type": "string"
+        },
+        "refresh_url": {
+          "description": "Server registration refresh endpoint.",
+          "type": "string"
+        },
+        "websocket_url": {
+          "description": "Normalized relay WebSocket endpoint.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "websocket_url",
+        "enroll_url",
+        "refresh_url",
+        "pair_url",
+        "pair_status_url"
+      ]
+    }
+  }
+}

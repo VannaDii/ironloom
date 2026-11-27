@@ -1,6 +1,6 @@
 //! Shared software factory contracts.
 use ironloom_core::validation::{ValidationErrors, required};
-use ironloom_core::{ActorId, InstructionId, ModelProfileId};
+use ironloom_core::{ActorId, CredentialId, DeviceId, InstructionId, ModelProfileId};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 /// Required explicit setup choice; no implicit default.
@@ -78,6 +78,8 @@ RoleConfiguration, RoleConfigurationData {
     reasoning_applicable: bool,
     /// Explicit human choice where applicable.
     reasoning_effort: Option<ActorId>,
+    /// Optional role device restrictions, intersected with its model profile placement.
+    device_bindings: Vec<DeviceId>,
     /// Template copied into assignments.
     instructions_id: InstructionId,
 } |value| {
@@ -100,6 +102,63 @@ RoleConfiguration, RoleConfigurationData {
             "unsupported_effort",
         ));
     }
+    Ok(())
+}
+}
+ironloom_core::contract! {
+/// Validated factory record.
+ModelProfileConfiguration, ModelProfileConfigurationData {
+    /// Stable human-selected profile identity.
+    profile_id: ModelProfileId,
+    /// Explicit provider; no silent substitute.
+    provider: ActorId,
+    /// Configured provider model/checkpoint.
+    model_id: ActorId,
+    /// Private credential reference; separate use/share/replace/delete grants.
+    credential_id: Option<CredentialId>,
+    /// Explicit account/API/local estimate billing choice.
+    billing: ironloom_observability::factory::BillingMode,
+    /// Explicit local engine/version/backend; no default engine fallback.
+    engine: Option<ironloom_models::factory::EngineIdentity>,
+    /// Desired configured local devices; discovery and admission recheck identity.
+    device_bindings: Vec<DeviceId>,
+} |value| {
+    let _ = value;
+    let local = value.engine.is_some();
+    if local != (value.billing == ironloom_observability::factory::BillingMode::LocalEstimate) {
+        return Err(ValidationErrors::field(
+            "billing",
+            "engine_billing_mismatch",
+        ));
+    }
+    if !local && !value.device_bindings.is_empty() {
+        return Err(ValidationErrors::field(
+            "device_bindings",
+            "remote_placement_forbidden",
+        ));
+    }
+    let unique = value
+        .device_bindings
+        .iter()
+        .collect::<std::collections::BTreeSet<_>>();
+    if unique.len() != value.device_bindings.len() {
+        return Err(ValidationErrors::field(
+            "device_bindings",
+            "duplicate_device",
+        ));
+    }
+    Ok(())
+}
+}
+ironloom_core::contract! {
+/// Validated factory record.
+DevicePreference, DevicePreferenceData {
+    /// Desired canonical device, resolved against service discovery records.
+    device_id: DeviceId,
+    /// Explicit operator enable/disable choice; never capacity authority.
+    enabled: bool,
+} |value| {
+    let _ = value;
     Ok(())
 }
 }

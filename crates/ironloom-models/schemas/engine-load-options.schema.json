@@ -1,0 +1,174 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/EngineLoadOptionsData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ContextCacheData": {
+      "description": "Unchecked construction draft for `ContextCache`; validate before use.",
+      "type": "object",
+      "properties": {
+        "cache_id": {
+          "description": "Request/session-scoped cache identity, separate from resident weights.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "capacity_bytes": {
+          "description": "Configured bound if known.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Counter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "conversation_id": {
+          "description": "Authorized conversation boundary; sharing weights does not share this context.",
+          "$ref": "#/$defs/ConversationId"
+        },
+        "owner": {
+          "description": "Authorized human scope; resolve independently at dispatch.",
+          "$ref": "#/$defs/OperatorId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "cache_id",
+        "conversation_id",
+        "owner"
+      ]
+    },
+    "ConversationId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ConversationId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Counter": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Canonical decimal u64; semantic validation also enforces u64 maximum.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "DraftModelData": {
+      "description": "Unchecked construction draft for `DraftModel`; validate before use.",
+      "type": "object",
+      "properties": {
+        "checkpoint_hash": {
+          "description": "Verified draft manifest hash.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "model_id": {
+          "description": "Explicit optional draft checkpoint, never a fallback target.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "quantization": {
+          "description": "Draft quantization where applicable.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "revision": {
+          "description": "Exact draft revision.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "weight_bytes": {
+          "description": "Draft memory estimate; unknown is not zero.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Counter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "model_id",
+        "revision",
+        "checkpoint_hash"
+      ]
+    },
+    "EngineLoadOptionsData": {
+      "description": "Unchecked construction draft for `EngineLoadOptions`; validate before use.",
+      "type": "object",
+      "properties": {
+        "accelerators": {
+          "description": "Explicit additional accelerators; engine may report unsupported.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ActorId"
+          }
+        },
+        "cache": {
+          "description": "Optional isolated context cache; absence does not imply cross-session reuse.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Validated2"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "concurrency": {
+          "description": "Configured concurrent demand.",
+          "$ref": "#/$defs/Counter"
+        },
+        "context_tokens": {
+          "description": "Configured context demand for estimates/admission.",
+          "$ref": "#/$defs/Counter"
+        },
+        "draft": {
+          "description": "Explicit optional draft model.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Validated"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "context_tokens",
+        "concurrency",
+        "accelerators"
+      ]
+    },
+    "OperatorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom OperatorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Validated": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/DraftModelData"
+    },
+    "Validated2": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/ContextCacheData"
+    }
+  }
+}

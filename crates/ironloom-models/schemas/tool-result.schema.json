@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/ToolResultData",
+  "$defs": {
+    "ToolCallId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ToolCallId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ToolResultData": {
+      "description": "Unchecked construction draft for `ToolResult`; validate before use.",
+      "type": "object",
+      "properties": {
+        "content": {
+          "description": "Tool output; an empty output is valid.",
+          "type": "string"
+        },
+        "status": {
+          "description": "Observed completion outcome.",
+          "$ref": "#/$defs/ToolResultStatus"
+        },
+        "tool_call_id": {
+          "description": "Previously requested tool call.",
+          "$ref": "#/$defs/ToolCallId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "tool_call_id",
+        "status",
+        "content"
+      ]
+    },
+    "ToolResultStatus": {
+      "description": "Observed tool outcome, not an inference cancellation acknowledgment.",
+      "oneOf": [
+        {
+          "description": "Tool completed successfully.",
+          "type": "string",
+          "const": "succeeded"
+        },
+        {
+          "description": "Tool failed; content is a redacted error/result.",
+          "type": "string",
+          "const": "failed"
+        }
+      ]
+    }
+  }
+}
