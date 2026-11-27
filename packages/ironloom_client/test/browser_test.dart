@@ -36,6 +36,7 @@ void main() {
         enabled: true,
         reasoningApplicable: true,
         instructionsId: InstructionId('i'),
+        deviceBindings: [],
       ),
       throwsA(
         isA<ValidationErrors>().having(
@@ -76,6 +77,7 @@ void main() {
     for (final json in [
       '"conflict"',
       '"cursor_expired"',
+      '"resync_required"',
       '"unavailable"',
       '{"authentication":"forbidden"}',
       '{"validation":{"fields":[{"field":"revision","code":"future_revision"}]}}',
@@ -88,4 +90,58 @@ void main() {
       throwsA(isA<ValidationErrors>()),
     );
   });
+  test('new message and configuration contracts validate in browser code', () {
+    final message = InferenceMessage(
+      role: MessageRole.assistant,
+      toolCalls: [
+        ToolInvocation(
+          toolCallId: ToolCallId('call'),
+          name: ActorId('read'),
+          arguments: {'path': 'src'},
+        ),
+      ],
+    );
+    expect(message.toolCalls.single.arguments, {'path': 'src'});
+    expect(
+      () => InferenceMessage(
+        role: MessageRole.tool,
+        text: 'untyped result',
+        toolCalls: [],
+      ),
+      throwsA(isA<ValidationErrors>()),
+    );
+    expect(() => ConfigurationChange(), throwsA(isA<ValidationErrors>()));
+    final setup = ConfigurationChange(
+      devicePreferences: [
+        DevicePreference(deviceId: DeviceId('gpu'), enabled: true),
+      ],
+    );
+    expect(setup.devicePreferences!.single.enabled, isTrue);
+  });
+
+  test(
+    'native endpoints retain separate origins and secure loopback rules',
+    () {
+      final endpoints = RelayTarget(
+        websocketUrl: 'ws://127.0.0.1:8000/server',
+        enrollUrl: 'http://127.0.0.1:8000/enroll',
+        refreshUrl: 'http://127.0.0.1:8000/refresh',
+        pairUrl: 'http://127.0.0.1:8000/pair',
+        pairStatusUrl: 'http://127.0.0.1:8000/pair/status',
+      );
+      expect(endpoints.websocketUrl, 'ws://127.0.0.1:8000/server');
+      final invalid = endpoints.toJson()
+        ..['refresh_url'] = 'http://127.0.0.1:8001/refresh';
+      expect(
+        () => RelayTarget.fromJson(invalid),
+        throwsA(
+          isA<ValidationErrors>().having(
+            (e) => e.fields.first.code,
+            'code',
+            'relay_origin_mismatch',
+          ),
+        ),
+      );
+    },
+  );
 }

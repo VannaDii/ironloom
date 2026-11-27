@@ -528,6 +528,40 @@ final class QuestionId implements WireModel {
   String toString() => value;
 }
 
+final class ServerId implements WireModel {
+  factory ServerId(String value) => ServerId.fromJson(value);
+  ServerId._(this.value);
+  factory ServerId.fromJson(Object? json) {
+    final value = _string(json);
+    _validateIdentity("ServerId", value);
+    return ServerId._(value);
+  }
+  final String value;
+  @override
+  String toJson() => value;
+  @override
+  void validate() => _validateIdentity("ServerId", value);
+  @override
+  String toString() => value;
+}
+
+final class EnvironmentId implements WireModel {
+  factory EnvironmentId(String value) => EnvironmentId.fromJson(value);
+  EnvironmentId._(this.value);
+  factory EnvironmentId.fromJson(Object? json) {
+    final value = _string(json);
+    _validateIdentity("EnvironmentId", value);
+    return EnvironmentId._(value);
+  }
+  final String value;
+  @override
+  String toJson() => value;
+  @override
+  void validate() => _validateIdentity("EnvironmentId", value);
+  @override
+  String toString() => value;
+}
+
 final class BranchName implements WireModel {
   factory BranchName(String value) => BranchName.fromJson(value);
   BranchName._(this.value);
@@ -570,6 +604,41 @@ enum LessonHandling implements WireModel {
   const LessonHandling(this.value);
   final String value;
   static LessonHandling fromJson(Object? json) => values.firstWhere(
+    (v) => v.value == json,
+    orElse: () => _fail(r'$', 'invalid_structure'),
+  );
+  @override
+  String toJson() => value;
+  @override
+  void validate() {}
+}
+
+enum MessageRole implements WireModel {
+  system('system'),
+  developer('developer'),
+  user('user'),
+  assistant('assistant'),
+  tool('tool');
+
+  const MessageRole(this.value);
+  final String value;
+  static MessageRole fromJson(Object? json) => values.firstWhere(
+    (v) => v.value == json,
+    orElse: () => _fail(r'$', 'invalid_structure'),
+  );
+  @override
+  String toJson() => value;
+  @override
+  void validate() {}
+}
+
+enum ToolResultStatus implements WireModel {
+  succeeded('succeeded'),
+  failed('failed');
+
+  const ToolResultStatus(this.value);
+  final String value;
+  static ToolResultStatus fromJson(Object? json) => values.firstWhere(
     (v) => v.value == json,
     orElse: () => _fail(r'$', 'invalid_structure'),
   );
@@ -643,6 +712,60 @@ enum Compatibility implements WireModel {
   const Compatibility(this.value);
   final String value;
   static Compatibility fromJson(Object? json) => values.firstWhere(
+    (v) => v.value == json,
+    orElse: () => _fail(r'$', 'invalid_structure'),
+  );
+  @override
+  String toJson() => value;
+  @override
+  void validate() {}
+}
+
+enum CapabilitySupport implements WireModel {
+  supported('supported'),
+  unsupported('unsupported'),
+  unknown('unknown');
+
+  const CapabilitySupport(this.value);
+  final String value;
+  static CapabilitySupport fromJson(Object? json) => values.firstWhere(
+    (v) => v.value == json,
+    orElse: () => _fail(r'$', 'invalid_structure'),
+  );
+  @override
+  String toJson() => value;
+  @override
+  void validate() {}
+}
+
+enum EngineState implements WireModel {
+  starting('starting'),
+  ready('ready'),
+  failed('failed'),
+  restarting('restarting'),
+  stopped('stopped');
+
+  const EngineState(this.value);
+  final String value;
+  static EngineState fromJson(Object? json) => values.firstWhere(
+    (v) => v.value == json,
+    orElse: () => _fail(r'$', 'invalid_structure'),
+  );
+  @override
+  String toJson() => value;
+  @override
+  void validate() {}
+}
+
+enum EngineFailure implements WireModel {
+  unavailable('unavailable'),
+  crashed('crashed'),
+  resourceExhausted('resource_exhausted'),
+  unsupported('unsupported');
+
+  const EngineFailure(this.value);
+  final String value;
+  static EngineFailure fromJson(Object? json) => values.firstWhere(
     (v) => v.value == json,
     orElse: () => _fail(r'$', 'invalid_structure'),
   );
@@ -849,6 +972,23 @@ enum AuthenticationError implements WireModel {
   const AuthenticationError(this.value);
   final String value;
   static AuthenticationError fromJson(Object? json) => values.firstWhere(
+    (v) => v.value == json,
+    orElse: () => _fail(r'$', 'invalid_structure'),
+  );
+  @override
+  String toJson() => value;
+  @override
+  void validate() {}
+}
+
+enum LessonOperation implements WireModel {
+  edit('edit'),
+  setScope('set_scope'),
+  delete('delete');
+
+  const LessonOperation(this.value);
+  final String value;
+  static LessonOperation fromJson(Object? json) => values.firstWhere(
     (v) => v.value == json,
     orElse: () => _fail(r'$', 'invalid_structure'),
   );
@@ -1120,6 +1260,7 @@ final class RoleConfiguration implements WireModel {
     ModelProfileId? modelProfileId,
     required bool reasoningApplicable,
     ActorId? reasoningEffort,
+    required List<DeviceId> deviceBindings,
     required InstructionId instructionsId,
   }) => RoleConfiguration.fromJson({
     'role_id': _json(roleId),
@@ -1127,6 +1268,7 @@ final class RoleConfiguration implements WireModel {
     'model_profile_id': _json(modelProfileId),
     'reasoning_applicable': _json(reasoningApplicable),
     'reasoning_effort': _json(reasoningEffort),
+    'device_bindings': _json(deviceBindings),
     'instructions_id': _json(instructionsId),
   });
   RoleConfiguration._(
@@ -1135,6 +1277,7 @@ final class RoleConfiguration implements WireModel {
     this.modelProfileId,
     this.reasoningApplicable,
     this.reasoningEffort,
+    this.deviceBindings,
     this.instructionsId,
   );
   factory RoleConfiguration.fromJson(Object? json) {
@@ -1144,6 +1287,7 @@ final class RoleConfiguration implements WireModel {
       "model_profile_id",
       "reasoning_applicable",
       "reasoning_effort",
+      "device_bindings",
       "instructions_id",
     ]);
     final value = RoleConfiguration._(
@@ -1152,6 +1296,7 @@ final class RoleConfiguration implements WireModel {
       r.optional('model_profile_id', ModelProfileId.fromJson),
       r.read('reasoning_applicable', _boolean),
       r.optional('reasoning_effort', ActorId.fromJson),
+      r.read('device_bindings', (v) => _list(v, DeviceId.fromJson)),
       r.read('instructions_id', InstructionId.fromJson),
     );
     value.validate();
@@ -1162,6 +1307,7 @@ final class RoleConfiguration implements WireModel {
   final ModelProfileId? modelProfileId;
   final bool reasoningApplicable;
   final ActorId? reasoningEffort;
+  final List<DeviceId> deviceBindings;
   final InstructionId instructionsId;
   @override
   void validate() {
@@ -1175,7 +1321,113 @@ final class RoleConfiguration implements WireModel {
     'model_profile_id': _json(modelProfileId),
     'reasoning_applicable': _json(reasoningApplicable),
     'reasoning_effort': _json(reasoningEffort),
+    'device_bindings': _json(deviceBindings),
     'instructions_id': _json(instructionsId),
+  };
+}
+
+final class ModelProfileConfiguration implements WireModel {
+  factory ModelProfileConfiguration({
+    required ModelProfileId profileId,
+    required ActorId provider,
+    required ActorId modelId,
+    CredentialId? credentialId,
+    required BillingMode billing,
+    EngineIdentity? engine,
+    required List<DeviceId> deviceBindings,
+  }) => ModelProfileConfiguration.fromJson({
+    'profile_id': _json(profileId),
+    'provider': _json(provider),
+    'model_id': _json(modelId),
+    'credential_id': _json(credentialId),
+    'billing': _json(billing),
+    'engine': _json(engine),
+    'device_bindings': _json(deviceBindings),
+  });
+  ModelProfileConfiguration._(
+    this.profileId,
+    this.provider,
+    this.modelId,
+    this.credentialId,
+    this.billing,
+    this.engine,
+    this.deviceBindings,
+  );
+  factory ModelProfileConfiguration.fromJson(Object? json) {
+    final r = _Reader(json, [
+      "profile_id",
+      "provider",
+      "model_id",
+      "credential_id",
+      "billing",
+      "engine",
+      "device_bindings",
+    ]);
+    final value = ModelProfileConfiguration._(
+      r.read('profile_id', ModelProfileId.fromJson),
+      r.read('provider', ActorId.fromJson),
+      r.read('model_id', ActorId.fromJson),
+      r.optional('credential_id', CredentialId.fromJson),
+      r.read('billing', BillingMode.fromJson),
+      r.optional('engine', EngineIdentity.fromJson),
+      r.read('device_bindings', (v) => _list(v, DeviceId.fromJson)),
+    );
+    value.validate();
+    return value;
+  }
+  final ModelProfileId profileId;
+  final ActorId provider;
+  final ActorId modelId;
+  final CredentialId? credentialId;
+  final BillingMode billing;
+  final EngineIdentity? engine;
+  final List<DeviceId> deviceBindings;
+  @override
+  void validate() {
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'profile_id': _json(profileId),
+    'provider': _json(provider),
+    'model_id': _json(modelId),
+    'credential_id': _json(credentialId),
+    'billing': _json(billing),
+    'engine': _json(engine),
+    'device_bindings': _json(deviceBindings),
+  };
+}
+
+final class DevicePreference implements WireModel {
+  factory DevicePreference({
+    required DeviceId deviceId,
+    required bool enabled,
+  }) => DevicePreference.fromJson({
+    'device_id': _json(deviceId),
+    'enabled': _json(enabled),
+  });
+  DevicePreference._(this.deviceId, this.enabled);
+  factory DevicePreference.fromJson(Object? json) {
+    final r = _Reader(json, ["device_id", "enabled"]);
+    final value = DevicePreference._(
+      r.read('device_id', DeviceId.fromJson),
+      r.read('enabled', _boolean),
+    );
+    value.validate();
+    return value;
+  }
+  final DeviceId deviceId;
+  final bool enabled;
+  @override
+  void validate() {
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'device_id': _json(deviceId),
+    'enabled': _json(enabled),
   };
 }
 
@@ -1492,51 +1744,220 @@ final class GenerationControls implements WireModel {
   };
 }
 
+final class ToolDefinition implements WireModel {
+  factory ToolDefinition({
+    required ActorId name,
+    required String description,
+    required Object? inputSchema,
+  }) => ToolDefinition.fromJson({
+    'name': _json(name),
+    'description': _json(description),
+    'input_schema': _json(inputSchema),
+  });
+  ToolDefinition._(this.name, this.description, this.inputSchema);
+  factory ToolDefinition.fromJson(Object? json) {
+    final r = _Reader(json, ["name", "description", "input_schema"]);
+    final value = ToolDefinition._(
+      r.read('name', ActorId.fromJson),
+      r.read('description', _string),
+      r.read('input_schema', _freeze),
+    );
+    value.validate();
+    return value;
+  }
+  final ActorId name;
+  final String description;
+  final Object? inputSchema;
+  @override
+  void validate() {
+    _required('description', description);
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'name': _json(name),
+    'description': _json(description),
+    'input_schema': _json(inputSchema),
+  };
+}
+
+final class ToolInvocation implements WireModel {
+  factory ToolInvocation({
+    required ToolCallId toolCallId,
+    required ActorId name,
+    required Object? arguments,
+  }) => ToolInvocation.fromJson({
+    'tool_call_id': _json(toolCallId),
+    'name': _json(name),
+    'arguments': _json(arguments),
+  });
+  ToolInvocation._(this.toolCallId, this.name, this.arguments);
+  factory ToolInvocation.fromJson(Object? json) {
+    final r = _Reader(json, ["tool_call_id", "name", "arguments"]);
+    final value = ToolInvocation._(
+      r.read('tool_call_id', ToolCallId.fromJson),
+      r.read('name', ActorId.fromJson),
+      r.read('arguments', _freeze),
+    );
+    value.validate();
+    return value;
+  }
+  final ToolCallId toolCallId;
+  final ActorId name;
+  final Object? arguments;
+  @override
+  void validate() {
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'tool_call_id': _json(toolCallId),
+    'name': _json(name),
+    'arguments': _json(arguments),
+  };
+}
+
+final class ToolResult implements WireModel {
+  factory ToolResult({
+    required ToolCallId toolCallId,
+    required ToolResultStatus status,
+    required String content,
+  }) => ToolResult.fromJson({
+    'tool_call_id': _json(toolCallId),
+    'status': _json(status),
+    'content': _json(content),
+  });
+  ToolResult._(this.toolCallId, this.status, this.content);
+  factory ToolResult.fromJson(Object? json) {
+    final r = _Reader(json, ["tool_call_id", "status", "content"]);
+    final value = ToolResult._(
+      r.read('tool_call_id', ToolCallId.fromJson),
+      r.read('status', ToolResultStatus.fromJson),
+      r.read('content', _string),
+    );
+    value.validate();
+    return value;
+  }
+  final ToolCallId toolCallId;
+  final ToolResultStatus status;
+  final String content;
+  @override
+  void validate() {
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'tool_call_id': _json(toolCallId),
+    'status': _json(status),
+    'content': _json(content),
+  };
+}
+
+final class InferenceMessage implements WireModel {
+  factory InferenceMessage({
+    required MessageRole role,
+    String? text,
+    required List<ToolInvocation> toolCalls,
+    ToolResult? toolResult,
+  }) => InferenceMessage.fromJson({
+    'role': _json(role),
+    'text': _json(text),
+    'tool_calls': _json(toolCalls),
+    'tool_result': _json(toolResult),
+  });
+  InferenceMessage._(this.role, this.text, this.toolCalls, this.toolResult);
+  factory InferenceMessage.fromJson(Object? json) {
+    final r = _Reader(json, ["role", "text", "tool_calls", "tool_result"]);
+    final value = InferenceMessage._(
+      r.read('role', MessageRole.fromJson),
+      r.optional('text', _string),
+      r.read('tool_calls', (v) => _list(v, ToolInvocation.fromJson)),
+      r.optional('tool_result', ToolResult.fromJson),
+    );
+    value.validate();
+    return value;
+  }
+  final MessageRole role;
+  final String? text;
+  final List<ToolInvocation> toolCalls;
+  final ToolResult? toolResult;
+  @override
+  void validate() {
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'role': _json(role),
+    'text': _json(text),
+    'tool_calls': _json(toolCalls),
+    'tool_result': _json(toolResult),
+  };
+}
+
 final class InferenceRequest implements WireModel {
   factory InferenceRequest({
     required InferenceId inferenceId,
     required AssignmentId assignmentId,
     required WorkerId workerId,
+    required TurnId turnId,
+    required ItemId itemId,
     required ModelSelection selection,
     required GenerationControls controls,
-    required List<String> messages,
-    required List<ActorId> toolNames,
+    EngineLoadOptions? engineOptions,
+    required List<InferenceMessage> messages,
+    required List<ToolDefinition> tools,
   }) => InferenceRequest.fromJson({
     'inference_id': _json(inferenceId),
     'assignment_id': _json(assignmentId),
     'worker_id': _json(workerId),
+    'turn_id': _json(turnId),
+    'item_id': _json(itemId),
     'selection': _json(selection),
     'controls': _json(controls),
+    'engine_options': _json(engineOptions),
     'messages': _json(messages),
-    'tool_names': _json(toolNames),
+    'tools': _json(tools),
   });
   InferenceRequest._(
     this.inferenceId,
     this.assignmentId,
     this.workerId,
+    this.turnId,
+    this.itemId,
     this.selection,
     this.controls,
+    this.engineOptions,
     this.messages,
-    this.toolNames,
+    this.tools,
   );
   factory InferenceRequest.fromJson(Object? json) {
     final r = _Reader(json, [
       "inference_id",
       "assignment_id",
       "worker_id",
+      "turn_id",
+      "item_id",
       "selection",
       "controls",
+      "engine_options",
       "messages",
-      "tool_names",
+      "tools",
     ]);
     final value = InferenceRequest._(
       r.read('inference_id', InferenceId.fromJson),
       r.read('assignment_id', AssignmentId.fromJson),
       r.read('worker_id', WorkerId.fromJson),
+      r.read('turn_id', TurnId.fromJson),
+      r.read('item_id', ItemId.fromJson),
       r.read('selection', ModelSelection.fromJson),
       r.read('controls', GenerationControls.fromJson),
-      r.read('messages', (v) => _list(v, _string)),
-      r.read('tool_names', (v) => _list(v, ActorId.fromJson)),
+      r.optional('engine_options', EngineLoadOptions.fromJson),
+      r.read('messages', (v) => _list(v, InferenceMessage.fromJson)),
+      r.read('tools', (v) => _list(v, ToolDefinition.fromJson)),
     );
     value.validate();
     return value;
@@ -1544,10 +1965,13 @@ final class InferenceRequest implements WireModel {
   final InferenceId inferenceId;
   final AssignmentId assignmentId;
   final WorkerId workerId;
+  final TurnId turnId;
+  final ItemId itemId;
   final ModelSelection selection;
   final GenerationControls controls;
-  final List<String> messages;
-  final List<ActorId> toolNames;
+  final EngineLoadOptions? engineOptions;
+  final List<InferenceMessage> messages;
+  final List<ToolDefinition> tools;
   @override
   void validate() {
     _validateModel(this);
@@ -1558,10 +1982,13 @@ final class InferenceRequest implements WireModel {
     'inference_id': _json(inferenceId),
     'assignment_id': _json(assignmentId),
     'worker_id': _json(workerId),
+    'turn_id': _json(turnId),
+    'item_id': _json(itemId),
     'selection': _json(selection),
     'controls': _json(controls),
+    'engine_options': _json(engineOptions),
     'messages': _json(messages),
-    'tool_names': _json(toolNames),
+    'tools': _json(tools),
   };
 }
 
@@ -1569,12 +1996,16 @@ final class Residency implements WireModel {
   factory Residency({
     required ResidentModelId residentId,
     required ModelSelection selection,
+    DraftModel? draft,
+    Counter? observedCacheBytes,
     required Counter activeRequests,
     required Counter lastUsedAtMs,
     required Counter reservedBytes,
   }) => Residency.fromJson({
     'resident_id': _json(residentId),
     'selection': _json(selection),
+    'draft': _json(draft),
+    'observed_cache_bytes': _json(observedCacheBytes),
     'active_requests': _json(activeRequests),
     'last_used_at_ms': _json(lastUsedAtMs),
     'reserved_bytes': _json(reservedBytes),
@@ -1582,6 +2013,8 @@ final class Residency implements WireModel {
   Residency._(
     this.residentId,
     this.selection,
+    this.draft,
+    this.observedCacheBytes,
     this.activeRequests,
     this.lastUsedAtMs,
     this.reservedBytes,
@@ -1590,6 +2023,8 @@ final class Residency implements WireModel {
     final r = _Reader(json, [
       "resident_id",
       "selection",
+      "draft",
+      "observed_cache_bytes",
       "active_requests",
       "last_used_at_ms",
       "reserved_bytes",
@@ -1597,6 +2032,8 @@ final class Residency implements WireModel {
     final value = Residency._(
       r.read('resident_id', ResidentModelId.fromJson),
       r.read('selection', ModelSelection.fromJson),
+      r.optional('draft', DraftModel.fromJson),
+      r.optional('observed_cache_bytes', Counter.fromJson),
       r.read('active_requests', Counter.fromJson),
       r.read('last_used_at_ms', Counter.fromJson),
       r.read('reserved_bytes', Counter.fromJson),
@@ -1606,6 +2043,8 @@ final class Residency implements WireModel {
   }
   final ResidentModelId residentId;
   final ModelSelection selection;
+  final DraftModel? draft;
+  final Counter? observedCacheBytes;
   final Counter activeRequests;
   final Counter lastUsedAtMs;
   final Counter reservedBytes;
@@ -1618,6 +2057,8 @@ final class Residency implements WireModel {
   Map<String, Object?> toJson() => {
     'resident_id': _json(residentId),
     'selection': _json(selection),
+    'draft': _json(draft),
+    'observed_cache_bytes': _json(observedCacheBytes),
     'active_requests': _json(activeRequests),
     'last_used_at_ms': _json(lastUsedAtMs),
     'reserved_bytes': _json(reservedBytes),
@@ -1778,10 +2219,10 @@ final class EngineCapabilities implements WireModel {
     required List<ActorId> quantizations,
     required bool streaming,
     required bool tools,
-    required bool draftModels,
-    required bool contextCache,
-    required bool batching,
-    required bool multiGpu,
+    required CapabilitySupport draftModels,
+    required CapabilitySupport contextCache,
+    required CapabilitySupport batching,
+    required CapabilitySupport multiGpu,
     required List<ActorId> accelerators,
     Counter? maxContextTokens,
   }) => EngineCapabilities.fromJson({
@@ -1834,10 +2275,10 @@ final class EngineCapabilities implements WireModel {
       r.read('quantizations', (v) => _list(v, ActorId.fromJson)),
       r.read('streaming', _boolean),
       r.read('tools', _boolean),
-      r.read('draft_models', _boolean),
-      r.read('context_cache', _boolean),
-      r.read('batching', _boolean),
-      r.read('multi_gpu', _boolean),
+      r.read('draft_models', CapabilitySupport.fromJson),
+      r.read('context_cache', CapabilitySupport.fromJson),
+      r.read('batching', CapabilitySupport.fromJson),
+      r.read('multi_gpu', CapabilitySupport.fromJson),
       r.read('accelerators', (v) => _list(v, ActorId.fromJson)),
       r.optional('max_context_tokens', Counter.fromJson),
     );
@@ -1850,10 +2291,10 @@ final class EngineCapabilities implements WireModel {
   final List<ActorId> quantizations;
   final bool streaming;
   final bool tools;
-  final bool draftModels;
-  final bool contextCache;
-  final bool batching;
-  final bool multiGpu;
+  final CapabilitySupport draftModels;
+  final CapabilitySupport contextCache;
+  final CapabilitySupport batching;
+  final CapabilitySupport multiGpu;
   final List<ActorId> accelerators;
   final Counter? maxContextTokens;
   @override
@@ -1938,6 +2379,584 @@ final class ModelFit implements WireModel {
   };
 }
 
+final class SourceQuery implements WireModel {
+  factory SourceQuery({
+    required String query,
+    ActorId? publisher,
+    ActorId? host,
+    ActorId? after,
+    required Counter limit,
+  }) => SourceQuery.fromJson({
+    'query': _json(query),
+    'publisher': _json(publisher),
+    'host': _json(host),
+    'after': _json(after),
+    'limit': _json(limit),
+  });
+  SourceQuery._(this.query, this.publisher, this.host, this.after, this.limit);
+  factory SourceQuery.fromJson(Object? json) {
+    final r = _Reader(json, ["query", "publisher", "host", "after", "limit"]);
+    final value = SourceQuery._(
+      r.read('query', _string),
+      r.optional('publisher', ActorId.fromJson),
+      r.optional('host', ActorId.fromJson),
+      r.optional('after', ActorId.fromJson),
+      r.read('limit', Counter.fromJson),
+    );
+    value.validate();
+    return value;
+  }
+  final String query;
+  final ActorId? publisher;
+  final ActorId? host;
+  final ActorId? after;
+  final Counter limit;
+  @override
+  void validate() {
+    _positive('limit', limit);
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'query': _json(query),
+    'publisher': _json(publisher),
+    'host': _json(host),
+    'after': _json(after),
+    'limit': _json(limit),
+  };
+}
+
+final class ModelCard implements WireModel {
+  factory ModelCard({
+    required ActorId repositoryId,
+    required ActorId modelId,
+    required ModelSource source,
+    ActorId? architecture,
+    ActorId? format,
+    ActorId? quantization,
+    Counter? weightBytes,
+    Counter? contextTokens,
+  }) => ModelCard.fromJson({
+    'repository_id': _json(repositoryId),
+    'model_id': _json(modelId),
+    'source': _json(source),
+    'architecture': _json(architecture),
+    'format': _json(format),
+    'quantization': _json(quantization),
+    'weight_bytes': _json(weightBytes),
+    'context_tokens': _json(contextTokens),
+  });
+  ModelCard._(
+    this.repositoryId,
+    this.modelId,
+    this.source,
+    this.architecture,
+    this.format,
+    this.quantization,
+    this.weightBytes,
+    this.contextTokens,
+  );
+  factory ModelCard.fromJson(Object? json) {
+    final r = _Reader(json, [
+      "repository_id",
+      "model_id",
+      "source",
+      "architecture",
+      "format",
+      "quantization",
+      "weight_bytes",
+      "context_tokens",
+    ]);
+    final value = ModelCard._(
+      r.read('repository_id', ActorId.fromJson),
+      r.read('model_id', ActorId.fromJson),
+      r.read('source', ModelSource.fromJson),
+      r.optional('architecture', ActorId.fromJson),
+      r.optional('format', ActorId.fromJson),
+      r.optional('quantization', ActorId.fromJson),
+      r.optional('weight_bytes', Counter.fromJson),
+      r.optional('context_tokens', Counter.fromJson),
+    );
+    value.validate();
+    return value;
+  }
+  final ActorId repositoryId;
+  final ActorId modelId;
+  final ModelSource source;
+  final ActorId? architecture;
+  final ActorId? format;
+  final ActorId? quantization;
+  final Counter? weightBytes;
+  final Counter? contextTokens;
+  @override
+  void validate() {
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'repository_id': _json(repositoryId),
+    'model_id': _json(modelId),
+    'source': _json(source),
+    'architecture': _json(architecture),
+    'format': _json(format),
+    'quantization': _json(quantization),
+    'weight_bytes': _json(weightBytes),
+    'context_tokens': _json(contextTokens),
+  };
+}
+
+final class SourcePage implements WireModel {
+  factory SourcePage({required List<ModelCard> models, ActorId? nextAfter}) =>
+      SourcePage.fromJson({
+        'models': _json(models),
+        'next_after': _json(nextAfter),
+      });
+  SourcePage._(this.models, this.nextAfter);
+  factory SourcePage.fromJson(Object? json) {
+    final r = _Reader(json, ["models", "next_after"]);
+    final value = SourcePage._(
+      r.read('models', (v) => _list(v, ModelCard.fromJson)),
+      r.optional('next_after', ActorId.fromJson),
+    );
+    value.validate();
+    return value;
+  }
+  final List<ModelCard> models;
+  final ActorId? nextAfter;
+  @override
+  void validate() {
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'models': _json(models),
+    'next_after': _json(nextAfter),
+  };
+}
+
+final class DraftModel implements WireModel {
+  factory DraftModel({
+    required ActorId modelId,
+    required ActorId revision,
+    required ActorId checkpointHash,
+    ActorId? quantization,
+    Counter? weightBytes,
+  }) => DraftModel.fromJson({
+    'model_id': _json(modelId),
+    'revision': _json(revision),
+    'checkpoint_hash': _json(checkpointHash),
+    'quantization': _json(quantization),
+    'weight_bytes': _json(weightBytes),
+  });
+  DraftModel._(
+    this.modelId,
+    this.revision,
+    this.checkpointHash,
+    this.quantization,
+    this.weightBytes,
+  );
+  factory DraftModel.fromJson(Object? json) {
+    final r = _Reader(json, [
+      "model_id",
+      "revision",
+      "checkpoint_hash",
+      "quantization",
+      "weight_bytes",
+    ]);
+    final value = DraftModel._(
+      r.read('model_id', ActorId.fromJson),
+      r.read('revision', ActorId.fromJson),
+      r.read('checkpoint_hash', ActorId.fromJson),
+      r.optional('quantization', ActorId.fromJson),
+      r.optional('weight_bytes', Counter.fromJson),
+    );
+    value.validate();
+    return value;
+  }
+  final ActorId modelId;
+  final ActorId revision;
+  final ActorId checkpointHash;
+  final ActorId? quantization;
+  final Counter? weightBytes;
+  @override
+  void validate() {
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'model_id': _json(modelId),
+    'revision': _json(revision),
+    'checkpoint_hash': _json(checkpointHash),
+    'quantization': _json(quantization),
+    'weight_bytes': _json(weightBytes),
+  };
+}
+
+final class ContextCache implements WireModel {
+  factory ContextCache({
+    required ActorId cacheId,
+    required ConversationId conversationId,
+    required OperatorId owner,
+    Counter? capacityBytes,
+  }) => ContextCache.fromJson({
+    'cache_id': _json(cacheId),
+    'conversation_id': _json(conversationId),
+    'owner': _json(owner),
+    'capacity_bytes': _json(capacityBytes),
+  });
+  ContextCache._(
+    this.cacheId,
+    this.conversationId,
+    this.owner,
+    this.capacityBytes,
+  );
+  factory ContextCache.fromJson(Object? json) {
+    final r = _Reader(json, [
+      "cache_id",
+      "conversation_id",
+      "owner",
+      "capacity_bytes",
+    ]);
+    final value = ContextCache._(
+      r.read('cache_id', ActorId.fromJson),
+      r.read('conversation_id', ConversationId.fromJson),
+      r.read('owner', OperatorId.fromJson),
+      r.optional('capacity_bytes', Counter.fromJson),
+    );
+    value.validate();
+    return value;
+  }
+  final ActorId cacheId;
+  final ConversationId conversationId;
+  final OperatorId owner;
+  final Counter? capacityBytes;
+  @override
+  void validate() {
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'cache_id': _json(cacheId),
+    'conversation_id': _json(conversationId),
+    'owner': _json(owner),
+    'capacity_bytes': _json(capacityBytes),
+  };
+}
+
+final class EngineLoadOptions implements WireModel {
+  factory EngineLoadOptions({
+    DraftModel? draft,
+    ContextCache? cache,
+    required Counter contextTokens,
+    required Counter concurrency,
+    required List<ActorId> accelerators,
+  }) => EngineLoadOptions.fromJson({
+    'draft': _json(draft),
+    'cache': _json(cache),
+    'context_tokens': _json(contextTokens),
+    'concurrency': _json(concurrency),
+    'accelerators': _json(accelerators),
+  });
+  EngineLoadOptions._(
+    this.draft,
+    this.cache,
+    this.contextTokens,
+    this.concurrency,
+    this.accelerators,
+  );
+  factory EngineLoadOptions.fromJson(Object? json) {
+    final r = _Reader(json, [
+      "draft",
+      "cache",
+      "context_tokens",
+      "concurrency",
+      "accelerators",
+    ]);
+    final value = EngineLoadOptions._(
+      r.optional('draft', DraftModel.fromJson),
+      r.optional('cache', ContextCache.fromJson),
+      r.read('context_tokens', Counter.fromJson),
+      r.read('concurrency', Counter.fromJson),
+      r.read('accelerators', (v) => _list(v, ActorId.fromJson)),
+    );
+    value.validate();
+    return value;
+  }
+  final DraftModel? draft;
+  final ContextCache? cache;
+  final Counter contextTokens;
+  final Counter concurrency;
+  final List<ActorId> accelerators;
+  @override
+  void validate() {
+    _positive('context_tokens', contextTokens);
+    _positive('concurrency', concurrency);
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'draft': _json(draft),
+    'cache': _json(cache),
+    'context_tokens': _json(contextTokens),
+    'concurrency': _json(concurrency),
+    'accelerators': _json(accelerators),
+  };
+}
+
+final class EngineLoadRequest implements WireModel {
+  factory EngineLoadRequest({
+    required ModelSelection selection,
+    required EngineLoadOptions options,
+  }) => EngineLoadRequest.fromJson({
+    'selection': _json(selection),
+    'options': _json(options),
+  });
+  EngineLoadRequest._(this.selection, this.options);
+  factory EngineLoadRequest.fromJson(Object? json) {
+    final r = _Reader(json, ["selection", "options"]);
+    final value = EngineLoadRequest._(
+      r.read('selection', ModelSelection.fromJson),
+      r.read('options', EngineLoadOptions.fromJson),
+    );
+    value.validate();
+    return value;
+  }
+  final ModelSelection selection;
+  final EngineLoadOptions options;
+  @override
+  void validate() {
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'selection': _json(selection),
+    'options': _json(options),
+  };
+}
+
+final class EngineRequirements implements WireModel {
+  factory EngineRequirements({
+    required Compatibility compatibility,
+    required String reason,
+    Counter? targetWeightBytes,
+    Counter? draftWeightBytes,
+    Counter? cacheBytes,
+    Counter? runtimeOverheadBytes,
+    Counter? acceleratorBytes,
+  }) => EngineRequirements.fromJson({
+    'compatibility': _json(compatibility),
+    'reason': _json(reason),
+    'target_weight_bytes': _json(targetWeightBytes),
+    'draft_weight_bytes': _json(draftWeightBytes),
+    'cache_bytes': _json(cacheBytes),
+    'runtime_overhead_bytes': _json(runtimeOverheadBytes),
+    'accelerator_bytes': _json(acceleratorBytes),
+  });
+  EngineRequirements._(
+    this.compatibility,
+    this.reason,
+    this.targetWeightBytes,
+    this.draftWeightBytes,
+    this.cacheBytes,
+    this.runtimeOverheadBytes,
+    this.acceleratorBytes,
+  );
+  factory EngineRequirements.fromJson(Object? json) {
+    final r = _Reader(json, [
+      "compatibility",
+      "reason",
+      "target_weight_bytes",
+      "draft_weight_bytes",
+      "cache_bytes",
+      "runtime_overhead_bytes",
+      "accelerator_bytes",
+    ]);
+    final value = EngineRequirements._(
+      r.read('compatibility', Compatibility.fromJson),
+      r.read('reason', _string),
+      r.optional('target_weight_bytes', Counter.fromJson),
+      r.optional('draft_weight_bytes', Counter.fromJson),
+      r.optional('cache_bytes', Counter.fromJson),
+      r.optional('runtime_overhead_bytes', Counter.fromJson),
+      r.optional('accelerator_bytes', Counter.fromJson),
+    );
+    value.validate();
+    return value;
+  }
+  final Compatibility compatibility;
+  final String reason;
+  final Counter? targetWeightBytes;
+  final Counter? draftWeightBytes;
+  final Counter? cacheBytes;
+  final Counter? runtimeOverheadBytes;
+  final Counter? acceleratorBytes;
+  @override
+  void validate() {
+    _required('reason', reason);
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'compatibility': _json(compatibility),
+    'reason': _json(reason),
+    'target_weight_bytes': _json(targetWeightBytes),
+    'draft_weight_bytes': _json(draftWeightBytes),
+    'cache_bytes': _json(cacheBytes),
+    'runtime_overhead_bytes': _json(runtimeOverheadBytes),
+    'accelerator_bytes': _json(acceleratorBytes),
+  };
+}
+
+final class DeviceResourceObservation implements WireModel {
+  factory DeviceResourceObservation({
+    required DeviceId deviceId,
+    Counter? totalBytes,
+    Counter? usedBytes,
+    Counter? externalUsedBytes,
+    required Counter observedAtMs,
+  }) => DeviceResourceObservation.fromJson({
+    'device_id': _json(deviceId),
+    'total_bytes': _json(totalBytes),
+    'used_bytes': _json(usedBytes),
+    'external_used_bytes': _json(externalUsedBytes),
+    'observed_at_ms': _json(observedAtMs),
+  });
+  DeviceResourceObservation._(
+    this.deviceId,
+    this.totalBytes,
+    this.usedBytes,
+    this.externalUsedBytes,
+    this.observedAtMs,
+  );
+  factory DeviceResourceObservation.fromJson(Object? json) {
+    final r = _Reader(json, [
+      "device_id",
+      "total_bytes",
+      "used_bytes",
+      "external_used_bytes",
+      "observed_at_ms",
+    ]);
+    final value = DeviceResourceObservation._(
+      r.read('device_id', DeviceId.fromJson),
+      r.optional('total_bytes', Counter.fromJson),
+      r.optional('used_bytes', Counter.fromJson),
+      r.optional('external_used_bytes', Counter.fromJson),
+      r.read('observed_at_ms', Counter.fromJson),
+    );
+    value.validate();
+    return value;
+  }
+  final DeviceId deviceId;
+  final Counter? totalBytes;
+  final Counter? usedBytes;
+  final Counter? externalUsedBytes;
+  final Counter observedAtMs;
+  @override
+  void validate() {
+    _positive('observed_at_ms', observedAtMs);
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'device_id': _json(deviceId),
+    'total_bytes': _json(totalBytes),
+    'used_bytes': _json(usedBytes),
+    'external_used_bytes': _json(externalUsedBytes),
+    'observed_at_ms': _json(observedAtMs),
+  };
+}
+
+final class EngineObservation implements WireModel {
+  factory EngineObservation({
+    required EngineIdentity engine,
+    required Counter generation,
+    required EngineState state,
+    required Counter observedAtMs,
+    List<Residency>? residents,
+    List<InferenceId>? activeInferences,
+    required List<DeviceResourceObservation> devices,
+    EngineFailure? failure,
+  }) => EngineObservation.fromJson({
+    'engine': _json(engine),
+    'generation': _json(generation),
+    'state': _json(state),
+    'observed_at_ms': _json(observedAtMs),
+    'residents': _json(residents),
+    'active_inferences': _json(activeInferences),
+    'devices': _json(devices),
+    'failure': _json(failure),
+  });
+  EngineObservation._(
+    this.engine,
+    this.generation,
+    this.state,
+    this.observedAtMs,
+    this.residents,
+    this.activeInferences,
+    this.devices,
+    this.failure,
+  );
+  factory EngineObservation.fromJson(Object? json) {
+    final r = _Reader(json, [
+      "engine",
+      "generation",
+      "state",
+      "observed_at_ms",
+      "residents",
+      "active_inferences",
+      "devices",
+      "failure",
+    ]);
+    final value = EngineObservation._(
+      r.read('engine', EngineIdentity.fromJson),
+      r.read('generation', Counter.fromJson),
+      r.read('state', EngineState.fromJson),
+      r.read('observed_at_ms', Counter.fromJson),
+      r.optional('residents', (v) => _list(v, Residency.fromJson)),
+      r.optional('active_inferences', (v) => _list(v, InferenceId.fromJson)),
+      r.read('devices', (v) => _list(v, DeviceResourceObservation.fromJson)),
+      r.optional('failure', EngineFailure.fromJson),
+    );
+    value.validate();
+    return value;
+  }
+  final EngineIdentity engine;
+  final Counter generation;
+  final EngineState state;
+  final Counter observedAtMs;
+  final List<Residency>? residents;
+  final List<InferenceId>? activeInferences;
+  final List<DeviceResourceObservation> devices;
+  final EngineFailure? failure;
+  @override
+  void validate() {
+    _positive('generation', generation);
+    _positive('observed_at_ms', observedAtMs);
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'engine': _json(engine),
+    'generation': _json(generation),
+    'state': _json(state),
+    'observed_at_ms': _json(observedAtMs),
+    'residents': _json(residents),
+    'active_inferences': _json(activeInferences),
+    'devices': _json(devices),
+    'failure': _json(failure),
+  };
+}
+
 final class RelayCursor implements WireModel {
   factory RelayCursor({
     required ActorId clientId,
@@ -2001,7 +3020,10 @@ final class NativeEnrollment implements WireModel {
   factory NativeEnrollment({
     required InstallationId installationId,
     required NodeId nodeId,
-    required ActorId serverEnvironmentId,
+    required ServerId serverId,
+    required EnvironmentId environmentId,
+    required RelayTarget relayTarget,
+    required NativePersistenceKey persistenceKey,
     required ActorId externalAccountId,
     required OperatorId operatorId,
     required bool enabled,
@@ -2011,7 +3033,10 @@ final class NativeEnrollment implements WireModel {
   }) => NativeEnrollment.fromJson({
     'installation_id': _json(installationId),
     'node_id': _json(nodeId),
-    'server_environment_id': _json(serverEnvironmentId),
+    'server_id': _json(serverId),
+    'environment_id': _json(environmentId),
+    'relay_target': _json(relayTarget),
+    'persistence_key': _json(persistenceKey),
     'external_account_id': _json(externalAccountId),
     'operator_id': _json(operatorId),
     'enabled': _json(enabled),
@@ -2022,7 +3047,10 @@ final class NativeEnrollment implements WireModel {
   NativeEnrollment._(
     this.installationId,
     this.nodeId,
-    this.serverEnvironmentId,
+    this.serverId,
+    this.environmentId,
+    this.relayTarget,
+    this.persistenceKey,
     this.externalAccountId,
     this.operatorId,
     this.enabled,
@@ -2034,7 +3062,10 @@ final class NativeEnrollment implements WireModel {
     final r = _Reader(json, [
       "installation_id",
       "node_id",
-      "server_environment_id",
+      "server_id",
+      "environment_id",
+      "relay_target",
+      "persistence_key",
       "external_account_id",
       "operator_id",
       "enabled",
@@ -2045,7 +3076,10 @@ final class NativeEnrollment implements WireModel {
     final value = NativeEnrollment._(
       r.read('installation_id', InstallationId.fromJson),
       r.read('node_id', NodeId.fromJson),
-      r.read('server_environment_id', ActorId.fromJson),
+      r.read('server_id', ServerId.fromJson),
+      r.read('environment_id', EnvironmentId.fromJson),
+      r.read('relay_target', RelayTarget.fromJson),
+      r.read('persistence_key', NativePersistenceKey.fromJson),
       r.read('external_account_id', ActorId.fromJson),
       r.read('operator_id', OperatorId.fromJson),
       r.read('enabled', _boolean),
@@ -2058,7 +3092,10 @@ final class NativeEnrollment implements WireModel {
   }
   final InstallationId installationId;
   final NodeId nodeId;
-  final ActorId serverEnvironmentId;
+  final ServerId serverId;
+  final EnvironmentId environmentId;
+  final RelayTarget relayTarget;
+  final NativePersistenceKey persistenceKey;
   final ActorId externalAccountId;
   final OperatorId operatorId;
   final bool enabled;
@@ -2075,13 +3112,120 @@ final class NativeEnrollment implements WireModel {
   Map<String, Object?> toJson() => {
     'installation_id': _json(installationId),
     'node_id': _json(nodeId),
-    'server_environment_id': _json(serverEnvironmentId),
+    'server_id': _json(serverId),
+    'environment_id': _json(environmentId),
+    'relay_target': _json(relayTarget),
+    'persistence_key': _json(persistenceKey),
     'external_account_id': _json(externalAccountId),
     'operator_id': _json(operatorId),
     'enabled': _json(enabled),
     'authentication_generation': _json(authenticationGeneration),
     'control_registration_ref': _json(controlRegistrationRef),
     'inference_credential_ref': _json(inferenceCredentialRef),
+  };
+}
+
+final class RelayTarget implements WireModel {
+  factory RelayTarget({
+    required String websocketUrl,
+    required String enrollUrl,
+    required String refreshUrl,
+    required String pairUrl,
+    required String pairStatusUrl,
+  }) => RelayTarget.fromJson({
+    'websocket_url': _json(websocketUrl),
+    'enroll_url': _json(enrollUrl),
+    'refresh_url': _json(refreshUrl),
+    'pair_url': _json(pairUrl),
+    'pair_status_url': _json(pairStatusUrl),
+  });
+  RelayTarget._(
+    this.websocketUrl,
+    this.enrollUrl,
+    this.refreshUrl,
+    this.pairUrl,
+    this.pairStatusUrl,
+  );
+  factory RelayTarget.fromJson(Object? json) {
+    final r = _Reader(json, [
+      "websocket_url",
+      "enroll_url",
+      "refresh_url",
+      "pair_url",
+      "pair_status_url",
+    ]);
+    final value = RelayTarget._(
+      r.read('websocket_url', _string),
+      r.read('enroll_url', _string),
+      r.read('refresh_url', _string),
+      r.read('pair_url', _string),
+      r.read('pair_status_url', _string),
+    );
+    value.validate();
+    return value;
+  }
+  final String websocketUrl;
+  final String enrollUrl;
+  final String refreshUrl;
+  final String pairUrl;
+  final String pairStatusUrl;
+  @override
+  void validate() {
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'websocket_url': _json(websocketUrl),
+    'enroll_url': _json(enrollUrl),
+    'refresh_url': _json(refreshUrl),
+    'pair_url': _json(pairUrl),
+    'pair_status_url': _json(pairStatusUrl),
+  };
+}
+
+final class NativePersistenceKey implements WireModel {
+  factory NativePersistenceKey({
+    required String websocketUrl,
+    required ActorId externalAccountId,
+    ActorId? clientName,
+  }) => NativePersistenceKey.fromJson({
+    'websocket_url': _json(websocketUrl),
+    'external_account_id': _json(externalAccountId),
+    'client_name': _json(clientName),
+  });
+  NativePersistenceKey._(
+    this.websocketUrl,
+    this.externalAccountId,
+    this.clientName,
+  );
+  factory NativePersistenceKey.fromJson(Object? json) {
+    final r = _Reader(json, [
+      "websocket_url",
+      "external_account_id",
+      "client_name",
+    ]);
+    final value = NativePersistenceKey._(
+      r.read('websocket_url', _string),
+      r.read('external_account_id', ActorId.fromJson),
+      r.optional('client_name', ActorId.fromJson),
+    );
+    value.validate();
+    return value;
+  }
+  final String websocketUrl;
+  final ActorId externalAccountId;
+  final ActorId? clientName;
+  @override
+  void validate() {
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'websocket_url': _json(websocketUrl),
+    'external_account_id': _json(externalAccountId),
+    'client_name': _json(clientName),
   };
 }
 
@@ -3134,20 +4278,23 @@ final class QuestionAnswer implements WireModel {
     required QuestionId questionId,
     required TurnId turnId,
     required ItemId itemId,
-    required ActorId choice,
+    required List<ActorId> choices,
+    String? text,
     required Counter expectedRevision,
   }) => QuestionAnswer.fromJson({
     'question_id': _json(questionId),
     'turn_id': _json(turnId),
     'item_id': _json(itemId),
-    'choice': _json(choice),
+    'choices': _json(choices),
+    'text': _json(text),
     'expected_revision': _json(expectedRevision),
   });
   QuestionAnswer._(
     this.questionId,
     this.turnId,
     this.itemId,
-    this.choice,
+    this.choices,
+    this.text,
     this.expectedRevision,
   );
   factory QuestionAnswer.fromJson(Object? json) {
@@ -3155,14 +4302,16 @@ final class QuestionAnswer implements WireModel {
       "question_id",
       "turn_id",
       "item_id",
-      "choice",
+      "choices",
+      "text",
       "expected_revision",
     ]);
     final value = QuestionAnswer._(
       r.read('question_id', QuestionId.fromJson),
       r.read('turn_id', TurnId.fromJson),
       r.read('item_id', ItemId.fromJson),
-      r.read('choice', ActorId.fromJson),
+      r.read('choices', (v) => _list(v, ActorId.fromJson)),
+      r.optional('text', _string),
       r.read('expected_revision', Counter.fromJson),
     );
     value.validate();
@@ -3171,7 +4320,8 @@ final class QuestionAnswer implements WireModel {
   final QuestionId questionId;
   final TurnId turnId;
   final ItemId itemId;
-  final ActorId choice;
+  final List<ActorId> choices;
+  final String? text;
   final Counter expectedRevision;
   @override
   void validate() {
@@ -3184,7 +4334,8 @@ final class QuestionAnswer implements WireModel {
     'question_id': _json(questionId),
     'turn_id': _json(turnId),
     'item_id': _json(itemId),
-    'choice': _json(choice),
+    'choices': _json(choices),
+    'text': _json(text),
     'expected_revision': _json(expectedRevision),
   };
 }
@@ -3305,6 +4456,550 @@ final class SessionSummary implements WireModel {
     'project_id': _json(projectId),
     'archived': _json(archived),
     'last_human_interaction_ms': _json(lastHumanInteractionMs),
+  };
+}
+
+final class ConversationSnapshot implements WireModel {
+  factory ConversationSnapshot({
+    required SessionSummary session,
+    required ReplayCursor cursor,
+    required Counter revision,
+    ExecutionState? executionState,
+    PlanRevision? plan,
+    PlanApproval? approval,
+    required List<PendingQuestion> pendingQuestions,
+    Budget? budget,
+  }) => ConversationSnapshot.fromJson({
+    'session': _json(session),
+    'cursor': _json(cursor),
+    'revision': _json(revision),
+    'execution_state': _json(executionState),
+    'plan': _json(plan),
+    'approval': _json(approval),
+    'pending_questions': _json(pendingQuestions),
+    'budget': _json(budget),
+  });
+  ConversationSnapshot._(
+    this.session,
+    this.cursor,
+    this.revision,
+    this.executionState,
+    this.plan,
+    this.approval,
+    this.pendingQuestions,
+    this.budget,
+  );
+  factory ConversationSnapshot.fromJson(Object? json) {
+    final r = _Reader(json, [
+      "session",
+      "cursor",
+      "revision",
+      "execution_state",
+      "plan",
+      "approval",
+      "pending_questions",
+      "budget",
+    ]);
+    final value = ConversationSnapshot._(
+      r.read('session', SessionSummary.fromJson),
+      r.read('cursor', ReplayCursor.fromJson),
+      r.read('revision', Counter.fromJson),
+      r.optional('execution_state', ExecutionState.fromJson),
+      r.optional('plan', PlanRevision.fromJson),
+      r.optional('approval', PlanApproval.fromJson),
+      r.read('pending_questions', (v) => _list(v, PendingQuestion.fromJson)),
+      r.optional('budget', Budget.fromJson),
+    );
+    value.validate();
+    return value;
+  }
+  final SessionSummary session;
+  final ReplayCursor cursor;
+  final Counter revision;
+  final ExecutionState? executionState;
+  final PlanRevision? plan;
+  final PlanApproval? approval;
+  final List<PendingQuestion> pendingQuestions;
+  final Budget? budget;
+  @override
+  void validate() {
+    _positive('revision', revision);
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'session': _json(session),
+    'cursor': _json(cursor),
+    'revision': _json(revision),
+    'execution_state': _json(executionState),
+    'plan': _json(plan),
+    'approval': _json(approval),
+    'pending_questions': _json(pendingQuestions),
+    'budget': _json(budget),
+  };
+}
+
+final class HistoryQuery implements WireModel {
+  factory HistoryQuery({
+    required ReplayCursor asOf,
+    ItemId? before,
+    required Counter limit,
+  }) => HistoryQuery.fromJson({
+    'as_of': _json(asOf),
+    'before': _json(before),
+    'limit': _json(limit),
+  });
+  HistoryQuery._(this.asOf, this.before, this.limit);
+  factory HistoryQuery.fromJson(Object? json) {
+    final r = _Reader(json, ["as_of", "before", "limit"]);
+    final value = HistoryQuery._(
+      r.read('as_of', ReplayCursor.fromJson),
+      r.optional('before', ItemId.fromJson),
+      r.read('limit', Counter.fromJson),
+    );
+    value.validate();
+    return value;
+  }
+  final ReplayCursor asOf;
+  final ItemId? before;
+  final Counter limit;
+  @override
+  void validate() {
+    _positive('limit', limit);
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'as_of': _json(asOf),
+    'before': _json(before),
+    'limit': _json(limit),
+  };
+}
+
+final class HistoryItem implements WireModel {
+  factory HistoryItem({
+    required ConversationId conversationId,
+    required TurnId turnId,
+    required ItemId itemId,
+    required InferenceMessage message,
+  }) => HistoryItem.fromJson({
+    'conversation_id': _json(conversationId),
+    'turn_id': _json(turnId),
+    'item_id': _json(itemId),
+    'message': _json(message),
+  });
+  HistoryItem._(this.conversationId, this.turnId, this.itemId, this.message);
+  factory HistoryItem.fromJson(Object? json) {
+    final r = _Reader(json, [
+      "conversation_id",
+      "turn_id",
+      "item_id",
+      "message",
+    ]);
+    final value = HistoryItem._(
+      r.read('conversation_id', ConversationId.fromJson),
+      r.read('turn_id', TurnId.fromJson),
+      r.read('item_id', ItemId.fromJson),
+      r.read('message', InferenceMessage.fromJson),
+    );
+    value.validate();
+    return value;
+  }
+  final ConversationId conversationId;
+  final TurnId turnId;
+  final ItemId itemId;
+  final InferenceMessage message;
+  @override
+  void validate() {
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'conversation_id': _json(conversationId),
+    'turn_id': _json(turnId),
+    'item_id': _json(itemId),
+    'message': _json(message),
+  };
+}
+
+final class HistoryPage implements WireModel {
+  factory HistoryPage({
+    required ReplayCursor asOf,
+    required List<HistoryItem> items,
+    ItemId? nextBefore,
+  }) => HistoryPage.fromJson({
+    'as_of': _json(asOf),
+    'items': _json(items),
+    'next_before': _json(nextBefore),
+  });
+  HistoryPage._(this.asOf, this.items, this.nextBefore);
+  factory HistoryPage.fromJson(Object? json) {
+    final r = _Reader(json, ["as_of", "items", "next_before"]);
+    final value = HistoryPage._(
+      r.read('as_of', ReplayCursor.fromJson),
+      r.read('items', (v) => _list(v, HistoryItem.fromJson)),
+      r.optional('next_before', ItemId.fromJson),
+    );
+    value.validate();
+    return value;
+  }
+  final ReplayCursor asOf;
+  final List<HistoryItem> items;
+  final ItemId? nextBefore;
+  @override
+  void validate() {
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'as_of': _json(asOf),
+    'items': _json(items),
+    'next_before': _json(nextBefore),
+  };
+}
+
+final class ConfigurationChange implements WireModel {
+  factory ConfigurationChange({
+    FactorySetup? setup,
+    List<RoleConfiguration>? roles,
+    List<ModelProfileConfiguration>? models,
+    List<DevicePreference>? devicePreferences,
+  }) => ConfigurationChange.fromJson({
+    'setup': _json(setup),
+    'roles': _json(roles),
+    'models': _json(models),
+    'device_preferences': _json(devicePreferences),
+  });
+  ConfigurationChange._(
+    this.setup,
+    this.roles,
+    this.models,
+    this.devicePreferences,
+  );
+  factory ConfigurationChange.fromJson(Object? json) {
+    final r = _Reader(json, ["setup", "roles", "models", "device_preferences"]);
+    final value = ConfigurationChange._(
+      r.optional('setup', FactorySetup.fromJson),
+      r.optional('roles', (v) => _list(v, RoleConfiguration.fromJson)),
+      r.optional('models', (v) => _list(v, ModelProfileConfiguration.fromJson)),
+      r.optional(
+        'device_preferences',
+        (v) => _list(v, DevicePreference.fromJson),
+      ),
+    );
+    value.validate();
+    return value;
+  }
+  final FactorySetup? setup;
+  final List<RoleConfiguration>? roles;
+  final List<ModelProfileConfiguration>? models;
+  final List<DevicePreference>? devicePreferences;
+  @override
+  void validate() {
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'setup': _json(setup),
+    'roles': _json(roles),
+    'models': _json(models),
+    'device_preferences': _json(devicePreferences),
+  };
+}
+
+final class ConfigurationCommand implements WireModel {
+  factory ConfigurationCommand({
+    required CommandId commandId,
+    ProjectId? projectId,
+    required Counter expectedRevision,
+    required ConfigurationChange changes,
+  }) => ConfigurationCommand.fromJson({
+    'command_id': _json(commandId),
+    'project_id': _json(projectId),
+    'expected_revision': _json(expectedRevision),
+    'changes': _json(changes),
+  });
+  ConfigurationCommand._(
+    this.commandId,
+    this.projectId,
+    this.expectedRevision,
+    this.changes,
+  );
+  factory ConfigurationCommand.fromJson(Object? json) {
+    final r = _Reader(json, [
+      "command_id",
+      "project_id",
+      "expected_revision",
+      "changes",
+    ]);
+    final value = ConfigurationCommand._(
+      r.read('command_id', CommandId.fromJson),
+      r.optional('project_id', ProjectId.fromJson),
+      r.read('expected_revision', Counter.fromJson),
+      r.read('changes', ConfigurationChange.fromJson),
+    );
+    value.validate();
+    return value;
+  }
+  final CommandId commandId;
+  final ProjectId? projectId;
+  final Counter expectedRevision;
+  final ConfigurationChange changes;
+  @override
+  void validate() {
+    _positive('expected_revision', expectedRevision);
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'command_id': _json(commandId),
+    'project_id': _json(projectId),
+    'expected_revision': _json(expectedRevision),
+    'changes': _json(changes),
+  };
+}
+
+final class ConfigurationSnapshot implements WireModel {
+  factory ConfigurationSnapshot({
+    ProjectId? projectId,
+    required Counter revision,
+    FactorySetup? setup,
+    required List<RoleConfiguration> roles,
+    required List<ModelProfileConfiguration> models,
+    required List<DevicePreference> devicePreferences,
+    required List<DeviceIdentity> discoveredDevices,
+    required bool executionReady,
+    required List<ActorId> unmetPrerequisites,
+  }) => ConfigurationSnapshot.fromJson({
+    'project_id': _json(projectId),
+    'revision': _json(revision),
+    'setup': _json(setup),
+    'roles': _json(roles),
+    'models': _json(models),
+    'device_preferences': _json(devicePreferences),
+    'discovered_devices': _json(discoveredDevices),
+    'execution_ready': _json(executionReady),
+    'unmet_prerequisites': _json(unmetPrerequisites),
+  });
+  ConfigurationSnapshot._(
+    this.projectId,
+    this.revision,
+    this.setup,
+    this.roles,
+    this.models,
+    this.devicePreferences,
+    this.discoveredDevices,
+    this.executionReady,
+    this.unmetPrerequisites,
+  );
+  factory ConfigurationSnapshot.fromJson(Object? json) {
+    final r = _Reader(json, [
+      "project_id",
+      "revision",
+      "setup",
+      "roles",
+      "models",
+      "device_preferences",
+      "discovered_devices",
+      "execution_ready",
+      "unmet_prerequisites",
+    ]);
+    final value = ConfigurationSnapshot._(
+      r.optional('project_id', ProjectId.fromJson),
+      r.read('revision', Counter.fromJson),
+      r.optional('setup', FactorySetup.fromJson),
+      r.read('roles', (v) => _list(v, RoleConfiguration.fromJson)),
+      r.read('models', (v) => _list(v, ModelProfileConfiguration.fromJson)),
+      r.read('device_preferences', (v) => _list(v, DevicePreference.fromJson)),
+      r.read('discovered_devices', (v) => _list(v, DeviceIdentity.fromJson)),
+      r.read('execution_ready', _boolean),
+      r.read('unmet_prerequisites', (v) => _list(v, ActorId.fromJson)),
+    );
+    value.validate();
+    return value;
+  }
+  final ProjectId? projectId;
+  final Counter revision;
+  final FactorySetup? setup;
+  final List<RoleConfiguration> roles;
+  final List<ModelProfileConfiguration> models;
+  final List<DevicePreference> devicePreferences;
+  final List<DeviceIdentity> discoveredDevices;
+  final bool executionReady;
+  final List<ActorId> unmetPrerequisites;
+  @override
+  void validate() {
+    _positive('revision', revision);
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'project_id': _json(projectId),
+    'revision': _json(revision),
+    'setup': _json(setup),
+    'roles': _json(roles),
+    'models': _json(models),
+    'device_preferences': _json(devicePreferences),
+    'discovered_devices': _json(discoveredDevices),
+    'execution_ready': _json(executionReady),
+    'unmet_prerequisites': _json(unmetPrerequisites),
+  };
+}
+
+final class LessonMutation implements WireModel {
+  factory LessonMutation({
+    required LessonId lessonId,
+    required Counter expectedRevision,
+    required LessonOperation operation,
+    String? content,
+    RecordScope? scope,
+  }) => LessonMutation.fromJson({
+    'lesson_id': _json(lessonId),
+    'expected_revision': _json(expectedRevision),
+    'operation': _json(operation),
+    'content': _json(content),
+    'scope': _json(scope),
+  });
+  LessonMutation._(
+    this.lessonId,
+    this.expectedRevision,
+    this.operation,
+    this.content,
+    this.scope,
+  );
+  factory LessonMutation.fromJson(Object? json) {
+    final r = _Reader(json, [
+      "lesson_id",
+      "expected_revision",
+      "operation",
+      "content",
+      "scope",
+    ]);
+    final value = LessonMutation._(
+      r.read('lesson_id', LessonId.fromJson),
+      r.read('expected_revision', Counter.fromJson),
+      r.read('operation', LessonOperation.fromJson),
+      r.optional('content', _string),
+      r.optional('scope', RecordScope.fromJson),
+    );
+    value.validate();
+    return value;
+  }
+  final LessonId lessonId;
+  final Counter expectedRevision;
+  final LessonOperation operation;
+  final String? content;
+  final RecordScope? scope;
+  @override
+  void validate() {
+    _positive('expected_revision', expectedRevision);
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'lesson_id': _json(lessonId),
+    'expected_revision': _json(expectedRevision),
+    'operation': _json(operation),
+    'content': _json(content),
+    'scope': _json(scope),
+  };
+}
+
+final class LessonQuery implements WireModel {
+  factory LessonQuery({
+    required ProjectId projectId,
+    AssignmentId? assignmentId,
+    RecordScope? scope,
+    LessonId? after,
+    required Counter limit,
+  }) => LessonQuery.fromJson({
+    'project_id': _json(projectId),
+    'assignment_id': _json(assignmentId),
+    'scope': _json(scope),
+    'after': _json(after),
+    'limit': _json(limit),
+  });
+  LessonQuery._(
+    this.projectId,
+    this.assignmentId,
+    this.scope,
+    this.after,
+    this.limit,
+  );
+  factory LessonQuery.fromJson(Object? json) {
+    final r = _Reader(json, [
+      "project_id",
+      "assignment_id",
+      "scope",
+      "after",
+      "limit",
+    ]);
+    final value = LessonQuery._(
+      r.read('project_id', ProjectId.fromJson),
+      r.optional('assignment_id', AssignmentId.fromJson),
+      r.optional('scope', RecordScope.fromJson),
+      r.optional('after', LessonId.fromJson),
+      r.read('limit', Counter.fromJson),
+    );
+    value.validate();
+    return value;
+  }
+  final ProjectId projectId;
+  final AssignmentId? assignmentId;
+  final RecordScope? scope;
+  final LessonId? after;
+  final Counter limit;
+  @override
+  void validate() {
+    _positive('limit', limit);
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'project_id': _json(projectId),
+    'assignment_id': _json(assignmentId),
+    'scope': _json(scope),
+    'after': _json(after),
+    'limit': _json(limit),
+  };
+}
+
+final class LessonPage implements WireModel {
+  factory LessonPage({required List<Lesson> lessons, LessonId? nextAfter}) =>
+      LessonPage.fromJson({
+        'lessons': _json(lessons),
+        'next_after': _json(nextAfter),
+      });
+  LessonPage._(this.lessons, this.nextAfter);
+  factory LessonPage.fromJson(Object? json) {
+    final r = _Reader(json, ["lessons", "next_after"]);
+    final value = LessonPage._(
+      r.read('lessons', (v) => _list(v, Lesson.fromJson)),
+      r.optional('next_after', LessonId.fromJson),
+    );
+    value.validate();
+    return value;
+  }
+  final List<Lesson> lessons;
+  final LessonId? nextAfter;
+  @override
+  void validate() {
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'lessons': _json(lessons),
+    'next_after': _json(nextAfter),
   };
 }
 
@@ -3859,6 +5554,8 @@ final class PendingQuestion implements WireModel {
     required Counter revision,
     required String text,
     required List<ActorId> choices,
+    required bool allowMultiple,
+    required bool allowText,
     AnswerId? resolvedBy,
   }) => PendingQuestion.fromJson({
     'question_id': _json(questionId),
@@ -3869,6 +5566,8 @@ final class PendingQuestion implements WireModel {
     'revision': _json(revision),
     'text': _json(text),
     'choices': _json(choices),
+    'allow_multiple': _json(allowMultiple),
+    'allow_text': _json(allowText),
     'resolved_by': _json(resolvedBy),
   });
   PendingQuestion._(
@@ -3880,6 +5579,8 @@ final class PendingQuestion implements WireModel {
     this.revision,
     this.text,
     this.choices,
+    this.allowMultiple,
+    this.allowText,
     this.resolvedBy,
   );
   factory PendingQuestion.fromJson(Object? json) {
@@ -3892,6 +5593,8 @@ final class PendingQuestion implements WireModel {
       "revision",
       "text",
       "choices",
+      "allow_multiple",
+      "allow_text",
       "resolved_by",
     ]);
     final value = PendingQuestion._(
@@ -3903,6 +5606,8 @@ final class PendingQuestion implements WireModel {
       r.read('revision', Counter.fromJson),
       r.read('text', _string),
       r.read('choices', (v) => _list(v, ActorId.fromJson)),
+      r.read('allow_multiple', _boolean),
+      r.read('allow_text', _boolean),
       r.optional('resolved_by', AnswerId.fromJson),
     );
     value.validate();
@@ -3916,6 +5621,8 @@ final class PendingQuestion implements WireModel {
   final Counter revision;
   final String text;
   final List<ActorId> choices;
+  final bool allowMultiple;
+  final bool allowText;
   final AnswerId? resolvedBy;
   @override
   void validate() {
@@ -3934,6 +5641,8 @@ final class PendingQuestion implements WireModel {
     'revision': _json(revision),
     'text': _json(text),
     'choices': _json(choices),
+    'allow_multiple': _json(allowMultiple),
+    'allow_text': _json(allowText),
     'resolved_by': _json(resolvedBy),
   };
 }
@@ -4071,6 +5780,7 @@ final class CommandAction implements WireModel {
       'approve' => ApprovalCommand.fromJson,
       'control' => ControlCommand.fromJson,
       'budget' => Budget.fromJson,
+      'lesson' => LessonMutation.fromJson,
       _ => _fail('type', 'invalid_structure'),
     };
     return CommandAction._(type, r.read('data', decoder));

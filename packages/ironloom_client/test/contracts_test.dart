@@ -5,6 +5,24 @@ import 'package:ironloom_client/ironloom_client.dart';
 import 'package:test/test.dart';
 
 final Map<String, WireModel Function(Object?)> decoders = {
+  'source_query': SourceQuery.fromJson,
+  'source_page': SourcePage.fromJson,
+  'engine_load_options': EngineLoadOptions.fromJson,
+  'engine_requirements': EngineRequirements.fromJson,
+  'engine_observation': EngineObservation.fromJson,
+  'device_observation': DeviceResourceObservation.fromJson,
+  'configuration_command': ConfigurationCommand.fromJson,
+  'configuration_snapshot': ConfigurationSnapshot.fromJson,
+  'lesson_mutation': LessonMutation.fromJson,
+  'question_answer': QuestionAnswer.fromJson,
+  'pending_question': PendingQuestion.fromJson,
+  'inference_message': InferenceMessage.fromJson,
+  'tool_definition': ToolDefinition.fromJson,
+  'inference_request': InferenceRequest.fromJson,
+  'conversation_snapshot': ConversationSnapshot.fromJson,
+  'history_query': HistoryQuery.fromJson,
+  'history_page': HistoryPage.fromJson,
+  'native_enrollment': NativeEnrollment.fromJson,
   'role_configuration': RoleConfiguration.fromJson,
   'factory_setup': FactorySetup.fromJson,
   'instruction_copy': InstructionCopy.fromJson,
@@ -204,17 +222,62 @@ void main() {
         'quantizations': <Object?>[],
         'streaming': true,
         'tools': false,
-        'draft_models': false,
-        'context_cache': false,
-        'batching': false,
-        'multi_gpu': false,
+        'draft_models': 'unsupported',
+        'context_cache': 'unsupported',
+        'batching': 'unsupported',
+        'multi_gpu': 'unsupported',
         'accelerators': <Object?>[],
       }),
       throwsA(
         isA<ValidationErrors>().having(
           (e) => e.fields.first.field,
           'field',
-          'architectures[0]',
+          'architectures.0',
+        ),
+      ),
+    );
+  });
+  test('pending question modes validate against stored choices without granting authority', () {
+    final question = PendingQuestion(
+      questionId: QuestionId('q'),
+      assignmentId: AssignmentId('a'),
+      conversationId: ConversationId('c'),
+      turnId: TurnId('t'),
+      itemId: ItemId('i'),
+      revision: Counter('1'),
+      text: 'Choose',
+      choices: [ActorId('yes'), ActorId('no')],
+      allowMultiple: false,
+      allowText: false,
+    );
+    question.validateResponse([ActorId('yes')], null);
+    expect(
+      () => question.validateResponse([ActorId('unknown')], null),
+      throwsA(
+        isA<ValidationErrors>().having(
+          (e) => e.fields.first.code,
+          'code',
+          'unknown_choice',
+        ),
+      ),
+    );
+    expect(
+      () => question.validateResponse([ActorId('yes'), ActorId('no')], null),
+      throwsA(
+        isA<ValidationErrors>().having(
+          (e) => e.fields.first.code,
+          'code',
+          'multiple_choices_forbidden',
+        ),
+      ),
+    );
+    expect(
+      () => question.validateResponse([], 'comment'),
+      throwsA(
+        isA<ValidationErrors>().having(
+          (e) => e.fields.first.code,
+          'code',
+          'text_forbidden',
         ),
       ),
     );

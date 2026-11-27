@@ -161,15 +161,15 @@ bool _boolean(Object? value) =>
 List<T> _list<T>(Object? value, T Function(Object?) decoder) {
   if (value is! List<Object?>) _fail(r'$', 'invalid_structure');
   return List.unmodifiable([
-    for (var i = 0; i < value.length; i++) _at('[$i]', () => decoder(value[i])),
+    for (var i = 0; i < value.length; i++) _at('$i', () => decoder(value[i])),
   ]);
 }
 
 final class _Reader {
   _Reader(Object? json, List<String> fields) {
-    if (json is! Map<String, Object?> ||
-        json.keys.any((key) => !fields.contains(key))) {
-      _fail(r'$', 'invalid_structure');
+    if (json is! Map<String, Object?>) _fail(r'$', 'invalid_structure');
+    for (final key in json.keys) {
+      if (!fields.contains(key)) _fail(key, 'invalid_structure');
     }
     data = json;
   }
@@ -195,7 +195,12 @@ void _required(String field, String value) {
 final class ServiceError implements WireModel {
   factory ServiceError.fromJson(Object? json) {
     if (json is String &&
-        const {'conflict', 'cursor_expired', 'unavailable'}.contains(json)) {
+        const {
+          'conflict',
+          'cursor_expired',
+          'resync_required',
+          'unavailable',
+        }.contains(json)) {
       return ServiceError._(json, null);
     }
     if (json is! Map<String, Object?> || json.length != 1) {

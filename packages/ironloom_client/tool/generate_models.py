@@ -71,7 +71,8 @@ for name,(fields,body) in records.items():
     out += [f'  final {dtype(typ)} {camel(field)};' for field,typ in fields]
     out += ['  @override', '  void validate() {']
     # Straight-line required/positive checks preserve Rust ordering. Cross-field checks below.
-    checks = re.findall(r'(positive|required)\("([^\"]+)", (?:&)?value\.([\w.]+)\)', body)
+    prefix = re.split(r'\b(?:if|for)\b', body, maxsplit=1)[0]
+    checks = re.findall(r'(positive|required)\("([^\"]+)", (?:&)?value\.([\w.]+)\)', prefix)
     # Complex bodies need ordering hand-written alongside their cross-field checks.
     complex_names={'StorageRoots','ModelSelection','Usage','Resource','WorkerPaths','InferenceRequest','PlanRevision','Residency'}
     if name not in complex_names:
@@ -81,7 +82,7 @@ for name,(fields,body) in records.items():
     out += ['  };', '}', '']
 # Tagged command payload uses the same validated record constructors.
 out += ["final class CommandAction implements WireModel {", "  factory CommandAction(String type, WireModel data) => CommandAction.fromJson({'type': type, 'data': data.toJson()});", "  CommandAction._(this.type, this.data);", "  factory CommandAction.fromJson(Object? json) {", "    final r = _Reader(json, ['type', 'data']);", "    final type = r.read('type', _string);", "    final decoder = switch(type) {"]
-for key,name in [('input','InputCommand'),('steer','SteeringInput'),('answer','QuestionAnswer'),('approve','ApprovalCommand'),('control','ControlCommand'),('budget','Budget')]:
+for key,name in [('input','InputCommand'),('steer','SteeringInput'),('answer','QuestionAnswer'),('approve','ApprovalCommand'),('control','ControlCommand'),('budget','Budget'),('lesson','LessonMutation')]:
     out += [f"      '{key}' => {name}.fromJson,"]
 out += ["      _ => _fail('type', 'invalid_structure'),", '    };', "    return CommandAction._(type, r.read('data', decoder));", '  }', '  final String type;', '  final WireModel data;', '  @override', '  void validate() => data.validate();', '  @override', "  Map<String, Object?> toJson() => {'type': type, 'data': data.toJson()};", '}']
 (PACKAGE / 'lib/src/models.g.dart').write_text('\n'.join(out) + '\n')
