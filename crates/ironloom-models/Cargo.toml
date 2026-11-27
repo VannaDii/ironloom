@@ -9,9 +9,10 @@ publish.workspace = true
 description = "Ironloom model, engine, source and device adapter contracts."
 
 [dependencies]
+ironloom-queue = { path = "../ironloom-queue", version = "0.1.0" }
 ironloom-observability = { path = "../ironloom-observability", version = "0.1.0" }
 url.workspace = true
-tokio.workspace = true
+tokio = { workspace = true, features = ["time", "net", "io-util", "process", "fs"] }
 ironloom-workers = { path = "../ironloom-workers", version = "0.1.0" }
 ironloom-policy = { path = "../ironloom-policy", version = "0.1.0" }
 ironloom-core = { path = "../ironloom-core", version = "0.1.0" }
@@ -19,6 +20,8 @@ schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+
+reqwest = { workspace = true, features = ["json", "stream"] }
 
 [lints]
 workspace = true
