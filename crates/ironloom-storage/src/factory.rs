@@ -112,10 +112,57 @@ BootstrapState, BootstrapStateData {
 
 /// PostgreSQL pool selected by runtime; no SQLite or fallback connection path.
 pub type FactoryPool = sqlx::PgPool;
-/// Stable version-one storage schema; only this crate authors SQL migrations.
-pub const MIGRATIONS_DIRECTORY: &str = "crates/ironloom-storage/migrations";
+const DUPLICATE_SCHEMA_SQLSTATE: &str = "42P06";
+const INITIAL_SCHEMA: &str = include_str!("../schema.sql");
+
+/// Fresh-install initialization failure; no database error text or secret material is exposed.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum InitializationError {
+    /// The schema already exists. Open the configured installation; never upgrade or replace it here.
+    AlreadyInitialized,
+    /// The selected database could not complete the operation; never create a fallback database.
+    DatabaseUnavailable,
+    /// Fresh DDL failed and was rolled back; no conversion or repair is attempted.
+    InitializationFailed,
+}
+
+/// Creates the factory schema atomically on an explicitly selected fresh database connection.
+/// This one-shot initializer has no version tracking, upgrade path, backfill or compatibility logic.
+/// An existing schema is rejected without altering its installation identity or records.
+pub async fn initialize_schema(
+    connection: &mut sqlx::PgConnection,
+) -> Result<(), InitializationError> {
+    use sqlx::Connection;
+    let mut transaction = connection
+        .begin()
+        .await
+        .map_err(|_| InitializationError::DatabaseUnavailable)?;
+    match sqlx::raw_sql(INITIAL_SCHEMA)
+        .execute(&mut *transaction)
+        .await
+    {
+        Ok(_) => transaction
+            .commit()
+            .await
+            .map_err(|_| InitializationError::DatabaseUnavailable),
+        Err(error) => {
+            let exists = error
+                .as_database_error()
+                .is_some_and(|error| error.code().as_deref() == Some(DUPLICATE_SCHEMA_SQLSTATE));
+            transaction
+                .rollback()
+                .await
+                .map_err(|_| InitializationError::DatabaseUnavailable)?;
+            Err(if exists {
+                InitializationError::AlreadyInitialized
+            } else {
+                InitializationError::InitializationFailed
+            })
+        }
+    }
+}
 /// Durable execution store; database adapters own transactions and idempotent outbox persistence.
-/// Service commands/events use serialized validated versioned payloads at this boundary to avoid
+/// Service commands/events use serialized validated payloads at this boundary to avoid
 /// reversing the runtime-to-storage dependency. Implementations revalidate on read.
 pub trait FactoryStore: Send + Sync {
     /// Atomically fixes administrator, consumes token and creates recoverable grant initialization.

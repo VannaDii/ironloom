@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ArtifactEnvelope",
-  "description": "Historical version-one artifact envelope, retaining its original Discord thread and checksum.\nNew factory records use [`factory::FactoryArtifact`] without thread binding.",
+  "description": "Temporary foundation runtime artifact, retired when the factory runtime replaces this path.\nThis is not a compatibility reader or a supported prior-release format.",
   "type": "object",
   "properties": {
     "checksum": {

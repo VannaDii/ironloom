@@ -380,5 +380,5 @@ fn write_owner_only_file(path: &Path, content: &[u8]) -> io::Result<()> {
     fs::write(path, content)
 }
 
-/// Software factory contracts; legacy foundation contracts remain readable.
+/// Software factory contracts for the unreleased application.
 pub mod factory;

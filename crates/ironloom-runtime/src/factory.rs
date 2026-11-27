@@ -425,6 +425,16 @@ pub trait Authentication: Send + Sync {
 }
 /// Web/native service operations. Caller identity must be resolved by trusted authentication.
 pub trait FactoryService: Send + Sync {
+    /// Creates an empty persisted conversation after checking current project operate authority.
+    /// Atomically bind authenticated actor/command ID/payload to the new service-assigned ID and
+    /// initial snapshot. Identical replay returns that outcome; changed payload conflicts.
+    /// No user message, active turn, assignment or inference is started. Initial cursor is zero;
+    /// subsequent Input commands retain nonblank validation and independent turn authority.
+    fn create_conversation(
+        &self,
+        session: AuthenticatedSession,
+        request: CreateConversation,
+    ) -> BoxFuture<'_, Result<ConversationSnapshot, ServiceError>>;
     /// Returns authorized setup/team/profile/device settings and independent execution readiness.
     /// None selects installation settings; Some selects authorized project settings.
     fn configuration(
@@ -582,12 +592,13 @@ ConversationSnapshot, ConversationSnapshotData {
         }
     }
     if let Some(plan) = &value.plan
-        && plan.project_id != value.session.project_id {
-            return Err(ValidationErrors::field(
-                "plan.project_id",
-                "project_mismatch",
-            ));
-        }
+        && plan.project_id != value.session.project_id
+    {
+        return Err(ValidationErrors::field(
+            "plan.project_id",
+            "project_mismatch",
+        ));
+    }
     if let Some(approval) = &value.approval {
         let matches = value.plan.as_ref().is_some_and(|plan| {
             plan.plan_id == approval.plan_id
@@ -666,12 +677,12 @@ HistoryPage, HistoryPageData {
             .items
             .first()
             .is_none_or(|item| &item.item_id != before)
-        {
-            return Err(ValidationErrors::field(
-                "next_before",
-                "oldest_item_required",
-            ));
-        }
+    {
+        return Err(ValidationErrors::field(
+            "next_before",
+            "oldest_item_required",
+        ));
+    }
     Ok(())
 }
 }
@@ -864,6 +875,18 @@ LessonPage, LessonPageData {
     if ids.len() != value.lessons.len() {
         return Err(ValidationErrors::field("lessons", "duplicate_lesson"));
     }
+    Ok(())
+}
+}
+ironloom_core::contract! {
+/// Creates an empty service-owned conversation before any user input or turn.
+CreateConversation, CreateConversationData {
+    /// Durable authenticated-actor-scoped idempotency identity.
+    command_id: CommandId,
+    /// Existing project requiring current operate authority.
+    project_id: ProjectId,
+} |value| {
+    let _ = value;
     Ok(())
 }
 }

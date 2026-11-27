@@ -489,5 +489,5 @@ fn is_empty(value: &str) -> bool {
     value.trim().is_empty()
 }
 
-/// Software factory contracts; legacy foundation contracts remain readable.
+/// Software factory contracts for the unreleased application.
 pub mod factory;

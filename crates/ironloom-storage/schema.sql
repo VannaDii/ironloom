@@ -1,4 +1,5 @@
--- Ironloom owns this schema. OpenFGA owns its separate PostgreSQL database/migrations.
+-- Fresh installation only. No schema versions, upgrades, conversions or migration history.
+-- Ironloom and OpenFGA own separate PostgreSQL schemas/databases.
 CREATE SCHEMA ironloom;
 CREATE TABLE ironloom.operators (
     operator_id text PRIMARY KEY CHECK (btrim(operator_id) <> '')

@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-/// Software factory contracts; legacy foundation contracts remain readable.
+/// Software factory contracts for the unreleased application.
 pub mod factory;
 
 /// Hosted inference streaming without tool execution.

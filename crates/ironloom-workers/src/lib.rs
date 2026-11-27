@@ -105,5 +105,5 @@ pub struct WorkerResponse {
     pub payload: Value,
 }
 
-/// Software factory contracts; legacy foundation contracts remain readable.
+/// Software factory contracts for the unreleased application.
 pub mod factory;
