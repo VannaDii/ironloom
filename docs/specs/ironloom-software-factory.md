@@ -44,10 +44,12 @@ Give workers the approved requirements and relevant task context, not every othe
 
 Ironloom owns authenticated configuration and interaction through a runtime web application, separate from the static public documentation site. Provide durable chat history, streamed messages and tool activity, worker progress, clarification questions, plan approval, follow-up steering, cancellation, pause/resume, and reconnection. Work continues when the browser disconnects. Reconnection restores state without repeating actions.
 
-Serve a small first-time setup screen by default while setup is incomplete. Save progress and show every remaining required step with its status, reason, and direct action:
+Serve a small first-time setup screen as the default landing page while setup is incomplete. This is a default route, not a restriction to that page: authenticated users can visit other available pages. Once setup is complete, the default page is a project dashboard ordered by most recent human interaction first. Persist the interaction timestamp with project metadata; background worker activity must not silently reorder that list.
 
-- Configure SQLite or PostgreSQL and the project-storage root.
-- Configure the separate model-storage root and enabled GPUs when local inference is selected.
+Save setup progress and show every remaining required step with its status, reason, and direct action:
+
+- Configure SQLite or PostgreSQL and verify infrastructure-configured persistent roots for models, the local database, and projects/Git. The local database root is unused with PostgreSQL. Missing infrastructure configuration links to deployment instructions rather than suggesting arbitrary browser-selected paths.
+- Select enabled GPUs when local inference is selected.
 - Connect chosen inference credentials and any model-source account needed for downloads.
 - Assign models and applicable reasoning effort to each enabled role.
 - Complete native remote-host connection setup when enabling that connection.
@@ -55,6 +57,8 @@ Serve a small first-time setup screen by default while setup is incomplete. Save
 Requirements depend on configuration: OAuth-backed inference does not require an API key; remote-only inference does not require a GPU; public downloads do not require unnecessary source accounts. Preserve encrypted credentials, environment precedence, and existing setup-key protections. Do not expose secrets to browsers or worker prompts.
 
 A previously configured project's unavailable folder is a project-level storage issue, not a reason to restart first-time setup. Health and configuration remain accessible while work is blocked.
+
+Infrastructure health/readiness endpoints report actual service health and ability to serve web requests independently of assignment execution readiness. Incomplete team/model setup must not make an otherwise functioning web service unready or remove setup from Kubernetes Service traffic. Execution status separately reports unmet prerequisites and blocks affected assignments. Do not make unhealthy infrastructure report healthy merely to keep setup visible.
 
 HTTP commands plus replayable server-sent events are a proposed web transport, not a final framework choice. Normalize provider events into Ironloom events rather than tying the UI to one provider.
 
@@ -65,6 +69,10 @@ Native ChatGPT/Codex remote-host integration is required: Ironloom conversations
 Investigate host enrollment, pairing, authentication refresh, session discovery/history, streaming, steering, questions/approvals, cancellation, reconnect, and client lifecycle expectations. Evaluate a thin protocol adapter around Ironloom's own session and execution state. Do not assume implementing app-server JSON-RPC alone establishes compatibility with the hosted relay and native clients.
 
 Public app-server and remote-control sources provide a concrete investigation path. Acceptance of an independent multi-provider harness by those clients and services is still unverified. Pin the protocol/version used during qualification. Begin with deterministic responses and protocol tests, without inference. If compatibility requires an architectural change, return to the human instead of silently replacing native integration with plugin control.
+
+In practical terms, two different things must work: signing into OpenAI, and making Ironloom appear as a connected host whose chats the native client can control. Published code describes the connection mechanism, but we have not yet demonstrated the second part with Ironloom. This is an unverified integration, not a finding that the requirement is impossible.
+
+Remote-service sign-in also needs an explicit setup flow. If the browser is on a laptop and Ironloom runs on a server, a callback to `127.0.0.1` returns to the laptop, not the server. OpenAI's documented self-hosted flow completes sign-in locally and securely transfers the protected registration to the server, which manages subsequent refreshes. Evaluate that supported flow for onboarding without assuming a normal remote web callback is supported. This does not require an API key or change the human's OAuth inference choice.
 
 OpenAI connection identity and inference authorization are separate configuration choices. Support:
 
@@ -126,7 +134,7 @@ Manage loaded models with LRU eviction constrained by active use and GPU placeme
 2. Keep idle models resident while memory permits.
 3. Reserve capacity before admitting a load; avoid duplicate concurrent loads of the same instance.
 4. Unload the least recently used eligible idle model when capacity is needed.
-5. Never evict a model serving active requests. Respect bindings and multi-GPU placement.
+5. Never evict a model serving active inference requests. Once inference finishes, the loaded model is an ordinary LRU candidate even if its worker remains alive or is waiting for tools. Worker lifetime is not a residency lock. Respect bindings and multi-GPU placement.
 6. Queue and explain requests when no safe eviction makes room; do not silently switch models.
 
 Residency identity includes checkpoint, quantization, engine configuration, and placement. Unloading releases inference memory, not downloaded weights. Disk retention is a separate operator-controlled policy.
@@ -135,9 +143,19 @@ Residency identity includes checkpoint, quantization, engine configuration, and 
 
 Support configurable SQLite for local storage or PostgreSQL using an operator-provided connection string. The database owns organizational metadata: stable project IDs, mutable names, configured locations, conversations, plan revisions, approvals, assignments, lifecycle, and execution/usage records. GitHub remains authoritative for published specs, repository state, pull requests, reviews, checks, and merges; local caches cannot override fresh source-of-truth state.
 
+Require separate infrastructure-configured persistent roots by storage type:
+
+| Root | Contents and lifetime |
+| --- | --- |
+| Models | Shared downloaded model files, independent of project cleanup |
+| Database | SQLite database and its associated files; unused when PostgreSQL is selected |
+| Projects/Git | Complete project folders, backing Git repositories, assignment worktrees, and role artifacts |
+
+Roots are configured through deployment/native-service configuration, not arbitrary worker or browser filesystem access. Persist the complete projects/Git root and model root across service or pod replacement; assignment worktrees cannot use disposable `emptyDir` storage. Keep organizational metadata and durable service/host identity outside the project root, using the selected database for those records. A missing projects mount must not hide project records or reset host identity. With PostgreSQL, do not silently create a local SQLite fallback.
+
 Project listing must work from database records even when a project folder is unavailable. Show Storage unavailable, preserve metadata, and pause affected filesystem work. Do not recreate an empty project at a missing mount. Database migrations preserve IDs and references across supported backends.
 
-Use an operator-configured project root:
+Use the infrastructure-configured projects/Git root:
 
 ```text
 <project-root>/<stable-project-id>/
@@ -157,9 +175,9 @@ One worktree and branch belong to each assignment. Tester, implementor, document
 
 Grant each worker explicit writable paths and an artifact area, with authorized read access to handoffs. Coordinate overlapping file changes through ownership handoff; boundaries may be individual files where tests and implementation are siblings. Path validation covers creation, edits, removal, moves, and path/symlink resolution.
 
-Every shell command enters through Ironloom execution tools, which vet assignment identity, paths, working directory, environment, and allowed actions. Workers have no unrestricted alternative execution channel. Wrappers or symlinks may route compatible calls but cannot be the security boundary: enforce equivalent filesystem permissions on subprocesses and descendants, including legitimate build-output writes. Git index, branch, and commit mutations have one coordinated owner.
+Every shell command enters through Ironloom execution tools, which vet assignment identity, paths, working directory, environment, and allowed actions. Workers have no unrestricted alternative execution channel. Wrappers or symlinks may route compatible calls but cannot be the security boundary: enforce equivalent filesystem permissions on subprocesses and descendants, including legitimate build-output writes. Cancellation, timeout, and shutdown must clean up the owned process tree, not just the immediate child. Git index, branch, and commit mutations have one coordinated owner.
 
-Review and test results identify the exact inspected content. A commit SHA alone is insufficient for a dirty shared worktree. Track the working state and require stable content for final validation; relevant later edits invalidate affected results. Choose the smallest mechanism that provides this consistency without inventing a separate evidence framework.
+Review and test results identify the exact inspected content. A commit SHA alone is insufficient for a dirty shared worktree. Allow normal concurrent work, then pause worker edits to assignment source content during final validation and commit. Drain active mutations before validation; permit controlled validation output without allowing it to alter the content under review. Resume editing if corrections are needed and invalidate affected results after relevant edits. Keep the inspected content stable through the coordinated commit. Choose the smallest mechanism that provides this consistency without inventing a separate evidence framework.
 
 The scheduler and worktree manager track active ownership and coordinate cleanup. Remove a worktree through Git only after workers release it and required changes are preserved. Keep interrupted/failed work according to configured retention. Never discard uncommitted work, unpublished commits, or needed artifacts without authorized disposal. Artifact retention is independent of worktree retention. Do not sweep unrelated directories or model storage.
 
@@ -193,17 +211,19 @@ Separate model adapters, embedded inference, web transport, and native remote pr
 
 Remove `ironloom-discord`, Discord credentials/setup/routes, thread-binding schemas and indexes, and Discord-specific CI/acceptance scripts and deployment fields as replacements land. Preserve needed historical records through explicit schema/migration handling. Conversation IDs used by chat and external protocols remain useful; they do not restore Discord binding as authorization.
 
-Preserve GitHub refresh rules, SonarCloud normalization/bootstrap checks, runtime non-root packaging, Docker/Helm delivery, and public VitePress documentation. GPU engine selection may affect image/toolchain packaging and must be assessed explicitly. Update affected English and all localized product docs with implementation changes. Planning updates do not claim these behaviors already ship.
+Preserve GitHub refresh rules, SonarCloud normalization/bootstrap checks, runtime non-root packaging, Docker/Helm delivery, and public VitePress documentation. Support native macOS and native Linux operation as well as containerized deployment targeting Alpine. Keep shared orchestration/domain behavior independent of platform-specific GPU discovery, device access, inference-engine integration, and execution sandbox implementations. GPU families, CPU architectures, engine coverage, and the exact platform matrix still require qualification; do not assume identical GPU support across native and container deployments. Alpine remains a target, not permission to silently substitute another base image when integration is difficult.
+
+Deployment instructions must configure the persistent roots by type and distinguish service readiness from execution readiness. Update affected English and all localized product docs with implementation changes. Planning updates do not claim these behaviors already ship.
 
 ## Proposed delivery sequence
 
 | Stage | Outcome |
 | --- | --- |
 | 1. Native-host feasibility | Establish client/relay compatibility for Ironloom-owned sessions using deterministic protocol behavior; expose any architectural decision before implementation proceeds |
-| 2. Durable service and setup | Database-backed identity/state, resumable setup, authenticated web chat/streaming, background execution lifecycle, and replacement of Discord-specific coupling |
+| 2. Durable service and setup | Database-backed identity/state, infrastructure-configured persistent roots, resumable setup and project dashboard, separate service/execution readiness, authenticated web chat/streaming, and replacement of Discord-specific coupling |
 | 3. Team and inference configuration | Required model/effort assignments, OpenAI OAuth/BYOK and Anthropic BYOK, configurable endpoint support, source discovery/downloads, and GPU selection |
 | 4. Local runtime and refinement | Qualify the approved Rust engine/hardware scope, GPU estimates and LRU residency; deliver concept/question iteration, versioned plans, and approval |
-| 5. Complete assignment | Shared worktree with enforced worker paths; tests, implementation, review, documentation, configured delivery, and safe cleanup |
+| 5. Complete assignment | Shared worktree with enforced worker paths and process-tree cleanup; tests, implementation, review, documentation, stable final validation/commit, configured delivery, and safe cleanup |
 | 6. Operational completion | Cross-client resume/steering, concurrent assignments, recovery, retention, OTel correlation, and budget behavior across supported configurations |
 
 Storage, permissions, telemetry, and usage accounting accompany the stages that introduce operations; they are not postponed until the last stage. This sequence is proposed, not authorization to implement.
@@ -212,7 +232,7 @@ Use focused functional regression tests and existing gates for approval revision
 
 ## Remaining decisions
 
-- Supported first-release operating systems and GPU families; no platform matrix has been agreed.
+- Native macOS, native Linux, and Alpine container deployment are required. Supported OS versions, CPU architectures, GPU families, and engine/backend combinations remain to be selected and qualified.
 - Native client/relay compatibility and the exact protocol adapter, including any upstream support needed.
 - Rust inference engine selection and supported model architectures/formats. Python embedding and engine porting each require Vanna's explicit approval if proposed.
 - First-release operator/account topology and default delivery authority. A single-owner deployment and delivery to a reviewed pull request were proposals, not accepted constraints.
@@ -224,6 +244,7 @@ These references inform feasibility; they do not establish implemented or qualif
 
 - [App-server protocol](https://learn.chatgpt.com/docs/app-server) and [native remote transport source](https://github.com/openai/codex/tree/main/codex-rs/app-server-transport/src/transport/remote_control).
 - [OpenAI OAuth inference](https://developers.openai.com/siwc/token-sharing-open-source/models-and-inference) and [limitations](https://developers.openai.com/siwc/token-sharing-open-source/preview-limitations).
+- [OpenAI self-hosted OAuth setup](https://developers.openai.com/siwc/token-sharing-open-source/self-hosted-vms).
 - [Anthropic streaming](https://platform.claude.com/docs/en/build-with-claude/streaming).
 - [Hugging Face model access](https://huggingface.co/docs/hub/models-gated), [ModelScope](https://github.com/modelscope/modelscope_hub), and [Kaggle Models](https://www.kaggle.com/docs/models).
 - [Alibaba/Qwen official releases](https://qwen.ai/), [Mistral model catalog](https://docs.mistral.ai/), and [DeepSeek official repositories](https://github.com/deepseek-ai).
