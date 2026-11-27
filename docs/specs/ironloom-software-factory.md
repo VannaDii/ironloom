@@ -19,7 +19,7 @@ Remove Discord control and its thread-to-work-item binding requirement. Preserve
 1. The human submits an idea.
 2. Ironloom returns a refined concept and material questions.
 3. Answers refine the concept; repeat until questions are exhausted or the human says enough.
-4. Present a plan with scope, assumptions, tasks, dependencies, acceptance criteria, model assignments, budget, and permissions. Keep unanswered assumptions visible.
+4. Present a plan with scope, assumptions, tasks, dependencies, acceptance criteria, model assignments, optional budget limits, and permissions. Keep unanswered assumptions visible.
 5. Record human approval against the specific plan revision and authorized scope.
 6. Orchestrate workers to develop tests, implement, review, document, and complete the approved work. Repair loops remain within configured bounds.
 7. Deliver according to the owner's instructions and configured publication, merge, and deployment permissions.
@@ -40,9 +40,13 @@ Every enabled role, including shipped and orchestration roles, requires a human-
 
 Give workers the approved requirements and relevant task context, not every other worker's conversation. Reviewers receive independent context and direct access to changes. Local models propose assignments and transitions; deterministic Rust code enforces approvals, dependencies, policy, and budgets.
 
+Copy effective instructions into each workflow-run/assignment's own storage at creation; active work reads that copy rather than a mutable global template. When the human edits instructions, ask whether to apply the change to running workflows/tasks. No leaves their copies and behavior unchanged; the revised template applies to new work. Yes updates the selected active copies and notifies each affected workflow to reload its instructions and propagate the change to its workers. Track the applied revision and acknowledgment so a pending update is visible; workers use the new instructions at their next controllable execution boundary. Do not pretend an already-running inference call has consumed revised instructions. This choice does not expand approved scope or override permission revocation.
+
 ## Web service and setup
 
-Ironloom owns authenticated configuration and interaction through a runtime web application, separate from the static public documentation site. Provide durable chat history, streamed messages and tool activity, worker progress, clarification questions, plan approval, follow-up steering, cancellation, pause/resume, and reconnection. Work continues when the browser disconnects. Reconnection restores state without repeating actions.
+Ironloom owns authenticated configuration and interaction through a runtime web application, separate from the static public documentation site. Provide durable chat history, streamed messages and tool activity, worker progress, clarification questions, plan approval, follow-up steering, cancellation, pause/resume, and reconnection. Work continues when the browser disconnects. Client reconnection restores persisted state without itself resubmitting work; web and native clients share execution state.
+
+Graceful shutdown stops new dispatch and persists current work state. Handle SIGINT, SIGTERM, and other catchable shutdown requests with best-effort persistence and owned-process cleanup within the available shutdown time. Forced termination, a crash, or power loss may prevent any final write: resume from the latest durable state, accepting that recent or active inference may need to run again. Do not promise exactly-once inference or persistence after an uncatchable termination. Reconcile uncertain external mutations before retrying them; repeating inference does not authorize blindly repeating a merge, publication, or deployment.
 
 Serve a small first-time setup screen as the default landing page while setup is incomplete. This is a default route, not a restriction to that page: authenticated users can visit other available pages. Once setup is complete, the default page is a project dashboard ordered by most recent human interaction first. Persist the interaction timestamp with project metadata; background worker activity must not silently reorder that list.
 
@@ -55,6 +59,8 @@ Save setup progress and show every remaining required step with its status, reas
 - Complete native remote-host connection setup when enabling that connection.
 
 Requirements depend on configuration: OAuth-backed inference does not require an API key; remote-only inference does not require a GPU; public downloads do not require unnecessary source accounts. Preserve encrypted credentials, environment precedence, and existing setup-key protections. Do not expose secrets to browsers or worker prompts.
+
+Startup must positively identify missing or incomplete configuration and present setup with the required completion or correction actions. Distinguish that state from unavailable storage, corrupt configuration, or decryption failure; show the actual problem without resetting identity or overwriting existing setup. Database connection settings and encryption-key access must be available before opening the selected database. Keep setup/correction guidance reachable when the web service can operate, without misreporting failed infrastructure as healthy.
 
 A previously configured project's unavailable folder is a project-level storage issue, not a reason to restart first-time setup. Health and configuration remain accessible while work is blocked.
 
@@ -161,11 +167,12 @@ Use the infrastructure-configured projects/Git root:
 <project-root>/<stable-project-id>/
   repository/
   worktrees/<assignment-id>/
+  artifacts/<assignment-id>/instructions/
   artifacts/<assignment-id>/<role>/<worker-id>/
   .ironloom/
 ```
 
-Renaming a project does not move its directory. Run and attempt IDs remain execution metadata; assignment IDs align worktrees and role artifacts. Code, tests, and shipped documentation live in the worktree. Sibling artifact directories hold briefs, working material, and handoffs actually used by workers. Preserve required domain evidence; do not create redundant proof reports or verification bundles.
+Renaming a project does not move its directory. Run and attempt IDs remain execution metadata; assignment IDs align worktrees and role artifacts. Code, tests, and shipped documentation live in the worktree. Sibling artifact directories hold assignment instruction copies, briefs, working material, and handoffs actually used by workers. The assignment instructions directory is managed through the service's instruction-update flow, not freely writable by workers. Preserve required domain evidence; do not create redundant proof reports or verification bundles.
 
 Only `ironloom-storage` accesses `.ironloom/` directly. It also owns persistence abstractions for database and managed artifact records; `ironloom-worktrees` owns Git workspace lifecycle. Keep database metadata and filesystem content responsibilities explicit, avoiding competing lifecycle authorities.
 
@@ -175,11 +182,19 @@ One worktree and branch belong to each assignment. Tester, implementor, document
 
 Grant each worker explicit writable paths and an artifact area, with authorized read access to handoffs. Coordinate overlapping file changes through ownership handoff; boundaries may be individual files where tests and implementation are siblings. Path validation covers creation, edits, removal, moves, and path/symlink resolution.
 
-Every shell command enters through Ironloom execution tools, which vet assignment identity, paths, working directory, environment, and allowed actions. Workers have no unrestricted alternative execution channel. Wrappers or symlinks may route compatible calls but cannot be the security boundary: enforce equivalent filesystem permissions on subprocesses and descendants, including legitimate build-output writes. Cancellation, timeout, and shutdown must clean up the owned process tree, not just the immediate child. Git index, branch, and commit mutations have one coordinated owner.
+Every shell command enters through Ironloom execution tools, which vet assignment identity, paths, working directory, environment, and allowed actions. Workers have no unrestricted alternative execution channel. Wrappers or symlinks may route compatible calls but cannot be the security boundary: enforce equivalent filesystem permissions on subprocesses and descendants, including legitimate build-output writes. Handled cancellation, timeout, and shutdown clean up the owned process tree, not just the immediate child; recovery checks for surviving owned processes after an abrupt termination. Git index, branch, and commit mutations have one coordinated owner at a time for the affected Git state.
+
+The planner decides merge order with the implementors, accounting for assignment starting revisions and dependencies. Each implementor performs its own merge through the controlled tools, resolves its merge conflicts, runs final integrated tests against the combined result, and makes the changes needed for passing tests before reporting its merge complete. The runtime enforces the planned order and coordinates conflicting Git mutations; it does not take the planner's integration decisions or the implementor's merge responsibility. Existing review, quality gates, and owner delivery permissions still apply.
 
 Review and test results identify the exact inspected content. A commit SHA alone is insufficient for a dirty shared worktree. Allow normal concurrent work, then pause worker edits to assignment source content during final validation and commit. Drain active mutations before validation; permit controlled validation output without allowing it to alter the content under review. Resume editing if corrections are needed and invalidate affected results after relevant edits. Keep the inspected content stable through the coordinated commit. Choose the smallest mechanism that provides this consistency without inventing a separate evidence framework.
 
 The scheduler and worktree manager track active ownership and coordinate cleanup. Remove a worktree through Git only after workers release it and required changes are preserved. Keep interrupted/failed work according to configured retention. Never discard uncommitted work, unpublished commits, or needed artifacts without authorized disposal. Artifact retention is independent of worktree retention. Do not sweep unrelated directories or model storage.
+
+## Streaming and generation control
+
+Prefer streaming across command execution, inference adapters, and operator events, especially local inference when the engine/model supports it. Drain command stdout and stderr continuously with bounded buffering rather than waiting for process exit. Slow or disconnected viewers must not stop process output consumption or inference monitoring. Make non-streaming provider/engine limitations visible.
+
+Observe generated output incrementally to detect runaway generation and repeated loops without additional inference calls. Use bounded, configurable generation limits and repetition monitoring; repetition is a signal, not proof that legitimate repetitive code is wrong. Stop or interrupt according to configured policy, report the reason, and retain available output and usage. Where streaming is unavailable, retain the supported request limits and cancellation controls without claiming live loop detection. Monetary budgets being disabled does not disable generation controls.
 
 ## OpenTelemetry, usage, and cost control
 
@@ -201,7 +216,7 @@ Use concise Rust instrumentation attributes and shared helpers, with explicit as
 
 Track durable usage independently of collector availability and trace sampling, then export through OTel. Accounting makes no additional inference calls: use provider responses, engine counters, and deterministic calculations. Keep export asynchronous, use incremental accounting alongside existing state persistence, and avoid blocking workers on collectors or doing expensive per-operation scans. Minimize bookkeeping overhead without claiming it is literally zero.
 
-Enforce configured budgets before dispatch, account for concurrent in-flight work, and distinguish estimates from reported usage. Account-backed OAuth usage must not be represented as API-key charges. Optimize accepted completed work, including retries and configured local compute estimates, rather than raw token count alone. Use focused context, bounded retries, configurable concurrency, and only explicitly configured escalation or fallback routes.
+Budget limits are optional and editable at any time, including during active work; operators may enable, raise, lower, or disable them without creating a new plan revision solely for that edit. Continue usage tracking when limits are disabled. Apply the current limits before subsequent dispatch and account for concurrent in-flight work; lowering a limit cannot undo incurred charges or guarantee immediate cessation of an already-dispatched request. Show outstanding usage/reservations when a limit changes. Missing usage after interruption remains unknown or estimated, not zero. Account-backed OAuth usage must not be represented as API-key charges. Optimize accepted completed work, including retries and configured local compute estimates, rather than raw token count alone. Use focused context, bounded retries, configurable concurrency, and only explicitly configured escalation or fallback routes.
 
 ## Package ownership and migration
 
@@ -220,13 +235,13 @@ Deployment instructions must configure the persistent roots by type and distingu
 | Stage | Outcome |
 | --- | --- |
 | 1. Native-host integration mapping | Map the existing working remote-host mechanism to Ironloom-owned sessions and verify client/relay compatibility using deterministic protocol behavior; raise any actual design flaw for a human decision |
-| 2. Durable service and setup | Database-backed identity/state, infrastructure-configured persistent roots, resumable setup and project dashboard, separate service/execution readiness, authenticated web chat/streaming, and replacement of Discord-specific coupling |
+| 2. Durable service and setup | Database-backed identity/state, infrastructure-configured persistent roots, explicit startup error/correction handling, resumable setup and project dashboard, separate service/execution readiness, authenticated web chat/streaming, and replacement of Discord-specific coupling |
 | 3. Team and inference configuration | Required model/effort assignments, OpenAI OAuth/BYOK and Anthropic BYOK, configurable endpoint support, source discovery/downloads, and GPU selection |
 | 4. Local runtime and refinement | Qualify the approved Rust engine/hardware scope, GPU estimates and LRU residency; deliver concept/question iteration, versioned plans, and approval |
-| 5. Complete assignment | Shared worktree with enforced worker paths and process-tree cleanup; tests, implementation, review, documentation, stable final validation/commit, configured delivery, and safe cleanup |
+| 5. Complete assignment | Shared worktree with enforced worker paths and process-tree cleanup; tests, implementation, review, documentation, planner-led merge order, implementor-owned integration, stable final validation/commit, configured delivery, and safe cleanup |
 | 6. Operational completion | Cross-client resume/steering, concurrent assignments, recovery, retention, OTel correlation, and budget behavior across supported configurations |
 
-Storage, permissions, telemetry, and usage accounting accompany the stages that introduce operations; they are not postponed until the last stage. This sequence is proposed, not authorization to implement.
+Storage, permissions, instruction-update handling, shutdown/recovery, streaming controls, telemetry, and optional budget enforcement accompany the stages that introduce operations; they are not postponed until the last stage. This sequence is proposed, not authorization to implement.
 
 Use focused functional regression tests and existing gates for approval revision handling, streaming reconnect without repeated execution, shared-worktree path enforcement, stable validation state, database/backend behavior, missing storage, source-access transitions, GPU placement/LRU active-use protection, model capability adaptation, and usage accounting. Preserve all existing formatting, Clippy, test, schema, policy, audit, docs, Docker, Helm, and SonarCloud requirements. Do not create proof packages, independent auditors, saved test transcripts, or bespoke evidence generators.
 
