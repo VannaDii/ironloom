@@ -8,6 +8,8 @@ Ironloom's target is a Rust software factory and persistent background harness s
 
 - Concept refinement and repeated questions until no material questions remain or the human says enough; versioned plans require human approval before execution.
 - Configurable roles and a standard team covering product management, planning, implementation, testing, review, and documentation. Humans must select a model and applicable reasoning effort for every enabled role, including orchestration.
+- Role instructions guide workflow decisions; the service enforces authority, required gates, and execution consistency. Ask the operator whenever instructions leave a gap, conflict, or uncertainty, while allowing independent authorized work to continue.
+- Remember operator questions and answers with their source and scope. For similar questions, remind/propose the previous choice without treating similarity as authorization. Respect clear standing instructions and later corrections; do not silently promote a local answer into a global rule.
 - Copy instructions into each workflow-run/assignment's storage. Instruction edits ask whether to update active work: No preserves existing copies; Yes updates them and notifies affected workflows/workers to reload.
 - Local orchestration and OpenAI/Anthropic coding support, with capable local models usable for coding roles. No silent model, credential, or billing fallback.
 - OpenAI OAuth usable for remote control only or additionally for eligible inference; API keys are optional when OAuth covers inference. Anthropic BYOK and local inference remain separate choices.

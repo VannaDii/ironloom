@@ -36,11 +36,19 @@ Authorized work proceeds without repeated permission requests. Material scope or
 
 Ship editable standard roles and a default team: product manager, planner, implementor, tester, reviewer, and documentation writer. The supervisor coordinates work and may use a configured orchestration role. Operators can customize roles and team composition.
 
+Role instructions own workflow judgment: task decomposition, collaboration, handoffs, repair strategy, and planner/implementor decisions about integration. Ship the agreed team behavior as editable role instructions rather than hardcoding every workflow choice into the runtime. Deterministic service code enforces approved scope, permissions, required gates, resource limits, and execution consistency. Role instructions cannot bypass those boundaries.
+
+When instructions do not cover a decision, conflict, or leave the worker at all unsure, ask the operator before proceeding with the affected decision. Explain the uncertainty concisely and propose a choice when possible. Independent authorized work may continue. An existing clear, applicable instruction or authorization should not trigger repeated permission requests.
+
 Every enabled role, including shipped and orchestration roles, requires a human-selected model and explicit reasoning effort when applicable. The default team is incomplete until configured. Presets may simplify explicit selection; fallback models, billing changes, and substitutions require configuration rather than silent defaults.
 
 Give workers the approved requirements and relevant task context, not every other worker's conversation. Reviewers receive independent context and direct access to changes. Local models propose assignments and transitions; deterministic Rust code enforces approvals, dependencies, policy, and budgets.
 
 Copy effective instructions into each workflow-run/assignment's own storage at creation; active work reads that copy rather than a mutable global template. When the human edits instructions, ask whether to apply the change to running workflows/tasks. No leaves their copies and behavior unchanged; the revised template applies to new work. Yes updates the selected active copies and notifies each affected workflow to reload its instructions and propagate the change to its workers. Track the applied revision and acknowledgment so a pending update is visible; workers use the new instructions at their next controllable execution boundary. Do not pretend an already-running inference call has consumed revised instructions. This choice does not expand approved scope or override permission revocation.
+
+Remember every operator question and answer durably with its original wording, source conversation, answering operator, time, and applicable project/assignment or explicitly broader scope. Make these decisions available to relevant authorized roles and across web/native clients through the existing conversation and database records. Preserve corrections and identify which answer supersedes an earlier one; do not silently turn a task-specific answer into a global instruction.
+
+Before asking a similar question, consult applicable prior answers. Remind the operator of the previous choice and propose reusing it, noting any changed context: "Last time, you chose X for Y. Use that here too?" Similarity alone is not fresh approval. Follow a clear standing instruction within its scope without asking again; otherwise request confirmation when applicability is uncertain. Answers guide the current work, but promoting one into a shared role template remains an explicit instruction change and follows the active-work update choice above.
 
 ## Web service and setup
 
@@ -147,7 +155,7 @@ Residency identity includes checkpoint, quantization, engine configuration, and 
 
 ## Database, projects, assignments, and artifacts
 
-Support configurable SQLite for local storage or PostgreSQL using an operator-provided connection string. The database owns organizational metadata: stable project IDs, mutable names, configured locations, conversations, plan revisions, approvals, assignments, lifecycle, and execution/usage records. GitHub remains authoritative for published specs, repository state, pull requests, reviews, checks, and merges; local caches cannot override fresh source-of-truth state.
+Support configurable SQLite for local storage or PostgreSQL using an operator-provided connection string. The database owns organizational metadata: stable project IDs, mutable names, configured locations, conversations, operator questions/answers and their scope, plan revisions, approvals, assignments, lifecycle, and execution/usage records. GitHub remains authoritative for published specs, repository state, pull requests, reviews, checks, and merges; local caches cannot override fresh source-of-truth state.
 
 Require separate infrastructure-configured persistent roots by storage type:
 
@@ -237,7 +245,7 @@ Deployment instructions must configure the persistent roots by type and distingu
 | 1. Native-host integration mapping | Map the existing working remote-host mechanism to Ironloom-owned sessions and verify client/relay compatibility using deterministic protocol behavior; raise any actual design flaw for a human decision |
 | 2. Durable service and setup | Database-backed identity/state, infrastructure-configured persistent roots, explicit startup error/correction handling, resumable setup and project dashboard, separate service/execution readiness, authenticated web chat/streaming, and replacement of Discord-specific coupling |
 | 3. Team and inference configuration | Required model/effort assignments, OpenAI OAuth/BYOK and Anthropic BYOK, configurable endpoint support, source discovery/downloads, and GPU selection |
-| 4. Local runtime and refinement | Qualify the approved Rust engine/hardware scope, GPU estimates and LRU residency; deliver concept/question iteration, versioned plans, and approval |
+| 4. Local runtime and refinement | Qualify the approved Rust engine/hardware scope, GPU estimates and LRU residency; deliver instruction-led refinement, remembered operator answers and relevant suggestions, versioned plans, and approval |
 | 5. Complete assignment | Shared worktree with enforced worker paths and process-tree cleanup; tests, implementation, review, documentation, planner-led merge order, implementor-owned integration, stable final validation/commit, configured delivery, and safe cleanup |
 | 6. Operational completion | Cross-client resume/steering, concurrent assignments, recovery, retention, OTel correlation, and budget behavior across supported configurations |
 
