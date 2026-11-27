@@ -68,9 +68,9 @@ Native ChatGPT/Codex remote-host integration is required: Ironloom conversations
 
 Investigate host enrollment, pairing, authentication refresh, session discovery/history, streaming, steering, questions/approvals, cancellation, reconnect, and client lifecycle expectations. Evaluate a thin protocol adapter around Ironloom's own session and execution state. Do not assume implementing app-server JSON-RPC alone establishes compatibility with the hosted relay and native clients.
 
-Public app-server and remote-control sources provide a concrete investigation path. Acceptance of an independent multi-provider harness by those clients and services is still unverified. Pin the protocol/version used during qualification. Begin with deterministic responses and protocol tests, without inference. If compatibility requires an architectural change, return to the human instead of silently replacing native integration with plugin control.
+Native remote-host support already exists: Vanna runs multiple Codex services on VMs connected to Codex Desktop. Treat that working setup as the integration reference. The remaining investigation is how Ironloom implements the existing connection and exposes its own sessions and multi-provider execution through it; general remote-host feasibility is not an open question.
 
-In practical terms, two different things must work: signing into OpenAI, and making Ironloom appear as a connected host whose chats the native client can control. Published code describes the connection mechanism, but we have not yet demonstrated the second part with Ironloom. This is an unverified integration, not a finding that the requirement is impossible.
+Use the public app-server and remote-control sources to identify reusable components and map Ironloom's session lifecycle to the existing protocol. Pin the protocol/version used during qualification. Begin with deterministic responses and protocol tests, without inference. Verify Ironloom-specific compatibility in each required client; the working Codex Desktop setup does not itself qualify Ironloom or other clients. If implementation reveals an actual architectural flaw, return to the human instead of silently replacing native integration with plugin control.
 
 Remote-service sign-in also needs an explicit setup flow. If the browser is on a laptop and Ironloom runs on a server, a callback to `127.0.0.1` returns to the laptop, not the server. OpenAI's documented self-hosted flow completes sign-in locally and securely transfers the protected registration to the server, which manages subsequent refreshes. Evaluate that supported flow for onboarding without assuming a normal remote web callback is supported. This does not require an API key or change the human's OAuth inference choice.
 
@@ -219,7 +219,7 @@ Deployment instructions must configure the persistent roots by type and distingu
 
 | Stage | Outcome |
 | --- | --- |
-| 1. Native-host feasibility | Establish client/relay compatibility for Ironloom-owned sessions using deterministic protocol behavior; expose any architectural decision before implementation proceeds |
+| 1. Native-host integration mapping | Map the existing working remote-host mechanism to Ironloom-owned sessions and verify client/relay compatibility using deterministic protocol behavior; raise any actual design flaw for a human decision |
 | 2. Durable service and setup | Database-backed identity/state, infrastructure-configured persistent roots, resumable setup and project dashboard, separate service/execution readiness, authenticated web chat/streaming, and replacement of Discord-specific coupling |
 | 3. Team and inference configuration | Required model/effort assignments, OpenAI OAuth/BYOK and Anthropic BYOK, configurable endpoint support, source discovery/downloads, and GPU selection |
 | 4. Local runtime and refinement | Qualify the approved Rust engine/hardware scope, GPU estimates and LRU residency; deliver concept/question iteration, versioned plans, and approval |
@@ -233,7 +233,7 @@ Use focused functional regression tests and existing gates for approval revision
 ## Remaining decisions
 
 - Native macOS, native Linux, and Alpine container deployment are required. Supported OS versions, CPU architectures, GPU families, and engine/backend combinations remain to be selected and qualified.
-- Native client/relay compatibility and the exact protocol adapter, including any upstream support needed.
+- Ironloom-specific client/relay compatibility and the exact adapter for the existing native remote-host mechanism, including any upstream support needed.
 - Rust inference engine selection and supported model architectures/formats. Python embedding and engine porting each require Vanna's explicit approval if proposed.
 - First-release operator/account topology and default delivery authority. A single-owner deployment and delivery to a reviewed pull request were proposals, not accepted constraints.
 - Concrete web transport/framework, execution sandbox mechanisms per supported OS, database schema/migration details, and deployment packaging belong in the implementation plan.

@@ -10,7 +10,7 @@ Ironloom's target is a Rust software factory and persistent background harness s
 - Configurable roles and a standard team covering product management, planning, implementation, testing, review, and documentation. Humans must select a model and applicable reasoning effort for every enabled role, including orchestration.
 - Local orchestration and OpenAI/Anthropic coding support, with capable local models usable for coding roles. No silent model, credential, or billing fallback.
 - OpenAI OAuth usable for remote control only or additionally for eligible inference; API keys are optional when OAuth covers inference. Anthropic BYOK and local inference remain separate choices.
-- Native remote-host control of Ironloom-owned sessions, not a plugin substitute. Client/relay compatibility remains unverified and is the first feasibility task.
+- Native remote-host control of Ironloom-owned sessions, not a plugin substitute. Vanna's connected VM services establish that the Codex Desktop remote-host mechanism works; the first integration task is mapping Ironloom to that mechanism and verifying its own client/relay compatibility.
 - Authenticated, durable, streaming web chat and configuration; background work survives browser disconnection. Incomplete setup defaults to a small resumable setup screen without restricting access to other available pages. Completed setup defaults to a project dashboard ordered by most recent human interaction. Service health/readiness remains separate from assignment execution readiness.
 - Model discovery/download access through Hugging Face, ModelScope, Kaggle Models, and official Alibaba/Qwen, Mistral, and DeepSeek catalogs/distributions. Preserve publisher/host distinctions and access/license requirements.
 - Service-owned GPU discovery, selection, optional role/model GPU bindings, compatibility estimates, embedded inference, and LRU model residency. Active inference protects a loaded model; an idle worker or one waiting on tools does not.
@@ -36,7 +36,7 @@ Ironloom's target is a Rust software factory and persistent background harness s
 
 ## First Complete Factory Slice
 
-After native-host feasibility and required configuration are resolved:
+After Ironloom's native-host integration and required configuration are qualified:
 
 1. A human refines an idea through chat and approves a specific plan revision.
 2. The supervisor creates an assignment and worktree, using human-configured roles/models.
@@ -45,7 +45,7 @@ After native-host feasibility and required configuration are resolved:
 5. Results and usage are persisted and streamed to the operator with OTel correlation.
 6. Delivery follows configured owner authority; worktree cleanup waits for worker release and preservation of required changes.
 
-This is a target slice, not an accepted implementation result. Native remote-client compatibility, detailed hardware/backend coverage for the required platforms, engine selection, and first-release operator topology remain open in the detailed plan.
+This is a target slice, not an accepted implementation result. Ironloom-specific native client compatibility, detailed hardware/backend coverage for the required platforms, engine selection, and first-release operator topology remain open in the detailed plan.
 
 ## Quality Gates
 
