@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/RememberedAnswerData",
+  "$defs": {
+    "AnswerId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom AnswerId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "AssignmentId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom AssignmentId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ConversationId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ConversationId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Counter": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Canonical decimal u64; semantic validation also enforces u64 maximum.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "OperatorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom OperatorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ProjectId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ProjectId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "RecordScope": {
+      "description": "Stored scope; similarity and shared lessons are never approval.",
+      "oneOf": [
+        {
+          "description": "Restricted to the origin assignment.",
+          "type": "string",
+          "const": "assignment"
+        },
+        {
+          "description": "Available in the origin project.",
+          "type": "string",
+          "const": "project"
+        },
+        {
+          "description": "Explicitly shared content; source access is still checked separately.",
+          "type": "string",
+          "const": "installation"
+        }
+      ]
+    },
+    "RememberedAnswerData": {
+      "description": "Unchecked construction draft for `RememberedAnswer`; validate before use.",
+      "type": "object",
+      "properties": {
+        "answer": {
+          "description": "Original answer, distinct from a derived lesson.",
+          "type": "string"
+        },
+        "answer_id": {
+          "description": "Stable answer identity.",
+          "$ref": "#/$defs/AnswerId"
+        },
+        "answered_at_ms": {
+          "description": "Answer time.",
+          "$ref": "#/$defs/Counter"
+        },
+        "assignment_id": {
+          "description": "Origin assignment if scoped.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AssignmentId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "conversation_id": {
+          "description": "Source conversation.",
+          "$ref": "#/$defs/ConversationId"
+        },
+        "operator_id": {
+          "description": "Answering human.",
+          "$ref": "#/$defs/OperatorId"
+        },
+        "project_id": {
+          "description": "Origin project.",
+          "$ref": "#/$defs/ProjectId"
+        },
+        "question": {
+          "description": "Original question.",
+          "type": "string"
+        },
+        "scope": {
+          "description": "Explicit scope; not inferred from similarity.",
+          "$ref": "#/$defs/RecordScope"
+        },
+        "supersedes": {
+          "description": "Correction reference preserving earlier records.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AnswerId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "answer_id",
+        "question",
+        "answer",
+        "operator_id",
+        "conversation_id",
+        "project_id",
+        "scope",
+        "answered_at_ms"
+      ]
+    }
+  }
+}

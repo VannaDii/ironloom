@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/StorageRootsData",
+  "$defs": {
+    "StorageRootsData": {
+      "description": "Unchecked construction draft for `StorageRoots`; validate before use.",
+      "type": "object",
+      "properties": {
+        "managed_database": {
+          "description": "Used only by the designated managed PostgreSQL owner.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "models": {
+          "description": "Infrastructure-selected persistent model root.",
+          "type": "string"
+        },
+        "projects": {
+          "description": "Persistent complete projects/Git root.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "models",
+        "projects"
+      ]
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AuthorizationOutcome",
+  "description": "Distinct gateway outcomes; none of the failures dispatches work.",
+  "oneOf": [
+    {
+      "description": "Current high-consistency grants and scope permit dispatch.",
+      "type": "string",
+      "const": "allowed"
+    },
+    {
+      "description": "Authority is absent.",
+      "type": "string",
+      "const": "denied"
+    },
+    {
+      "description": "Authority cannot be checked; fail closed.",
+      "type": "string",
+      "const": "unavailable"
+    },
+    {
+      "description": "Specific authority must first be granted.",
+      "type": "string",
+      "const": "approval_required"
+    }
+  ]
+}

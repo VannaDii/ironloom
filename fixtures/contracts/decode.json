@@ -1,0 +1,937 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "contract": "factory_setup",
+      "name": "explicit-required-setup",
+      "input": {
+        "lesson_handling": "project_only",
+        "delivery_confirmed": true,
+        "publish_branch": true,
+        "merge": false,
+        "deploy": false
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "factory_setup",
+      "name": "missing-lesson-handling",
+      "input": {
+        "delivery_confirmed": true,
+        "publish_branch": true,
+        "merge": false,
+        "deploy": false
+      },
+      "expected_errors": [
+        {
+          "field": "$",
+          "code": "invalid_structure"
+        }
+      ]
+    },
+    {
+      "contract": "factory_setup",
+      "name": "delivery-is-not-implied",
+      "input": {
+        "lesson_handling": "track_for_review",
+        "delivery_confirmed": false,
+        "publish_branch": true,
+        "merge": false,
+        "deploy": false
+      },
+      "expected_errors": [
+        {
+          "field": "delivery_confirmed",
+          "code": "confirmation_required"
+        }
+      ]
+    },
+    {
+      "contract": "instruction_copy",
+      "name": "pending-reload",
+      "input": {
+        "instruction_id": "instructions-1",
+        "assignment_id": "assignment-1",
+        "revision": "2",
+        "acknowledged_revision": "1",
+        "content": "Review the assigned files."
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "instruction_copy",
+      "name": "future-ack",
+      "input": {
+        "instruction_id": "instructions-1",
+        "assignment_id": "assignment-1",
+        "revision": "2",
+        "acknowledged_revision": "3",
+        "content": "Review the assigned files."
+      },
+      "expected_errors": [
+        {
+          "field": "acknowledged_revision",
+          "code": "future_revision"
+        }
+      ]
+    },
+    {
+      "contract": "instruction_copy",
+      "name": "numeric-revision-rejected",
+      "input": {
+        "instruction_id": "instructions-1",
+        "assignment_id": "assignment-1",
+        "revision": 2,
+        "acknowledged_revision": "1",
+        "content": "Review the assigned files."
+      },
+      "expected_errors": [
+        {
+          "field": "revision",
+          "code": "invalid_structure"
+        }
+      ]
+    },
+    {
+      "contract": "instruction_copy",
+      "name": "exact-large-revision",
+      "input": {
+        "instruction_id": "instructions-1",
+        "assignment_id": "assignment-1",
+        "revision": "9007199254740993",
+        "acknowledged_revision": "1",
+        "content": "Review the assigned files."
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "command",
+      "name": "exact-approval",
+      "input": {
+        "command_id": "command-1",
+        "project_id": "project-1",
+        "expected_revision": "1",
+        "action": {
+          "type": "approve",
+          "data": {
+            "plan": {
+              "plan_id": "plan-1",
+              "revision": "1",
+              "content_hash": "sha256-scope-1",
+              "approved_by": "operator-1"
+            }
+          }
+        }
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "command",
+      "name": "nested-approval-zero",
+      "input": {
+        "command_id": "command-1",
+        "project_id": "project-1",
+        "expected_revision": "1",
+        "action": {
+          "type": "approve",
+          "data": {
+            "plan": {
+              "plan_id": "plan-1",
+              "revision": "0",
+              "content_hash": "sha256-scope-1",
+              "approved_by": "operator-1"
+            }
+          }
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "action.data.plan.revision",
+          "code": "must_be_positive"
+        }
+      ]
+    },
+    {
+      "contract": "command",
+      "name": "blank-input",
+      "input": {
+        "command_id": "command-1",
+        "project_id": "project-1",
+        "expected_revision": "1",
+        "action": {
+          "type": "input",
+          "data": {
+            "conversation_id": "conversation-1",
+            "text": " "
+          }
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "action.data.text",
+          "code": "required"
+        }
+      ]
+    },
+    {
+      "contract": "command",
+      "name": "turn-bound-steering",
+      "input": {
+        "command_id": "command-1",
+        "project_id": "project-1",
+        "expected_revision": "1",
+        "action": {
+          "type": "steer",
+          "data": {
+            "conversation_id": "conversation-1",
+            "expected_turn_id": "turn-1",
+            "text": "Keep the existing layout."
+          }
+        }
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "command",
+      "name": "steering-needs-turn",
+      "input": {
+        "command_id": "command-1",
+        "project_id": "project-1",
+        "expected_revision": "1",
+        "action": {
+          "type": "steer",
+          "data": {
+            "conversation_id": "conversation-1",
+            "text": "Keep it."
+          }
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "action.data",
+          "code": "invalid_structure"
+        }
+      ]
+    },
+    {
+      "contract": "command",
+      "name": "enum-errors-do-not-echo",
+      "input": {
+        "command_id": "command-1",
+        "project_id": "project-1",
+        "expected_revision": "1",
+        "action": {
+          "type": "private-secret-token",
+          "data": {}
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "action.type",
+          "code": "invalid_structure"
+        }
+      ]
+    },
+    {
+      "contract": "usage",
+      "name": "unknown-is-not-zero",
+      "input": {
+        "inference_id": "inference-1",
+        "input_tokens": null,
+        "output_tokens": null,
+        "cached_tokens": null,
+        "basis": "unknown",
+        "billing": "account",
+        "cost_micros": null,
+        "currency": null,
+        "calculation_basis": null
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "usage",
+      "name": "unknown-cannot-claim-zero",
+      "input": {
+        "inference_id": "inference-1",
+        "input_tokens": null,
+        "output_tokens": "0",
+        "cached_tokens": null,
+        "basis": "unknown",
+        "billing": "account",
+        "cost_micros": null,
+        "currency": null,
+        "calculation_basis": null
+      },
+      "expected_errors": [
+        {
+          "field": "basis",
+          "code": "unknown_cannot_report_totals"
+        }
+      ]
+    },
+    {
+      "contract": "usage",
+      "name": "cost-needs-basis",
+      "input": {
+        "inference_id": "inference-1",
+        "input_tokens": null,
+        "output_tokens": null,
+        "cached_tokens": null,
+        "basis": "reported",
+        "billing": "account",
+        "cost_micros": "1",
+        "currency": null,
+        "calculation_basis": null
+      },
+      "expected_errors": [
+        {
+          "field": "cost_micros",
+          "code": "cost_basis_required"
+        }
+      ]
+    },
+    {
+      "contract": "authority_check",
+      "name": "explicit-resource",
+      "input": {
+        "operator_id": "operator-1",
+        "worker_id": null,
+        "assignment_id": null,
+        "resource": {
+          "kind": "project",
+          "id": "project-1",
+          "project_id": "project-1"
+        },
+        "permission": "view",
+        "authorization_model": "model-1"
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "authority_check",
+      "name": "worker-needs-assignment",
+      "input": {
+        "operator_id": "operator-1",
+        "worker_id": "worker-1",
+        "assignment_id": null,
+        "resource": {
+          "kind": "project",
+          "id": "project-1",
+          "project_id": "project-1"
+        },
+        "permission": "view",
+        "authorization_model": "model-1"
+      },
+      "expected_errors": [
+        {
+          "field": "assignment_id",
+          "code": "delegation_required"
+        }
+      ]
+    },
+    {
+      "contract": "lesson",
+      "name": "origin-applies-without-review",
+      "input": {
+        "lesson_id": "lesson-1",
+        "revision": "1",
+        "origin_project": "project-1",
+        "origin_assignment": "assignment-1",
+        "source": "conversation-1/item-1",
+        "scope": "project",
+        "content": "Run the focused parser tests."
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "lesson",
+      "name": "lesson-revision-required",
+      "input": {
+        "lesson_id": "lesson-1",
+        "revision": "0",
+        "origin_project": "project-1",
+        "origin_assignment": "assignment-1",
+        "source": "conversation-1/item-1",
+        "scope": "project",
+        "content": "Run the focused parser tests."
+      },
+      "expected_errors": [
+        {
+          "field": "revision",
+          "code": "must_be_positive"
+        }
+      ]
+    },
+    {
+      "contract": "login_request",
+      "name": "secret-redacted-debug",
+      "input": {
+        "username": "operator-1",
+        "password": "temporary-fixture-secret"
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "login_request",
+      "name": "secret-type-error-redacted",
+      "input": {
+        "username": "operator-1",
+        "password": {
+          "secret": "temporary-fixture-secret"
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "password",
+          "code": "invalid_structure"
+        }
+      ]
+    },
+    {
+      "contract": "login_request",
+      "name": "empty-secret",
+      "input": {
+        "username": "operator-1",
+        "password": " "
+      },
+      "expected_errors": [
+        {
+          "field": "password.secret",
+          "code": "required"
+        }
+      ]
+    },
+    {
+      "contract": "replay_cursor",
+      "name": "exact-browser-cursor",
+      "input": {
+        "conversation_id": "conversation-1",
+        "sequence": "18446744073709551615"
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "replay_cursor",
+      "name": "overflow-rejected",
+      "input": {
+        "conversation_id": "conversation-1",
+        "sequence": "18446744073709551616"
+      },
+      "expected_errors": [
+        {
+          "field": "sequence",
+          "code": "invalid_counter"
+        }
+      ]
+    },
+    {
+      "contract": "replay_cursor",
+      "name": "canonical-counter",
+      "input": {
+        "conversation_id": "conversation-1",
+        "sequence": "01"
+      },
+      "expected_errors": [
+        {
+          "field": "sequence",
+          "code": "noncanonical_counter"
+        }
+      ]
+    },
+    {
+      "contract": "relay_cursor",
+      "name": "transport-cursor",
+      "input": {
+        "client_id": "client-1",
+        "stream_id": "stream-1",
+        "acknowledged_sequence": "7",
+        "acknowledged_segment": null,
+        "subscription_cursor": "opaque-relay-subscription-1"
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "model_selection",
+      "name": "simulated-local-identity",
+      "input": {
+        "profile_id": "profile-1",
+        "model_id": "weights-1",
+        "revision": "rev-1",
+        "quantization": "q4",
+        "checkpoint_hash": "manifest-1",
+        "engine": {
+          "name": "fixture-engine",
+          "version": "1",
+          "backend": "simulated",
+          "configuration_hash": "engine-config-1"
+        },
+        "credential_id": null,
+        "reasoning_effort": null,
+        "devices": [
+          {
+            "device_id": "gpu-1",
+            "host_id": "physical-host-1",
+            "parent_id": null,
+            "hardware_key": "vendor-uuid-1",
+            "reconciled": true
+          }
+        ],
+        "provider": "fixture-local",
+        "billing": "local_estimate"
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "model_selection",
+      "name": "unknown-device-blocks-admission",
+      "input": {
+        "profile_id": "profile-1",
+        "model_id": "weights-1",
+        "revision": "rev-1",
+        "quantization": "q4",
+        "checkpoint_hash": "manifest-1",
+        "engine": {
+          "name": "fixture-engine",
+          "version": "1",
+          "backend": "simulated",
+          "configuration_hash": "engine-config-1"
+        },
+        "credential_id": null,
+        "reasoning_effort": null,
+        "devices": [
+          {
+            "device_id": "gpu-1",
+            "host_id": "physical-host-1",
+            "parent_id": null,
+            "hardware_key": "vendor-uuid-1",
+            "reconciled": false
+          }
+        ],
+        "provider": "fixture-local",
+        "billing": "local_estimate"
+      },
+      "expected_errors": [
+        {
+          "field": "devices",
+          "code": "identity_unresolved"
+        }
+      ]
+    },
+    {
+      "contract": "model_selection",
+      "name": "local-needs-placement",
+      "input": {
+        "profile_id": "profile-1",
+        "model_id": "weights-1",
+        "revision": "rev-1",
+        "quantization": "q4",
+        "checkpoint_hash": "manifest-1",
+        "engine": {
+          "name": "fixture-engine",
+          "version": "1",
+          "backend": "simulated",
+          "configuration_hash": "engine-config-1"
+        },
+        "credential_id": null,
+        "reasoning_effort": null,
+        "devices": [],
+        "provider": "fixture-local",
+        "billing": "local_estimate"
+      },
+      "expected_errors": [
+        {
+          "field": "devices",
+          "code": "local_placement_required"
+        }
+      ]
+    },
+    {
+      "contract": "model_selection",
+      "name": "remote-has-no-device-placement",
+      "input": {
+        "profile_id": "profile-1",
+        "model_id": "weights-1",
+        "revision": "rev-1",
+        "quantization": "q4",
+        "checkpoint_hash": "manifest-1",
+        "engine": null,
+        "credential_id": null,
+        "reasoning_effort": null,
+        "devices": [
+          {
+            "device_id": "gpu-1",
+            "host_id": "physical-host-1",
+            "parent_id": null,
+            "hardware_key": "vendor-uuid-1",
+            "reconciled": true
+          }
+        ],
+        "provider": "fixture-remote",
+        "billing": "api_key"
+      },
+      "expected_errors": [
+        {
+          "field": "devices",
+          "code": "remote_placement_forbidden"
+        }
+      ]
+    },
+    {
+      "contract": "residency",
+      "name": "active-request-protects-resident",
+      "input": {
+        "resident_id": "resident-1",
+        "selection": {
+          "profile_id": "profile-1",
+          "model_id": "weights-1",
+          "revision": "rev-1",
+          "quantization": "q4",
+          "checkpoint_hash": "manifest-1",
+          "engine": {
+            "name": "fixture-engine",
+            "version": "1",
+            "backend": "simulated",
+            "configuration_hash": "engine-config-1"
+          },
+          "credential_id": null,
+          "reasoning_effort": null,
+          "devices": [
+            {
+              "device_id": "gpu-1",
+              "host_id": "physical-host-1",
+              "parent_id": null,
+              "hardware_key": "vendor-uuid-1",
+              "reconciled": true
+            }
+          ],
+          "provider": "fixture-local",
+          "billing": "local_estimate"
+        },
+        "active_requests": "1",
+        "last_used_at_ms": "3",
+        "reserved_bytes": "100"
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "residency",
+      "name": "idle-resident-is-lru-eligible",
+      "input": {
+        "resident_id": "resident-1",
+        "selection": {
+          "profile_id": "profile-1",
+          "model_id": "weights-1",
+          "revision": "rev-1",
+          "quantization": "q4",
+          "checkpoint_hash": "manifest-1",
+          "engine": {
+            "name": "fixture-engine",
+            "version": "1",
+            "backend": "simulated",
+            "configuration_hash": "engine-config-1"
+          },
+          "credential_id": null,
+          "reasoning_effort": null,
+          "devices": [
+            {
+              "device_id": "gpu-1",
+              "host_id": "physical-host-1",
+              "parent_id": null,
+              "hardware_key": "vendor-uuid-1",
+              "reconciled": true
+            }
+          ],
+          "provider": "fixture-local",
+          "billing": "local_estimate"
+        },
+        "active_requests": "0",
+        "last_used_at_ms": "3",
+        "reserved_bytes": "100"
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "worker_event",
+      "name": "cancel-request-is-not-stopped",
+      "input": {
+        "worker_id": "worker-1",
+        "assignment_id": "assignment-1",
+        "turn_id": "turn-1",
+        "item_id": "item-1",
+        "usage": null,
+        "inference_id": null,
+        "tool_call_id": null,
+        "kind": "state_changed",
+        "text": "",
+        "state": "cancellation_requested"
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "worker_event",
+      "name": "confirmed-termination",
+      "input": {
+        "worker_id": "worker-1",
+        "assignment_id": "assignment-1",
+        "turn_id": "turn-1",
+        "item_id": "item-1",
+        "usage": null,
+        "inference_id": null,
+        "tool_call_id": null,
+        "kind": "termination_confirmed",
+        "text": "",
+        "state": "terminated"
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "worker_event",
+      "name": "false-termination",
+      "input": {
+        "worker_id": "worker-1",
+        "assignment_id": "assignment-1",
+        "turn_id": "turn-1",
+        "item_id": "item-1",
+        "usage": null,
+        "inference_id": null,
+        "tool_call_id": null,
+        "kind": "termination_confirmed",
+        "text": "",
+        "state": "cancellation_requested"
+      },
+      "expected_errors": [
+        {
+          "field": "state",
+          "code": "termination_required"
+        }
+      ]
+    },
+    {
+      "contract": "worker_event",
+      "name": "tool-needs-id",
+      "input": {
+        "worker_id": "worker-1",
+        "assignment_id": "assignment-1",
+        "turn_id": "turn-1",
+        "item_id": "item-1",
+        "usage": null,
+        "inference_id": null,
+        "tool_call_id": null,
+        "kind": "tool_ready",
+        "text": "",
+        "state": null
+      },
+      "expected_errors": [
+        {
+          "field": "tool_call_id",
+          "code": "tool_identity_mismatch"
+        }
+      ]
+    },
+    {
+      "contract": "worker_event",
+      "name": "usage-needs-typed-counters",
+      "input": {
+        "worker_id": "worker-1",
+        "assignment_id": "assignment-1",
+        "turn_id": "turn-1",
+        "item_id": "item-1",
+        "usage": null,
+        "inference_id": null,
+        "tool_call_id": null,
+        "kind": "usage",
+        "text": "",
+        "state": null
+      },
+      "expected_errors": [
+        {
+          "field": "usage",
+          "code": "usage_kind_mismatch"
+        }
+      ]
+    },
+    {
+      "contract": "worker_paths",
+      "name": "relative-authorized-paths",
+      "input": {
+        "assignment_id": "assignment-1",
+        "worker_id": "worker-1",
+        "write_paths": [
+          "src/file.rs"
+        ],
+        "artifact_area": "role/worker-1"
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "worker_paths",
+      "name": "no-parent-escape",
+      "input": {
+        "assignment_id": "assignment-1",
+        "worker_id": "worker-1",
+        "write_paths": [
+          "../secrets"
+        ],
+        "artifact_area": "role/worker-1"
+      },
+      "expected_errors": [
+        {
+          "field": "write_paths",
+          "code": "relative_normal_path_required"
+        }
+      ]
+    },
+    {
+      "contract": "factory_artifact",
+      "name": "no-discord-binding",
+      "input": {
+        "artifact_id": "artifact-1",
+        "project_id": "project-1",
+        "assignment_id": "assignment-1",
+        "worker_id": null,
+        "correlation_id": "correlation-1",
+        "kind": "handoff-v1",
+        "content_hash": "manifest-1",
+        "payload": {
+          "summary": "Parser repair"
+        }
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "model_selection",
+      "name": "duplicate-device-alias",
+      "input": {
+        "profile_id": "profile-1",
+        "model_id": "weights-1",
+        "revision": "rev-1",
+        "quantization": "q4",
+        "checkpoint_hash": "manifest-1",
+        "engine": {
+          "name": "fixture-engine",
+          "version": "1",
+          "backend": "simulated",
+          "configuration_hash": "engine-config-1"
+        },
+        "credential_id": null,
+        "reasoning_effort": null,
+        "devices": [
+          {
+            "device_id": "gpu-1",
+            "host_id": "physical-host-1",
+            "parent_id": null,
+            "hardware_key": "vendor-uuid-1",
+            "reconciled": true
+          },
+          {
+            "device_id": "gpu-1",
+            "host_id": "physical-host-1",
+            "parent_id": null,
+            "hardware_key": "vendor-uuid-1",
+            "reconciled": true
+          }
+        ],
+        "provider": "fixture-local",
+        "billing": "local_estimate"
+      },
+      "expected_errors": [
+        {
+          "field": "devices",
+          "code": "duplicate_device"
+        }
+      ]
+    },
+    {
+      "contract": "model_selection",
+      "name": "overlapping-parent",
+      "input": {
+        "profile_id": "profile-1",
+        "model_id": "weights-1",
+        "revision": "rev-1",
+        "quantization": "q4",
+        "checkpoint_hash": "manifest-1",
+        "engine": {
+          "name": "fixture-engine",
+          "version": "1",
+          "backend": "simulated",
+          "configuration_hash": "engine-config-1"
+        },
+        "credential_id": null,
+        "reasoning_effort": null,
+        "devices": [
+          {
+            "device_id": "gpu-1",
+            "host_id": "physical-host-1",
+            "parent_id": null,
+            "hardware_key": "vendor-uuid-1",
+            "reconciled": true
+          },
+          {
+            "device_id": "partition-1",
+            "host_id": "physical-host-1",
+            "parent_id": "gpu-1",
+            "hardware_key": "vendor-uuid-1",
+            "reconciled": true
+          }
+        ],
+        "provider": "fixture-local",
+        "billing": "local_estimate"
+      },
+      "expected_errors": [
+        {
+          "field": "devices",
+          "code": "overlapping_parent_placement"
+        }
+      ]
+    },
+    {
+      "contract": "role_configuration",
+      "name": "explicit-orchestrator-model",
+      "input": {
+        "role_id": "orchestrator",
+        "enabled": true,
+        "model_profile_id": "chosen-model-1",
+        "reasoning_applicable": true,
+        "reasoning_effort": "medium",
+        "instructions_id": "instructions-1"
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "role_configuration",
+      "name": "no-silent-model",
+      "input": {
+        "role_id": "orchestrator",
+        "enabled": true,
+        "model_profile_id": null,
+        "reasoning_applicable": true,
+        "reasoning_effort": "medium",
+        "instructions_id": "instructions-1"
+      },
+      "expected_errors": [
+        {
+          "field": "model_profile_id",
+          "code": "explicit_model_required"
+        }
+      ]
+    },
+    {
+      "contract": "role_configuration",
+      "name": "effort-required-where-applicable",
+      "input": {
+        "role_id": "orchestrator",
+        "enabled": true,
+        "model_profile_id": "chosen-model-1",
+        "reasoning_applicable": true,
+        "reasoning_effort": null,
+        "instructions_id": "instructions-1"
+      },
+      "expected_errors": [
+        {
+          "field": "reasoning_effort",
+          "code": "explicit_effort_required"
+        }
+      ]
+    }
+  ]
+}

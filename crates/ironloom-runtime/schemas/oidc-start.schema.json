@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/OidcStartData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "OidcStartData": {
+      "description": "Unchecked construction draft for `OidcStart`; validate before use.",
+      "type": "object",
+      "properties": {
+        "connection": {
+          "description": "Configured issuer/client connection, not arbitrary URL.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "redirect_id": {
+          "description": "Server allowlisted callback identifier.",
+          "$ref": "#/$defs/ActorId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "connection",
+        "redirect_id"
+      ]
+    }
+  }
+}

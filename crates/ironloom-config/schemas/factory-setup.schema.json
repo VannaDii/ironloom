@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/FactorySetupData",
+  "$defs": {
+    "FactorySetupData": {
+      "description": "Unchecked construction draft for `FactorySetup`; validate before use.",
+      "type": "object",
+      "properties": {
+        "delivery_confirmed": {
+          "description": "Human explicitly confirmed delivery authority.",
+          "type": "boolean"
+        },
+        "deploy": {
+          "description": "Explicit deployment authority.",
+          "type": "boolean"
+        },
+        "lesson_handling": {
+          "description": "Explicitly saved lesson handling choice.",
+          "$ref": "#/$defs/LessonHandling"
+        },
+        "merge": {
+          "description": "Explicit merge authority.",
+          "type": "boolean"
+        },
+        "publish_branch": {
+          "description": "Confirmed permission to publish a branch and PR.",
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "lesson_handling",
+        "delivery_confirmed",
+        "publish_branch",
+        "merge",
+        "deploy"
+      ]
+    },
+    "LessonHandling": {
+      "description": "Required explicit setup choice; no implicit default.",
+      "oneOf": [
+        {
+          "description": "Share new lessons only with sufficient share authority.",
+          "type": "string",
+          "const": "share_across_projects"
+        },
+        {
+          "description": "Apply immediately in origin project; no broader sharing.",
+          "type": "string",
+          "const": "project_only"
+        },
+        {
+          "description": "Apply immediately in origin; retain for later promotion or pruning.",
+          "type": "string",
+          "const": "track_for_review"
+        }
+      ]
+    }
+  }
+}

@@ -162,3 +162,6 @@ where
         }
     }
 }
+
+/// Software factory contracts; legacy foundation contracts remain readable.
+pub mod factory;

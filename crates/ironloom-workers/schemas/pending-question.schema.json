@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/PendingQuestionData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "AnswerId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom AnswerId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "AssignmentId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom AssignmentId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ConversationId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ConversationId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Counter": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Canonical decimal u64; semantic validation also enforces u64 maximum.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "ItemId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ItemId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "PendingQuestionData": {
+      "description": "Unchecked construction draft for `PendingQuestion`; validate before use.",
+      "type": "object",
+      "properties": {
+        "assignment_id": {
+          "description": "Original assignment.",
+          "$ref": "#/$defs/AssignmentId"
+        },
+        "choices": {
+          "description": "Allowed persisted choices.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ActorId"
+          }
+        },
+        "conversation_id": {
+          "description": "Source authorized conversation.",
+          "$ref": "#/$defs/ConversationId"
+        },
+        "item_id": {
+          "description": "Owning item.",
+          "$ref": "#/$defs/ItemId"
+        },
+        "question_id": {
+          "description": "Stable pending request identity.",
+          "$ref": "#/$defs/QuestionId"
+        },
+        "resolved_by": {
+          "description": "Durable resolution, absent while pending.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AnswerId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "revision": {
+          "description": "Reject stale answers.",
+          "$ref": "#/$defs/Counter"
+        },
+        "text": {
+          "description": "Original operator question wording.",
+          "type": "string"
+        },
+        "turn_id": {
+          "description": "Owning turn.",
+          "$ref": "#/$defs/TurnId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "question_id",
+        "assignment_id",
+        "conversation_id",
+        "turn_id",
+        "item_id",
+        "revision",
+        "text",
+        "choices"
+      ]
+    },
+    "QuestionId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom QuestionId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "TurnId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom TurnId value.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

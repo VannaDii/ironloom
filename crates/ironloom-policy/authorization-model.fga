@@ -1,0 +1,73 @@
+model
+  schema 1.1
+
+type operator
+
+type worker
+
+type installation
+  relations
+    define administrator: [operator]
+    define enroll_node: administrator
+
+type project
+  relations
+    define installation: [installation]
+    define self_grant: administrator from installation
+    define owner: [operator]
+    define viewer: [operator]
+    define operator: [operator]
+    define approver: [operator]
+    define manager: [operator]
+    define view: owner or viewer or operator or approver or manager
+    define operate: owner or operator or manager
+    define approve: owner or approver
+    define manage: owner or manager
+
+type assignment
+  relations
+    define project: [project]
+    define delegated: [worker]
+    define view: view from project
+    define operate: operate from project
+    define approve: approve from project
+    define manage: manage from project
+
+type conversation
+  relations
+    define project: [project]
+    define view: view from project
+    define operate: operate from project
+
+type file
+  relations
+    define assignment: [assignment]
+    define view: view from assignment
+    define operate: operate from assignment
+
+type credential
+  relations
+    define owner: [operator]
+    define user: [operator]
+    define replacer: [operator]
+    define sharer: [operator]
+    define deleter: [operator]
+    define view: owner
+    define use_credential: owner or user
+    define replace_credential: owner or replacer
+    define share: owner or sharer
+    define delete_credential: owner or deleter
+
+type lesson
+  relations
+    define viewer: [operator, operator:*]
+    define manager: [operator]
+    define sharer: [operator]
+    define view: viewer or manager or sharer
+    define manage: manager
+    define share: sharer
+
+type node
+  relations
+    define installation: [installation]
+    define manage: enroll_node from installation

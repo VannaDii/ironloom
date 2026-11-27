@@ -488,3 +488,6 @@ fn validate_config_key(value: &str) -> Result<(), ConfigError> {
 fn is_empty(value: &str) -> bool {
     value.trim().is_empty()
 }
+
+/// Software factory contracts; legacy foundation contracts remain readable.
+pub mod factory;

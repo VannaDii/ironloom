@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/SessionSummaryData",
+  "$defs": {
+    "ConversationId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ConversationId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Counter": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Canonical decimal u64; semantic validation also enforces u64 maximum.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "ProjectId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ProjectId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "SessionSummaryData": {
+      "description": "Unchecked construction draft for `SessionSummary`; validate before use.",
+      "type": "object",
+      "properties": {
+        "active_turn_id": {
+          "description": "Current turn for steering.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TurnId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "archived": {
+          "description": "Archive state.",
+          "type": "boolean"
+        },
+        "conversation_id": {
+          "description": "Stable conversation identity.",
+          "$ref": "#/$defs/ConversationId"
+        },
+        "last_human_interaction_ms": {
+          "description": "Background work does not reorder dashboard.",
+          "$ref": "#/$defs/Counter"
+        },
+        "project_id": {
+          "description": "Current access scope.",
+          "$ref": "#/$defs/ProjectId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "conversation_id",
+        "project_id",
+        "archived",
+        "last_human_interaction_ms"
+      ]
+    },
+    "TurnId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom TurnId value.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

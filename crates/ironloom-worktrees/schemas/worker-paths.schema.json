@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/WorkerPathsData",
+  "$defs": {
+    "AssignmentId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom AssignmentId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "WorkerId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom WorkerId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "WorkerPathsData": {
+      "description": "Unchecked construction draft for `WorkerPaths`; validate before use.",
+      "type": "object",
+      "properties": {
+        "artifact_area": {
+          "description": "Managed sibling role area, excluding instructions.",
+          "type": "string"
+        },
+        "assignment_id": {
+          "description": "Enforced assignment boundary.",
+          "$ref": "#/$defs/AssignmentId"
+        },
+        "worker_id": {
+          "description": "Worker owner.",
+          "$ref": "#/$defs/WorkerId"
+        },
+        "write_paths": {
+          "description": "Resolved relative paths; sandbox still handles symlinks and descendants.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "assignment_id",
+        "worker_id",
+        "write_paths",
+        "artifact_area"
+      ]
+    }
+  }
+}

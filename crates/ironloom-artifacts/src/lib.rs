@@ -23,7 +23,8 @@ pub enum ArtifactKind {
     PolicyDecision,
 }
 
-/// Immutable artifact envelope stored under `.ironloom/artifacts`.
+/// Historical version-one artifact envelope, retaining its original Discord thread and checksum.
+/// New factory records use [`factory::FactoryArtifact`] without thread binding.
 #[derive(Clone, Debug, JsonSchema, PartialEq, Deserialize, Serialize)]
 pub struct ArtifactEnvelope {
     id: ArtifactId,
@@ -115,3 +116,6 @@ fn checksum_payload(
     let encoded = serde_json::to_vec(&stable_payload).unwrap_or_default();
     hex::encode(Sha256::digest(encoded))
 }
+
+/// Software factory contracts; legacy foundation contracts remain readable.
+pub mod factory;

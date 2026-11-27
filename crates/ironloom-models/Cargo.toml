@@ -1,0 +1,24 @@
+[package]
+name = "ironloom-models"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+publish.workspace = true
+description = "Ironloom model, engine, source and device adapter contracts."
+
+[dependencies]
+ironloom-observability = { path = "../ironloom-observability", version = "0.1.0" }
+url.workspace = true
+tokio.workspace = true
+ironloom-workers = { path = "../ironloom-workers", version = "0.1.0" }
+ironloom-policy = { path = "../ironloom-policy", version = "0.1.0" }
+ironloom-core = { path = "../ironloom-core", version = "0.1.0" }
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true

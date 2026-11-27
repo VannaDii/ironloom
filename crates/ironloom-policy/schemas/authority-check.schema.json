@@ -1,0 +1,228 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/AuthorityCheckData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "AssignmentId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom AssignmentId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "AuthorityCheckData": {
+      "description": "Unchecked construction draft for `AuthorityCheck`; validate before use.",
+      "type": "object",
+      "properties": {
+        "assignment_id": {
+          "description": "Approved assignment delegation.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AssignmentId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "authorization_model": {
+          "description": "Installation coordinated OpenFGA model revision.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "operator_id": {
+          "description": "Authenticated server-resolved human.",
+          "$ref": "#/$defs/OperatorId"
+        },
+        "permission": {
+          "description": "Required grant.",
+          "$ref": "#/$defs/Permission"
+        },
+        "resource": {
+          "description": "Actual affected resource, resolved from arguments.",
+          "$ref": "#/$defs/Validated"
+        },
+        "worker_id": {
+          "description": "Delegated worker, if any.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WorkerId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "operator_id",
+        "resource",
+        "permission",
+        "authorization_model"
+      ]
+    },
+    "OperatorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom OperatorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Permission": {
+      "description": "Resource grant; administrator identity alone grants no project content access.",
+      "oneOf": [
+        {
+          "description": "Read approved resource content.",
+          "type": "string",
+          "const": "view"
+        },
+        {
+          "description": "Dispatch within approved scope.",
+          "type": "string",
+          "const": "operate"
+        },
+        {
+          "description": "Approve a plan revision.",
+          "type": "string",
+          "const": "approve"
+        },
+        {
+          "description": "Manage membership or content.",
+          "type": "string",
+          "const": "manage"
+        },
+        {
+          "description": "Broaden visibility explicitly.",
+          "type": "string",
+          "const": "share"
+        },
+        {
+          "description": "Use through a trusted adapter.",
+          "type": "string",
+          "const": "use_credential"
+        },
+        {
+          "description": "Replace secret material.",
+          "type": "string",
+          "const": "replace_credential"
+        },
+        {
+          "description": "Delete secret material.",
+          "type": "string",
+          "const": "delete_credential"
+        },
+        {
+          "description": "Enroll another service node.",
+          "type": "string",
+          "const": "enroll_node"
+        },
+        {
+          "description": "Record administrator access to a private project.",
+          "type": "string",
+          "const": "self_grant"
+        }
+      ]
+    },
+    "ProjectId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ProjectId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ResourceData": {
+      "description": "Unchecked construction draft for `Resource`; validate before use.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Stable resource identity.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "kind": {
+          "description": "Resource type.",
+          "$ref": "#/$defs/ResourceKind"
+        },
+        "project_id": {
+          "description": "Owning project for inheritance; absent for installation records.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProjectId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "id"
+      ]
+    },
+    "ResourceKind": {
+      "description": "Explicit resource type; never a transport thread binding.",
+      "oneOf": [
+        {
+          "description": "Installation resource.",
+          "type": "string",
+          "const": "installation"
+        },
+        {
+          "description": "Project resource.",
+          "type": "string",
+          "const": "project"
+        },
+        {
+          "description": "Assignment resource.",
+          "type": "string",
+          "const": "assignment"
+        },
+        {
+          "description": "Conversation resource.",
+          "type": "string",
+          "const": "conversation"
+        },
+        {
+          "description": "File resource.",
+          "type": "string",
+          "const": "file"
+        },
+        {
+          "description": "Credential resource.",
+          "type": "string",
+          "const": "credential"
+        },
+        {
+          "description": "Lesson resource.",
+          "type": "string",
+          "const": "lesson"
+        },
+        {
+          "description": "Node resource.",
+          "type": "string",
+          "const": "node"
+        }
+      ]
+    },
+    "Validated": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/ResourceData"
+    },
+    "WorkerId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom WorkerId value.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

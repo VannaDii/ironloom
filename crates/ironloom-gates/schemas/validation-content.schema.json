@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/ValidationContentData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "AssignmentId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom AssignmentId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Counter": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Canonical decimal u64; semantic validation also enforces u64 maximum.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "ValidationContentData": {
+      "description": "Unchecked construction draft for `ValidationContent`; validate before use.",
+      "type": "object",
+      "properties": {
+        "assignment_id": {
+          "description": "Reviewed assignment.",
+          "$ref": "#/$defs/AssignmentId"
+        },
+        "mutation_fence": {
+          "description": "Exclusive final-validation ownership.",
+          "$ref": "#/$defs/Counter"
+        },
+        "mutations_drained": {
+          "description": "Active edits drained before gates and coordinated commit.",
+          "type": "boolean"
+        },
+        "source_digest": {
+          "description": "Exact content including dirty files, not only commit SHA.",
+          "$ref": "#/$defs/ActorId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "assignment_id",
+        "source_digest",
+        "mutation_fence",
+        "mutations_drained"
+      ]
+    }
+  }
+}

@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/ModelSourceData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ModelSourceData": {
+      "description": "Unchecked construction draft for `ModelSource`; validate before use.",
+      "type": "object",
+      "properties": {
+        "access": {
+          "description": "Current source-specific access.",
+          "$ref": "#/$defs/SourceAccess"
+        },
+        "checksum": {
+          "description": "Verified download/manifest hash.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "host": {
+          "description": "Hosting hub/distribution.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "license": {
+          "description": "License metadata; not automatic acceptance.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "publisher": {
+          "description": "Original publisher distinct from host.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "repository_url": {
+          "description": "Human access and license page.",
+          "type": "string"
+        },
+        "revision": {
+          "description": "Exact source revision.",
+          "$ref": "#/$defs/ActorId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "publisher",
+        "host",
+        "repository_url",
+        "revision",
+        "access"
+      ]
+    },
+    "SourceAccess": {
+      "description": "Source access distinct from compatibility/fit/qualification.",
+      "oneOf": [
+        {
+          "description": "Download permitted subject to current access recheck.",
+          "type": "string",
+          "const": "accessible"
+        },
+        {
+          "description": "Connect source account.",
+          "type": "string",
+          "const": "authentication_required"
+        },
+        {
+          "description": "Human follows repository link to request access.",
+          "type": "string",
+          "const": "terms_required"
+        },
+        {
+          "description": "Recheck access; download stays disabled.",
+          "type": "string",
+          "const": "awaiting_approval"
+        },
+        {
+          "description": "Access denied or revoked.",
+          "type": "string",
+          "const": "denied"
+        }
+      ]
+    }
+  }
+}

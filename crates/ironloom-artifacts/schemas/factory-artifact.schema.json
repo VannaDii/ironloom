@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/FactoryArtifactData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ArtifactId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ArtifactId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "AssignmentId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom AssignmentId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "CorrelationId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom CorrelationId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "FactoryArtifactData": {
+      "description": "Unchecked construction draft for `FactoryArtifact`; validate before use.",
+      "type": "object",
+      "properties": {
+        "artifact_id": {
+          "description": "Stable managed record ID.",
+          "$ref": "#/$defs/ArtifactId"
+        },
+        "assignment_id": {
+          "description": "Assignment scope, independent of thread.",
+          "$ref": "#/$defs/AssignmentId"
+        },
+        "content_hash": {
+          "description": "Verified payload manifest hash.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "correlation_id": {
+          "description": "Operation correlation.",
+          "$ref": "#/$defs/CorrelationId"
+        },
+        "kind": {
+          "description": "Versioned artifact kind.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "payload": {
+          "description": "Structured domain record; not authority."
+        },
+        "project_id": {
+          "description": "Project resource scope.",
+          "$ref": "#/$defs/ProjectId"
+        },
+        "worker_id": {
+          "description": "Optional producer.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WorkerId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "artifact_id",
+        "project_id",
+        "assignment_id",
+        "correlation_id",
+        "kind",
+        "content_hash",
+        "payload"
+      ]
+    },
+    "ProjectId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ProjectId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "WorkerId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom WorkerId value.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

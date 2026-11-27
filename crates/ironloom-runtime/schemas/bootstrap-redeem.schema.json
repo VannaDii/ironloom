@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/BootstrapRedeemData",
+  "$defs": {
+    "BootstrapRedeemData": {
+      "description": "Unchecked construction draft for `BootstrapRedeem`; validate before use.",
+      "type": "object",
+      "properties": {
+        "token": {
+          "description": "One-time initial token; authenticated account comes from session.",
+          "$ref": "#/$defs/SecretInput"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "token"
+      ]
+    },
+    "SecretInput": {
+      "description": "Secret submitted only to the authentication backend; Debug is always redacted.",
+      "type": "string"
+    }
+  }
+}

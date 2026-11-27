@@ -245,3 +245,6 @@ fn collect_output(child: std::process::Child, command_name: &str) -> GateResult 
         ),
     }
 }
+
+/// Software factory contracts; legacy foundation contracts remain readable.
+pub mod factory;

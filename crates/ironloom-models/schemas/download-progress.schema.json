@@ -1,0 +1,175 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/DownloadProgressData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Counter": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Canonical decimal u64; semantic validation also enforces u64 maximum.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "CredentialId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom CredentialId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "DownloadProgressData": {
+      "description": "Unchecked construction draft for `DownloadProgress`; validate before use.",
+      "type": "object",
+      "properties": {
+        "cancel_requested": {
+          "description": "Request is not stopped confirmation.",
+          "type": "boolean"
+        },
+        "download_id": {
+          "description": "Stable resumable download identity.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "received_bytes": {
+          "description": "Persisted verified byte progress.",
+          "$ref": "#/$defs/Counter"
+        },
+        "resume_token_ref": {
+          "description": "Protected resumable transport state, not a secret on wire.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CredentialId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source": {
+          "description": "Pinned provenance.",
+          "$ref": "#/$defs/Validated"
+        },
+        "terminated": {
+          "description": "Confirmed owned transfer termination.",
+          "type": "boolean"
+        },
+        "total_bytes": {
+          "description": "Absent when unavailable.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Counter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "download_id",
+        "received_bytes",
+        "cancel_requested",
+        "terminated"
+      ]
+    },
+    "ModelSourceData": {
+      "description": "Unchecked construction draft for `ModelSource`; validate before use.",
+      "type": "object",
+      "properties": {
+        "access": {
+          "description": "Current source-specific access.",
+          "$ref": "#/$defs/SourceAccess"
+        },
+        "checksum": {
+          "description": "Verified download/manifest hash.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "host": {
+          "description": "Hosting hub/distribution.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "license": {
+          "description": "License metadata; not automatic acceptance.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "publisher": {
+          "description": "Original publisher distinct from host.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "repository_url": {
+          "description": "Human access and license page.",
+          "type": "string"
+        },
+        "revision": {
+          "description": "Exact source revision.",
+          "$ref": "#/$defs/ActorId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "publisher",
+        "host",
+        "repository_url",
+        "revision",
+        "access"
+      ]
+    },
+    "SourceAccess": {
+      "description": "Source access distinct from compatibility/fit/qualification.",
+      "oneOf": [
+        {
+          "description": "Download permitted subject to current access recheck.",
+          "type": "string",
+          "const": "accessible"
+        },
+        {
+          "description": "Connect source account.",
+          "type": "string",
+          "const": "authentication_required"
+        },
+        {
+          "description": "Human follows repository link to request access.",
+          "type": "string",
+          "const": "terms_required"
+        },
+        {
+          "description": "Recheck access; download stays disabled.",
+          "type": "string",
+          "const": "awaiting_approval"
+        },
+        {
+          "description": "Access denied or revoked.",
+          "type": "string",
+          "const": "denied"
+        }
+      ]
+    },
+    "Validated": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/ModelSourceData"
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "BackendQualification",
+  "description": "Separate from compatibility and estimated fit.",
+  "oneOf": [
+    {
+      "description": "No hardware execution qualification.",
+      "type": "string",
+      "const": "unqualified"
+    },
+    {
+      "description": "Qualified only on recorded hardware/backend/version.",
+      "type": "string",
+      "const": "qualified"
+    }
+  ]
+}

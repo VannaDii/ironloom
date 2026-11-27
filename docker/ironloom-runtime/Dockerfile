@@ -1,4 +1,4 @@
-FROM rust:1.92-alpine3.23 AS builder
+FROM rust:1.96-alpine3.24 AS builder
 
 WORKDIR /workspace
 RUN apk add --no-cache musl-dev

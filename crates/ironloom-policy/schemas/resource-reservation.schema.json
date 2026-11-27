@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/ResourceReservationData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Counter": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Canonical decimal u64; semantic validation also enforces u64 maximum.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "DeviceId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom DeviceId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "NodeId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom NodeId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ReservationId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ReservationId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ResourceReservationData": {
+      "description": "Unchecked construction draft for `ResourceReservation`; validate before use.",
+      "type": "object",
+      "properties": {
+        "authority_id": {
+          "description": "One authority for all aliases/partitions of a physical pool.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "bytes": {
+          "description": "Resident/caches/drafts/active request memory plus headroom.",
+          "$ref": "#/$defs/Counter"
+        },
+        "concurrency": {
+          "description": "Configured concurrent request capacity.",
+          "$ref": "#/$defs/Counter"
+        },
+        "device_id": {
+          "description": "Canonical physical capacity pool.",
+          "$ref": "#/$defs/DeviceId"
+        },
+        "expires_at_ms": {
+          "description": "Renewable ownership deadline.",
+          "$ref": "#/$defs/Counter"
+        },
+        "fence": {
+          "description": "Monotonic ownership token; expired lease alone does not free capacity.",
+          "$ref": "#/$defs/Counter"
+        },
+        "node_id": {
+          "description": "Current execution owner.",
+          "$ref": "#/$defs/NodeId"
+        },
+        "partition_id": {
+          "description": "Child view consuming parent capacity.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DeviceId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reservation_id": {
+          "description": "Durable unique claim.",
+          "$ref": "#/$defs/ReservationId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "reservation_id",
+        "authority_id",
+        "node_id",
+        "device_id",
+        "fence",
+        "bytes",
+        "concurrency",
+        "expires_at_ms"
+      ]
+    }
+  }
+}
