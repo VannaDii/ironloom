@@ -65,7 +65,7 @@ After Ironloom's native-host integration and required configuration are qualifie
 5. Results and usage are persisted and streamed to the operator with OTel correlation.
 6. Delivery follows configured owner authority; worktree cleanup waits for worker release and preservation of required changes.
 
-This is a target slice, not an accepted implementation result. Resource grants and authorization packaging, shared implementation contracts, native transport/persistence integration, platform/backend coverage, and inference-engine selection remain open in the detailed plan.
+This is a target slice, not an accepted implementation result. Authorization policy and packaging, direct Rust native-protocol implementation, and the initial inference engines are selected. Shared implementation contracts, protocol compatibility, platform/backend qualification, and additional-engine integration remain implementation or validation work in the detailed plan.
 
 ## Implementation Phases
 
