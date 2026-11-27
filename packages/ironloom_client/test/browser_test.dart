@@ -1,0 +1,91 @@
+import 'package:ironloom_client/ironloom_client.dart';
+import 'package:test/test.dart';
+
+void main() {
+  test('u64 counters remain exact on VM and browser', () {
+    for (final value in ['0', '9007199254740993', '18446744073709551615']) {
+      final cursor = decode(
+        '{"conversation_id":"s","sequence":"$value"}',
+        ReplayCursor.fromJson,
+      );
+      expect(cursor.sequence.toJson(), value);
+      expect(cursor.toJson()['sequence'], value);
+    }
+    for (final value in [
+      '18446744073709551616',
+      '-1',
+      '01',
+      '+1',
+      '1.0',
+      ' 1',
+      '0xff',
+    ]) {
+      expect(() => Counter(value), throwsA(isA<ValidationErrors>()));
+    }
+    expect(() => Counter.fromJson(1), throwsA(isA<ValidationErrors>()));
+    expect(
+      Counter('18446744073709551615') > Counter('9007199254740993'),
+      isTrue,
+    );
+  });
+
+  test('nested constructor checks survive web compilation', () {
+    expect(
+      () => RoleConfiguration(
+        roleId: ActorId('planner'),
+        enabled: true,
+        reasoningApplicable: true,
+        instructionsId: InstructionId('i'),
+      ),
+      throwsA(
+        isA<ValidationErrors>().having(
+          (e) => e.fields.first.code,
+          'code',
+          'explicit_model_required',
+        ),
+      ),
+    );
+    expect(
+      () => FactorySetup(
+        lessonHandling: LessonHandling.projectOnly,
+        deliveryConfirmed: false,
+        publishBranch: true,
+        merge: false,
+        deploy: false,
+      ),
+      throwsA(isA<ValidationErrors>()),
+    );
+  });
+  test('SSE cursor encoding preserves scope and full-range sequences', () {
+    final cursor = ReplayCursor(
+      conversationId: ConversationId('session:1'),
+      sequence: Counter('9007199254740993'),
+    );
+    final header = encodeCursor(cursor);
+    expect(
+      header,
+      'eyJjb252ZXJzYXRpb25faWQiOiJzZXNzaW9uOjEiLCJzZXF1ZW5jZSI6IjkwMDcxOTkyNTQ3NDA5OTMifQ',
+    );
+    expect(decodeCursor(header).toJson(), cursor.toJson());
+    for (final invalid in ['not!a!cursor', '$header=', 'Zh', 'a' * 4097]) {
+      expect(() => decodeCursor(invalid), throwsA(isA<ValidationErrors>()));
+    }
+  });
+
+  test('structured service failures decode without inventing success', () {
+    for (final json in [
+      '"conflict"',
+      '"cursor_expired"',
+      '"unavailable"',
+      '{"authentication":"forbidden"}',
+      '{"validation":{"fields":[{"field":"revision","code":"future_revision"}]}}',
+    ]) {
+      final failure = decode(json, ServiceError.fromJson);
+      expect(decode(json, ServiceError.fromJson).toJson(), failure.toJson());
+    }
+    expect(
+      () => decode('"success"', ServiceError.fromJson),
+      throwsA(isA<ValidationErrors>()),
+    );
+  });
+}
