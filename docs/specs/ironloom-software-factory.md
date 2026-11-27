@@ -24,7 +24,7 @@ Remove Discord control and its thread-to-work-item binding requirement. Preserve
 6. Orchestrate workers to develop tests, implement, review, document, and complete the approved work. Repair loops remain within configured bounds.
 7. Deliver according to the owner's instructions and configured publication, merge, and deployment permissions.
 
-Ship with permission to push a branch and open a pull request; merge and deployment require operator approval by default. Operators can explicitly configure different delivery authority. Planning merge order does not itself grant permission to merge into a protected delivery branch or deploy.
+Propose permission to push a branch and open a pull request, with operator approval for merge and deployment, as the shipped delivery mode. Setup must show this selection and obtain explicit human confirmation or a different configured mode before execution is ready; presenting a default is not consent. Operators can later configure different delivery authority. Planning merge order does not itself grant permission to merge into a protected delivery branch or deploy.
 
 Authorized work proceeds without repeated permission requests. Material scope or authority changes return to the human. A genuine design flaw requires an explanation, recommendation, tradeoff, and decision before the affected design changes; implementation difficulty alone is not a design flaw.
 
@@ -56,7 +56,11 @@ Before asking a similar question, consult applicable prior answers. Remind the o
 
 Ironloom owns authenticated configuration and interaction through a runtime web application, separate from the static public documentation site. Provide durable chat history, streamed messages and tool activity, worker progress, clarification questions, plan approval, follow-up steering, cancellation, pause/resume, and reconnection. Work continues when the browser disconnects. Client reconnection restores persisted state without itself resubmitting work; web and native clients share execution state.
 
-Support multiple human accounts from the first release, with both Ironloom-managed login and external OpenID Connect login. Either login path must require presentation of the initial setup token to establish an administrator on the installed instance; successful login alone is not administrator enrollment. Keep service login separate from provider inference credentials. Define project access and approval authority explicitly, and map native-client actions to an authorized human account rather than treating a connected host as unrestricted authority. The setup-token lifecycle and subsequent administrator enrollment rules remain decisions below.
+Support multiple human accounts from the first release, with both Ironloom-managed login and external OpenID Connect login. The first authenticated user to successfully redeem the initial setup token becomes the sole initial administrator. Establish that account and consume the token atomically so concurrent attempts cannot create multiple bootstrap administrators. The token expires upon redemption and cannot be reused or replaced by newly minted administrator tokens; this is a one-time installation operation. Persist completion across restarts, and never reopen bootstrap after a storage/authentication error or because the original token remains in infrastructure configuration. The established administrator assigns permissions to other users. Successful local/OIDC login alone grants no administrator authority.
+
+Keep service login separate from provider inference credentials. Define project access and approval authority explicitly, and map native-client actions to an authorized human account rather than treating a connected host as unrestricted authority. Evaluate OpenFGA for fine-grained permissions covering humans, worker identities, projects, assignments, files, credentials, conversations, and other identified resources. OpenFGA adoption and packaging remain proposed, not selected. Resource authorization must still be enforced by service tools and OS sandboxes; a relationship check alone cannot constrain a subprocess.
+
+Use Flutter/Dart for the operator UI, with web delivery first and a shared client architecture for later desktop/mobile applications. The web client derives its API/connection base from its serving web address, including the configured deployment path. Future native clients require a server address and keep authentication scoped to that connection. Keep Rust service/domain logic and the public VitePress documentation separate from the Flutter client. Desktop/mobile packaging is future scope, not an added first-release deliverable. Streaming, authentication, text selection/copy, keyboard use, accessibility, and reconnect must work through the shared client boundary without assuming browser-only APIs.
 
 Graceful shutdown stops new dispatch and persists current work state. Handle SIGINT, SIGTERM, and other catchable shutdown requests with best-effort persistence and owned-process cleanup within the available shutdown time. Forced termination, a crash, or power loss may prevent any final write: resume from the latest durable state, accepting that recent or active inference may need to run again. Do not promise exactly-once inference or persistence after an uncatchable termination. Reconcile uncertain external mutations before retrying them; repeating inference does not authorize blindly repeating a merge, publication, or deployment.
 
@@ -68,6 +72,7 @@ Save setup progress and show every remaining required step with its status, reas
 - Select enabled GPUs when local inference is selected.
 - Connect chosen inference credentials and any model-source account needed for downloads.
 - Assign models and applicable reasoning effort to each enabled role.
+- Confirm the proposed delivery mode or explicitly choose another permitted mode.
 - Complete native remote-host connection setup when enabling that connection.
 
 Requirements depend on configuration: OAuth-backed inference does not require an API key; remote-only inference does not require a GPU; public downloads do not require unnecessary source accounts. Preserve encrypted credentials, environment precedence, and existing setup-key protections. Do not expose secrets to browsers or worker prompts.
@@ -119,6 +124,8 @@ The three hubs and three publishers are all discoverable source choices. Preserv
 
 Use a common model-card and download UX, preserving source-specific credentials, access rules, licenses, and repository links. Show model card, architecture/format, revision, quantization/files, download size when available, access state, and GPU suitability. Support download progress, cancellation, recovery, and local inventory.
 
+Build dynamic discovery/install filters from the supported engine/version and backend capability matrix, model architecture/configuration, weight format and quantization, tokenizer/chat-template support, required features, and configured devices. Compatibility is a product capability required during primary build-out, not a fixed list of role models selected during testing. Show which available engine can run each model and why a choice is unsupported or unknown; a matching file extension or enough memory alone is insufficient. Refresh these decisions when engines, devices, or model profiles change. Keep access/license state, engine compatibility, estimated memory fit, and actual backend qualification distinct. Exact role selections and context/memory limits remain operator configuration.
+
 | Access state | Primary action |
 | --- | --- |
 | Accessible | Download |
@@ -144,7 +151,9 @@ Show the matching device/group and estimation assumptions. Include weight memory
 
 Without a supported GPU, Ironloom remains usable with explicitly configured remote inference. Do not silently replace local assignments or assume CPU inference fulfills the agreed GPU-backed path.
 
-Prefer an embedded Rust engine. No engine is selected or qualified yet. Python embedding and any engine porting require Vanna's explicit approval when a concrete need is established; present the gap, recommendation, and tradeoff first. Neither is an automatic fallback. No local inference is authorized during this planning work.
+Prefer an embedded Rust engine. No engine set is selected or qualified yet; compare complementary engines rather than assuming one engine must cover every model. Python embedding and any engine porting require Vanna's explicit approval when a concrete need is established; present the gap, recommendation, and tradeoff first. Neither is an automatic fallback. No local inference is authorized during this planning work.
+
+Design the engine boundary to allow more than one enabled engine if selected. Model profiles identify their chosen compatible engine/version and backend; do not silently change engines as a fallback. Ironloom coordinates device reservations, active-use protection, and LRU residency across engines so independent allocators cannot each assume the same memory is free. Include engine identity/version in local model provenance and telemetry. Any managed helper remains under Ironloom lifecycle control; it must not expose an alternative worker execution channel.
 
 Manage loaded models with LRU eviction constrained by active use and GPU placement:
 
@@ -261,7 +270,7 @@ Use scripted model responses, simulated engine/device events, and provider HTTP 
 | Proposed owner | Owned work and existing paths | Dependency and handoff |
 | --- | --- | --- |
 | Cinder: service and execution | `crates/ironloom-{core,config,storage,policy,queue,process-graph,supervisor,workers,worktrees,gates,observability,schemas}`; runtime composition; workspace Cargo manifests/lockfile; Docker/Helm and CI | SQLite/PostgreSQL, multi-user authorization, durable lifecycle/recovery, copied instructions and remembered answers, editable standard roles, controlled tools/shared worktrees, merge coordination, streaming commands, OTel/accounting, and persistent deployment. Export service interfaces for Ivy; integrate adapter wiring after its implementation lands. |
-| Ivy: operator UX and adapters | New web/operator assets and web/native/model adapter modules, with exact paths agreed in the shared baseline; their package manifests, tests, and schemas | Local/OIDC login UI and transport, setup/dashboard/streaming chat, team/model/source/device/budget controls, native remote-host transport, OpenAI/Anthropic/configurable endpoint adapters, source discovery/downloads, and engine/GPU integration with simulated LRU behavior. Use Cinder's service/policy/storage interfaces; keep business decisions out of transport code. |
+| Ivy: operator UX and adapters | New Flutter operator app and web/native/model adapter modules, with exact paths agreed in the shared baseline; their package manifests, tests, and schemas | Local/OIDC login UI and transport, setup/dashboard/streaming chat, team/model/source/device/budget controls, native remote-host transport, OpenAI/Anthropic/configurable endpoint adapters, source discovery/downloads with dynamic compatibility filters, and engine/GPU integration with simulated LRU behavior. Use Cinder's service/policy/storage interfaces; keep business decisions out of transport code. |
 
 Each owner writes the focused tests for its behavior. Cinder owns shared runtime wiring and root manifests so both lanes do not overwrite them; Ivy supplies its integration requirements through the agreed contracts. Assign affected English/localized documentation files to one owner per change or hand them off sequentially. Discord removal spans both lanes and is completed in the combined build, including contracts, setup, deployment, scripts, and active documentation.
 
@@ -275,7 +284,7 @@ Bring both lanes onto one integration revision. Resolve wiring and platform issu
 
 ### 4. Final inference work on the Mac
 
-After explicit authorization for this phase, use the approved Rust engine and human-selected role models/effort to run real local and configured frontier inference from the Mac. Verify streaming/tool calling, refinement and clarification, approved work with concurrent roles, integrated tests/review/docs, interruption/recovery, LRU load/reuse/eviction, generation controls, and usage/accounting. Tune instructions and model settings through the operator-controlled update flow. Keep Python embedding and engine porting subject to Vanna's explicit approval.
+After explicit authorization for this phase, use the selected engine set and human-configured role models/effort to run real local and configured frontier inference from the Mac. Verify streaming/tool calling, refinement and clarification, approved work with concurrent roles, integrated tests/review/docs, interruption/recovery, LRU load/reuse/eviction, generation controls, and usage/accounting. Tune instructions and model settings through the operator-controlled update flow. Keep Python embedding and engine porting subject to Vanna's explicit approval.
 
 The current Mac reports Apple M5 Max, 128 GiB memory, arm64, and macOS 27.2.1. This is a qualification host, not a declared minimum platform or proof that any particular model fits. Select exact model revisions, quantizations, context sizes, concurrency, and working-memory allowance before live runs. Real inference and any related fixes are part of this final phase, not implied by passing deterministic tests. Mac qualification does not qualify Linux/Alpine GPU execution.
 
@@ -285,19 +294,61 @@ Use focused functional regression tests and existing gates for approval revision
 
 ## Remaining decisions before implementation
 
-Settled: multiple human accounts; local login and OIDC; setup-token proof for administrator enrollment; default branch/PR publication with approval for merge/deploy; native macOS/Linux and Alpine targets; untested Linux/Alpine GPU backends may ship explicitly unqualified; no Ironloom inference runs during Cinder/Ivy build-out; final inference work on the Mac.
+Settled: multiple human accounts; local login and OIDC; one-time token redemption establishes the sole initial administrator, with no replacement admin tokens; delivery mode explicitly confirmed during setup; Flutter web UI with future native clients using a server address; native macOS/Linux and Alpine targets; untested Linux/Alpine GPU backends may ship explicitly unqualified; no Ironloom inference runs during Cinder/Ivy build-out; final inference work on the Mac. Engine-driven model discovery filters belong in primary build-out; actual role/model settings remain operator configuration.
 
 | Decision | Recommendation or required resolution | Needed before |
 | --- | --- | --- |
-| Administrator enrollment | Decide whether the initial setup token is single-use or reusable, how it is rotated/recovered, and how later administrators enroll. Both login methods require token proof under the agreed rule; do not silently grant admin from an OIDC claim or a first-login heuristic. | Authentication/storage contracts |
-| Project access and credential sharing | Define who can view, operate, approve, and administer a project, and who receives unanswered questions. Recommend creator-owned projects with explicit membership, questions routed to the requesting operator, and provider credentials private unless deliberately shared. Confirm administrator access to project content and cross-project answer reuse. | Authorization/database contracts |
-| Web/database stack and public contracts | Proposed: Tokio/Axum, HTTP commands plus replayable SSE, a separate Vue/TypeScript operator app using the existing Vue ecosystem, and SQLx-backed SQLite/PostgreSQL. Fix exact adapter boundaries, identity mapping, schema/migrations, event/request semantics, and dependency versions once. These are proposals, not selected dependencies. | Parallel build-out |
+| Resource authorization and sharing | Choose OpenFGA or the embedded alternative below, including deployment/storage and grant enforcement. Define project/file/agent permissions, administrator visibility, credential sharing, and cross-project answer reuse. Creator-owned projects, explicit membership, and private credentials unless deliberately shared remain proposed defaults. | Authorization/database contracts |
+| Service/database stack and public contracts | Flutter is selected for the operator UI. Tokio/Axum, HTTP commands plus replayable SSE, and SQLx-backed SQLite/PostgreSQL remain proposed. Fix exact adapter boundaries, identity mapping, schema/migrations, event/request semantics, and dependency versions once. | Parallel build-out |
 | Native protocol integration | Select and pin the upstream transport/components or compatible adapter after inspecting their actual interfaces; map native identities and sessions to Ironloom's multi-user service. Resolve missing upstream support without substituting plugin control. | Dependent session/auth implementation |
 | Platform enforcement and build matrix | Choose minimum OS versions/architectures and concrete command/filesystem sandbox mechanisms for macOS, Linux, and Alpine. Prove enforcement with ordinary processes, without inference. Target-specific dependencies must preserve the existing Rust/CI gates. | Execution and deployment implementation |
-| Rust engine and backend scope | Evaluate the existing `mistral.rs` candidate through source/build checks first; choose a pinned engine, initial model formats/architectures, and Linux GPU families to implement. Rust SDK availability is not proof of Alpine compatibility. Keep engine choice open until that assessment; Python/porting still require approval. | Concrete local-engine driver; service/UX work can use the agreed simulated interface |
-| Live-run configuration | Human-selected role models and reasoning effort, exact local weights/revisions/quantization, memory/context/concurrency and generation controls, credentials, project, and any optional budget. | Mac inference phase, not primary build-out |
+| Engine set and backend scope | Choose the initial engines from the options below, pin versions, and define format/architecture/device capabilities for discovery filters. Rust SDK availability is not proof of Alpine compatibility. Python/porting still require approval. | Concrete engine drivers and model compatibility catalog; interfaces can use simulated engines |
+| Live-run configuration | Human-selected role models and reasoning effort, exact local weights/revisions/quantization, memory/context/concurrency and generation controls, credentials, project, and any optional budget. The configuration/validation UX and dynamic engine filters are implemented earlier. | Actual Mac inference runs |
 
 Do not turn implementation choices into additional operator workflow rules. The planner and implementors retain the agreed role-level judgment; resolve shared technical interfaces before dividing work, and ask the operator when instructions leave uncertainty.
+
+## Options awaiting selection
+
+These are source-informed recommendations, not approved dependencies or measured performance results. No models were run for this comparison.
+
+### Resource authorization
+
+| Option | Benefit | Tradeoff |
+| --- | --- | --- |
+| OpenFGA, bundled and service-managed (recommended for the requested resource graph) | Relationship-based grants and inheritance can cover humans/agents and project, folder, file, or other resource identities. PostgreSQL and SQLite storage options align with the deployment choices. | A separate service/process, API boundary, authorization-model migrations, and availability/revocation behavior to manage. It is not an embedded Rust library. |
+| Embedded Cedar in `ironloom-policy` | Rust policy evaluation without another service; schema-validated policies and resource/principal attributes. | Ironloom must own relationship/entity loading, persistence, permission-listing behavior, and the administration UX. It is not a drop-in OpenFGA implementation. |
+
+For OpenFGA, propose a managed local process on native installations and a chart-managed service/container for Kubernetes, with authorization storage under the database root for SQLite or separately owned PostgreSQL storage. No fourth persistent root or SQLite fallback in PostgreSQL mode. Treat OpenFGA as the grant authority, not a second independent copy of application grants; define how bootstrap completion and grant initialization recover from interruption without minting another token. Model worker identities and their delegated limits explicitly. Project/folder inheritance can reduce per-file grants, but tools must still resolve and enforce the actual file/resource boundary. Authorization failure must not become unrestricted execution. Sources: [OpenFGA relationship model](https://openfga.dev/docs/modeling/parent-child), [storage configuration](https://openfga.dev/docs/getting-started/setup-openfga/configuration), [Cedar](https://github.com/cedar-policy/cedar).
+
+### Native remote-host transport
+
+| Option | Benefit | Tradeoff |
+| --- | --- | --- |
+| Adapt pinned upstream Rust transport/protocol components (recommended starting point) | Reuses the existing enrollment/relay and wire behavior while Ironloom owns sessions and execution. | Upstream auth/state dependencies need deliberate integration. Current `start_remote_control` requires `StateRuntime`, whose persistence is SQLite; unchanged reuse conflicts with our PostgreSQL-only storage option. Adapt that boundary rather than silently introducing local SQLite. |
+| Implement a dedicated compatible transport using upstream protocol types/tests as the reference | Direct control of Ironloom identity, database, lifecycle, and dependency boundaries. | More protocol work and ongoing compatibility maintenance; native client/relay behavior must be exercised explicitly. |
+
+The reviewed upstream revision is `e2e7dabd4587c7b0fbf934e6a93b6cec8245751d`. This is a concrete dependency tradeoff, not uncertainty that native remote hosts exist. No implementation of the conflicting persistence path is authorized. Sources: [transport entrypoint](https://github.com/openai/codex/blob/e2e7dabd4587c7b0fbf934e6a93b6cec8245751d/codex-rs/app-server-transport/src/transport/remote_control/controller.rs#L266), [state implementation](https://github.com/openai/codex/blob/e2e7dabd4587c7b0fbf934e6a93b6cec8245751d/codex-rs/state/src/runtime.rs#L102).
+
+### Execution sandbox and platform baseline
+
+| Option | Benefit | Tradeoff |
+| --- | --- | --- |
+| Native platform sandboxes: Seatbelt on macOS; bubblewrap plus seccomp on Linux/Alpine (recommended starting point) | Fits native operation, shared worktrees, and constrained subprocesses without a mandatory VM. Reuse reviewed upstream primitives where practical. | Seatbelt's interface is deprecated/poorly documented. Linux namespaces and container runtime policy must permit the required sandbox; a container image alone does not establish that. |
+| VM/container-isolated execution | Separate execution environments and stronger separation from host services. | More lifecycle/storage plumbing; a Linux VM cannot validate native macOS builds, and per-role path enforcement is still required inside a shared assignment. Not a replacement for the selected native service targets. |
+
+Proposed initial qualification targets: Apple Silicon macOS 14+; Linux x86-64/arm64 with kernel 6.6+ and the required namespace/seccomp capabilities; Alpine 3.24 containers on such a host. These are candidates to approve and validate, not established minimums guaranteed by an engine or UI framework. Broader older-platform support adds testing without resolving the immediate build-out. Keep server/sandbox support separate from future Flutter desktop/mobile platform coverage. Never run a worker unsandboxed because required features are missing. Sources: [upstream sandbox design](https://openai.com/index/inside-the-codex-sandbox/), [bubblewrap](https://github.com/containers/bubblewrap), [Flutter platform coverage](https://docs.flutter.dev/reference/supported-platforms).
+
+### Inference engines
+
+| Engine | Strengths for Ironloom | Main cost or limitation |
+| --- | --- | --- |
+| mistral.rs | Rust embedding; Metal/CUDA, batching, paged attention, quantization, and multiple model architectures. Best first candidate for the Rust preference. | Model/format/backend support remains version-specific; Alpine and exact hardware need qualification. Built-in agent/tool execution must not bypass Ironloom tools. |
+| llama.cpp | Broad GGUF ecosystem and hardware backends including Metal, CUDA, HIP, and Vulkan; useful complementary coverage. | C/C++, requiring a maintained safe binding or a service-owned helper and native build packaging. GGUF support does not mean every architecture works. |
+| MLX Swift LM / MLX-LM | Apple Silicon-focused option with quantized models and streaming; Swift offers a route without embedding Python. | Apple-specific integration and a Swift/native bridge or managed helper. The Python MLX-LM route needs explicit Python approval. Swift and Python model support must be checked separately. |
+| vLLM | Server-oriented batching, cache management, distributed execution, and broad model/tool-serving features; candidate for high-concurrency Linux GPUs. | Python/PyTorch and GPU packaging are a larger fit change for the Rust/Alpine design. Do not adopt a managed Python runtime without an explicit decision; an operator-managed compatible endpoint is a separate existing option. |
+| Candle directly | Rust model/tensor framework with GPU support and detailed control. | More model, decoding, batching, and serving integration to own; not the smallest route to broad factory support. |
+
+Recommendation: begin by selecting and qualifying mistral.rs plus llama.cpp as complementary engines, with shared memory/LRU control; retain MLX Swift as an Apple-specific option if it demonstrates a needed advantage. Keep vLLM as an endpoint option unless managed Python integration is explicitly approved. Actual latency, throughput, and memory efficiency depend on the selected model, quantization, context, and concurrency; source feature lists cannot rank speed on this Mac. Compare those during the authorized inference phase. Sources: [mistral.rs](https://github.com/EricLBuehler/mistral.rs), [llama.cpp backends](https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md), [MLX Swift LM](https://github.com/ml-explore/mlx-swift-lm), [MLX-LM](https://github.com/ml-explore/mlx-lm), [vLLM](https://github.com/vllm-project/vllm), [Candle](https://github.com/huggingface/candle).
 
 ## Integration references
 
@@ -310,5 +361,5 @@ These references inform feasibility; they do not establish implemented or qualif
 - [Hugging Face model access](https://huggingface.co/docs/hub/models-gated), [ModelScope](https://github.com/modelscope/modelscope_hub), and [Kaggle Models](https://www.kaggle.com/docs/models).
 - [Alibaba/Qwen official releases](https://qwen.ai/), [Mistral model catalog](https://docs.mistral.ai/), and [DeepSeek official repositories](https://github.com/deepseek-ai).
 - [Rust engine candidate: mistral.rs](https://github.com/EricLBuehler/mistral.rs).
-- Proposed implementation libraries: [Axum](https://docs.rs/axum/latest/axum/), [SQLx](https://github.com/transact-rs/sqlx), and [Vue](https://vuejs.org/guide/introduction.html).
+- Selected UI direction: [Flutter](https://docs.flutter.dev/platform-integration/web/faq). Proposed service libraries: [Axum](https://docs.rs/axum/latest/axum/) and [SQLx](https://github.com/transact-rs/sqlx).
 - [Rust instrumentation](https://docs.rs/tracing/latest/tracing/attr.instrument.html) and [OpenTelemetry context integration](https://docs.rs/tracing-opentelemetry/latest/tracing_opentelemetry/trait.OpenTelemetrySpanExt.html).

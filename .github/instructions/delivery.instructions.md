@@ -11,3 +11,4 @@ applyTo: '.github/**,docker/**,deploy/**,docs/**,site/**'
 - The target storage design requires infrastructure-configured persistent roots for models, the local database (unused with PostgreSQL), and complete projects/Git folders. Keep database/service identity outside project storage; durable assignment worktrees must not use temporary volumes.
 - Helm charts must deploy Ironloom directly with persistent state and health/readiness probes. Service readiness must allow a functioning setup/web UI to receive traffic while execution readiness separately blocks incomplete assignments.
 - Docs builds must stay static and must not expose operator credentials or runtime controls.
+- The planned operator client is Flutter/Dart, served by Ironloom for web with native desktop/mobile clients later. Keep its build/assets and future client connection settings separate from the public VitePress site; preserve existing gates when adding Flutter validation during implementation.
