@@ -1,6 +1,6 @@
 # Ironloom Rust Platform Migration Plan
 
-> **For agentic workers:** This is a planning document only. Do not implement from it until the implementation plan is approved. When implementation begins, use `superpowers:subagent-driven-development` or `superpowers:executing-plans` and keep each phase independently reviewable.
+> **Historical plan:** The [Software Factory Plan](ironloom-software-factory.md) supersedes this document's product direction as of 2026-11-27. Discord control and binding requirements, exclusion of a runtime web UX, filesystem-only organizational state, and OpenAI-only model assumptions are no longer the target. Preserve this document as migration history; follow [PLATFORM.md](../../PLATFORM.md) and the new plan for current scope. Implementation remains pending approval; historical workflow instructions do not authorize implementation or delegation.
 
 **Goal:** Convert the existing `VannaDii/devplat` TypeScript/Node scaffold into Ironloom, a standalone Rust-based autonomous engineering platform by Veritas Labs.
 

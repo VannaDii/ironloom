@@ -1,78 +1,68 @@
 # Ironloom Platform Foundation
 
-Ironloom is a Rust supervisor runtime by Veritas Labs for auditable autonomous engineering operations. Discord is the primary operator interface, GitHub is the source of truth for repository and pull-request state, SonarCloud is the quality and compliance system, and Kubernetes delivery targets k3s through a direct Ironloom Helm chart.
+Ironloom's target is a Rust software factory and persistent background harness service by Veritas Labs. Humans refine ideas, answer questions, approve plans, and configure a role-based digital team. The service owns a streaming web UX and must support native ChatGPT/Codex remote-host control. Discord control and thread binding are retired from the target design.
 
-## Required Surfaces
+**Status:** This is the agreed direction, not the current implementation. The [Software Factory Plan](docs/specs/ironloom-software-factory.md) records requirements, migration stages, and unresolved decisions. Implementation remains pending approval. The [Rust migration plan](docs/specs/ironloom-rust-platform-migration.md) is historical.
 
-- Rust workspace under `crates/*`.
-- Deployable runtime binary in `crates/ironloom-runtime`.
-- Public landing page, guides, developer docs, LLM support, JSON-LD SEO, and API docs in `site/guide-docs`.
-- Docker image in `docker/ironloom-runtime`.
-- Helm chart in `deploy/helm/ironloom`.
-- Artifact Hub metadata in `deploy/artifacthub/ironloom`.
-- GitHub Actions for Rust CI, Docker publishing, Helm publishing, docs publishing, release notes, Discord harness tests, and SonarCloud bootstrap checks.
+## Required Product Scope
 
-## Required Crates
+- Concept refinement and repeated questions until no material questions remain or the human says enough; versioned plans require human approval before execution.
+- Configurable roles and a standard team covering product management, planning, implementation, testing, review, and documentation. Humans must select a model and applicable reasoning effort for every enabled role, including orchestration.
+- Local orchestration and OpenAI/Anthropic coding support, with capable local models usable for coding roles. No silent model, credential, or billing fallback.
+- OpenAI OAuth usable for remote control only or additionally for eligible inference; API keys are optional when OAuth covers inference. Anthropic BYOK and local inference remain separate choices.
+- Native remote-host control of Ironloom-owned sessions, not a plugin substitute. Client/relay compatibility remains unverified and is the first feasibility task.
+- Authenticated, durable, streaming web chat and configuration; background work survives browser disconnection. Incomplete setup opens a small resumable screen with each remaining required step and action.
+- Model discovery/download access through Hugging Face, ModelScope, Kaggle Models, and official Alibaba/Qwen, Mistral, and DeepSeek catalogs/distributions. Preserve publisher/host distinctions and access/license requirements.
+- Service-owned GPU discovery, selection, optional role/model GPU bindings, compatibility estimates, embedded inference, and active-use-aware LRU model residency. A shared configurable model-storage root is independent of projects.
+- Prefer Rust inference. Python embedding and engine porting each require Vanna's explicit approval; neither is an automatic fallback.
+- Configurable SQLite or PostgreSQL organizational/execution storage. Stable project IDs and mutable names remain visible when configured folders are unavailable.
+- Configurable project storage with assignment worktrees and sibling role artifacts. Roles may write concurrently in the same worktree within enforced path boundaries; all worker commands go through Ironloom tools and enforced execution permissions.
+- Coordinated Git mutations, content-specific tests/review, durable ownership, and cleanup that preserves needed work and shared models.
+- OpenTelemetry context across operations: project ID/name, worker ID/role/name, model mode/ID/provider/provenance, execution IDs, timing, outcomes/errors, and usage. Durable budget accounting requires no extra inference and must not wait for telemetry collectors.
+- GitHub remains the source of truth for published specs, repository state, pull requests, reviews, checks, and merges. SonarCloud remains the quality/compliance integration.
 
-- `ironloom-core`: typed IDs, repository and branch primitives, shared errors.
-- `ironloom-config`: runtime configuration resolution, setup gating, and environment precedence.
-- `ironloom-artifacts`: immutable artifact envelopes and schema contracts.
-- `ironloom-storage`: `.ironloom/` filesystem state, indexes, and encrypted setup configuration.
-- `ironloom-policy`: fail-closed policy decisions.
-- `ironloom-process-graph`: typed process graph validation and routing.
-- `ironloom-queue`: durable work item lifecycle contracts.
-- `ironloom-observability`: audit and telemetry records.
-- `ironloom-worktrees`: local git worktree safety.
-- `ironloom-gates`: gate execution contracts.
-- `ironloom-workers`: worker request and response envelopes.
-- `ironloom-supervisor`: process graph route selection and worker dispatch.
-- `ironloom-discord`: thread-aware operator adapter.
-- `ironloom-github`: GitHub source-of-truth projections.
-- `ironloom-sonarcloud`: SonarCloud quality/compliance normalization.
-- `ironloom-runtime`: service composition, health, readiness, and first-run setup HTTP surface.
+## Runtime and Package Boundaries
 
-## First Vertical Slice
+- Keep the Rust workspace under `crates/*`; `ironloom-runtime` remains the deployable service and composition boundary.
+- `ironloom-core` owns shared typed identities and domain values; `ironloom-config` owns configuration and setup completeness.
+- `ironloom-supervisor` owns routing and dispatch; `ironloom-process-graph`, `ironloom-queue`, `ironloom-policy`, and `ironloom-workers` own their existing domain boundaries as durable execution is added.
+- `ironloom-storage` owns persistence abstractions, managed artifacts, and direct `.ironloom/` access. `ironloom-artifacts` owns domain record/schema contracts; `ironloom-worktrees` owns Git workspace lifecycle.
+- `ironloom-gates`, `ironloom-github`, `ironloom-sonarcloud`, and `ironloom-observability` retain their validation, source-of-truth, normalization, and telemetry ownership.
+- Separate web/native protocol transport and model/inference adapters from business logic. Exact new crate boundaries remain an implementation-plan decision.
+- Remove `ironloom-discord` and its configuration, schemas, workflows, deployment fields, and active documentation as replacement behavior lands. Preserve needed historical domain records.
+- Keep the public landing page and VitePress guides/API docs in `site/guide-docs`, separate from the service-hosted operator UX. Update English and every affected localized tree with behavior changes.
+- Retain the non-root runtime image in `docker/ironloom-runtime`, direct k3s Helm chart in `deploy/helm/ironloom`, Artifact Hub metadata, and GitHub Actions publishing. Assess GPU-dependent packaging explicitly; do not assume an engine fits the existing image unchanged.
 
-The first accepted slice is:
+## First Complete Factory Slice
 
-1. A fake Discord command is bound to exactly one thread/work item.
-2. The Discord adapter fails closed for missing or ambiguous bindings.
-3. The supervisor selects the gate worker through the process graph.
-4. Policy permits only a thread-bound non-destructive gate action.
-5. The gate worker returns a structured result.
-6. Storage writes an immutable artifact under `.ironloom` and indexes it by thread and work item.
-7. The fake Discord transport replies to the originating thread.
+After native-host feasibility and required configuration are resolved:
+
+1. A human refines an idea through chat and approves a specific plan revision.
+2. The supervisor creates an assignment and worktree, using human-configured roles/models.
+3. Tester, implementor, reviewer, and documentation roles collaborate with focused context and enforced write boundaries.
+4. Existing required gates and review evaluate the exact delivered content; relevant later edits invalidate affected results.
+5. Results and usage are persisted and streamed to the operator with OTel correlation.
+6. Delivery follows configured owner authority; worktree cleanup waits for worker release and preservation of required changes.
+
+This is a target slice, not an accepted implementation result. Native compatibility, hardware/platform coverage, engine selection, and first-release operator topology remain open in the detailed plan.
 
 ## Quality Gates
 
-Required:
+Preserve all existing requirements:
 
-- `cargo fmt --check`
-- `cargo clippy --workspace --all-targets --all-features -- -D warnings`
-- `cargo test --workspace --all-features`
-- `cargo deny check`
-- `cargo audit`
-- `npm run docs:build`
-- `helm lint deploy/helm/ironloom`
-- `helm template ironloom deploy/helm/ironloom`
+```sh
+cargo fmt --check
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+cargo test --workspace --all-features
+cargo run -p ironloom-schemas -- --check
+cargo deny check
+cargo audit
+just scripts-test
+npm run docs:build
+helm lint deploy/helm/ironloom
+helm template ironloom deploy/helm/ironloom
+```
 
-Expected publishing gates:
+Docker Buildx builds the runtime image; Helm publishes an OCI chart; GitHub Pages publishes the static site at `https://ironloom.dev`; SonarCloud receives Rust LCOV coverage. Bootstrap validation, policy enforcement, schema alignment, security audit, and publishing checks are not relaxed by this change in direction.
 
-- Docker Buildx builds `docker/ironloom-runtime/Dockerfile`.
-- Helm publishes `deploy/helm/ironloom` as an OCI chart.
-- GitHub Pages publishes the VitePress public site at `https://ironloom.dev`.
-- SonarCloud receives Rust LCOV coverage from `cargo llvm-cov`.
-
-## Acceptance Criteria
-
-- The root runtime workspace is Rust/Cargo.
-- No legacy application/runtime package remains.
-- No active legacy adapter package, generated manifest, runtime image, live-lab workflow, or operator guide remains.
-- The target crate list exists and passes all required Rust gates.
-- Discord lifecycle actions are thread-aware and fail closed when ambiguous.
-- GitHub remains source of truth for repository, pull-request, check, and merge state.
-- SonarCloud bootstrap validation fails closed when required project or token configuration is missing.
-- Setup requires `IRONLOOM_CONFIG_KEY` before accepting credential inputs, and runtime configuration can resolve from environment variables or encrypted local setup with environment values taking precedence.
-- Docker image contains no Node runtime and runs as a non-root user.
-- Helm chart deploys Ironloom directly with PVC-backed `.ironloom` state.
-- Docs build through the approved VitePress static documentation toolchain.
+Use focused regression tests and existing checks. Do not create substantiating artifacts, independent auditors, or bespoke evidence generators. Required domain records and functional fixtures remain valid product data.

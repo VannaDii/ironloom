@@ -8,14 +8,14 @@
 - Pull request titles must use conventional commit format.
 - Pull request bodies must follow `.github/pull_request_template.md` and fill every section with repo-specific content.
 - Keep GitHub as the source of truth for specs, pull requests, reviews, and merge history.
-- Keep Discord operator flows thread-aware and auditable.
+- Follow the software factory direction in `docs/specs/ironloom-software-factory.md`; it is a plan, not a claim of implemented behavior or authorization to implement.
 - Use `PLATFORM.md` as the authoritative foundation-scope document.
 
 ## Boundaries
 
 - `ironloom-runtime` is the deployable service and composition boundary.
 - `ironloom-supervisor` owns process routing and worker dispatch decisions.
-- `ironloom-discord` is the operator control-plane adapter, not a business-logic home.
+- Discord control and thread binding are being retired; keep web and native remote-host adapters free of business logic.
 - `ironloom-github` reads and writes GitHub source-of-truth state through auditable requests.
 - `ironloom-sonarcloud` owns SonarCloud quality and compliance normalization.
 - Only `ironloom-storage` may read or write `.ironloom/` paths directly.
@@ -34,7 +34,8 @@
 - Do not inline repeated literals or magic numbers in authored Rust code.
 - Treat regular expressions as named constants and cover every pattern with matching and non-matching tests.
 - Use shared typed domain values for IDs, branch names, repository slugs, thread IDs, work item IDs, artifact IDs, and correlation IDs.
-- Fail closed when a Discord action lacks an unambiguous thread binding.
+- Fail closed when operator identity, assignment authority, or required approval is missing; do not introduce Discord binding into new contracts.
+- Python embedding and inference-engine porting each require Vanna's explicit approval before adoption.
 - Refresh GitHub state before source-of-truth decisions.
 - Validate SonarCloud bootstrap configuration before polling quality gates.
 
