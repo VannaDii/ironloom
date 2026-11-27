@@ -11,12 +11,12 @@ Use Rust **1.96.0**, pinned in `rust-toolchain.toml` and available on both remot
 | Owner | Exact path | Contract |
 | --- | --- | --- |
 | Cinder | `crates/ironloom-core/src/validation.rs`, existing crate `src/factory.rs` modules and crate-local schemas | Immutable validated domain/wire records and typed identities |
-| Cinder | `crates/ironloom-runtime/src/factory.rs` | HTTP/SSE encoding, service/authentication ports; runtime composition remains Cinder-owned |
+| Cinder | `crates/ironloom-service/src/factory.rs` | Shared service/authentication/native enrollment contracts; runtime owns HTTP transport and composition |
 | Cinder | `crates/ironloom-storage/schema.sql` and `factory::initialize_schema` | One-shot transactional fresh-schema initialization; OpenFGA owns its separate fresh database/schema initialization |
 | Cinder | `crates/ironloom-policy/authorization-model.fga` | Initial OpenFGA model; bootstrap administration does not imply private project content access |
 | Ivy | `apps/operator/` | Proposed Flutter web application path, not scaffolded by this candidate |
 | Ivy | `packages/ironloom_client/` | Proposed shared Dart connection, transport and validated wire models; same fixtures |
-| Ivy | `crates/ironloom-native/src/` | Direct native relay/JSON-RPC implementation against the pinned reference; initial `factory.rs` records supplied here |
+| Ivy | `crates/ironloom-native/src/` | Direct native relay/JSON-RPC implementation against the pinned reference; shared enrollment records live in `ironloom-service::factory` |
 | Ivy | `crates/ironloom-models/src/{providers,sources,engines,devices}.rs` | Public adapter ports supplied here; implementations belong in these modules or their child modules |
 | Cinder until explicit handoff | English/localized public API docs and root manifests/lockfile | One owner per file during parallel work |
 
@@ -117,3 +117,25 @@ These additions are validated records and interface signatures only. No configur
 `ironloom_storage::factory::initialize_schema` runs the unversioned `schema.sql` in a transaction and refuses an existing schema without modifying it. It creates no schema-version table and does not inspect, repair, upgrade or convert old layouts. New-install tests use `fresh_schema.rs`; no compatibility fixtures are retained. No actual persistent database is reset or converted by this change.
 
 `FactoryService::create_conversation` is the native thread/start operation: persist a new service-assigned conversation ID and its initial snapshot atomically with the authenticated actor/command ID and request fingerprint. Duplicate identity/payload returns the recorded outcome; a changed project/payload conflicts. The initial snapshot has no active turn, assignment, plan or questions, and a durable cursor of zero. It starts no inference and does not submit a message. Native turn/start then uses the normal nonblank input command; the adapter never creates its own conversation store.
+
+## Primary service lane: shared port placement and HTTP surface
+
+All shared service/authentication/native state DTOs and `FactoryService` live in `ironloom_service::factory`, independent of the runtime and native implementation crates. Native and runtime depend on `ironloom-service`; the native crate must not depend on runtime. Imports use the new owning crate directly, with no old-path re-exports. The common crate contains no adapter implementation or composition. Axum event encoding is `ironloom_runtime::http::sse_event`. Cinder owns `ironloom-service` and its crate-local schemas. Dart generation still scans crate-local `factory.rs` records; JSON type names are unchanged except explicitly added fields/records.
+
+`ConversationSnapshot.active_assignment_id` binds reconnect controls to durable assignment state. Nonterminal execution requires this binding; an empty conversation has no assignment or execution state. `ModelProfileConfiguration.generation_controls` explicitly persists output-token, duration and repetition bounds under the existing configuration mutation, independently of money budgets.
+
+| HTTP operation, relative to deployment base | Request / response | Authority and identity |
+| --- | --- | --- |
+| `GET /api/v1/projects` | `ProjectQuery` / `ProjectPage` | Only currently viewable project metadata; latest human interaction first, stable ID tiebreaker; opaque continuation. Missing workspace mounts show unavailable metadata, never a new empty project. |
+| `POST /api/v1/projects` | `CreateProject` / `ProjectSummary` | Authenticated creator becomes owner; durable command identity. Server chooses project ID, owning node and configured persistent root. Optional GitHub repository and explicit credential reference. |
+| `POST /api/v1/projects/{id}/self-grant` | JSON `CommandId` string / `ProjectSummary` | Installation administrator records an explicit self-grant before any private-project content is returned. |
+| `GET /api/v1/credentials` | `Vec<CredentialSummary>` | Authorized opaque references and nonsecret labels/current grants only. |
+| `POST /api/v1/credentials` | `CredentialCommand` / optional `CredentialSummary` | Private creation, distinct replace/share/delete grants and expected revision. Share names explicit grantee/permissions and can revoke. Secret appears only in the protected mutation request, never in metadata or worker context. |
+| `GET /api/v1/native/connections/{node}` | `NativeConnectionState` | Authenticated operator's authorized node control state, separate from inference credentials. |
+| `POST /api/v1/native/connections` | `NativeConnectionCommand` / `NativeConnectionState` | Protected registration import or enabled preference/delete, durable command ID, expected authentication generation. Import returns connecting state until adapter enrollment completes; it does not invent server/environment IDs. |
+| `POST /api/v1/models/search?project_id=...` | `SourceQuery` / `SourcePage` | Optional authorized project context; source-account use checked separately; source/publisher and opaque pagination retained. Metadata only, never inference probing. |
+| `POST /api/v1/models/downloads` | `DownloadCommand` / `DownloadProgress` | Pinned repository/revision, optional authorized project context, explicit start/resume/cancel with durable command identity. Cancellation requested is not confirmed termination. |
+| `GET /api/v1/models/downloads/{id}` | `DownloadProgress` | Authorized persisted progress after reconnect, without resubmitting the download. |
+| `POST /api/v1/configuration` | existing `ConfigurationCommand` / `ConfigurationSnapshot` | `changes.models[].generation_controls` persists human-selected bounds; model/engine/billing and credentials never silently fall back. |
+
+Root async dependencies: reqwest 0.12.28 with JSON/stream/Rustls plus existing blocking integration support; Tokio 1.54.1 with io-util/process/time/net/fs; futures-util 0.3.34; tokio-tungstenite 0.30.0 with Rustls WebPKI roots; tokio-stream 0.1.19. Adapter package manifests use the workspace pins, not independent versions. The Linux process boundary uses nix 0.32.0; local password hashing uses Argon2 0.6.0 and OIDC signature/claim verification uses jsonwebtoken 12.0.0 with the RustCrypto backend (OIDC code/state/nonce/PKCE flow remains runtime-owned). No inference runs are authorized by dependency availability.

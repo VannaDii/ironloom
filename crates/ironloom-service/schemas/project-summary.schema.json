@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/ProjectSummaryData",
+  "$defs": {
+    "Counter": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Canonical decimal u64; semantic validation also enforces u64 maximum.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "NodeId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom NodeId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "OperatorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom OperatorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Permission": {
+      "description": "Resource grant; administrator identity alone grants no project content access.",
+      "oneOf": [
+        {
+          "description": "Read approved resource content.",
+          "type": "string",
+          "const": "view"
+        },
+        {
+          "description": "Dispatch within approved scope.",
+          "type": "string",
+          "const": "operate"
+        },
+        {
+          "description": "Approve a plan revision.",
+          "type": "string",
+          "const": "approve"
+        },
+        {
+          "description": "Manage membership or content.",
+          "type": "string",
+          "const": "manage"
+        },
+        {
+          "description": "Broaden visibility explicitly.",
+          "type": "string",
+          "const": "share"
+        },
+        {
+          "description": "Use through a trusted adapter.",
+          "type": "string",
+          "const": "use_credential"
+        },
+        {
+          "description": "Replace secret material.",
+          "type": "string",
+          "const": "replace_credential"
+        },
+        {
+          "description": "Delete secret material.",
+          "type": "string",
+          "const": "delete_credential"
+        },
+        {
+          "description": "Enroll another service node.",
+          "type": "string",
+          "const": "enroll_node"
+        },
+        {
+          "description": "Record administrator access to a private project.",
+          "type": "string",
+          "const": "self_grant"
+        }
+      ]
+    },
+    "ProjectId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ProjectId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ProjectStorageState": {
+      "description": "Project storage availability independent of installation/setup identity.",
+      "oneOf": [
+        {
+          "description": "Owning workspace mount/repository is accessible.",
+          "type": "string",
+          "const": "available"
+        },
+        {
+          "description": "Project metadata remains visible; filesystem execution is blocked.",
+          "type": "string",
+          "const": "unavailable"
+        }
+      ]
+    },
+    "ProjectSummaryData": {
+      "description": "Unchecked construction draft for `ProjectSummary`; validate before use.",
+      "type": "object",
+      "properties": {
+        "last_human_interaction_ms": {
+          "description": "Ordering key; background events never change it.",
+          "$ref": "#/$defs/Counter"
+        },
+        "name": {
+          "description": "Mutable human-readable project name.",
+          "type": "string"
+        },
+        "owner": {
+          "description": "Creator-owned project, not automatically visible to administrators.",
+          "$ref": "#/$defs/OperatorId"
+        },
+        "owner_node": {
+          "description": "Workspace-owning node.",
+          "$ref": "#/$defs/NodeId"
+        },
+        "permissions": {
+          "description": "Current effective grants; never a token authorizing future operations.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Permission"
+          }
+        },
+        "project_id": {
+          "description": "Stable metadata identity independent of folder/name.",
+          "$ref": "#/$defs/ProjectId"
+        },
+        "storage": {
+          "description": "Unavailable mounts never erase metadata or initialize replacement workspaces.",
+          "$ref": "#/$defs/ProjectStorageState"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "project_id",
+        "name",
+        "owner",
+        "owner_node",
+        "storage",
+        "last_human_interaction_ms",
+        "permissions"
+      ]
+    }
+  }
+}

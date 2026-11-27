@@ -318,12 +318,13 @@ InferenceRequest, InferenceRequestData {
             pending.insert(&call.tool_call_id);
         }
         if let Some(result) = &message.tool_result
-            && !pending.remove(&result.tool_call_id) {
-                return Err(ValidationErrors::field(
-                    format!("messages.{index}.tool_result.tool_call_id"),
-                    "unmatched_tool_result",
-                ));
-            }
+            && !pending.remove(&result.tool_call_id)
+        {
+            return Err(ValidationErrors::field(
+                format!("messages.{index}.tool_result.tool_call_id"),
+                "unmatched_tool_result",
+            ));
+        }
     }
     if !pending.is_empty() {
         return Err(ValidationErrors::field("messages", "tool_results_required"));

@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/CreateProjectData",
+  "$defs": {
+    "CommandId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom CommandId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "CreateProjectData": {
+      "description": "Unchecked construction draft for `CreateProject`; validate before use.",
+      "type": "object",
+      "properties": {
+        "command_id": {
+          "description": "Durable actor-scoped creation identity.",
+          "$ref": "#/$defs/CommandId"
+        },
+        "name": {
+          "description": "Requested display name; server assigns project ID and configured root.",
+          "type": "string"
+        },
+        "repository": {
+          "description": "GitHub source-of-truth repository; None creates a new backing Git repository.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RepositorySlug"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_credential_id": {
+          "description": "Explicit authorized source credential reference, never a secret.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CredentialId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "command_id",
+        "name"
+      ]
+    },
+    "CredentialId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom CredentialId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "RepositorySlug": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated `owner/repository` GitHub repository slug.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

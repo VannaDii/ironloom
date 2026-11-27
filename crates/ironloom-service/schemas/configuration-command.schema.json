@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Validated",
   "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
-  "$ref": "#/$defs/ConfigurationSnapshotData",
+  "$ref": "#/$defs/ConfigurationCommandData",
   "$defs": {
     "ActorId": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -31,37 +31,79 @@
         }
       ]
     },
-    "ConfigurationSnapshotData": {
-      "description": "Unchecked construction draft for `ConfigurationSnapshot`; validate before use.",
+    "CommandId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom CommandId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ConfigurationChangeData": {
+      "description": "Unchecked construction draft for `ConfigurationChange`; validate before use.",
       "type": "object",
       "properties": {
         "device_preferences": {
-          "description": "Explicit enable/disable settings.",
-          "type": "array",
+          "description": "Explicit enable/disable choices; never accept client-supplied discovery facts.",
+          "type": [
+            "array",
+            "null"
+          ],
           "items": {
-            "$ref": "#/$defs/Validated5"
+            "$ref": "#/$defs/Validated7"
           }
-        },
-        "discovered_devices": {
-          "description": "Server-resolved device identities; simulations remain unqualified.",
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/Validated6"
-          }
-        },
-        "execution_ready": {
-          "description": "Execution readiness independent of functioning setup/web readiness.",
-          "type": "boolean"
         },
         "models": {
-          "description": "Human-selected model profiles visible to this account.",
-          "type": "array",
+          "description": "Replace explicitly selected provider/model/engine/billing profiles.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/$defs/Validated4"
+          }
+        },
+        "roles": {
+          "description": "Replace enabled/custom team settings in the chosen scope.",
+          "type": [
+            "array",
+            "null"
+          ],
           "items": {
             "$ref": "#/$defs/Validated3"
           }
         },
+        "setup": {
+          "description": "Explicit installation setup handling/delivery confirmation.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Validated2"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "ConfigurationCommandData": {
+      "description": "Unchecked construction draft for `ConfigurationCommand`; validate before use.",
+      "type": "object",
+      "properties": {
+        "changes": {
+          "description": "Typed settings mutation, never arbitrary filesystem paths or secrets.",
+          "$ref": "#/$defs/Validated"
+        },
+        "command_id": {
+          "description": "Durable idempotency identity scoped to authenticated actor.",
+          "$ref": "#/$defs/CommandId"
+        },
+        "expected_revision": {
+          "description": "Compare-and-swap configuration revision, independent of plan approval.",
+          "$ref": "#/$defs/Counter"
+        },
         "project_id": {
-          "description": "Installation or project settings scope.",
+          "description": "None for installation settings, Some for project overrides.",
           "anyOf": [
             {
               "$ref": "#/$defs/ProjectId"
@@ -70,46 +112,13 @@
               "type": "null"
             }
           ]
-        },
-        "revision": {
-          "description": "Durable configuration revision for subsequent mutations.",
-          "$ref": "#/$defs/Counter"
-        },
-        "roles": {
-          "description": "Configured team, including orchestration.",
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/Validated2"
-          }
-        },
-        "setup": {
-          "description": "Absent until required lesson handling and delivery mode have been saved.",
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Validated"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "unmet_prerequisites": {
-          "description": "Visible configuration/capability/permission blockers.",
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/ActorId"
-          }
         }
       },
       "additionalProperties": false,
       "required": [
-        "revision",
-        "roles",
-        "models",
-        "device_preferences",
-        "discovered_devices",
-        "execution_ready",
-        "unmet_prerequisites"
+        "command_id",
+        "expected_revision",
+        "changes"
       ]
     },
     "Counter": {
@@ -132,46 +141,6 @@
       "description": "Validated Ironloom DeviceId value.",
       "type": "string",
       "minLength": 1
-    },
-    "DeviceIdentityData": {
-      "description": "Unchecked construction draft for `DeviceIdentity`; validate before use.",
-      "type": "object",
-      "properties": {
-        "device_id": {
-          "description": "Canonical capacity pool identity reconciled across views.",
-          "$ref": "#/$defs/DeviceId"
-        },
-        "hardware_key": {
-          "description": "Vendor UUID or reconciled host-scoped hardware identity.",
-          "$ref": "#/$defs/ActorId"
-        },
-        "host_id": {
-          "description": "Physical host identity distinct from node ID.",
-          "$ref": "#/$defs/HostId"
-        },
-        "parent_id": {
-          "description": "Parent physical GPU for partition/virtual views.",
-          "anyOf": [
-            {
-              "$ref": "#/$defs/DeviceId"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "reconciled": {
-          "description": "False blocks admission; ordinals never establish identity.",
-          "type": "boolean"
-        }
-      },
-      "additionalProperties": false,
-      "required": [
-        "device_id",
-        "host_id",
-        "hardware_key",
-        "reconciled"
-      ]
     },
     "DevicePreferenceData": {
       "description": "Unchecked construction draft for `DevicePreference`; validate before use.",
@@ -255,12 +224,29 @@
         "deploy"
       ]
     },
-    "HostId": {
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "title": "string",
-      "description": "Validated Ironloom HostId value.",
-      "type": "string",
-      "minLength": 1
+    "GenerationControlsData": {
+      "description": "Unchecked construction draft for `GenerationControls`; validate before use.",
+      "type": "object",
+      "properties": {
+        "max_duration_ms": {
+          "description": "Runaway bound.",
+          "$ref": "#/$defs/Counter"
+        },
+        "max_output_tokens": {
+          "description": "Generation bound independent of monetary budget.",
+          "$ref": "#/$defs/Counter"
+        },
+        "repetition_window": {
+          "description": "Incremental monitoring window; unavailable on nonstreaming engines.",
+          "$ref": "#/$defs/Counter"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "max_output_tokens",
+        "max_duration_ms",
+        "repetition_window"
+      ]
     },
     "InstructionId": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -319,12 +305,16 @@
           "description": "Explicit local engine/version/backend; no default engine fallback.",
           "anyOf": [
             {
-              "$ref": "#/$defs/Validated4"
+              "$ref": "#/$defs/Validated6"
             },
             {
               "type": "null"
             }
           ]
+        },
+        "generation_controls": {
+          "description": "Explicit generation bounds, independent of optional monetary budgets.",
+          "$ref": "#/$defs/Validated5"
         },
         "model_id": {
           "description": "Configured provider model/checkpoint.",
@@ -344,6 +334,7 @@
         "profile_id",
         "provider",
         "model_id",
+        "generation_controls",
         "billing",
         "device_bindings"
       ]
@@ -423,27 +414,31 @@
     },
     "Validated": {
       "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
-      "$ref": "#/$defs/FactorySetupData"
+      "$ref": "#/$defs/ConfigurationChangeData"
     },
     "Validated2": {
       "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
-      "$ref": "#/$defs/RoleConfigurationData"
+      "$ref": "#/$defs/FactorySetupData"
     },
     "Validated3": {
       "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
-      "$ref": "#/$defs/ModelProfileConfigurationData"
+      "$ref": "#/$defs/RoleConfigurationData"
     },
     "Validated4": {
       "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
-      "$ref": "#/$defs/EngineIdentityData"
+      "$ref": "#/$defs/ModelProfileConfigurationData"
     },
     "Validated5": {
       "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
-      "$ref": "#/$defs/DevicePreferenceData"
+      "$ref": "#/$defs/GenerationControlsData"
     },
     "Validated6": {
       "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
-      "$ref": "#/$defs/DeviceIdentityData"
+      "$ref": "#/$defs/EngineIdentityData"
+    },
+    "Validated7": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/DevicePreferenceData"
     }
   }
 }

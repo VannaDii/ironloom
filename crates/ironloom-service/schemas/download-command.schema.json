@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/DownloadCommandData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "CommandId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom CommandId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "DownloadCommandData": {
+      "description": "Unchecked construction draft for `DownloadCommand`; validate before use.",
+      "type": "object",
+      "properties": {
+        "command_id": {
+          "description": "Durable actor-scoped mutation identity.",
+          "$ref": "#/$defs/CommandId"
+        },
+        "download_id": {
+          "description": "Absent for start, required for resume/cancel.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "operation": {
+          "description": "Explicit download action.",
+          "$ref": "#/$defs/DownloadOperation"
+        },
+        "project_id": {
+          "description": "Authorized project context or installation-level model management.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProjectId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "repository_id": {
+          "description": "Selected source repository ID.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "revision": {
+          "description": "Pinned source revision; never silently substitute latest.",
+          "$ref": "#/$defs/ActorId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "command_id",
+        "repository_id",
+        "revision",
+        "operation"
+      ]
+    },
+    "DownloadOperation": {
+      "description": "Service-owned resumable download operation; not inference.",
+      "oneOf": [
+        {
+          "description": "Start after current source access/license check.",
+          "type": "string",
+          "const": "start"
+        },
+        {
+          "description": "Resume the same pinned source/revision.",
+          "type": "string",
+          "const": "resume"
+        },
+        {
+          "description": "Persist cancellation request; termination confirmation remains separate.",
+          "type": "string",
+          "const": "cancel"
+        }
+      ]
+    },
+    "ProjectId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ProjectId value.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

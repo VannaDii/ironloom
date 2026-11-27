@@ -9,6 +9,9 @@ publish.workspace = true
 description = "Filesystem-backed Ironloom state and artifact storage."
 
 [dependencies]
+sha2.workspace = true
+hex.workspace = true
+uuid.workspace = true
 schemars.workspace = true
 sqlx.workspace = true
 aes-gcm.workspace = true

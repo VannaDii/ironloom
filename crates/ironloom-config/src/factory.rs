@@ -114,6 +114,8 @@ ModelProfileConfiguration, ModelProfileConfigurationData {
     provider: ActorId,
     /// Configured provider model/checkpoint.
     model_id: ActorId,
+    /// Explicit generation bounds, independent of optional monetary budgets.
+    generation_controls: ironloom_models::factory::GenerationControls,
     /// Private credential reference; separate use/share/replace/delete grants.
     credential_id: Option<CredentialId>,
     /// Explicit account/API/local estimate billing choice.

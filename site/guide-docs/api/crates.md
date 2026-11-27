@@ -5,6 +5,7 @@ Ironloom keeps crate responsibilities strict so runtime orchestration stays sepa
 | Crate | Responsibility |
 | --- | --- |
 | `ironloom-core` | Typed IDs, repository and branch primitives, shared errors. |
+| `ironloom-service` | Validated service/authentication/native contracts and injected ports, independent of runtime composition. |
 | `ironloom-config` | Runtime configuration resolution, setup gating, and environment precedence. |
 | `ironloom-artifacts` | Immutable artifact envelopes and schema contracts. |
 | `ironloom-storage` | `.ironloom/` filesystem state, artifact indexes, encrypted setup configuration, and persisted thread bindings. |

@@ -34,3 +34,5 @@ La misma revisión define consultas y cambios autorizados de configuración, equ
 Ironloom aún no se ha publicado: solo se inicializan esquemas nuevos, sin compatibilidad con versiones antiguas, conversiones, rellenos de datos, archivos de actualización ni historial de migraciones. El código obsoleto se retira durante el desarrollo inicial.
 
 `FactoryService::create_conversation` guarda una conversación vacía autorizada antes de iniciar un turno nativo, con identidad de comando duradera e instantánea con cursor cero. No envía texto ni inicia inferencia; el texto del usuario sigue siendo obligatorio.
+
+Los contratos compartidos del servicio y del registro nativo ahora están en `ironloom-service::factory`; el runtime y los adaptadores nativos dependen de este crate común, sin alias de importación antiguos. Las instantáneas incluyen la asignación activa para reconectar. Hay registros explícitos para proyectos, credenciales, conexiones nativas y fuentes/descargas; los perfiles guardan controles de generación mediante la configuración.

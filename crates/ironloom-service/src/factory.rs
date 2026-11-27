@@ -425,6 +425,67 @@ pub trait Authentication: Send + Sync {
 }
 /// Web/native service operations. Caller identity must be resolved by trusted authentication.
 pub trait FactoryService: Send + Sync {
+    /// Lists only currently viewable project metadata, ordered by authenticated human interaction.
+    fn projects(
+        &self,
+        session: AuthenticatedSession,
+        query: ProjectQuery,
+    ) -> BoxFuture<'_, Result<ProjectPage, ServiceError>>;
+    /// Creates creator-owned project metadata/backing repository under configured infrastructure roots.
+    fn create_project(
+        &self,
+        session: AuthenticatedSession,
+        request: CreateProject,
+    ) -> BoxFuture<'_, Result<ProjectSummary, ServiceError>>;
+    /// Records an explicit installation-administrator self-grant before returning private content.
+    fn self_grant_project(
+        &self,
+        session: AuthenticatedSession,
+        project: ProjectId,
+        command: CommandId,
+    ) -> BoxFuture<'_, Result<ProjectSummary, ServiceError>>;
+    /// Returns opaque credential metadata for current authorized use/management, never plaintext.
+    fn credentials(
+        &self,
+        session: AuthenticatedSession,
+    ) -> BoxFuture<'_, Result<Vec<CredentialSummary>, ServiceError>>;
+    /// Applies current, distinct create/replace/share/delete authority and revision checks atomically.
+    fn credential(
+        &self,
+        session: AuthenticatedSession,
+        request: CredentialCommand,
+    ) -> BoxFuture<'_, Result<Option<CredentialSummary>, ServiceError>>;
+    /// Returns the authenticated operator's current node connection, without protected registration.
+    fn native_connection(
+        &self,
+        session: AuthenticatedSession,
+        node: NodeId,
+    ) -> BoxFuture<'_, Result<NativeConnectionState, ServiceError>>;
+    /// Imports or manages protected control registration; enrollment completion belongs to native adapter.
+    fn configure_native(
+        &self,
+        session: AuthenticatedSession,
+        request: NativeConnectionCommand,
+    ) -> BoxFuture<'_, Result<NativeConnectionState, ServiceError>>;
+    /// Authorized metadata-only source browsing; continuation is scoped to query and source account.
+    fn source_search(
+        &self,
+        session: AuthenticatedSession,
+        project: Option<ProjectId>,
+        query: ironloom_models::factory::SourceQuery,
+    ) -> BoxFuture<'_, Result<ironloom_models::factory::SourcePage, ServiceError>>;
+    /// Returns the authorized persisted transfer after reconnect; no request is resubmitted.
+    fn download_status(
+        &self,
+        session: AuthenticatedSession,
+        download: ActorId,
+    ) -> BoxFuture<'_, Result<ironloom_models::factory::DownloadProgress, ServiceError>>;
+    /// Authorized current source access and resumable transfer lifecycle, with durable command identity.
+    fn download(
+        &self,
+        session: AuthenticatedSession,
+        request: DownloadCommand,
+    ) -> BoxFuture<'_, Result<ironloom_models::factory::DownloadProgress, ServiceError>>;
     /// Creates an empty persisted conversation after checking current project operate authority.
     /// Atomically bind authenticated actor/command ID/payload to the new service-assigned ID and
     /// initial snapshot. Identical replay returns that outcome; changed payload conflicts.
@@ -538,15 +599,6 @@ pub fn decode_cursor(header: &str) -> Result<ReplayCursor, ServiceError> {
         })?;
     ironloom_core::validation::decode(&bytes).map_err(ServiceError::Validation)
 }
-/// Creates one Axum SSE event from an already-persisted service event, without dispatching work.
-pub fn sse_event(event: &ServiceEvent) -> Result<axum::response::sse::Event, ServiceError> {
-    axum::response::sse::Event::default()
-        .id(encode_cursor(&event.cursor)?)
-        .event("ironloom.event")
-        .json_data(event)
-        .map_err(|_| ServiceError::Unavailable)
-}
-
 /// Bounded live delivery after durable replay; receiver ownership is not execution ownership.
 pub struct EventSubscription {
     /// Durable ordered events, followed by a safe error on revocation/overflow when deliverable.
@@ -562,6 +614,8 @@ ConversationSnapshot, ConversationSnapshotData {
     cursor: ReplayCursor,
     /// Optimistic command revision at the watermark.
     revision: Counter,
+    /// Current assignment binding for reconnect controls; absent for an empty/idle conversation.
+    active_assignment_id: Option<AssignmentId>,
     /// Current execution state; absence means no active assignment.
     execution_state: Option<ironloom_queue::factory::ExecutionState>,
     /// Current visible plan revision.
@@ -575,6 +629,26 @@ ConversationSnapshot, ConversationSnapshotData {
 } |value| {
     let _ = value;
     positive("revision", value.revision)?;
+    if value.execution_state.as_ref().is_some_and(|state| {
+        !matches!(
+            state,
+            ironloom_queue::factory::ExecutionState::Completed
+                | ironloom_queue::factory::ExecutionState::Failed
+                | ironloom_queue::factory::ExecutionState::Terminated
+        )
+    }) && value.active_assignment_id.is_none()
+    {
+        return Err(ValidationErrors::field(
+            "active_assignment_id",
+            "execution_binding_required",
+        ));
+    }
+    if value.active_assignment_id.is_some() && value.execution_state.is_none() {
+        return Err(ValidationErrors::field(
+            "execution_state",
+            "assignment_state_required",
+        ));
+    }
     if value.session.conversation_id != value.cursor.conversation_id {
         return Err(ValidationErrors::field(
             "cursor.conversation_id",
@@ -887,6 +961,456 @@ CreateConversation, CreateConversationData {
     project_id: ProjectId,
 } |value| {
     let _ = value;
+    Ok(())
+}
+}
+
+ironloom_core::contract! {
+/// Validated factory record.
+RelayCursor, RelayCursorData {
+    /// Native relay client ID.
+    client_id: ActorId,
+    /// Relay stream identity, not conversation ID.
+    stream_id: ActorId,
+    /// Upstream transport acknowledgment, not durable service cursor.
+    acknowledged_sequence: Counter,
+    /// Optional acknowledged chunk within the sequence.
+    acknowledged_segment: Option<Counter>,
+    /// Opaque upstream subscribe cursor, independent from sequence acknowledgment.
+    subscription_cursor: Option<ActorId>,
+} |value| {
+    let _ = value;
+    Ok(())
+}
+}
+ironloom_core::contract! {
+/// Validated factory record.
+NativeEnrollment, NativeEnrollmentData {
+    /// Existing shared installation.
+    installation_id: InstallationId,
+    /// Enrolled service node.
+    node_id: NodeId,
+    /// Upstream server ID returned by enrollment/refresh.
+    server_id: ServerId,
+    /// Distinct upstream environment ID used for session visibility.
+    environment_id: EnvironmentId,
+    /// Normalized relay endpoint set.
+    relay_target: RelayTarget,
+    /// Persisted enrollment/preference key; independent from server and environment IDs.
+    persistence_key: NativePersistenceKey,
+    /// Connected external account.
+    external_account_id: ActorId,
+    /// Authorized human mapping; host does not grant access.
+    operator_id: OperatorId,
+    /// Persisted user preference.
+    enabled: bool,
+    /// Reject stale token-refresh results.
+    authentication_generation: Counter,
+    /// Protected imported control registration.
+    control_registration_ref: CredentialId,
+    /// Separate eligible inference credentials; no billing fallback.
+    inference_credential_ref: Option<CredentialId>,
+} |value| {
+    let _ = value;
+    positive("authentication_generation", value.authentication_generation)?;
+    if value.external_account_id != value.persistence_key.external_account_id
+        || value.relay_target.websocket_url != value.persistence_key.websocket_url
+    {
+        return Err(ValidationErrors::field(
+            "persistence_key",
+            "enrollment_key_mismatch",
+        ));
+    }
+    Ok(())
+}
+}
+/// Pinned upstream compatibility source; not an adopted state runtime.
+pub const UPSTREAM_REVISION: &str = "e2e7dabd4587c7b0fbf934e6a93b6cec8245751d";
+/// Upstream native relay protocol version.
+pub const RELAY_PROTOCOL_VERSION: u64 = 3;
+
+impl NativeEnrollmentData {
+    /// Rejects refresh responses from a retired login generation.
+    pub fn accepts_refresh(&self, generation: Counter) -> bool {
+        self.enabled && self.authentication_generation == generation
+    }
+}
+ironloom_core::contract! {
+/// Validated factory record.
+RelayTarget, RelayTargetData {
+    /// Normalized relay WebSocket endpoint.
+    websocket_url: String,
+    /// Enrollment endpoint.
+    enroll_url: String,
+    /// Server registration refresh endpoint.
+    refresh_url: String,
+    /// Pairing endpoint.
+    pair_url: String,
+    /// Pairing-status endpoint.
+    pair_status_url: String,
+} |value| {
+    let _ = value;
+    let websocket = relay_url("websocket_url", &value.websocket_url, true)?;
+    for (field, endpoint) in [
+        ("enroll_url", &value.enroll_url),
+        ("refresh_url", &value.refresh_url),
+        ("pair_url", &value.pair_url),
+        ("pair_status_url", &value.pair_status_url),
+    ] {
+        let http = relay_url(field, endpoint, false)?;
+        if websocket.host_str() != http.host_str()
+            || websocket.port_or_known_default() != http.port_or_known_default()
+            || (websocket.scheme() == "wss") != (http.scheme() == "https")
+        {
+            return Err(ValidationErrors::field(field, "relay_origin_mismatch"));
+        }
+    }
+    Ok(())
+}
+}
+ironloom_core::contract! {
+/// Validated factory record.
+NativePersistenceKey, NativePersistenceKeyData {
+    /// Exact normalized relay WebSocket target, as in upstream persisted lookup.
+    websocket_url: String,
+    /// Authenticated external account; never an unrestricted host identity.
+    external_account_id: ActorId,
+    /// Optional pairing/client preference namespace, matching upstream lookup.
+    client_name: Option<ActorId>,
+} |value| {
+    let _ = value;
+    relay_url("websocket_url", &value.websocket_url, true)?;
+    Ok(())
+}
+}
+
+fn relay_url(field: &str, value: &str, websocket: bool) -> Result<url::Url, ValidationErrors> {
+    let url = url::Url::parse(value).map_err(|_| ValidationErrors::field(field, "invalid_url"))?;
+    let loopback = match url.host() {
+        Some(url::Host::Domain(host)) => host == "localhost",
+        Some(url::Host::Ipv4(ip)) => ip.is_loopback(),
+        Some(url::Host::Ipv6(ip)) => ip.is_loopback(),
+        None => false,
+    };
+    let secure = if websocket { "wss" } else { "https" };
+    let local = if websocket { "ws" } else { "http" };
+    if url.host_str().is_none()
+        || !(url.scheme() == secure || (loopback && url.scheme() == local))
+        || !url.username().is_empty()
+        || url.password().is_some()
+        || url.query().is_some()
+        || url.fragment().is_some()
+    {
+        return Err(ValidationErrors::field(field, "secure_relay_required"));
+    }
+    if url.as_str() != value {
+        return Err(ValidationErrors::field(field, "normalized_url_required"));
+    }
+    Ok(url)
+}
+/// Project storage availability independent of installation/setup identity.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ProjectStorageState {
+    /// Owning workspace mount/repository is accessible.
+    Available,
+    /// Project metadata remains visible; filesystem execution is blocked.
+    Unavailable,
+}
+ironloom_core::contract! {
+/// Validated factory record.
+ProjectQuery, ProjectQueryData {
+    /// Opaque continuation tuple of human-interaction timestamp and project ID.
+    after: Option<ActorId>,
+    /// Bounded catalog page size.
+    limit: Counter,
+} |value| {
+    let _ = value;
+    positive("limit", value.limit)?;
+    if value.limit.get() > MAX_SESSION_PAGE {
+        return Err(ValidationErrors::field("limit", "page_too_large"));
+    }
+    Ok(())
+}
+}
+ironloom_core::contract! {
+/// Validated factory record.
+ProjectSummary, ProjectSummaryData {
+    /// Stable metadata identity independent of folder/name.
+    project_id: ProjectId,
+    /// Mutable human-readable project name.
+    name: String,
+    /// Creator-owned project, not automatically visible to administrators.
+    owner: OperatorId,
+    /// Workspace-owning node.
+    owner_node: NodeId,
+    /// Unavailable mounts never erase metadata or initialize replacement workspaces.
+    storage: ProjectStorageState,
+    /// Ordering key; background events never change it.
+    last_human_interaction_ms: Counter,
+    /// Current effective grants; never a token authorizing future operations.
+    permissions: Vec<ironloom_policy::factory::Permission>,
+} |value| {
+    let _ = value;
+    required("name", &value.name)
+}
+}
+ironloom_core::contract! {
+/// Validated factory record.
+ProjectPage, ProjectPageData {
+    /// Authorized projects ordered by latest human interaction, then stable ID.
+    projects: Vec<ProjectSummary>,
+    /// Opaque continuation; None means exhausted.
+    next_after: Option<ActorId>,
+} |value| {
+    let _ = value;
+    if value.projects.len() > MAX_SESSION_PAGE as usize {
+        return Err(ValidationErrors::field("projects", "page_too_large"));
+    }
+    Ok(())
+}
+}
+ironloom_core::contract! {
+/// Validated factory record.
+CreateProject, CreateProjectData {
+    /// Durable actor-scoped creation identity.
+    command_id: CommandId,
+    /// Requested display name; server assigns project ID and configured root.
+    name: String,
+    /// GitHub source-of-truth repository; None creates a new backing Git repository.
+    repository: Option<RepositorySlug>,
+    /// Explicit authorized source credential reference, never a secret.
+    source_credential_id: Option<CredentialId>,
+} |value| {
+    let _ = value;
+    required("name", &value.name)
+}
+}
+/// Credential management, independent from session login or inference billing.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum CredentialOperation {
+    /// Create a private credential owned by authenticated operator.
+    Create,
+    /// Replace secret material with distinct permission.
+    Replace,
+    /// Grant/revoke explicit per-operation authority.
+    Share,
+    /// Delete secret material with distinct permission.
+    Delete,
+}
+ironloom_core::contract! {
+/// Validated factory record.
+CredentialSummary, CredentialSummaryData {
+    /// Opaque reference safe for authorized selection.
+    credential_id: CredentialId,
+    /// Private owner.
+    owner: OperatorId,
+    /// Nonsecret human label.
+    label: ActorId,
+    /// Current management revision.
+    revision: Counter,
+    /// Current operation-specific effective grants; no plaintext secret.
+    permissions: Vec<ironloom_policy::factory::Permission>,
+} |value| {
+    let _ = value;
+    positive("revision", value.revision)
+}
+}
+ironloom_core::contract! {
+/// Validated factory record.
+CredentialCommand, CredentialCommandData {
+    /// Durable actor-scoped mutation identity.
+    command_id: CommandId,
+    /// None only for creation; server assigns identity.
+    credential_id: Option<CredentialId>,
+    /// Zero only for creation, positive for existing records.
+    expected_revision: Counter,
+    /// Explicit management operation.
+    operation: CredentialOperation,
+    /// Required for creation; optional on replacement.
+    label: Option<ActorId>,
+    /// Required only for create/replace, never emitted by read APIs.
+    secret: Option<SecretInput>,
+    /// Required only for share/revoke.
+    grantee: Option<OperatorId>,
+    /// Share grants limited to credential operations.
+    permissions: Vec<ironloom_policy::factory::Permission>,
+    /// True only for revoking a specified share.
+    revoke: bool,
+} |value| {
+    let _ = value;
+    let create = value.operation == CredentialOperation::Create;
+    if create != value.credential_id.is_none() || create != (value.expected_revision == 0) {
+        return Err(ValidationErrors::field(
+            "credential_id",
+            "credential_identity_mismatch",
+        ));
+    }
+    if create && value.label.is_none() {
+        return Err(ValidationErrors::field("label", "required"));
+    }
+    let secret = matches!(
+        value.operation,
+        CredentialOperation::Create | CredentialOperation::Replace
+    );
+    if secret != value.secret.is_some() {
+        return Err(ValidationErrors::field(
+            "secret",
+            "secret_operation_mismatch",
+        ));
+    }
+    let share = value.operation == CredentialOperation::Share;
+    if share != value.grantee.is_some()
+        || share == value.permissions.is_empty()
+        || (!share && value.revoke)
+    {
+        return Err(ValidationErrors::field(
+            "grantee",
+            "share_operation_mismatch",
+        ));
+    }
+    if value.permissions.iter().any(|permission| {
+        !matches!(
+            permission,
+            ironloom_policy::factory::Permission::View
+                | ironloom_policy::factory::Permission::UseCredential
+                | ironloom_policy::factory::Permission::ReplaceCredential
+                | ironloom_policy::factory::Permission::Share
+                | ironloom_policy::factory::Permission::DeleteCredential
+        )
+    }) {
+        return Err(ValidationErrors::field(
+            "permissions",
+            "credential_permissions_required",
+        ));
+    }
+    Ok(())
+}
+}
+/// Native control authentication separate from eligible inference credentials.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum NativeConnectionOperation {
+    /// Import protected registration for server-side refresh.
+    Import,
+    /// Persist enabled preference without changing identity.
+    SetEnabled,
+    /// Disconnect and delete the protected control registration.
+    Delete,
+}
+ironloom_core::contract! {
+/// Validated factory record.
+NativeConnectionCommand, NativeConnectionCommandData {
+    /// Durable actor-scoped connection mutation.
+    command_id: CommandId,
+    /// Enrolled service node.
+    node_id: NodeId,
+    /// Zero for first import; otherwise compare with persisted authentication generation.
+    expected_generation: Counter,
+    /// Explicit connection operation.
+    operation: NativeConnectionOperation,
+    /// Present exactly for import; never returned to browsers.
+    protected_registration: Option<SecretInput>,
+    /// Present exactly for enable/disable preference.
+    enabled: Option<bool>,
+} |value| {
+    let _ = value;
+    if (value.operation == NativeConnectionOperation::Import)
+        != value.protected_registration.is_some()
+    {
+        return Err(ValidationErrors::field(
+            "protected_registration",
+            "import_registration_required_only",
+        ));
+    }
+    if (value.operation == NativeConnectionOperation::SetEnabled) != value.enabled.is_some() {
+        return Err(ValidationErrors::field(
+            "enabled",
+            "preference_required_only",
+        ));
+    }
+    Ok(())
+}
+}
+/// Current native connection state without exposure of protected registration.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum NativeConnectionStatus {
+    /// No active control registration.
+    Disconnected,
+    /// Protected registration import/enrollment is pending.
+    Connecting,
+    /// Current enrollment and authentication are ready.
+    Connected,
+    /// Connection failed; no silent credential replacement.
+    Failed,
+}
+ironloom_core::contract! {
+/// Validated factory record.
+NativeConnectionState, NativeConnectionStateData {
+    /// Enrolled node.
+    node_id: NodeId,
+    /// Current authentication generation; zero before first import.
+    generation: Counter,
+    /// Current connection state.
+    status: NativeConnectionStatus,
+    /// Present after successful enrollment.
+    enrollment: Option<NativeEnrollment>,
+} |value| {
+    let _ = value;
+    if value.status == NativeConnectionStatus::Connected && value.enrollment.is_none() {
+        return Err(ValidationErrors::field(
+            "enrollment",
+            "connected_enrollment_required",
+        ));
+    }
+    if let Some(enrollment) = &value.enrollment
+        && (enrollment.node_id != value.node_id
+            || enrollment.authentication_generation != value.generation)
+        {
+            return Err(ValidationErrors::field(
+                "enrollment",
+                "connection_binding_mismatch",
+            ));
+        }
+    Ok(())
+}
+}
+/// Service-owned resumable download operation; not inference.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum DownloadOperation {
+    /// Start after current source access/license check.
+    Start,
+    /// Resume the same pinned source/revision.
+    Resume,
+    /// Persist cancellation request; termination confirmation remains separate.
+    Cancel,
+}
+ironloom_core::contract! {
+/// Validated factory record.
+DownloadCommand, DownloadCommandData {
+    /// Durable actor-scoped mutation identity.
+    command_id: CommandId,
+    /// Authorized project context or installation-level model management.
+    project_id: Option<ProjectId>,
+    /// Selected source repository ID.
+    repository_id: ActorId,
+    /// Pinned source revision; never silently substitute latest.
+    revision: ActorId,
+    /// Absent for start, required for resume/cancel.
+    download_id: Option<ActorId>,
+    /// Explicit download action.
+    operation: DownloadOperation,
+} |value| {
+    let _ = value;
+    if (value.operation == DownloadOperation::Start) != value.download_id.is_none() {
+        return Err(ValidationErrors::field(
+            "download_id",
+            "download_identity_mismatch",
+        ));
+    }
     Ok(())
 }
 }

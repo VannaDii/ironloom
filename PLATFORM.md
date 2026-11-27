@@ -41,6 +41,7 @@ Ironloom's target is a Rust software factory and persistent background harness s
 
 Ironloom is unreleased. Use fresh-schema initialization only. Do not add backward compatibility shims, legacy wire/artifact formats or runtime adapters, data conversion/backfills, schema upgrades, migration history, or migration frameworks. Obsolete foundation code may remain only until its replacement lands during initial build-out; it must not become supported old-version behavior.
 
+- `ironloom-service` owns the shared validated service/authentication/native enrollment ports. Runtime and native adapters depend on it without an adapter-to-runtime dependency or compatibility re-exports.
 - Keep the Rust workspace under `crates/*`; `ironloom-runtime` remains the deployable service and composition boundary.
 - Every Rust/Dart wire model implements the shared validation contract. Decode and validate fields, nested models, and cross-field invariants before use; service validation is independent of client validation. Keep schemas and focused decode-path tests aligned.
 - `ironloom-core` owns shared typed identities and domain values; `ironloom-config` owns configuration and setup completeness.
