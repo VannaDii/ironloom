@@ -169,12 +169,16 @@ async fn human_input_atomically_creates_owned_queue_history_and_instruction_copi
         )
         .await
         .unwrap();
-    let configuration:ConfigurationCommand=serde_json::from_value(json!({"command_id":"setup-workflow","project_id":null,"expected_revision":"1","changes":{"setup":{"lesson_handling":"project_only","delivery_confirmed":true,"publish_branch":false,"merge":false,"deploy":false},"source_accounts":[{"host":"huggingface","access":{"type":"credential","credential_id":credential}}],"endpoints":[{"provider":"fixture","base":"http://127.0.0.1:8099/","dialect":"responses","billing":"api_key","streaming":true,"tools":true,"stream_usage":true,"reasoning_efforts":[]}],"models":[{"profile_id":"fixture-profile","provider":"fixture","model_id":"scripted","generation_controls":{"max_output_tokens":"128","max_duration_ms":"1000","repetition_window":"16"},"credential_id":credential,"billing":"api_key","engine":null,"device_bindings":[]}],"roles":[{"role_id":"product-manager","enabled":true,"model_profile_id":"fixture-profile","reasoning_applicable":false,"reasoning_effort":null,"device_bindings":[],"instructions_id":"product-manager"}]}})).unwrap();
+    let configuration:ConfigurationCommand=serde_json::from_value(json!({"command_id":"setup-workflow","project_id":null,"expected_revision":"1","changes":{"setup":{"lesson_handling":"project_only","delivery_confirmed":true,"publish_branch":false,"merge":false,"deploy":false},"source_accounts":[{"host":"huggingface","access":{"type":"credential","credential_id":credential}}],"endpoints":[{"provider":"fixture","base":"http://127.0.0.1:8099/","dialect":"responses","billing":"api_key","streaming":false,"tools":true,"stream_usage":true,"reasoning_efforts":[]}],"models":[{"profile_id":"fixture-profile","provider":"fixture","model_id":"scripted","generation_controls":{"max_output_tokens":"128","max_duration_ms":"1000","repetition_window":"16"},"credential_id":credential,"billing":"api_key","engine":null,"device_bindings":[]}],"roles":[{"role_id":"product-manager","enabled":true,"model_profile_id":"fixture-profile","reasoning_applicable":false,"reasoning_effort":null,"device_bindings":[],"instructions_id":"product-manager"}]}})).unwrap();
     let config = backend
         .configure(alice.session.clone(), configuration)
         .await
         .unwrap();
     assert!(config.execution_ready, "{:?}", config.unmet_prerequisites);
+    assert!(
+        !config.endpoints[0].streaming,
+        "registered API-key endpoints support bounded nonstreaming normalization"
+    );
     assert_eq!(
         backend
             .configuration(alice.session.clone(), None)

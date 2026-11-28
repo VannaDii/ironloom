@@ -189,9 +189,7 @@ impl FactoryBackend {
             }
             if profile.engine.is_none()
                 && !endpoints.iter().any(|endpoint| {
-                    endpoint.provider == profile.provider
-                        && endpoint.billing == profile.billing
-                        && endpoint.streaming
+                    endpoint.provider == profile.provider && endpoint.billing == profile.billing
                 })
             {
                 continue;
