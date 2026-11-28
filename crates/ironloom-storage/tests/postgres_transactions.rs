@@ -546,11 +546,128 @@ async fn concurrent_bootstrap_idempotency_sessions_and_rollback_survive_reconnec
         store.renew_claim(&forged, lease_duration).await,
         Err(DatabaseError::Conflict)
     ));
+    use ironloom_storage::postgres::paths::{PathAccess, PathArea, PathOperation};
+    let worker = ironloom_core::WorkerId::new("path-worker").unwrap();
+    for id in ["path-process-a", "path-process-b"] {
+        sqlx::query("INSERT INTO ironloom.processes(process_id,assignment_id,node_id,fence,boot_identity,state,body) VALUES($1,$2,$3,1,'fixture-boot','running','{}')")
+            .bind(id).bind(assignment.as_str()).bind(node.as_str()).execute(&pool).await.unwrap();
+    }
+    async fn try_paths(
+        store: &Store,
+        operator: &OperatorId,
+        claim: &ironloom_storage::postgres::dispatch::DispatchLease,
+        worker: &ironloom_core::WorkerId,
+        id: &str,
+        path: PathAccess,
+    ) -> bool {
+        let Operation::Write(mut batch) = store
+            .begin(
+                operator,
+                &CommandId::new(id).unwrap(),
+                &json!({"fixture":id}),
+                &ActorId::new(id).unwrap(),
+            )
+            .await
+            .unwrap()
+        else {
+            panic!("fresh path command")
+        };
+        match batch
+            .acquire_paths(
+                claim,
+                worker,
+                &PathOperation::Process(ActorId::new(id).unwrap()),
+                &[path],
+            )
+            .await
+        {
+            Ok(()) => {
+                (*batch).commit(&json!({"owned":true})).await.unwrap();
+                true
+            }
+            Err(DatabaseError::Conflict) => false,
+            Err(error) => panic!("unexpected path failure: {error}"),
+        }
+    }
+    let (a, b) = tokio::join!(
+        try_paths(
+            &store,
+            &alice,
+            &claim,
+            &worker,
+            "path-process-a",
+            PathAccess::new(PathArea::Workspace, "src".into(), true).unwrap()
+        ),
+        try_paths(
+            &store,
+            &alice,
+            &claim,
+            &worker,
+            "path-process-b",
+            PathAccess::new(PathArea::Workspace, "src/file".into(), false).unwrap()
+        )
+    );
+    assert_ne!(
+        a, b,
+        "overlapping directory/file operations cannot both acquire ownership"
+    );
+    for id in ["path-process-a", "path-process-b"] {
+        let Operation::Write(mut batch) = store
+            .begin(
+                &alice,
+                &CommandId::new(format!("release-running-{id}")).unwrap(),
+                &json!({"fixture":id}),
+                &scope,
+            )
+            .await
+            .unwrap()
+        else {
+            panic!("fresh release")
+        };
+        assert!(matches!(
+            batch
+                .release_paths(&claim, &PathOperation::Process(ActorId::new(id).unwrap()))
+                .await,
+            Err(DatabaseError::Conflict)
+        ));
+    }
     sqlx::query("UPDATE ironloom.dispatch SET lease_expires_at=clock_timestamp()-interval '1 second' WHERE assignment_id=$1").bind(assignment.as_str()).execute(&pool).await.unwrap();
     assert!(matches!(
         store.renew_claim(&claim, lease_duration).await,
         Err(DatabaseError::Conflict)
     ));
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>(
+            "SELECT count(*) FROM ironloom.file_owners WHERE assignment_id=$1"
+        )
+        .bind(assignment.as_str())
+        .fetch_one(&pool)
+        .await
+        .unwrap(),
+        1,
+        "lease expiry never releases path ownership"
+    );
+    sqlx::query("UPDATE ironloom.processes SET state='stopped' WHERE process_id IN ('path-process-a','path-process-b')").execute(&pool).await.unwrap();
+    for id in ["path-process-a", "path-process-b"] {
+        let Operation::Write(mut batch) = store
+            .begin(
+                &alice,
+                &CommandId::new(format!("release-stopped-{id}")).unwrap(),
+                &json!({"fixture":id}),
+                &scope,
+            )
+            .await
+            .unwrap()
+        else {
+            panic!("fresh release")
+        };
+        batch
+            .release_paths(&claim, &PathOperation::Process(ActorId::new(id).unwrap()))
+            .await
+            .unwrap();
+        (*batch).commit(&json!({"released":true})).await.unwrap();
+    }
+
     assert!(
         store
             .claim_next(&node, &instance_b, lease_duration)

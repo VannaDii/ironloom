@@ -204,9 +204,14 @@ CREATE TABLE ironloom.external_mutations (
 CREATE INDEX external_mutations_assignment ON ironloom.external_mutations(assignment_id,state);
 CREATE TABLE ironloom.file_owners (
     assignment_id text NOT NULL REFERENCES ironloom.dispatch,
+    area text NOT NULL CHECK (area IN ('workspace','artifacts')),
     relative_path text NOT NULL,
+    subtree boolean NOT NULL,
     worker_id text NOT NULL,
-    PRIMARY KEY (assignment_id, relative_path)
+    operation_kind text NOT NULL CHECK (operation_kind IN ('process','mutation')),
+    operation_id text NOT NULL,
+    fence bigint NOT NULL CHECK (fence > 0),
+    PRIMARY KEY (assignment_id, area, relative_path)
 );
 CREATE TABLE ironloom.resource_pools (
     device_id text PRIMARY KEY,

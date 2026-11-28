@@ -28,3 +28,5 @@ El aislamiento de comandos Linux usa un proceso auxiliar, espacios de nombres de
 
 
 Las reservas de ejecución vinculan el nodo, la instancia exacta del servicio y un contador de propiedad monotónico. Una reserva caducada no se renueva ni se reintenta automáticamente; los procesos o cambios externos sin resolver impiden la recuperación explícita. El proceso auxiliar protege la terminación del padre desde el inicio. Las pruebas nativas pasan; la política Docker de este host impide crear espacios de nombres, por lo que los trabajadores del contenedor no se ejecutan. El flujo completo sigue en desarrollo.
+
+Los permisos de Linux distinguen archivos exactos `write_files` y subárboles `write_directories`. Crear, editar, eliminar y mover archivos exactos usa herramientas nativas; los comandos reciben solo montajes explícitos de directorios. Los árboles escribibles rechazan enlaces duros y seccomp bloquea enlaces nuevos. La propiedad persistente de rutas permanece hasta confirmar la detención o conciliación, incluso tras vencer el arrendamiento. La integración completa de la pasarela sigue en curso.

@@ -760,10 +760,11 @@
       "input": {
         "assignment_id": "assignment-1",
         "worker_id": "worker-1",
-        "write_paths": [
+        "artifact_area": "role/worker-1",
+        "write_files": [
           "src/file.rs"
         ],
-        "artifact_area": "role/worker-1"
+        "write_directories": []
       },
       "expected_errors": []
     },
@@ -773,14 +774,15 @@
       "input": {
         "assignment_id": "assignment-1",
         "worker_id": "worker-1",
-        "write_paths": [
+        "artifact_area": "role/worker-1",
+        "write_files": [
           "../secrets"
         ],
-        "artifact_area": "role/worker-1"
+        "write_directories": []
       },
       "expected_errors": [
         {
-          "field": "write_paths",
+          "field": "write_files",
           "code": "relative_normal_path_required"
         }
       ]
@@ -3017,10 +3019,11 @@
       "input": {
         "assignment_id": "assignment-1",
         "worker_id": "worker-1",
-        "write_paths": [
+        "artifact_area": " ",
+        "write_files": [
           "src/file.rs"
         ],
-        "artifact_area": " "
+        "write_directories": []
       },
       "expected_errors": [
         {
@@ -3035,10 +3038,11 @@
       "input": {
         "assignment_id": "assignment-1",
         "worker_id": "worker-1",
-        "write_paths": [
+        "artifact_area": "../private",
+        "write_files": [
           "src/file.rs"
         ],
-        "artifact_area": "../private"
+        "write_directories": []
       },
       "expected_errors": [
         {
@@ -4536,6 +4540,65 @@
         {
           "field": "roles",
           "code": "duplicate_role"
+        }
+      ]
+    },
+    {
+      "contract": "worker_paths",
+      "name": "exact-file-and-directory",
+      "input": {
+        "assignment_id": "assignment-1",
+        "worker_id": "worker-1",
+        "write_files": [
+          "src/new"
+        ],
+        "write_directories": [
+          "tests"
+        ],
+        "artifact_area": "role/worker-1"
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "worker_paths",
+      "name": "overlapping-directories",
+      "input": {
+        "assignment_id": "assignment-1",
+        "worker_id": "worker-1",
+        "write_files": [
+          "src/new"
+        ],
+        "write_directories": [
+          "src",
+          "src/sub"
+        ],
+        "artifact_area": "role/worker-1"
+      },
+      "expected_errors": [
+        {
+          "field": "write_directories",
+          "code": "overlapping_paths"
+        }
+      ]
+    },
+    {
+      "contract": "worker_paths",
+      "name": "metadata-file-rejected",
+      "input": {
+        "assignment_id": "assignment-1",
+        "worker_id": "worker-1",
+        "write_files": [
+          ".git/config"
+        ],
+        "write_directories": [
+          "tests"
+        ],
+        "artifact_area": "role/worker-1"
+      },
+      "expected_errors": [
+        {
+          "field": "write_files",
+          "code": "relative_normal_path_required"
         }
       ]
     }

@@ -153,7 +153,7 @@ impl Batch {
         Ok(())
     }
     async fn require_quiescent(&mut self, assignment: &AssignmentId) -> Result<(), DatabaseError> {
-        let blocked:bool=sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM ironloom.processes WHERE assignment_id=$1 AND state NOT IN ('stopped','not_started')) OR EXISTS(SELECT 1 FROM ironloom.external_mutations WHERE assignment_id=$1 AND state IN ('pending','uncertain'))")
+        let blocked:bool=sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM ironloom.processes WHERE assignment_id=$1 AND state NOT IN ('stopped','not_started')) OR EXISTS(SELECT 1 FROM ironloom.external_mutations WHERE assignment_id=$1 AND state IN ('pending','uncertain')) OR EXISTS(SELECT 1 FROM ironloom.file_owners WHERE assignment_id=$1)")
             .bind(assignment.as_str()).fetch_one(&mut *self.tx).await?;
         if blocked {
             return Err(DatabaseError::Conflict);

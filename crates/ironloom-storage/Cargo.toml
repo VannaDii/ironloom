@@ -9,6 +9,7 @@ publish.workspace = true
 description = "Filesystem-backed Ironloom state and artifact storage."
 
 [dependencies]
+ironloom-worktrees = { path = "../ironloom-worktrees", version = "0.1.0" }
 sha2.workspace = true
 hex.workspace = true
 uuid.workspace = true

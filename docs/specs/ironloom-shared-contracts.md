@@ -110,7 +110,7 @@ Minimum OS/platform versions and concrete MLX/Splash routes still require Vanna'
 
 `ModelProfileConfiguration` is operator configuration, separate from inference-ready `ModelSelection`: setup can save desired profiles before weights/download hashes or device reconciliation are ready. It has no silent billing/engine fallback. `RoleConfiguration.device_bindings` intersects model bindings at execution. Infrastructure storage roots are read from deployment configuration and cannot be set through the browser mutation. `ConfigurationChange` changes selected settings sections, preserving other sections; current state and referenced grants are validated atomically when applying the command.
 
-The fresh-install bootstrap schema rejects installation row deletion/truncation and installation ID changes, while preserving grant-initialization updates. These guards are ordinary database invariants, not a claim to prevent a database administrator from dropping/restoring the database. Estimated usage requires `calculation_basis` even without monetary cost. Artifact-area failures identify `artifact_area`, separately from `write_paths`.
+The fresh-install bootstrap schema rejects installation row deletion/truncation and installation ID changes, while preserving grant-initialization updates. These guards are ordinary database invariants, not a claim to prevent a database administrator from dropping/restoring the database. Estimated usage requires `calculation_basis` even without monetary cost. Artifact-area failures identify `artifact_area`, separately from `write_files` and `write_directories`.
 
 These additions are validated records and interface signatures only. No configuration/lesson endpoint, live subscription implementation, provider search implementation or engine recovery loop is claimed. The shared decode corpus remains `fixtures/contracts/decode.json`; Ivy aligns Dart to the exact revised candidate before consolidation.
 
@@ -215,3 +215,13 @@ The sandbox helper installs parent-death termination and no-new-privileges befor
 ### Implemented lesson HTTP operations
 
 The runtime implements `GET /api/v1/projects/{id}/lessons` and `POST /api/v1/commands` for `CommandAction::Lesson`. Current project-context view and independent lesson manage/share grants are required; source conversation access is never inferred or requested. Scope broadening requires explicit share authority, including installation share for promotion. Edits/restrictions/deletion invalidate dynamic context immediately, independently from copied instruction-template policy. Deletion removes content and retains only a content-free identity/revision marker for authorized command replay; the storage writer rejects resurrection of that ID. A delayed replay projects current lesson visibility instead of restoring its older scope. The bounded asynchronous outbox loop recovers current conversation-parent/lesson grant intents after interrupted requests or restart, without minting user sessions, blocking work on telemetry or running models. Other workflow command handlers remain in progress and currently report unavailable rather than accepting nonexistent execution.
+
+Exact file scope is `WorkerPaths.write_files`; command-writable subtrees are
+`write_directories`. No file grant becomes a parent-directory grant. Linux native
+filesystem tools implement create/atomic replace/remove/move through descriptor-relative,
+no-symlink operations after pure scope checks of all affected paths. Contained commands
+receive only directory mounts. Writable command/artifact trees reject multiply-linked
+inodes before launch; seccomp denies new hard links. The PostgreSQL path ledger serializes
+conflicting file/subtree operations, retains ownership after lease expiry, and releases
+only after recorded process termination or mutation reconciliation. Runtime gateway and
+scheduler composition remain in progress; these primitives are not a completed workflow.

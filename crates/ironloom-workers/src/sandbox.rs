@@ -70,8 +70,9 @@ impl Launch {
         }
         for path in self
             .paths
-            .write_paths
+            .write_directories
             .iter()
+            .chain(self.paths.write_files.iter())
             .chain(std::iter::once(&self.paths.artifact_area))
         {
             if Path::new(path).components().any(
@@ -80,7 +81,7 @@ impl Launch {
                 return Err(SandboxError);
             }
         }
-        let paths = &self.paths.write_paths;
+        let paths = &self.paths.write_directories;
         for (index, path) in paths.iter().enumerate() {
             if paths.iter().skip(index + 1).any(|other| {
                 Path::new(path).starts_with(other) || Path::new(other).starts_with(path)
@@ -175,6 +176,44 @@ fn beneath(base: &OwnedFd, path: &str) -> Result<OwnedFd, SandboxError> {
     }
     Ok(current)
 }
+// Scan through pinned directory descriptors without following names to another directory.
+// Every writable inode must be private: a read-only mount elsewhere does not revoke writes
+// through another hard link. The gateway must hold its path ownership through process stop.
+fn private_inodes(fd: &OwnedFd) -> Result<(), SandboxError> {
+    const MAX_ENTRIES: usize = 1_000_000;
+    const MAX_DEPTH: usize = 256;
+    fn visit(fd: &OwnedFd, depth: usize, remaining: &mut usize) -> Result<(), SandboxError> {
+        let stat = fstat(fd).map_err(|_| SandboxError)?;
+        let kind = SFlag::from_bits_truncate(stat.st_mode);
+        if kind != SFlag::S_IFDIR {
+            return if matches!(kind, SFlag::S_IFREG | SFlag::S_IFLNK) && stat.st_nlink == 1 {
+                Ok(())
+            } else {
+                Err(SandboxError)
+            };
+        }
+        if depth >= MAX_DEPTH {
+            return Err(SandboxError);
+        }
+        for entry in std::fs::read_dir(format!("/proc/self/fd/{}", fd.as_raw_fd()))
+            .map_err(|_| SandboxError)?
+        {
+            *remaining = remaining.checked_sub(1).ok_or(SandboxError)?;
+            let name = entry.map_err(|_| SandboxError)?.file_name();
+            let child = openat(
+                fd,
+                Path::new(&name),
+                OFlag::O_PATH | OFlag::O_NOFOLLOW | OFlag::O_CLOEXEC,
+                Mode::empty(),
+            )
+            .map_err(|_| SandboxError)?;
+            visit(&child, depth + 1, remaining)?;
+        }
+        Ok(())
+    }
+    let mut remaining = MAX_ENTRIES;
+    visit(fd, 0, &mut remaining)
+}
 /// Runs only in the dedicated single-threaded child before any Tokio runtime starts.
 /// Mounts immutable descriptor targets, installs seccomp and replaces itself with bubblewrap.
 pub fn child_main() -> Result<(), SandboxError> {
@@ -201,6 +240,12 @@ pub fn child_main() -> Result<(), SandboxError> {
     let workspace = root(&request.launch.worktree)?;
     let artifact_root = root(&request.launch.artifact_root)?;
     let artifact = beneath(&artifact_root, &request.launch.paths.artifact_area)?;
+    if SFlag::from_bits_truncate(fstat(&artifact).map_err(|_| SandboxError)?.st_mode)
+        != SFlag::S_IFDIR
+    {
+        return Err(SandboxError);
+    }
+    private_inodes(&artifact)?;
     let mut command = Command::new(request.bwrap);
     command.env_clear().args([
         "--unshare-user",
@@ -245,8 +290,14 @@ pub fn child_main() -> Result<(), SandboxError> {
         WORKSPACE,
     ]);
     command.args(["--bind-fd", &mounts[1].as_raw_fd().to_string(), ARTIFACTS]);
-    for path in &request.launch.paths.write_paths {
+    for path in &request.launch.paths.write_directories {
         let fd = beneath(&mounts[0], path)?;
+        if SFlag::from_bits_truncate(fstat(&fd).map_err(|_| SandboxError)?.st_mode)
+            != SFlag::S_IFDIR
+        {
+            return Err(SandboxError);
+        }
+        private_inodes(&fd)?;
         command
             .arg("--bind-fd")
             .arg(fd.as_raw_fd().to_string())
@@ -295,6 +346,9 @@ fn filter() -> Result<Vec<u8>, SandboxError> {
             (RET, 0, 0, KILL),
         ];
         for call in [
+            libc::SYS_linkat,
+            #[cfg(target_arch = "x86_64")]
+            libc::SYS_link,
             libc::SYS_ptrace,
             libc::SYS_mount,
             libc::SYS_umount2,

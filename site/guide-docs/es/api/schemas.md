@@ -58,3 +58,5 @@ La paginación del historial requiere una dirección explícita, permite filtrar
 
 
 `CommandReceipt.cursor` no aparece en cambios de recursos sin eventos. Gestionar una lección compartida no requiere acceso a su conversación privada de origen ni revela su cursor. Los comandos de conversación conservan cursores reales. La configuración rechaza roles duplicados y no añade una selección inicial obligatoria.
+
+Los permisos de Linux distinguen archivos exactos `write_files` y subárboles `write_directories`. Crear, editar, eliminar y mover archivos exactos usa herramientas nativas; los comandos reciben solo montajes explícitos de directorios. Los árboles escribibles rechazan enlaces duros y seccomp bloquea enlaces nuevos. La propiedad persistente de rutas permanece hasta confirmar la detención o conciliación, incluso tras vencer el arrendamiento. La integración completa de la pasarela sigue en curso.

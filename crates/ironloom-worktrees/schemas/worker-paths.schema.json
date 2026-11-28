@@ -34,8 +34,15 @@
           "description": "Worker owner.",
           "$ref": "#/$defs/WorkerId"
         },
-        "write_paths": {
-          "description": "Resolved relative paths; sandbox still handles symlinks and descendants.",
+        "write_directories": {
+          "description": "Directory subtrees writable by contained commands and filesystem tools.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "write_files": {
+          "description": "Exact files writable through the authorized filesystem gateway, never parent directory mounts.",
           "type": "array",
           "items": {
             "type": "string"
@@ -46,7 +53,8 @@
       "required": [
         "assignment_id",
         "worker_id",
-        "write_paths",
+        "write_files",
+        "write_directories",
         "artifact_area"
       ]
     }

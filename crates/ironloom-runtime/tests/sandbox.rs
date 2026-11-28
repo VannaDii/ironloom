@@ -9,7 +9,8 @@ fn paths() -> WorkerPaths {
     WorkerPaths::new(WorkerPathsData {
         assignment_id: AssignmentId::new("sandbox-assignment").unwrap(),
         worker_id: WorkerId::new("sandbox-worker").unwrap(),
-        write_paths: vec!["src".into()],
+        write_files: vec![],
+        write_directories: vec!["src".into()],
         artifact_area: "worker".into(),
     })
     .unwrap()
@@ -127,16 +128,8 @@ async fn missing_enforcement_or_symlinked_mount_never_runs_the_command() {
     );
     assert!(!root.path().join("artifacts/worker/uncontained").exists());
     let mut forbidden = (*paths()).clone();
-    forbidden.write_paths = vec![".git".into()];
-    assert!(
-        Launch::new(
-            root.path().join("workspace"),
-            root.path().join("artifacts"),
-            WorkerPaths::new(forbidden).unwrap(),
-            command("true")
-        )
-        .is_err()
-    );
+    forbidden.write_directories = vec![".git".into()];
+    assert!(WorkerPaths::new(forbidden).is_err());
 }
 fn children(pid: u32) -> Vec<u32> {
     std::fs::read_to_string(format!("/proc/{pid}/task/{pid}/children"))
@@ -228,4 +221,145 @@ async fn killing_owned_sandbox_stops_background_descendants_in_its_pid_namespace
     })
     .await
     .unwrap();
+}
+
+#[tokio::test]
+async fn hard_link_aliases_in_workspace_and_artifacts_fail_before_execution() {
+    for (source, destination) in [
+        ("workspace/readonly", "workspace/src/alias"),
+        ("external", "workspace/src/alias"),
+        ("external", "artifacts/worker/alias"),
+    ] {
+        let root = tempfile::tempdir().unwrap();
+        roots(root.path());
+        std::fs::write(root.path().join("external"), "external-original").unwrap();
+        std::fs::hard_link(root.path().join(source), root.path().join(destination)).unwrap();
+        let output = runner().spawn(Launch::new(
+            root.path().join("workspace"), root.path().join("artifacts"), paths(),
+            command("echo escaped > src/alias; echo escaped > /artifacts/alias; echo ran > src/ran"),
+        ).unwrap()).await.unwrap().wait_with_output().await.unwrap();
+        assert!(!output.status.success());
+        assert!(!root.path().join("workspace/src/ran").exists());
+        assert_eq!(
+            std::fs::read_to_string(root.path().join("workspace/readonly")).unwrap(),
+            "original"
+        );
+        assert_eq!(
+            std::fs::read_to_string(root.path().join("external")).unwrap(),
+            "external-original"
+        );
+    }
+}
+
+#[tokio::test]
+async fn running_worker_cannot_introduce_a_new_hard_link_alias() {
+    let root = tempfile::tempdir().unwrap();
+    roots(root.path());
+    let output = runner().spawn(Launch::new(
+        root.path().join("workspace"), root.path().join("artifacts"), paths(),
+        command("set -eu; echo private > src/private; if ln src/private src/alias 2>/dev/null; then exit 21; fi; if ln readonly src/escape 2>/dev/null; then exit 22; fi; echo finished > src/ran"),
+    ).unwrap()).await.unwrap().wait_with_output().await.unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(!root.path().join("workspace/src/alias").exists());
+    assert!(!root.path().join("workspace/src/escape").exists());
+    assert!(root.path().join("workspace/src/ran").exists());
+}
+
+#[tokio::test]
+async fn exact_file_tools_create_replace_move_remove_without_writable_siblings() {
+    use ironloom_workers::files::Files;
+    use ironloom_worktrees::files::FileAction;
+    let root = tempfile::tempdir().unwrap();
+    roots(root.path());
+    let mut grant = (*paths()).clone();
+    grant.write_directories.clear();
+    grant.write_files = vec!["src/new".into(), "src/moved".into()];
+    let grant = WorkerPaths::new(grant).unwrap();
+    let files = Files::open(&root.path().join("workspace")).unwrap();
+    let apply = |action: FileAction| files.apply(&action.scope(&grant).unwrap());
+    // Neither an absent file nor a file-level grant expands the shell's writable mounts.
+    let output=runner().spawn(Launch::new(root.path().join("workspace"),root.path().join("artifacts"),grant.clone(),command("if echo denied > src/new 2>/dev/null; then exit 31; fi; if echo denied > src/sibling 2>/dev/null; then exit 32; fi")).unwrap()).await.unwrap().wait_with_output().await.unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    apply(FileAction::Write {
+        path: "src/new".into(),
+        contents: b"created".to_vec(),
+    })
+    .unwrap();
+    use std::os::unix::fs::{MetadataExt, PermissionsExt};
+    std::fs::set_permissions(
+        root.path().join("workspace/src/new"),
+        std::fs::Permissions::from_mode(0o751),
+    )
+    .unwrap();
+    // A replacement never truncates an external inode even when the granted name is an alias.
+    std::fs::hard_link(
+        root.path().join("workspace/src/new"),
+        root.path().join("outside-alias"),
+    )
+    .unwrap();
+    apply(FileAction::Write {
+        path: "src/new".into(),
+        contents: b"edited".to_vec(),
+    })
+    .unwrap();
+    assert_eq!(
+        std::fs::read(root.path().join("outside-alias")).unwrap(),
+        b"created"
+    );
+    assert_eq!(
+        std::fs::metadata(root.path().join("workspace/src/new"))
+            .unwrap()
+            .mode()
+            & 0o777,
+        0o751
+    );
+    apply(FileAction::Write {
+        path: "src/moved".into(),
+        contents: b"old destination".to_vec(),
+    })
+    .unwrap();
+    apply(FileAction::Move {
+        from: "src/new".into(),
+        to: "src/moved".into(),
+    })
+    .unwrap();
+    assert!(!root.path().join("workspace/src/new").exists());
+    assert_eq!(
+        std::fs::read(root.path().join("workspace/src/moved")).unwrap(),
+        b"edited"
+    );
+    apply(FileAction::Remove {
+        path: "src/moved".into(),
+    })
+    .unwrap();
+    assert!(!root.path().join("workspace/src/moved").exists());
+    assert!(!root.path().join("workspace/src/sibling").exists());
+    assert_eq!(
+        std::fs::read(root.path().join("workspace/readonly")).unwrap(),
+        b"original"
+    );
+    std::os::unix::fs::symlink(
+        root.path().join("outside-alias"),
+        root.path().join("workspace/src/new"),
+    )
+    .unwrap();
+    assert!(
+        apply(FileAction::Write {
+            path: "src/new".into(),
+            contents: b"escape".to_vec()
+        })
+        .is_err()
+    );
+    assert_eq!(
+        std::fs::read(root.path().join("outside-alias")).unwrap(),
+        b"created"
+    );
 }

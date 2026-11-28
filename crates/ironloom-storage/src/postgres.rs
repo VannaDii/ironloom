@@ -12,6 +12,8 @@ const UNIQUE_VIOLATION: &str = "23505";
 const CREDENTIAL_EXISTS_SQL: &str = "SELECT EXISTS(SELECT 1 FROM ironloom.credentials WHERE credential_id=$1 AND deleted_at IS NULL)";
 /// Durable dispatch claims and explicit recovery fencing.
 pub mod dispatch;
+/// Durable filesystem ownership shared by commands, file tools and Git operations.
+pub mod paths;
 
 /// Redacted durable storage failures; callers never receive SQL or connection secrets.
 #[derive(Debug, Error)]

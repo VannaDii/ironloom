@@ -58,3 +58,5 @@ History paging now requires an explicit forward/backward direction, accepts an o
 
 
 `CommandReceipt.cursor` is absent for event-free resource mutations. Shared lesson management must not require access to its private source conversation or reveal that cursor. Conversation commands retain real stream cursors. Configuration rejects duplicate role IDs; no extra entry-role setup requirement is added.
+
+Linux file grants distinguish exact `write_files` from `write_directories` subtrees. Exact create/edit/remove/move uses native filesystem tools; commands receive only explicit directory mounts. Writable trees reject hard-link aliases and seccomp blocks new hard links. Durable path ownership remains until confirmed stop/reconciliation, including after lease expiry. Full runtime gateway composition is still in progress.

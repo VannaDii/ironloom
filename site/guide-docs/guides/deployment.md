@@ -28,3 +28,5 @@ Linux command containment now uses a dedicated helper, bubblewrap namespaces, ex
 
 
 Dispatch claims now bind the owning node, exact service instance and monotonic fence. Expired leases cannot renew or retry automatically; unresolved owned processes or external mutations block explicit recovery. The sandbox helper guards parent death before startup. Native tests pass, while this host’s default Docker policy denies namespace creation; container workers fail closed and remain unqualified. Full scheduler/workflow wiring is still in progress.
+
+Linux file grants distinguish exact `write_files` from `write_directories` subtrees. Exact create/edit/remove/move uses native filesystem tools; commands receive only explicit directory mounts. Writable trees reject hard-link aliases and seccomp blocks new hard links. Durable path ownership remains until confirmed stop/reconciliation, including after lease expiry. Full runtime gateway composition is still in progress.

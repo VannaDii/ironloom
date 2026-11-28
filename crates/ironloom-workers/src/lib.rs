@@ -111,3 +111,7 @@ pub struct WorkerResponse {
 
 /// Software factory contracts for the unreleased application.
 pub mod factory;
+
+/// Descriptor-relative native filesystem tools for scope-checked gateway requests.
+#[cfg(target_os = "linux")]
+pub mod files;
