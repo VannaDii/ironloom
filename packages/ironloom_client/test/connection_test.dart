@@ -276,6 +276,69 @@ void main() {
     await chat.close();
     client.close();
   });
+  test('event-free resource receipts are accepted while chat requires its own durable cursor', () async {
+    Object? returned;
+    final client = IronloomClient(
+      ServerConnection(Uri.parse('https://host/')),
+      MockClient((request) async {
+        final body = jsonDecode(request.body) as Map<String, Object?>;
+        return http.Response(
+          jsonEncode({
+            'command_id': body['command_id'],
+            'disposition': 'accepted',
+            'cursor': returned,
+          }),
+          200,
+        );
+      }),
+    );
+    final resource = Command(
+      commandId: CommandId('resource'),
+      projectId: ProjectId('p'),
+      expectedRevision: Counter('1'),
+      action: CommandAction(
+        'lesson',
+        LessonMutation(
+          lessonId: LessonId('lesson'),
+          expectedRevision: Counter('1'),
+          operation: LessonOperation.delete,
+        ),
+      ),
+    );
+    expect((await client.command(resource)).cursor, isNull);
+    final command = Command(
+      commandId: CommandId('input'),
+      projectId: ProjectId('p'),
+      expectedRevision: Counter('1'),
+      action: CommandAction(
+        'input',
+        InputCommand(
+          conversationId: ConversationId('c'),
+          text: 'Keep retry identity',
+        ),
+      ),
+    );
+    final journal = MemoryCommandJournal();
+    await journal.save(command);
+    final chat = ChatConnection(client, journal)
+      ..snapshot = ConversationSnapshot.fromJson(state());
+    for (final cursor in [
+      null,
+      {'conversation_id': 'other', 'sequence': '1'},
+    ]) {
+      returned = cursor;
+      await expectLater(
+        chat.retry(command),
+        throwsA(
+          isA<ApiFailure>().having((error) => error.status, 'status', 502),
+        ),
+      );
+      expect((await journal.pending()).single.commandId.value, 'input');
+    }
+    await chat.close();
+    client.close();
+  });
+
   test('unrecognized service errors do not expose response bodies', () async {
     final client = IronloomClient(
       ServerConnection(Uri.parse('https://host/')),

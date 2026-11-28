@@ -518,6 +518,10 @@ void _validateModel(WireModel model) {
         _fail('changes.setup', 'installation_scope_required');
       }
     case ConfigurationSnapshot v:
+      if (v.roles.map((role) => role.roleId.value).toSet().length !=
+          v.roles.length) {
+        _fail('roles', 'duplicate_role');
+      }
       if (v.executionReady != v.unmetPrerequisites.isEmpty) {
         _fail('execution_ready', 'prerequisite_mismatch');
       }

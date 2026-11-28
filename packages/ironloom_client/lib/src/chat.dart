@@ -141,7 +141,14 @@ final class ChatConnection {
   }
 
   Future<CommandReceipt> retry(Command command) async {
+    final expected = snapshot?.session.conversationId ?? cursor?.conversationId;
+    if (expected == null)
+      throw StateError('Connect a conversation before retrying');
     final receipt = await client.command(command);
+    if (receipt.cursor == null ||
+        receipt.cursor!.conversationId.value != expected.value) {
+      throw ApiFailure(502, null);
+    }
     if (receipt.disposition == CommandDisposition.conflict) {
       throw CommandConflict(receipt);
     }

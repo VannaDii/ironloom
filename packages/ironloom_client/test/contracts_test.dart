@@ -6,6 +6,7 @@ import 'package:test/test.dart';
 
 final Map<String, WireModel Function(Object?)> decoders = {
   'stored_command': StoredCommand.fromJson,
+  'command_receipt': CommandReceipt.fromJson,
   'session_query': SessionQuery.fromJson,
   'service_event': ServiceEvent.fromJson,
   'model_inventory_item': ModelInventoryItem.fromJson,
@@ -58,7 +59,9 @@ final Map<String, WireModel Function(Object?)> decoders = {
 
 void main() {
   final corpus = jsonDecode(
-    File('../../fixtures/contracts/decode.json').readAsStringSync(),
+    File(
+      '${Platform.environment['IRONLOOM_CONTRACT_ROOT'] ?? '../..'}/fixtures/contracts/decode.json',
+    ).readAsStringSync(),
   ) as Map<String, Object?>;
   for (final entry in corpus['cases']! as List<Object?>) {
     final fixture = entry! as Map<String, Object?>;

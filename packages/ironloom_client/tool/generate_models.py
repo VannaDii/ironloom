@@ -4,13 +4,16 @@ Committed Rust schemas cross-check fields. Semantic invariants live in invariant
 shared decode fixtures check the public constructors independently in both languages.
 Run from any directory with python3 packages/ironloom_client/tool/generate_models.py.
 """
+import argparse
 import json
 import pathlib
 import re
 import subprocess
 
 PACKAGE = pathlib.Path(__file__).resolve().parents[1]
-ROOT = PACKAGE.parents[1]
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--source-root", type=pathlib.Path, default=PACKAGE.parents[1], help="One complete current contract source tree, including its schemas.")
+ROOT = parser.parse_args().source_root.resolve()
 SOURCES = sorted((ROOT / 'crates').glob('*/src/factory.rs'))
 records = {}
 enums = {}

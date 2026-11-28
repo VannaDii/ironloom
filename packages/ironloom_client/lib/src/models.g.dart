@@ -4016,7 +4016,7 @@ final class CommandReceipt implements WireModel {
   factory CommandReceipt({
     required CommandId commandId,
     required CommandDisposition disposition,
-    required ReplayCursor cursor,
+    ReplayCursor? cursor,
   }) => CommandReceipt.fromJson({
     'command_id': _json(commandId),
     'disposition': _json(disposition),
@@ -4028,14 +4028,14 @@ final class CommandReceipt implements WireModel {
     final value = CommandReceipt._(
       r.read('command_id', CommandId.fromJson),
       r.read('disposition', CommandDisposition.fromJson),
-      r.read('cursor', ReplayCursor.fromJson),
+      r.optional('cursor', ReplayCursor.fromJson),
     );
     value.validate();
     return value;
   }
   final CommandId commandId;
   final CommandDisposition disposition;
-  final ReplayCursor cursor;
+  final ReplayCursor? cursor;
   @override
   void validate() {
     _validateModel(this);

@@ -274,8 +274,17 @@ final class IronloomClient {
       'limit': query.limit.toJson(),
     },
   );
-  Future<CommandReceipt> command(Command request) =>
-      _model('POST', 'api/v1/commands', CommandReceipt.fromJson, body: request);
+  Future<CommandReceipt> command(Command request) async {
+    final receipt = await _model(
+      'POST',
+      'api/v1/commands',
+      CommandReceipt.fromJson,
+      body: request,
+    );
+    if (receipt.commandId.value != request.commandId.value)
+      throw ApiFailure(502, null);
+    return receipt;
+  }
 
   Future<ProjectPage> projects(ProjectQuery query) => _model(
     'GET',
