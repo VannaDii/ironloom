@@ -16,6 +16,8 @@ pub mod dispatch;
 pub mod paths;
 /// Durable project discovery independent from workspace mounts.
 pub mod projects;
+/// Persisted inference identities and confirmed/uncertain execution observations.
+pub mod requests;
 
 /// Redacted durable storage failures; callers never receive SQL or connection secrets.
 #[derive(Debug, Error)]
@@ -407,6 +409,28 @@ impl Store {
                 .await?;
         decode_enrollment(body, node)
     }
+    /// Reads one bounded page of assignment-owned records without mutating command identities.
+    /// The service validates owning payload/scope and current resource grants before exposure.
+    pub async fn assignment_records(
+        &self,
+        kind: &str,
+        assignment: &ironloom_core::AssignmentId,
+        after: Option<&ActorId>,
+        limit: u32,
+    ) -> Result<Vec<(ActorId, Record)>, DatabaseError> {
+        if limit == 0 || limit > 100 {
+            return Err(DatabaseError::Conflict);
+        }
+        let rows=sqlx::query("SELECT record_id,revision::text,project_id,assignment_id,body FROM ironloom.records WHERE kind=$1 AND assignment_id=$2 AND ($3::text IS NULL OR record_id COLLATE \"C\">$3 COLLATE \"C\") ORDER BY record_id COLLATE \"C\" LIMIT $4")
+            .bind(kind).bind(assignment.as_str()).bind(after.map(ActorId::as_str)).bind(i64::from(limit)).fetch_all(&self.pool).await?;
+        rows.into_iter()
+            .map(|row| {
+                let id = ActorId::new(row.get::<String, _>("record_id"))
+                    .map_err(|_| DatabaseError::Corrupt)?;
+                Ok((id, record(row)?))
+            })
+            .collect()
+    }
     /// Returns installation/project instruction rows at a single consistent watermark, ordered
     /// by public template identity. The caller resolves effective overrides and current authority.
     pub async fn instruction_rows(
@@ -713,6 +737,14 @@ pub struct Batch {
     command: CommandId,
 }
 impl Batch {
+    /// Reads the current database clock for durable execution observations within this transaction.
+    pub async fn database_time_ms(&mut self) -> Result<u64, DatabaseError> {
+        let value: String =
+            sqlx::query_scalar("SELECT floor(extract(epoch from clock_timestamp())*1000)::text")
+                .fetch_one(&mut *self.tx)
+                .await?;
+        value.parse().map_err(|_| DatabaseError::Corrupt)
+    }
     /// Rechecks this command actor's session after waiting for mutation locks. The shared row
     /// lock serializes logout against the commit without requiring a second pool connection.
     pub async fn session_active(&mut self, session: &ActorId) -> Result<bool, DatabaseError> {

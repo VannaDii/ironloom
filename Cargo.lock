@@ -1448,6 +1448,7 @@ name = "ironloom-supervisor"
 version = "0.1.0"
 dependencies = [
  "ironloom-artifacts",
+ "ironloom-config",
  "ironloom-core",
  "ironloom-gates",
  "ironloom-observability",

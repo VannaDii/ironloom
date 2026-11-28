@@ -57,3 +57,21 @@ impl Store {
             .bind(after.map(|(time,_)|time.to_string())).bind(after.map(|(_,id)|id.as_str())).bind(i64::from(limit)).fetch_all(&self.pool).await?.into_iter().map(metadata).collect()
     }
 }
+
+impl Batch {
+    /// Locks the immutable project owner-node binding inside assignment creation, without another
+    /// pool acquisition. An unbound project cannot dispatch to an inferred/default node.
+    pub async fn project_node(&mut self, project: &ProjectId) -> Result<NodeId, DatabaseError> {
+        let node: Option<Option<String>> = sqlx::query_scalar(
+            "SELECT owner_node_id FROM ironloom.projects WHERE project_id=$1 FOR SHARE",
+        )
+        .bind(project.as_str())
+        .fetch_optional(&mut *self.tx)
+        .await?;
+        NodeId::new(
+            node.ok_or(DatabaseError::NotFound)?
+                .ok_or(DatabaseError::Corrupt)?,
+        )
+        .map_err(|_| DatabaseError::Corrupt)
+    }
+}

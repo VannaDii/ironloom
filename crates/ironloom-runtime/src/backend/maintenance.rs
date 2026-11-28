@@ -19,6 +19,13 @@ struct ConversationIntent {
     project: ProjectId,
     conversation: ConversationId,
 }
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct AssignmentIntent {
+    kind: String,
+    project: ProjectId,
+    assignment: AssignmentId,
+}
 impl FactoryBackend {
     /// Recovers already-committed resource grant intents using current metadata/current grants.
     /// Failed resources remain pending while other independent resources continue to recover.
@@ -48,6 +55,8 @@ impl FactoryBackend {
                     }
                 } else if body.get("kind").and_then(Value::as_str) == Some("conversation_parent") {
                     self.recover_conversation_grant(&id, body).await
+                } else if body.get("kind").and_then(Value::as_str) == Some("assignment_parent") {
+                    self.recover_assignment_grant(&id, body).await
                 } else {
                     continue;
                 };
@@ -98,6 +107,43 @@ impl FactoryBackend {
                         format!("project:{}", intent_body.project.as_str()),
                         "project",
                         format!("conversation:{}", intent_body.conversation.as_str()),
+                    )
+                    .map_err(|_| ServiceError::Unavailable)?,
+                ],
+                vec![],
+            )
+            .await
+            .map_err(|_| ServiceError::Unavailable)?;
+        self.store.grant_applied(intent).await.map_err(database)
+    }
+    async fn recover_assignment_grant(
+        &self,
+        intent: &ActorId,
+        body: Value,
+    ) -> Result<(), ServiceError> {
+        let body: AssignmentIntent =
+            serde_json::from_value(body).map_err(|_| ServiceError::Unavailable)?;
+        if body.kind != "assignment_parent" || intent.as_str() != body.assignment.as_str() {
+            return Err(ServiceError::Unavailable);
+        }
+        let run = assignments::stored_run(
+            self.store
+                .get("assignment", intent)
+                .await
+                .map_err(database)?
+                .ok_or(ServiceError::Unavailable)?,
+            &body.assignment,
+        )?;
+        if run.project_id != body.project {
+            return Err(ServiceError::Unavailable);
+        }
+        self.authority
+            .write(
+                vec![
+                    Relationship::new(
+                        format!("project:{}", body.project.as_str()),
+                        "project",
+                        format!("assignment:{}", body.assignment.as_str()),
                     )
                     .map_err(|_| ServiceError::Unavailable)?,
                 ],

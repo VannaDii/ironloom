@@ -1869,7 +1869,8 @@
           }
         ],
         "budget": null,
-        "active_assignment_id": "assignment-1"
+        "active_assignment_id": "assignment-1",
+        "pause_requested": false
       },
       "expected_errors": []
     },
@@ -1911,7 +1912,8 @@
           }
         ],
         "budget": null,
-        "active_assignment_id": "assignment-1"
+        "active_assignment_id": "assignment-1",
+        "pause_requested": false
       },
       "expected_errors": [
         {
@@ -1958,7 +1960,8 @@
           }
         ],
         "budget": null,
-        "active_assignment_id": "assignment-1"
+        "active_assignment_id": "assignment-1",
+        "pause_requested": false
       },
       "expected_errors": [
         {
@@ -3109,7 +3112,8 @@
         "approval": null,
         "pending_questions": [],
         "budget": null,
-        "active_assignment_id": null
+        "active_assignment_id": null,
+        "pause_requested": null
       },
       "expected_errors": []
     },
@@ -3313,7 +3317,8 @@
           }
         ],
         "budget": null,
-        "active_assignment_id": null
+        "active_assignment_id": null,
+        "pause_requested": null
       },
       "expected_errors": [
         {
@@ -3891,7 +3896,8 @@
             }
           ],
           "budget": null,
-          "active_assignment_id": "assignment-1"
+          "active_assignment_id": "assignment-1",
+          "pause_requested": false
         }
       },
       "expected_errors": []
@@ -3962,7 +3968,8 @@
             }
           ],
           "budget": null,
-          "active_assignment_id": "assignment-1"
+          "active_assignment_id": "assignment-1",
+          "pause_requested": false
         }
       },
       "expected_errors": [
@@ -4055,7 +4062,8 @@
             }
           ],
           "budget": null,
-          "active_assignment_id": "assignment-1"
+          "active_assignment_id": "assignment-1",
+          "pause_requested": false
         }
       },
       "expected_errors": [
@@ -4599,6 +4607,188 @@
         {
           "field": "write_files",
           "code": "relative_normal_path_required"
+        }
+      ]
+    },
+    {
+      "contract": "conversation_snapshot",
+      "name": "pending-pause",
+      "input": {
+        "session": {
+          "conversation_id": "conversation-1",
+          "active_turn_id": "turn-1",
+          "project_id": "project-1",
+          "archived": false,
+          "last_human_interaction_ms": "1"
+        },
+        "cursor": {
+          "conversation_id": "conversation-1",
+          "sequence": "9"
+        },
+        "revision": "3",
+        "execution_state": "running",
+        "plan": null,
+        "approval": null,
+        "pending_questions": [
+          {
+            "question_id": "question-1",
+            "assignment_id": "assignment-1",
+            "conversation_id": "conversation-1",
+            "turn_id": "turn-1",
+            "item_id": "item-1",
+            "revision": "1",
+            "text": "What should the fixture cover?",
+            "choices": [
+              "a",
+              "b"
+            ],
+            "allow_multiple": true,
+            "allow_text": true,
+            "resolved_by": null
+          }
+        ],
+        "budget": null,
+        "active_assignment_id": "assignment-1",
+        "pause_requested": true
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "conversation_snapshot",
+      "name": "confirmed-pause-is-not-pending",
+      "input": {
+        "session": {
+          "conversation_id": "conversation-1",
+          "active_turn_id": "turn-1",
+          "project_id": "project-1",
+          "archived": false,
+          "last_human_interaction_ms": "1"
+        },
+        "cursor": {
+          "conversation_id": "conversation-1",
+          "sequence": "9"
+        },
+        "revision": "3",
+        "execution_state": "paused",
+        "plan": null,
+        "approval": null,
+        "pending_questions": [
+          {
+            "question_id": "question-1",
+            "assignment_id": "assignment-1",
+            "conversation_id": "conversation-1",
+            "turn_id": "turn-1",
+            "item_id": "item-1",
+            "revision": "1",
+            "text": "What should the fixture cover?",
+            "choices": [
+              "a",
+              "b"
+            ],
+            "allow_multiple": true,
+            "allow_text": true,
+            "resolved_by": null
+          }
+        ],
+        "budget": null,
+        "active_assignment_id": "assignment-1",
+        "pause_requested": false
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "conversation_snapshot",
+      "name": "paused-cannot-still-be-pending",
+      "input": {
+        "session": {
+          "conversation_id": "conversation-1",
+          "active_turn_id": "turn-1",
+          "project_id": "project-1",
+          "archived": false,
+          "last_human_interaction_ms": "1"
+        },
+        "cursor": {
+          "conversation_id": "conversation-1",
+          "sequence": "9"
+        },
+        "revision": "3",
+        "execution_state": "paused",
+        "plan": null,
+        "approval": null,
+        "pending_questions": [
+          {
+            "question_id": "question-1",
+            "assignment_id": "assignment-1",
+            "conversation_id": "conversation-1",
+            "turn_id": "turn-1",
+            "item_id": "item-1",
+            "revision": "1",
+            "text": "What should the fixture cover?",
+            "choices": [
+              "a",
+              "b"
+            ],
+            "allow_multiple": true,
+            "allow_text": true,
+            "resolved_by": null
+          }
+        ],
+        "budget": null,
+        "active_assignment_id": "assignment-1",
+        "pause_requested": true
+      },
+      "expected_errors": [
+        {
+          "field": "pause_requested",
+          "code": "pending_pause_state_mismatch"
+        }
+      ]
+    },
+    {
+      "contract": "conversation_snapshot",
+      "name": "active-pause-state-required",
+      "input": {
+        "session": {
+          "conversation_id": "conversation-1",
+          "active_turn_id": "turn-1",
+          "project_id": "project-1",
+          "archived": false,
+          "last_human_interaction_ms": "1"
+        },
+        "cursor": {
+          "conversation_id": "conversation-1",
+          "sequence": "9"
+        },
+        "revision": "3",
+        "execution_state": "running",
+        "plan": null,
+        "approval": null,
+        "pending_questions": [
+          {
+            "question_id": "question-1",
+            "assignment_id": "assignment-1",
+            "conversation_id": "conversation-1",
+            "turn_id": "turn-1",
+            "item_id": "item-1",
+            "revision": "1",
+            "text": "What should the fixture cover?",
+            "choices": [
+              "a",
+              "b"
+            ],
+            "allow_multiple": true,
+            "allow_text": true,
+            "resolved_by": null
+          }
+        ],
+        "budget": null,
+        "active_assignment_id": "assignment-1",
+        "pause_requested": null
+      },
+      "expected_errors": [
+        {
+          "field": "pause_requested",
+          "code": "assignment_control_state_required"
         }
       ]
     }

@@ -33,6 +33,10 @@ pub fn router(state: FactoryTransport) -> Router {
         .route("/api/v1/projects", get(projects))
         .route("/api/v1/configuration", get(configuration).post(configure))
         .route("/api/v1/instructions", get(instructions).post(instruction))
+        .route(
+            "/api/v1/assignments/{id}/instructions",
+            get(instruction_copies),
+        )
         .route("/api/v1/sessions", get(sessions).post(create_conversation))
         .route("/api/v1/sessions/{id}/snapshot", get(snapshot))
         .route("/api/v1/sessions/{id}/history", get(history))
@@ -75,6 +79,23 @@ async fn projects(
     state
         .backend
         .projects(session, query)
+        .await
+        .map(Json)
+        .map_err(HttpError)
+}
+async fn instruction_copies(
+    State(state): State<FactoryTransport>,
+    headers: HeaderMap,
+    Path(assignment): Path<AssignmentId>,
+) -> Result<Json<Vec<ironloom_process_graph::factory::InstructionCopy>>, HttpError> {
+    let session = state
+        .auth
+        .authenticate(&headers, false)
+        .await
+        .map_err(HttpError)?;
+    state
+        .backend
+        .instruction_copies(session, assignment)
         .await
         .map(Json)
         .map_err(HttpError)

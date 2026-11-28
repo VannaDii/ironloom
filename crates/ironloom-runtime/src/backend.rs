@@ -28,7 +28,10 @@ use std::{
 
 const CONFIGURATION_KIND: &str = "configuration";
 const CONFIGURATION_SCOPE: &str = "configuration";
+mod assignments;
+mod boundaries;
 mod commands;
+mod controls;
 mod conversations;
 mod lessons;
 mod maintenance;

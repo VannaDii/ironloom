@@ -563,6 +563,13 @@ pub trait FactoryService: Send + Sync {
         session: AuthenticatedSession,
         query: InstructionQuery,
     ) -> BoxFuture<'_, Result<InstructionPage, ServiceError>>;
+    /// Reads authorized assignment copies with their actual applied/acknowledged revisions.
+    /// Source storage unavailability does not erase these durable records.
+    fn instruction_copies(
+        &self,
+        session: AuthenticatedSession,
+        assignment: AssignmentId,
+    ) -> BoxFuture<'_, Result<Vec<ironloom_process_graph::factory::InstructionCopy>, ServiceError>>;
     /// Persists a template revision and the explicit selected active-copy update choice atomically.
     /// Updating copies never expands plan scope and workers acknowledge at their next decision.
     fn instruction(
@@ -694,6 +701,8 @@ ConversationSnapshot, ConversationSnapshotData {
     revision: Counter,
     /// Current assignment binding for reconnect controls; absent for an empty/idle conversation.
     active_assignment_id: Option<AssignmentId>,
+    /// Present for an active assignment; true requests a pause still awaiting a safe boundary.
+    pause_requested: Option<bool>,
     /// Current execution state; absence means no active assignment.
     execution_state: Option<ironloom_queue::factory::ExecutionState>,
     /// Current visible plan revision.
@@ -726,6 +735,12 @@ ConversationSnapshot, ConversationSnapshotData {
             "execution_state",
             "assignment_state_required",
         ));
+    }
+    if value.active_assignment_id.is_some()!=value.pause_requested.is_some() {
+        return Err(ValidationErrors::field("pause_requested","assignment_control_state_required"));
+    }
+    if value.pause_requested==Some(true) && value.execution_state.as_ref().is_some_and(|state|matches!(state,ironloom_queue::factory::ExecutionState::Paused|ironloom_queue::factory::ExecutionState::CancellationRequested|ironloom_queue::factory::ExecutionState::Terminated|ironloom_queue::factory::ExecutionState::Completed|ironloom_queue::factory::ExecutionState::Failed)) {
+        return Err(ValidationErrors::field("pause_requested","pending_pause_state_mismatch"));
     }
     if value.session.conversation_id != value.cursor.conversation_id {
         return Err(ValidationErrors::field(

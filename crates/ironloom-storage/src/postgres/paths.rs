@@ -79,7 +79,7 @@ impl Batch {
         if paths.is_empty() || paths.len() > MAX_PATHS {
             return Err(DatabaseError::Conflict);
         }
-        self.require_claim(claim).await?;
+        self.require_dispatch(claim).await?;
         self.path_activity(claim, operation, false).await?;
         let (kind, id) = operation.parts();
         let rows=sqlx::query("SELECT area,relative_path,subtree,operation_kind,operation_id,worker_id,fence FROM ironloom.file_owners WHERE assignment_id=$1")

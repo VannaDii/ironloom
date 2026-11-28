@@ -35,11 +35,14 @@ impl StandardRole {
 pub fn standard_team() -> Vec<StandardRole> {
     [
         (
-            "product-manager",
+            ironloom_core::PRODUCT_MANAGER_ROLE_ID,
             include_str!("../roles/product-manager.md"),
         ),
         ("planner", include_str!("../roles/planner.md")),
-        ("orchestrator", include_str!("../roles/orchestrator.md")),
+        (
+            ironloom_core::ORCHESTRATOR_ROLE_ID,
+            include_str!("../roles/orchestrator.md"),
+        ),
         ("implementor", include_str!("../roles/implementor.md")),
         ("tester", include_str!("../roles/tester.md")),
         ("reviewer", include_str!("../roles/reviewer.md")),

@@ -195,6 +195,7 @@ impl FactoryBackend {
                     .map_err(ServiceError::Validation)?,
                     revision: Counter::new(1),
                     active_assignment_id: None,
+                    pause_requested: None,
                     execution_state: None,
                     plan: None,
                     approval: None,

@@ -546,6 +546,73 @@ async fn concurrent_bootstrap_idempotency_sessions_and_rollback_survive_reconnec
         store.renew_claim(&forged, lease_duration).await,
         Err(DatabaseError::Conflict)
     ));
+    use ironloom_storage::postgres::requests::InferenceState;
+    let inference = ironloom_core::InferenceId::new("execution-request").unwrap();
+    let request_worker = ironloom_core::WorkerId::new("execution-worker").unwrap();
+    let corpus: serde_json::Value =
+        serde_json::from_str(include_str!("../../../fixtures/contracts/decode.json")).unwrap();
+    let mut request = corpus["cases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|case| case["name"] == "role-and-tool-roundtrip")
+        .unwrap()["input"]
+        .clone();
+    request["assignment_id"] = json!(assignment);
+    request["worker_id"] = json!(request_worker);
+    request["inference_id"] = json!(inference);
+    for (name, new) in [
+        ("prepare-inference", true),
+        ("replay-inference-identity", false),
+    ] {
+        let Operation::Write(mut batch) = store
+            .begin(
+                &alice,
+                &CommandId::new(name).unwrap(),
+                &json!({"fixture":name}),
+                &scope,
+            )
+            .await
+            .unwrap()
+        else {
+            panic!("new inference fixture")
+        };
+        assert_eq!(
+            batch
+                .prepare_inference(&claim, &request_worker, &inference, &request)
+                .await
+                .unwrap(),
+            new
+        );
+        if new {
+            batch
+                .observe_inference(&claim, &inference, InferenceState::Running, None)
+                .await
+                .unwrap();
+        }
+        (*batch).commit(&json!({"prepared":new})).await.unwrap();
+    }
+    let Operation::Write(mut changed) = store
+        .begin(
+            &alice,
+            &CommandId::new("changed-inference-payload").unwrap(),
+            &json!({"fixture":"changed"}),
+            &scope,
+        )
+        .await
+        .unwrap()
+    else {
+        panic!("new conflict fixture")
+    };
+    let mut changed_request = request.clone();
+    changed_request["controls"]["max_output_tokens"] = json!("999");
+    assert!(matches!(
+        changed
+            .prepare_inference(&claim, &request_worker, &inference, &changed_request)
+            .await,
+        Err(DatabaseError::Conflict)
+    ));
+    drop(changed);
     use ironloom_storage::postgres::paths::{PathAccess, PathArea, PathOperation};
     let worker = ironloom_core::WorkerId::new("path-worker").unwrap();
     for id in ["path-process-a", "path-process-b"] {
@@ -711,6 +778,96 @@ async fn concurrent_bootstrap_idempotency_sessions_and_rollback_survive_reconnec
         drop(recovery);
     }
     sqlx::query("UPDATE ironloom.external_mutations SET state='applied' WHERE mutation_id='fixture-mutation'").execute(&pool).await.unwrap();
+    let Operation::Write(mut observation) = store
+        .begin(
+            &alice,
+            &CommandId::new("uncertain-inference").unwrap(),
+            &json!({"fixture":"uncertain"}),
+            &scope,
+        )
+        .await
+        .unwrap()
+    else {
+        panic!("new observation")
+    };
+    observation
+        .observe_inference(
+            &claim,
+            &inference,
+            InferenceState::Uncertain,
+            Some(&json!({"transport":"lost"})),
+        )
+        .await
+        .unwrap();
+    (*observation)
+        .commit(&json!({"uncertain":true}))
+        .await
+        .unwrap();
+    let Operation::Write(mut recovery) = store
+        .begin(
+            &alice,
+            &CommandId::new("blocked-inference-recovery").unwrap(),
+            &json!({"fixture":"blocked"}),
+            &scope,
+        )
+        .await
+        .unwrap()
+    else {
+        panic!("new recovery")
+    };
+    assert!(matches!(
+        recovery.reconcile_claim(&claim, true).await,
+        Err(DatabaseError::Conflict)
+    ));
+    drop(recovery);
+    let Operation::Write(mut observation) = store
+        .begin(
+            &alice,
+            &CommandId::new("confirmed-inference-stop").unwrap(),
+            &json!({"fixture":"confirmed"}),
+            &scope,
+        )
+        .await
+        .unwrap()
+    else {
+        panic!("new observation")
+    };
+    let mut wrong_owner = claim.clone();
+    wrong_owner.instance = ActorId::new("not-the-owner").unwrap();
+    assert!(matches!(
+        observation
+            .observe_inference(
+                &wrong_owner,
+                &inference,
+                InferenceState::TerminationConfirmed,
+                None
+            )
+            .await,
+        Err(DatabaseError::Conflict)
+    ));
+    observation
+        .observe_inference(
+            &claim,
+            &inference,
+            InferenceState::TerminationConfirmed,
+            Some(&json!({"owned_execution":"ended"})),
+        )
+        .await
+        .unwrap();
+    (*observation)
+        .commit(&json!({"confirmed":true}))
+        .await
+        .unwrap();
+    assert_eq!(
+        store
+            .inference_record(&inference)
+            .await
+            .unwrap()
+            .unwrap()
+            .state,
+        InferenceState::TerminationConfirmed
+    );
+
     let Operation::Write(mut recovery) = store
         .begin(
             &alice,
@@ -734,6 +891,35 @@ async fn concurrent_bootstrap_idempotency_sessions_and_rollback_survive_reconnec
         .unwrap()
         .unwrap();
     assert_eq!(replacement.fence.get(), 2);
+    let Operation::Write(mut repeated) = store
+        .begin(
+            &alice,
+            &CommandId::new("completed-request-does-not-redispatch").unwrap(),
+            &json!({"fixture":"no-redispatch"}),
+            &scope,
+        )
+        .await
+        .unwrap()
+    else {
+        panic!("new identity check")
+    };
+    assert!(
+        !repeated
+            .prepare_inference(&replacement, &request_worker, &inference, &request)
+            .await
+            .unwrap()
+    );
+    assert!(matches!(
+        repeated
+            .observe_inference(&claim, &inference, InferenceState::Running, None)
+            .await,
+        Err(DatabaseError::Conflict)
+    ));
+    (*repeated)
+        .commit(&json!({"dispatch":false}))
+        .await
+        .unwrap();
+
     assert!(matches!(
         store.uncertain_claim(&claim).await,
         Err(DatabaseError::Conflict)

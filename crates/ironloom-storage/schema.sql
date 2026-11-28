@@ -173,6 +173,8 @@ CREATE TABLE ironloom.dispatch (
     lease_expires_at timestamptz,
     state text NOT NULL CHECK (state IN ('queued','claimed','finished')),
     requires_reconciliation boolean NOT NULL DEFAULT false,
+    suspended boolean NOT NULL DEFAULT false,
+    cancellation_requested boolean NOT NULL DEFAULT false,
     queued_at timestamptz NOT NULL DEFAULT clock_timestamp(),
     body jsonb NOT NULL CHECK (jsonb_typeof(body)='object'),
     CHECK ((claim_node_id IS NULL)=(claim_instance IS NULL)),
@@ -181,6 +183,18 @@ CREATE TABLE ironloom.dispatch (
     CHECK (state<>'queued' OR claim_node_id IS NULL),
     CHECK (state<>'claimed' OR claim_node_id IS NOT NULL)
 );
+CREATE TABLE ironloom.inference_requests (
+    inference_id text PRIMARY KEY,
+    assignment_id text NOT NULL REFERENCES ironloom.dispatch,
+    worker_id text NOT NULL,
+    node_id text NOT NULL REFERENCES ironloom.nodes,
+    service_instance text NOT NULL,
+    fence bigint NOT NULL CHECK (fence>0),
+    state text NOT NULL CHECK (state IN ('prepared','running','cancellation_requested','uncertain','completed','termination_confirmed','not_started')),
+    request jsonb NOT NULL CHECK (jsonb_typeof(request)='object'),
+    outcome jsonb
+);
+CREATE INDEX inference_requests_assignment ON ironloom.inference_requests(assignment_id,state);
 CREATE TABLE ironloom.processes (
     process_id text PRIMARY KEY,
     assignment_id text NOT NULL REFERENCES ironloom.dispatch,

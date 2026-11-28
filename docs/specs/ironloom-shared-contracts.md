@@ -225,3 +225,17 @@ inodes before launch; seccomp denies new hard links. The PostgreSQL path ledger 
 conflicting file/subtree operations, retains ownership after lease expiry, and releases
 only after recorded process termination or mutation reconciliation. Runtime gateway and
 scheduler composition remain in progress; these primitives are not a completed workflow.
+
+`ConversationSnapshot.pause_requested` is nullable only when there is no active assignment.
+It distinguishes requested pause from confirmed `Paused` state on reconnect. A pending
+pause cannot coexist with paused/cancelled/terminal state. The shared decode corpus
+covers these constructor/decode invariants. `FactoryService.instruction_copies` and
+`GET /api/v1/assignments/{id}/instructions` expose applied/acknowledged copies under
+current assignment-view authority; no new instruction update choice is introduced.
+
+Inference IDs/requests are committed before adapter I/O. A repeated ID never dispatches
+again. Interrupted/prepared/running/cancellation-requested records block claim recovery;
+only explicit completion, confirmed termination or established non-dispatch permit it.
+Control flags and fenced starts lock the same dispatch row. Pausing yields its executor
+claim only after quiescence; resuming receives a new fence. No model was run to implement
+or test these records. Full role/tool/worktree orchestration remains under implementation.

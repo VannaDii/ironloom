@@ -59,7 +59,7 @@ impl Store {
         duration: Duration,
     ) -> Result<Option<DispatchLease>, DatabaseError> {
         let ttl = ttl(duration)?;
-        sqlx::query("WITH candidate AS (SELECT assignment_id FROM ironloom.dispatch WHERE owner_node_id=$1 AND state='queued' AND NOT requires_reconciliation AND claim_node_id IS NULL ORDER BY queued_at,assignment_id FOR UPDATE SKIP LOCKED LIMIT 1) UPDATE ironloom.dispatch d SET claim_node_id=$1,claim_instance=$2,fence=fence+1,lease_expires_at=clock_timestamp()+$3::bigint*interval '1 millisecond',state='claimed' FROM candidate c WHERE d.assignment_id=c.assignment_id AND d.fence<9223372036854775807 RETURNING d.*,floor(extract(epoch from lease_expires_at)*1000)::text AS expires_ms")
+        sqlx::query("WITH candidate AS (SELECT assignment_id FROM ironloom.dispatch WHERE owner_node_id=$1 AND state='queued' AND NOT suspended AND NOT requires_reconciliation AND claim_node_id IS NULL ORDER BY queued_at,assignment_id FOR UPDATE SKIP LOCKED LIMIT 1) UPDATE ironloom.dispatch d SET claim_node_id=$1,claim_instance=$2,fence=fence+1,lease_expires_at=clock_timestamp()+$3::bigint*interval '1 millisecond',state='claimed' FROM candidate c WHERE d.assignment_id=c.assignment_id AND d.fence<9223372036854775807 RETURNING d.*,floor(extract(epoch from lease_expires_at)*1000)::text AS expires_ms")
             .bind(node.as_str()).bind(instance.as_str()).bind(ttl).fetch_optional(&self.pool).await?.map(lease).transpose()
     }
     /// Renews only a still-live exact instance/fence. An expired claim must enter reconciliation;
@@ -117,6 +117,67 @@ impl Batch {
         }
         Ok(())
     }
+    /// Checks both ownership and current pause/cancellation before starting external work.
+    /// Observational terminal writes use require_claim/owned request identity instead.
+    pub async fn require_dispatch(&mut self, claim: &DispatchLease) -> Result<(), DatabaseError> {
+        self.require_claim(claim).await?;
+        let allowed:bool=sqlx::query_scalar("SELECT NOT suspended AND NOT cancellation_requested FROM ironloom.dispatch WHERE assignment_id=$1")
+            .bind(claim.assignment_id.as_str()).fetch_one(&mut *self.tx).await?;
+        if !allowed {
+            return Err(DatabaseError::Conflict);
+        }
+        Ok(())
+    }
+    /// Persists pause/cancellation under the same row lock as all fenced starts. Cancellation
+    /// is monotonic. Returns true only when every owned request/process/mutation/path is quiescent.
+    pub async fn set_dispatch_control(
+        &mut self,
+        assignment: &AssignmentId,
+        project: &ProjectId,
+        suspended: bool,
+        cancel: bool,
+    ) -> Result<bool, DatabaseError> {
+        if suspended && cancel {
+            return Err(DatabaseError::Conflict);
+        }
+        let previous:Option<bool>=sqlx::query_scalar("SELECT cancellation_requested FROM ironloom.dispatch WHERE assignment_id=$1 AND project_id=$2 AND state<>'finished' FOR UPDATE")
+            .bind(assignment.as_str()).bind(project.as_str()).fetch_optional(&mut *self.tx).await?;
+        let previous = previous.ok_or(DatabaseError::Conflict)?;
+        if previous && !cancel {
+            return Err(DatabaseError::Conflict);
+        }
+        sqlx::query("UPDATE ironloom.dispatch SET suspended=$2,cancellation_requested=cancellation_requested OR $3 WHERE assignment_id=$1")
+            .bind(assignment.as_str()).bind(suspended).bind(cancel).execute(&mut *self.tx).await?;
+        match self.require_quiescent(assignment).await {
+            Ok(()) => Ok(true),
+            Err(DatabaseError::Conflict) => Ok(false),
+            Err(error) => Err(error),
+        }
+    }
+    /// Returns whether this exact live owner has confirmed quiescent execution ledgers.
+    pub async fn claim_quiescent(&mut self, claim: &DispatchLease) -> Result<bool, DatabaseError> {
+        self.require_claim(claim).await?;
+        match self.require_quiescent(&claim.assignment_id).await {
+            Ok(()) => Ok(true),
+            Err(DatabaseError::Conflict) => Ok(false),
+            Err(error) => Err(error),
+        }
+    }
+    /// Yields only a suspended quiescent assignment. Human/tool waits do not retain an executor
+    /// claim or pin model residency; resuming acquires a new monotonic dispatch fence.
+    pub async fn yield_suspended_claim(
+        &mut self,
+        claim: &DispatchLease,
+    ) -> Result<(), DatabaseError> {
+        self.require_claim(claim).await?;
+        self.require_quiescent(&claim.assignment_id).await?;
+        let changed=sqlx::query("UPDATE ironloom.dispatch SET state='queued',claim_node_id=NULL,claim_instance=NULL,lease_expires_at=NULL WHERE assignment_id=$1 AND suspended AND NOT cancellation_requested")
+            .bind(claim.assignment_id.as_str()).execute(&mut *self.tx).await?.rows_affected();
+        if changed != 1 {
+            return Err(DatabaseError::Conflict);
+        }
+        Ok(())
+    }
     /// Finishes a still-live exact claim in the same transaction as its terminal domain event.
     /// The runtime must already have confirmed owned execution stopped and reconciled mutations.
     pub async fn finish_claim(&mut self, claim: &DispatchLease) -> Result<(), DatabaseError> {
@@ -153,7 +214,7 @@ impl Batch {
         Ok(())
     }
     async fn require_quiescent(&mut self, assignment: &AssignmentId) -> Result<(), DatabaseError> {
-        let blocked:bool=sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM ironloom.processes WHERE assignment_id=$1 AND state NOT IN ('stopped','not_started')) OR EXISTS(SELECT 1 FROM ironloom.external_mutations WHERE assignment_id=$1 AND state IN ('pending','uncertain')) OR EXISTS(SELECT 1 FROM ironloom.file_owners WHERE assignment_id=$1)")
+        let blocked:bool=sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM ironloom.processes WHERE assignment_id=$1 AND state NOT IN ('stopped','not_started')) OR EXISTS(SELECT 1 FROM ironloom.external_mutations WHERE assignment_id=$1 AND state IN ('pending','uncertain')) OR EXISTS(SELECT 1 FROM ironloom.file_owners WHERE assignment_id=$1) OR EXISTS(SELECT 1 FROM ironloom.inference_requests WHERE assignment_id=$1 AND state NOT IN ('completed','termination_confirmed','not_started'))")
             .bind(assignment.as_str()).fetch_one(&mut *self.tx).await?;
         if blocked {
             return Err(DatabaseError::Conflict);

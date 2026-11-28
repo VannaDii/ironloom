@@ -2,6 +2,15 @@
 use super::*;
 use ironloom_observability::budget::BudgetError;
 
+/// Causal identity for a durable conversation change; it grants no authority.
+pub(super) struct ConversationChange {
+    /// Persisted human command or service observation identity.
+    pub command_id: CommandId,
+    /// Actual immutable project scope.
+    pub project_id: ProjectId,
+    /// Only authenticated human interactions update dashboard ordering.
+    pub human_interaction: bool,
+}
 impl FactoryBackend {
     /// Executes supported typed commands under their existing resource/actor identities.
     /// An unavailable unfinished operation never dispatches work or fabricates a success receipt.
@@ -12,12 +21,160 @@ impl FactoryBackend {
     ) -> Result<CommandReceipt, ServiceError> {
         match &command.action {
             CommandAction::Lesson(_) => self.lesson_command(session, command).await,
+            CommandAction::Steer(request) => {
+                self.steer_command(session, command.clone(), request.clone())
+                    .await
+            }
+            CommandAction::Control(request) => {
+                self.control_command(session, command.clone(), request.clone())
+                    .await
+            }
+            CommandAction::Input(request) => {
+                self.input_command(session, command.clone(), request.clone())
+                    .await
+            }
             CommandAction::Budget(request) => {
                 self.budget_command(session, command.clone(), request.clone())
                     .await
             }
             _ => Err(ServiceError::Unavailable),
         }
+    }
+    /// Returns the original committed outcome only after rechecking present session/resource access.
+    pub(super) async fn replayed_conversation_command(
+        &self,
+        session: &AuthenticatedSession,
+        command: &Command,
+        conversation: &ConversationId,
+        resource: &Resource,
+        outcome: Value,
+    ) -> Result<CommandReceipt, ServiceError> {
+        self.authenticated(session).await?;
+        self.require(&session.operator_id, resource.clone(), Permission::Operate)
+            .await?;
+        let mut receipt = (*read::<CommandReceipt>(outcome)?).clone();
+        if receipt.command_id != command.command_id
+            || receipt
+                .cursor
+                .as_ref()
+                .is_none_or(|cursor| &cursor.conversation_id != conversation)
+        {
+            return Err(ServiceError::Unavailable);
+        }
+        receipt.disposition = CommandDisposition::Replayed;
+        CommandReceipt::new(receipt).map_err(ServiceError::Validation)
+    }
+    /// Commits an authenticated human command without fabricating an execution identity.
+    pub(super) async fn commit_conversation_command(
+        &self,
+        batch: Box<Batch>,
+        command: &Command,
+        previous: &ConversationSnapshot,
+        draft: ConversationSnapshotData,
+        item: Option<HistoryItem>,
+    ) -> Result<CommandReceipt, ServiceError> {
+        self.commit_conversation_change(
+            batch,
+            ConversationChange {
+                command_id: command.command_id.clone(),
+                project_id: command.project_id.clone(),
+                human_interaction: true,
+            },
+            previous,
+            draft,
+            item,
+        )
+        .await
+    }
+    /// Persists state/history/event/outcome atomically; background observations never reorder projects.
+    pub(super) async fn commit_conversation_change(
+        &self,
+        mut batch: Box<Batch>,
+        change: ConversationChange,
+        previous: &ConversationSnapshot,
+        mut draft: ConversationSnapshotData,
+        item: Option<HistoryItem>,
+    ) -> Result<CommandReceipt, ServiceError> {
+        let conversation = &previous.session.conversation_id;
+        if &draft.session.conversation_id != conversation
+            || draft.session.project_id != change.project_id
+            || previous.session.project_id != change.project_id
+        {
+            return Err(ServiceError::Unavailable);
+        }
+        draft.revision = Counter::new(
+            previous
+                .revision
+                .get()
+                .checked_add(1)
+                .ok_or(ServiceError::Conflict)?,
+        );
+        if change.human_interaction {
+            let mut summary = (*draft.session).clone();
+            summary.last_human_interaction_ms = Counter::new(
+                batch
+                    .conversation_interaction(conversation)
+                    .await
+                    .map_err(database)?,
+            );
+            draft.session = SessionSummary::new(summary).map_err(ServiceError::Validation)?;
+            batch
+                .human_interaction(&change.project_id)
+                .await
+                .map_err(database)?;
+        }
+        draft.cursor = ReplayCursor::new(ReplayCursorData {
+            conversation_id: conversation.clone(),
+            sequence: Counter::new(batch.next_sequence(conversation).await.map_err(database)?),
+        })
+        .map_err(ServiceError::Validation)?;
+        let next = ConversationSnapshot::new(draft).map_err(ServiceError::Validation)?;
+        batch
+            .put(
+                "conversation",
+                &actor(conversation.as_str())?,
+                Some(&change.project_id),
+                None,
+                Some(previous.revision.get()),
+                &value(&next)?,
+            )
+            .await
+            .map_err(database)?;
+        let event = ServiceEvent::new(ServiceEventData {
+            cursor: next.cursor.clone(),
+            command_id: change.command_id.clone(),
+            project_id: change.project_id.clone(),
+            event: None,
+            snapshot: Some(next.clone()),
+        })
+        .map_err(ServiceError::Validation)?;
+        batch
+            .append_event(conversation, next.cursor.sequence.get(), &value(&event)?)
+            .await
+            .map_err(database)?;
+        if let Some(item) = item {
+            if &item.conversation_id != conversation {
+                return Err(ServiceError::Unavailable);
+            }
+            batch
+                .history_version(
+                    conversation,
+                    &item.item_id,
+                    &item.turn_id,
+                    next.cursor.sequence.get(),
+                    &value(&item)?,
+                )
+                .await
+                .map_err(database)?;
+        }
+        let receipt = CommandReceipt::new(CommandReceiptData {
+            command_id: change.command_id.clone(),
+            disposition: CommandDisposition::Accepted,
+            cursor: Some(next.cursor.clone()),
+        })
+        .map_err(ServiceError::Validation)?;
+        (*batch).commit(&value(&receipt)?).await.map_err(database)?;
+        Ok(receipt)
     }
     async fn budget_command(
         &self,

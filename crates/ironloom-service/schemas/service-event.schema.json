@@ -156,6 +156,13 @@
             }
           ]
         },
+        "pause_requested": {
+          "description": "Present for an active assignment; true requests a pause still awaiting a safe boundary.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
         "pending_questions": {
           "description": "Unresolved questions as of the same watermark.",
           "type": "array",
