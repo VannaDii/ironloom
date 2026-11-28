@@ -36,6 +36,7 @@ struct Observer {
     progress: Mutex<DownloadProgress>,
     verified: Mutex<usize>,
     verification_failures: std::sync::atomic::AtomicUsize,
+    reset_failures: std::sync::atomic::AtomicUsize,
     done: Notify,
     load_delay_ms: std::sync::atomic::AtomicU64,
     checkpoints: Mutex<std::collections::BTreeMap<std::path::PathBuf, VerifiedFile>>,
@@ -61,6 +62,36 @@ impl DownloadObserver for Observer {
             }
             *current = DownloadProgress::new(data).unwrap();
             Ok(())
+        })
+    }
+    fn reset(&self, id: ActorId) -> BoxFuture<'_, Result<DownloadProgress, AdapterError>> {
+        Box::pin(async move {
+            if self
+                .reset_failures
+                .fetch_update(
+                    std::sync::atomic::Ordering::SeqCst,
+                    std::sync::atomic::Ordering::SeqCst,
+                    |count| count.checked_sub(1),
+                )
+                .is_ok()
+            {
+                return Err(AdapterError::Unavailable);
+            }
+            if *self.verified.lock().unwrap() > 0 {
+                return Err(AdapterError::Unavailable);
+            }
+            let mut current = self.progress.lock().unwrap();
+            if current.download_id != id {
+                return Err(AdapterError::Unavailable);
+            }
+            let mut data = (**current).clone();
+            data.received_bytes = ironloom_core::Counter::new(0);
+            data.total_bytes = None;
+            data.terminated = false;
+            let next = DownloadProgress::new(data).unwrap();
+            *current = next.clone();
+            self.checkpoints.lock().unwrap().clear();
+            Ok(next)
         })
     }
     fn file_checkpoint<'a>(
@@ -115,6 +146,7 @@ fn observer() -> Arc<Observer> {
         progress: Mutex::new(progress("job")),
         verified: Mutex::new(0),
         verification_failures: std::sync::atomic::AtomicUsize::new(0),
+        reset_failures: std::sync::atomic::AtomicUsize::new(0),
         done: Notify::new(),
         load_delay_ms: std::sync::atomic::AtomicU64::new(0),
         checkpoints: Mutex::default(),
@@ -770,4 +802,75 @@ async fn bounded_pax_metadata_is_supported_but_path_and_size_overrides_cannot_es
         assert_eq!(result.is_ok(), success);
         assert_eq!(*sink.verified.lock().unwrap(), usize::from(success));
     }
+}
+
+#[tokio::test]
+async fn refused_archive_resets_only_after_fenced_persistence_and_recovers_under_same_id() {
+    use ironloom_models::sources::downloads::ARCHIVE_FILE;
+    let valid = bundle(&[("weights.bin", b'0', b"fixture")]);
+    let mut invalid = valid.clone();
+    let last = invalid.len() - 1;
+    invalid[last] ^= 1;
+    let root = tempfile::tempdir().unwrap();
+    let sink = observer();
+    sink.reset_failures
+        .store(1, std::sync::atomic::Ordering::SeqCst);
+    let (url, first) = server(&invalid, "200 OK", None).await;
+    let make = |url: String| {
+        FileDownloads::new(
+            root.path().into(),
+            Arc::new(Catalog(DownloadFile {
+                format: DownloadFormat::TarGzip,
+                path: ARCHIVE_FILE.into(),
+                url: url.parse().unwrap(),
+                bytes: None,
+                sha256: None,
+            })),
+            sink.clone(),
+            DownloadLimits {
+                per_file_bytes: 4096,
+                transfer_bytes: 8192,
+            },
+        )
+        .unwrap()
+    };
+    assert!(make(url).transfer(progress("job")).await.is_err());
+    first.await.unwrap();
+    let checkpoint = sink
+        .checkpoints
+        .lock()
+        .unwrap()
+        .values()
+        .next()
+        .unwrap()
+        .clone();
+    assert!(root.path().join(&checkpoint.path).exists());
+    assert!(sink.progress.lock().unwrap().received_bytes.get() > 0);
+    // A rejected/stale reset never permits filesystem deletion. A later authorized reset clears
+    // unverified counters/checkpoints before deleting only the reserved compressed representation.
+    assert!(
+        make("http://127.0.0.1:1/unused".into())
+            .transfer(progress("job"))
+            .await
+            .is_err()
+    );
+    assert!(!root.path().join(&checkpoint.path).exists());
+    assert!(sink.checkpoints.lock().unwrap().is_empty());
+    assert_eq!(sink.progress.lock().unwrap().received_bytes.get(), 0);
+    assert_eq!(*sink.verified.lock().unwrap(), 0);
+    let (url, second) = server(&valid, "200 OK", None).await;
+    let saved = sink.progress.lock().unwrap().clone();
+    let complete = make(url).transfer(saved).await.unwrap();
+    second.await.unwrap();
+    assert_eq!(complete.download_id.as_str(), "job");
+    assert!(complete.terminated);
+    assert_eq!(*sink.verified.lock().unwrap(), 1);
+    let cache = std::fs::read(root.path().join(&checkpoint.path)).unwrap();
+    assert_eq!(cache, valid);
+    // Verified inventory makes a later reset fail; existing installed model bytes are retained.
+    assert!(sink.reset(complete.download_id.clone()).await.is_err());
+    assert_eq!(
+        std::fs::read(root.path().join(&checkpoint.path)).unwrap(),
+        valid
+    );
 }

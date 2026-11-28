@@ -59,6 +59,8 @@ pub trait FileCatalog: Send + Sync {
     ) -> BoxFuture<'_, Result<reqwest::RequestBuilder, AdapterError>>;
 }
 /// Service-owned PostgreSQL progress/inventory persistence and live authorization.
+/// Each instance is bound to its attempt's immutable node/root/writer-generation fence; looking up
+/// a newer current writer must never authorize a stale callback. All mutations enforce that fence.
 pub trait DownloadObserver: Send + Sync {
     /// Loads an existing authorized transfer fenced to this configured writer node/model root.
     /// Other-root ownership must be routed to its owner or rejected, never interpreted as stopped.
@@ -67,6 +69,12 @@ pub trait DownloadObserver: Send + Sync {
     /// Atomically merges progress and emits a notification. A writer update must preserve an
     /// already requested cancellation and cancellation-only updates must preserve newer bytes.
     fn progress(&self, value: DownloadProgress) -> BoxFuture<'_, Result<(), AdapterError>>;
+    /// Fenced reset of this writer's unverified transfer and source checkpoints before removing
+    /// an invalid reserved archive cache. Recheck current node/root/writer and grants; reject any
+    /// already verified installation. Preserve exact download/repository/source identity and any
+    /// cancellation request, clear unverified byte/total/checkpoint state, and retain live ownership.
+    /// This is an internal recovery operation, never permission to delete a verified model.
+    fn reset(&self, id: ActorId) -> BoxFuture<'_, Result<DownloadProgress, AdapterError>>;
     /// Reads the checkpoint for this exact source/revision/model-root-relative path.
     fn file_checkpoint<'a>(
         &'a self,
@@ -334,6 +342,9 @@ impl FileDownloads {
                         continue;
                     }
                 }
+                if bundle {
+                    self.discard_archive(&progress, &target).await?;
+                }
                 return Err(AdapterError::Unsupported);
             }
             let part = target.with_extension(format!(
@@ -548,7 +559,7 @@ impl FileDownloads {
             let staged = {
                 let (signal, token) = watch::channel(*cancel.borrow());
                 let extraction = super::archive::extract(
-                    archive,
+                    archive.clone(),
                     directory,
                     self.limits,
                     received,
@@ -559,9 +570,18 @@ impl FileDownloads {
                 let cancellation_id = progress.download_id.clone();
                 let cancellation = self.wait_cancel(&mut cancel, &cancellation_id);
                 tokio::pin!(cancellation);
-                tokio::select! {
-                    result=&mut extraction=>result?,
+                let result = tokio::select! {
+                    result=&mut extraction=>result,
                     reason=&mut cancellation=>{let _=signal.send(true);let _=extraction.await;reason?;return self.stopped(progress).await;}
+                };
+                match result {
+                    Ok(staged) => staged,
+                    Err(error) => {
+                        if error == AdapterError::Unsupported {
+                            self.discard_archive(&progress, &archive).await?;
+                        }
+                        return Err(error);
+                    }
                 }
             };
             for file in &staged.files {
@@ -634,6 +654,31 @@ impl FileDownloads {
             .await?;
         self.observer.progress(progress.clone()).await?;
         Ok(progress)
+    }
+    async fn discard_archive(
+        &self,
+        current: &DownloadProgress,
+        path: &Path,
+    ) -> Result<(), AdapterError> {
+        if path != self.destination(&current.source, ARCHIVE_FILE).await? {
+            return Err(AdapterError::Unsupported);
+        }
+        let reset = self.observer.reset(current.download_id.clone()).await?;
+        if reset.download_id != current.download_id
+            || reset.repository_id != current.repository_id
+            || source_key(&reset.source) != source_key(&current.source)
+            || reset.received_bytes.get() != 0
+            || reset.total_bytes.is_some()
+            || reset.terminated
+            || current.cancel_requested && !reset.cancel_requested
+        {
+            return Err(AdapterError::Unavailable);
+        }
+        match tokio::fs::remove_file(path).await {
+            Ok(()) => Ok(()),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(_) => Err(AdapterError::Unavailable),
+        }
     }
     fn source_lock(&self, source: &ModelSource) -> Result<std::fs::File, AdapterError> {
         let path = self.root.join(format!(".{}.lock", source_key(source)));
