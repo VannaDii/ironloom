@@ -46,6 +46,7 @@ pub enum TurnStatus {
     InProgress,
 }
 /// Durable native turn display metadata returned by the trusted service callback.
+#[derive(Clone)]
 pub struct TurnMetadata {
     /// Actual current or terminal outcome.
     pub status: TurnStatus,
@@ -55,6 +56,40 @@ pub struct TurnMetadata {
     pub completed_at_ms: Option<Counter>,
     /// Recorded elapsed duration, absent when unknown.
     pub duration_ms: Option<Counter>,
+}
+/// Bounded persisted turn catalog query, scoped to one authorized durable watermark.
+#[derive(Clone)]
+pub struct NativeTurnQuery {
+    /// Conversation and maximum consumed service sequence.
+    pub as_of: ReplayCursor,
+    /// Stored rollout order; do not sort opaque IDs or infer turns from message pages.
+    pub direction: HistoryDirection,
+    /// Optional persisted turn anchor, belonging to this conversation.
+    pub anchor: Option<TurnId>,
+    /// Whether to include the anchor on a reverse traversal that refreshes its current state.
+    pub inclusive: bool,
+    /// Required range 1..=100.
+    pub limit: Counter,
+}
+/// One actual persisted turn and its outcome at the requested watermark.
+#[derive(Clone)]
+pub struct NativeTurn {
+    /// Actual durable turn identity.
+    pub turn_id: TurnId,
+    /// Recorded outcome/timestamps, never inferred from an idle or completed newer snapshot.
+    pub metadata: TurnMetadata,
+}
+/// Authorized turn page in requested rollout order.
+#[derive(Clone)]
+pub struct NativeTurnPage {
+    /// Exact watermark from the query.
+    pub as_of: ReplayCursor,
+    /// Exact requested direction.
+    pub direction: HistoryDirection,
+    /// At most the requested limit, with unique turn IDs.
+    pub turns: Vec<NativeTurn>,
+    /// Exclusive continuation anchored at the last returned turn, absent at exhaustion.
+    pub next_anchor: Option<TurnId>,
 }
 /// Optional native selection assertions. The service validates these against its actual configured workflow role;
 /// they never create another model/profile selection or authorize a fallback.
@@ -84,6 +119,24 @@ pub trait NativeAuthority: Send + Sync {
         conversation: ConversationId,
         turn: TurnId,
     ) -> BoxFuture<'_, Result<TurnMetadata, ServiceError>>;
+    /// Reads 1..=100 distinct requested items at this watermark in canonical stored order.
+    /// Recheck current view grants and exact conversation/turn membership; reject unknown IDs.
+    /// Return complete persisted content, never reconstruct missing history or fabricate outcomes.
+    fn items(
+        &self,
+        session: AuthenticatedSession,
+        as_of: ReplayCursor,
+        turn: TurnId,
+        items: Vec<ItemId>,
+    ) -> BoxFuture<'_, Result<Vec<HistoryItem>, ServiceError>>;
+    /// Reads the persisted bounded turn catalog at the query watermark under current grants.
+    /// Return recorded outcomes at that watermark; never derive a complete catalog from a bounded
+    /// message page, or presume historical success. Reject foreign/missing anchors.
+    fn turns(
+        &self,
+        session: AuthenticatedSession,
+        query: NativeTurnQuery,
+    ) -> BoxFuture<'_, Result<NativeTurnPage, ServiceError>>;
     /// Returns only confirmed persisted final item/tool outcomes at the requested event watermark.
     /// Resolve original tool names/call IDs/results from shared storage and recheck current grants;
     /// incomplete/unknown outcomes return no completed items, never inferred success from EOF.
@@ -200,6 +253,8 @@ impl NativeRpc {
         let key = command_id(peer, &session, message)?;
         match method {
             "thread/items/list" => self.item_page(session, &params).await,
+            "thread/items/read" => self.item_read(session, &params).await,
+            "thread/turns/list" => self.turn_page(session, &params).await,
             "thread/start" => {
                 reject_overrides(&params)?;
                 let project = self
@@ -548,7 +603,9 @@ impl Dispatcher for NativeRpc {
                 {
                     ids.push(ConversationId::new(id).map_err(|_| RelayError::Protocol)?);
                 }
-                if let Some(data) = result["data"].as_array() {
+                if message["method"] == "thread/list"
+                    && let Some(data) = result["data"].as_array()
+                {
                     for thread in data {
                         if let Some(id) = thread["id"].as_str() {
                             ids.push(ConversationId::new(id).map_err(|_| RelayError::Protocol)?);

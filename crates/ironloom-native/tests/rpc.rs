@@ -237,3 +237,127 @@ async fn item_pages_keep_watermark_scope_and_support_direction_reversal() {
     }
     assert_eq!(service.history_queries.lock().unwrap().len(), 2);
 }
+
+fn stored_item(id: &str, turn: &str) -> HistoryItem {
+    decode(&serde_json::to_vec(&json!({"conversation_id":"c","turn_id":turn,"item_id":id,"message":{"role":"assistant","text":format!("Output {id}"),"tool_calls":[]}})).unwrap()).unwrap()
+}
+fn turn_page(
+    sequence: u64,
+    direction: HistoryDirection,
+    next: bool,
+) -> ironloom_native::rpc::NativeTurnPage {
+    use ironloom_native::rpc::{NativeTurn, NativeTurnPage, TurnMetadata, TurnStatus};
+    NativeTurnPage {
+        as_of: decode(
+            &serde_json::to_vec(&json!({"conversation_id":"c","sequence":sequence.to_string()}))
+                .unwrap(),
+        )
+        .unwrap(),
+        direction,
+        turns: vec![NativeTurn {
+            turn_id: ironloom_core::TurnId::new("old-turn").unwrap(),
+            metadata: TurnMetadata {
+                status: TurnStatus::Failed,
+                started_at_ms: Some(ironloom_core::Counter::new(1000)),
+                completed_at_ms: Some(ironloom_core::Counter::new(2000)),
+                duration_ms: Some(ironloom_core::Counter::new(1000)),
+            },
+        }],
+        next_anchor: next.then(|| ironloom_core::TurnId::new("old-turn").unwrap()),
+    }
+}
+#[tokio::test]
+async fn turn_catalog_reverse_refresh_includes_anchor_without_authorizing_turn_ids_as_conversations()
+ {
+    let service = Service::new(state(), vec![]);
+    let (rpc, authority) = router(service.clone()).await;
+    authority
+        .turn_pages
+        .lock()
+        .unwrap()
+        .push_back(turn_page(9, HistoryDirection::Backward, true));
+    let first = rpc.dispatch(peer(), json!({"id":1,"method":"thread/turns/list","params":{"threadId":"c","itemsView":"notLoaded","limit":1}})).await.unwrap().unwrap();
+    assert_eq!(first.conversations.len(), 1);
+    assert_eq!(first.conversations[0].as_str(), "c");
+    assert_eq!(first.message["result"]["data"][0]["status"], "failed");
+    assert_eq!(first.message["result"]["data"][0]["startedAt"], 1);
+    let mut advanced = (**service.state.lock().unwrap()).clone();
+    advanced.cursor = decode(br#"{"conversation_id":"c","sequence":"12"}"#).unwrap();
+    *service.state.lock().unwrap() = ConversationSnapshot::new(advanced).unwrap();
+    authority
+        .turn_pages
+        .lock()
+        .unwrap()
+        .push_back(turn_page(12, HistoryDirection::Forward, false));
+    let reverse = rpc.dispatch(peer(), json!({"id":2,"method":"thread/turns/list","params":{"threadId":"c","itemsView":"notLoaded","sortDirection":"asc","cursor":first.message["result"]["backwardsCursor"]}})).await.unwrap().unwrap();
+    assert!(
+        reverse.message.get("result").is_some(),
+        "{}",
+        reverse.message
+    );
+    let queries = authority.turn_queries.lock().unwrap();
+    assert_eq!(queries[1].as_of.sequence.get(), 12);
+    assert!(queries[1].inclusive);
+    assert_eq!(queries[1].anchor.as_ref().unwrap().as_str(), "old-turn");
+    assert!(service.commands.lock().unwrap().is_empty());
+}
+#[tokio::test]
+async fn complete_turn_items_page_without_fabricated_outcome_and_item_lookup_rejects_foreign_results()
+ {
+    let service = Service::new(state(), vec![]);
+    let (rpc, authority) = router(service.clone()).await;
+    authority
+        .turn_pages
+        .lock()
+        .unwrap()
+        .push_back(turn_page(9, HistoryDirection::Forward, false));
+    for (id, next) in [("one", Some("one")), ("two", None)] {
+        service.history_pages.lock().unwrap().push_back(
+            HistoryPage::new(HistoryPageData {
+                as_of: state().cursor.clone(),
+                direction: HistoryDirection::Forward,
+                turn_id: Some(ironloom_core::TurnId::new("old-turn").unwrap()),
+                items: vec![stored_item(id, "old-turn")],
+                next_before: None,
+                next_after: next.map(|id| ironloom_core::ItemId::new(id).unwrap()),
+            })
+            .unwrap(),
+        );
+    }
+    let full = rpc.dispatch(peer(), json!({"id":1,"method":"thread/turns/list","params":{"threadId":"c","sortDirection":"asc","itemsView":"full"}})).await.unwrap().unwrap();
+    assert_eq!(full.message["result"]["data"][0]["itemsView"], "full");
+    assert_eq!(
+        full.message["result"]["data"][0]["items"]
+            .as_array()
+            .unwrap()
+            .len(),
+        2
+    );
+    assert_eq!(
+        service.history_queries.lock().unwrap()[1]
+            .after
+            .as_ref()
+            .unwrap()
+            .as_str(),
+        "one"
+    );
+    *authority.item_results.lock().unwrap() = vec![
+        stored_item("one", "old-turn"),
+        stored_item("two", "old-turn"),
+    ];
+    let request = json!({"id":2,"method":"thread/items/read","params":{"threadId":"c","turnId":"old-turn","itemIds":["two","one"]}});
+    let read = rpc
+        .dispatch(peer(), request.clone())
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(read.message["result"]["data"][0]["item"]["id"], "one");
+    assert_eq!(read.conversations.len(), 1);
+    *authority.item_results.lock().unwrap() = vec![
+        stored_item("one", "other-turn"),
+        stored_item("two", "old-turn"),
+    ];
+    let denied = rpc.dispatch(peer(), request).await.unwrap().unwrap();
+    assert!(denied.message.get("error").is_some());
+    assert!(service.commands.lock().unwrap().is_empty());
+}

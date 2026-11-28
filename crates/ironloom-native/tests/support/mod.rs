@@ -277,6 +277,9 @@ pub struct Authority {
     saved: Mutex<BTreeMap<String, (String, Command)>>,
     pub completed: Mutex<Vec<CompletedItem>>,
     pub selected: AtomicBool,
+    pub item_results: Mutex<Vec<HistoryItem>>,
+    pub turn_pages: Mutex<std::collections::VecDeque<ironloom_native::rpc::NativeTurnPage>>,
+    pub turn_queries: Mutex<Vec<ironloom_native::rpc::NativeTurnQuery>>,
 }
 impl Authority {
     pub fn new(service: Arc<Service>) -> Arc<Self> {
@@ -286,6 +289,9 @@ impl Authority {
             saved: Mutex::default(),
             completed: Mutex::default(),
             selected: AtomicBool::new(true),
+            item_results: Mutex::default(),
+            turn_pages: Mutex::default(),
+            turn_queries: Mutex::default(),
         })
     }
     fn check(&self) -> Result<(), ServiceError> {
@@ -322,6 +328,33 @@ impl NativeAuthority for Authority {
                 completed_at_ms: Some(Counter::new(2)),
                 duration_ms: Some(Counter::new(1)),
             })
+        })
+    }
+    fn items(
+        &self,
+        _: AuthenticatedSession,
+        _: ReplayCursor,
+        _: TurnId,
+        _: Vec<ItemId>,
+    ) -> BoxFuture<'_, Result<Vec<HistoryItem>, ServiceError>> {
+        Box::pin(async {
+            self.check()?;
+            Ok(self.item_results.lock().unwrap().clone())
+        })
+    }
+    fn turns(
+        &self,
+        _: AuthenticatedSession,
+        query: ironloom_native::rpc::NativeTurnQuery,
+    ) -> BoxFuture<'_, Result<ironloom_native::rpc::NativeTurnPage, ServiceError>> {
+        Box::pin(async move {
+            self.check()?;
+            self.turn_queries.lock().unwrap().push(query);
+            self.turn_pages
+                .lock()
+                .unwrap()
+                .pop_front()
+                .ok_or(ServiceError::Unavailable)
         })
     }
     fn completed(
