@@ -45,6 +45,11 @@
       "const": "resync_required"
     },
     {
+      "description": "A specific missing approval must be obtained; distinct from denied grants/dependency failure.",
+      "type": "string",
+      "const": "approval_required"
+    },
+    {
       "description": "Dependencies unavailable; never initialize replacement state.",
       "type": "string",
       "const": "unavailable"

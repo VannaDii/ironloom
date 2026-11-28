@@ -173,7 +173,7 @@ DownloadLimits, DownloadLimitsData {
     /// Maximum aggregate bytes for one transfer across all its files.
     per_transfer_bytes: ironloom_core::Counter,
 } |value| {
-    ironloom_core::validation::positive("per_file_bytes",value.per_file_bytes)?;
-    ironloom_core::validation::positive("per_transfer_bytes",value.per_transfer_bytes)
+    ironloom_core::validation::positive("per_file_bytes", value.per_file_bytes)?;
+    ironloom_core::validation::positive("per_transfer_bytes", value.per_transfer_bytes)
 }
 }

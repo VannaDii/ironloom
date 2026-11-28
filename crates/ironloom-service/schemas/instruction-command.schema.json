@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/InstructionCommandData",
+  "$defs": {
+    "ActiveInstructionUpdate": {
+      "description": "Explicit active instruction update choice, separate from immediate lesson propagation.",
+      "oneOf": [
+        {
+          "description": "No: template affects new work only.",
+          "type": "string",
+          "const": "preserve_copies"
+        },
+        {
+          "description": "Yes: persist selected copies and notify affected workers.",
+          "type": "string",
+          "const": "update_selected_copies"
+        }
+      ]
+    },
+    "AssignmentId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom AssignmentId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "CommandId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom CommandId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Counter": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Canonical decimal u64; semantic validation also enforces u64 maximum.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "InstructionCommandData": {
+      "description": "Unchecked construction draft for `InstructionCommand`; validate before use.",
+      "type": "object",
+      "properties": {
+        "active_update": {
+          "description": "Required explicit decision about already-copied active work.",
+          "$ref": "#/$defs/ActiveInstructionUpdate"
+        },
+        "assignments": {
+          "description": "Exact active assignments whose copies may change; separately authorized on the server.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AssignmentId"
+          }
+        },
+        "command_id": {
+          "description": "Durable authenticated actor-scoped command identity.",
+          "$ref": "#/$defs/CommandId"
+        },
+        "content": {
+          "description": "New effective template content.",
+          "type": "string"
+        },
+        "expected_revision": {
+          "description": "Compare-and-swap template revision; zero creates a new custom template.",
+          "$ref": "#/$defs/Counter"
+        },
+        "instruction_id": {
+          "description": "Edited template identity.",
+          "$ref": "#/$defs/InstructionId"
+        },
+        "project_id": {
+          "description": "Owning project scope, or None for an installation template.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProjectId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "command_id",
+        "instruction_id",
+        "expected_revision",
+        "content",
+        "active_update",
+        "assignments"
+      ]
+    },
+    "InstructionId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom InstructionId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ProjectId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ProjectId value.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

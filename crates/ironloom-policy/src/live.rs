@@ -218,6 +218,49 @@ impl OpenFga {
             .map(str::to_owned)
             .ok_or(AuthorizationError::Unavailable)
     }
+    /// Verifies both the configured store and immutable authorization model still exist.
+    /// This is an authorization readiness check, never inference or model-engine discovery.
+    pub async fn binding_available(
+        &self,
+        store: &str,
+        model: &str,
+    ) -> Result<(), AuthorizationError> {
+        if !valid_id(store) || !valid_id(model) {
+            return Err(AuthorizationError::InvalidRelationship);
+        }
+        let response = self
+            .request(reqwest::Method::GET, &format!("/stores/{store}"))
+            .send()
+            .await
+            .map_err(|_| AuthorizationError::Unavailable)?;
+        let value: Value = response
+            .error_for_status()
+            .map_err(|_| AuthorizationError::Unavailable)?
+            .json()
+            .await
+            .map_err(|_| AuthorizationError::Unavailable)?;
+        if value["id"].as_str() != Some(store) {
+            return Err(AuthorizationError::Unavailable);
+        }
+        let response = self
+            .request(
+                reqwest::Method::GET,
+                &format!("/stores/{store}/authorization-models/{model}"),
+            )
+            .send()
+            .await
+            .map_err(|_| AuthorizationError::Unavailable)?;
+        let value: Value = response
+            .error_for_status()
+            .map_err(|_| AuthorizationError::Unavailable)?
+            .json()
+            .await
+            .map_err(|_| AuthorizationError::Unavailable)?;
+        if value["authorization_model"]["id"].as_str() != Some(model) {
+            return Err(AuthorizationError::Unavailable);
+        }
+        Ok(())
+    }
     /// Checks one actual tuple against the current model, explicitly bypassing stale result caches.
     pub async fn check(
         &self,
@@ -290,22 +333,125 @@ impl OpenFga {
             Err(_) => return AuthorizationOutcome::Unavailable,
             Ok(true) => {}
         }
-        if let (Some(worker), Some(assignment)) = (&request.worker_id, &request.assignment_id) {
-            let Ok(tuple) = Relationship::new(
-                format!("worker:{}", worker.as_str()),
-                "delegated",
-                format!("assignment:{}", assignment.as_str()),
-            ) else {
+        if request.worker_id.is_some() {
+            let Ok(scope) = delegated_scope(request) else {
                 return AuthorizationOutcome::Denied;
             };
-            match self.check(store, model, &tuple).await {
-                Ok(true) => {}
-                Ok(false) => return AuthorizationOutcome::Denied,
-                Err(_) => return AuthorizationOutcome::Unavailable,
+            for tuple in scope.required {
+                match self.check(store, model, &tuple).await {
+                    Ok(true) => {}
+                    Ok(false) => return AuthorizationOutcome::Denied,
+                    Err(_) => return AuthorizationOutcome::Unavailable,
+                }
+            }
+            if !scope.parents.is_empty() {
+                let mut matched = false;
+                for tuple in scope.parents {
+                    match self.check(store, model, &tuple).await {
+                        Ok(true) => {
+                            matched = true;
+                            break;
+                        }
+                        Ok(false) => {}
+                        Err(_) => return AuthorizationOutcome::Unavailable,
+                    }
+                }
+                if !matched {
+                    return AuthorizationOutcome::Denied;
+                }
             }
         }
         AuthorizationOutcome::Allowed
     }
+}
+struct DelegatedScope {
+    required: Vec<Relationship>,
+    parents: Vec<Relationship>,
+}
+fn delegated_scope(request: &AuthorityCheck) -> Result<DelegatedScope, AuthorizationError> {
+    let invalid = AuthorizationError::InvalidRelationship;
+    if matches!(
+        request.permission,
+        Permission::Approve | Permission::SelfGrant | Permission::EnrollNode
+    ) {
+        return Err(invalid);
+    }
+    let worker = request.worker_id.as_ref().ok_or(invalid.clone())?;
+    let assignment = request.assignment_id.as_ref().ok_or(invalid.clone())?;
+    let object = resource_object(&request.resource);
+    let mut scope = DelegatedScope {
+        required: vec![
+            Relationship::new(
+                format!("worker:{}", worker.as_str()),
+                "delegated",
+                format!("assignment:{}", assignment.as_str()),
+            )?,
+            Relationship::new(
+                format!("operator:{}", request.operator_id.as_str()),
+                "operate",
+                format!("assignment:{}", assignment.as_str()),
+            )?,
+        ],
+        parents: vec![],
+    };
+    match request.resource.kind {
+        ResourceKind::Installation | ResourceKind::Node => return Err(invalid),
+        ResourceKind::Credential => {
+            if request.permission != Permission::UseCredential
+                || request.resource.project_id.is_some()
+            {
+                return Err(invalid);
+            }
+        }
+        ResourceKind::Lesson if request.resource.project_id.is_none() => {
+            // The trusted resolver uses an absent owning scope only for installation-shared
+            // lesson content. This never authorizes private source conversations/files.
+            if request.permission != Permission::View {
+                return Err(invalid);
+            }
+        }
+        _ => {
+            let project = request
+                .resource
+                .project_id
+                .as_ref()
+                .ok_or(invalid.clone())?;
+            scope.required.push(Relationship::new(
+                format!("project:{}", project.as_str()),
+                "project",
+                format!("assignment:{}", assignment.as_str()),
+            )?);
+            match request.resource.kind {
+                ResourceKind::Assignment if request.resource.id.as_str() != assignment.as_str() => {
+                    return Err(invalid);
+                }
+                ResourceKind::Conversation => scope.parents.push(Relationship::new(
+                    format!("project:{}", project.as_str()),
+                    "project",
+                    object,
+                )?),
+                ResourceKind::File => scope.parents.push(Relationship::new(
+                    format!("assignment:{}", assignment.as_str()),
+                    "assignment",
+                    object,
+                )?),
+                ResourceKind::Lesson => {
+                    scope.parents.push(Relationship::new(
+                        format!("project:{}", project.as_str()),
+                        "project",
+                        object.clone(),
+                    )?);
+                    scope.parents.push(Relationship::new(
+                        format!("assignment:{}", assignment.as_str()),
+                        "assignment",
+                        object,
+                    )?);
+                }
+                _ => {}
+            }
+        }
+    }
+    Ok(scope)
 }
 impl Permission {
     /// Maps the selected public permission to its exact current OpenFGA relation.

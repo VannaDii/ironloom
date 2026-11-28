@@ -70,7 +70,7 @@ pub enum CommandAction {
     /// Manage lesson content/scope/deletion within the origin project authority.
     Lesson(LessonMutation),
     /// Edit budget independently of plan revision.
-    Budget(ironloom_observability::factory::Budget),
+    Budget(BudgetCommand),
 }
 impl<'de> Deserialize<'de> for CommandAction {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
@@ -114,6 +114,18 @@ impl<'de> Deserialize<'de> for CommandAction {
     }
 }
 ironloom_core::contract! {
+/// Edits a conversation's budget independently of its approved plan.
+BudgetCommand, BudgetCommandData {
+    /// Authorized target stream; never infer a target from recent activity.
+    conversation_id: ConversationId,
+    /// Current budget revision, bounds and visible accounting counters.
+    budget: ironloom_observability::factory::Budget,
+} |value| {
+    let _ = value;
+    Ok(())
+}
+}
+ironloom_core::contract! {
 /// Validated factory record.
 Command, CommandData {
     /// Persisted idempotency key scoped to authenticated operator.
@@ -152,10 +164,33 @@ ServiceEvent, ServiceEventData {
     /// Authorization scope.
     project_id: ProjectId,
     /// Normalized streamed output.
-    event: ironloom_workers::factory::WorkerEvent,
+    event: Option<ironloom_workers::factory::WorkerEvent>,
+    /// Non-worker state update at this exact durable watermark; no invented execution identity.
+    snapshot: Option<ConversationSnapshot>,
 } |value| {
     let _ = value;
-    positive("cursor.sequence", value.cursor.sequence)
+    positive("cursor.sequence", value.cursor.sequence)?;
+    if value.event.is_some() == value.snapshot.is_some() {
+        return Err(ValidationErrors::field(
+            "event",
+            "exactly_one_event_or_snapshot",
+        ));
+    }
+    if let Some(snapshot) = &value.snapshot {
+        if snapshot.cursor != value.cursor {
+            return Err(ValidationErrors::field(
+                "snapshot.cursor",
+                "watermark_mismatch",
+            ));
+        }
+        if snapshot.session.project_id != value.project_id {
+            return Err(ValidationErrors::field(
+                "snapshot.session.project_id",
+                "project_mismatch",
+            ));
+        }
+    }
+    Ok(())
 }
 }
 /// Durable duplicate handling contract.
@@ -510,6 +545,19 @@ pub trait FactoryService: Send + Sync {
         session: AuthenticatedSession,
         request: CreateConversation,
     ) -> BoxFuture<'_, Result<ConversationSnapshot, ServiceError>>;
+    /// Reads effective editable templates in the authorized installation/project scope.
+    fn instructions(
+        &self,
+        session: AuthenticatedSession,
+        query: InstructionQuery,
+    ) -> BoxFuture<'_, Result<InstructionPage, ServiceError>>;
+    /// Persists a template revision and the explicit selected active-copy update choice atomically.
+    /// Updating copies never expands plan scope and workers acknowledge at their next decision.
+    fn instruction(
+        &self,
+        session: AuthenticatedSession,
+        request: InstructionCommand,
+    ) -> BoxFuture<'_, Result<InstructionTemplate, ServiceError>>;
     /// Returns authorized setup/team/profile/device settings and independent execution readiness.
     /// None selects installation settings; Some selects authorized project settings.
     fn configuration(
@@ -586,6 +634,8 @@ pub enum ServiceError {
     CursorExpired,
     /// Bounded live feed overflowed; reconnect after the last consumed cursor without resubmitting work.
     ResyncRequired,
+    /// A specific missing approval must be obtained; distinct from denied grants/dependency failure.
+    ApprovalRequired,
     /// Dependencies unavailable; never initialize replacement state.
     Unavailable,
 }
@@ -1478,6 +1528,9 @@ EngineAssessment, EngineAssessmentData {
     if ids.len() != value.devices.len() {
         return Err(ValidationErrors::field("devices", "duplicate_device"));
     }
+    if value.fit.estimated_bytes != value.requirements.total_bytes() {
+        return Err(ValidationErrors::field("fit.estimated_bytes","complete_demand_mismatch"));
+    }
     if value.fit.fits_after_idle_eviction.is_some()
         && (value.devices.is_empty() || value.fit.estimated_bytes.is_none())
     {
@@ -1585,6 +1638,105 @@ ModelInventoryPage, ModelInventoryPageData {
         .collect::<std::collections::BTreeSet<_>>();
     if unique.len() != value.models.len() {
         return Err(ValidationErrors::field("models", "duplicate_inventory_id"));
+    }
+    Ok(())
+}
+}
+
+ironloom_core::contract! {
+/// Current editable role template; active assignments read their separately persisted copies.
+InstructionTemplate, InstructionTemplateData {
+    /// Stable configured template identity.
+    instruction_id: InstructionId,
+    /// None for installation templates; Some for project-owned templates.
+    project_id: Option<ProjectId>,
+    /// Current template revision, independent from each assignment copy revision.
+    revision: Counter,
+    /// Effective role instructions; never provider credentials.
+    content: String,
+} |value| {
+    positive("revision", value.revision)?;
+    required("content", &value.content)
+}
+}
+ironloom_core::contract! {
+/// Authorized effective template discovery.
+InstructionQuery, InstructionQueryData {
+    /// Requested installation/project scope.
+    project_id: Option<ProjectId>,
+    /// Exclusive stable identity cursor.
+    after: Option<InstructionId>,
+    /// Bounded page size.
+    limit: Counter,
+} |value| {
+    positive("limit", value.limit)?;
+    if value.limit.get() > MAX_SESSION_PAGE {
+        return Err(ValidationErrors::field("limit", "page_too_large"));
+    }
+    Ok(())
+}
+}
+ironloom_core::contract! {
+/// Effective templates with stable pagination.
+InstructionPage, InstructionPageData {
+    /// Authorized installation/project templates with globally unique identities.
+    instructions: Vec<InstructionTemplate>,
+    /// Continuation identity, absent when exhausted.
+    next_after: Option<InstructionId>,
+} |value| {
+    if value.instructions.len() > MAX_SESSION_PAGE as usize {
+        return Err(ValidationErrors::field("instructions", "page_too_large"));
+    }
+    let ids = value
+        .instructions
+        .iter()
+        .map(|template| &template.instruction_id)
+        .collect::<std::collections::BTreeSet<_>>();
+    if ids.len() != value.instructions.len() {
+        return Err(ValidationErrors::field(
+            "instructions",
+            "duplicate_instruction",
+        ));
+    }
+    Ok(())
+}
+}
+ironloom_core::contract! {
+/// Explicit template edit and active-work propagation choice, not dynamic lesson context policy.
+InstructionCommand, InstructionCommandData {
+    /// Durable authenticated actor-scoped command identity.
+    command_id: CommandId,
+    /// Owning project scope, or None for an installation template.
+    project_id: Option<ProjectId>,
+    /// Edited template identity.
+    instruction_id: InstructionId,
+    /// Compare-and-swap template revision; zero creates a new custom template.
+    expected_revision: Counter,
+    /// New effective template content.
+    content: String,
+    /// Required explicit decision about already-copied active work.
+    active_update: ironloom_process_graph::factory::ActiveInstructionUpdate,
+    /// Exact active assignments whose copies may change; separately authorized on the server.
+    assignments: Vec<AssignmentId>,
+} |value| {
+    required("content", &value.content)?;
+    let update = value.active_update
+        == ironloom_process_graph::factory::ActiveInstructionUpdate::UpdateSelectedCopies;
+    if update == value.assignments.is_empty() {
+        return Err(ValidationErrors::field(
+            "assignments",
+            "active_update_selection_mismatch",
+        ));
+    }
+    let ids = value
+        .assignments
+        .iter()
+        .collect::<std::collections::BTreeSet<_>>();
+    if ids.len() != value.assignments.len() {
+        return Err(ValidationErrors::field(
+            "assignments",
+            "duplicate_assignment",
+        ));
     }
     Ok(())
 }

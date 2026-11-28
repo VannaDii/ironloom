@@ -9,6 +9,7 @@ use thiserror::Error;
 const CONNECTIONS: u32 = 16;
 const ACQUIRE_TIMEOUT: Duration = Duration::from_secs(10);
 const UNIQUE_VIOLATION: &str = "23505";
+const CREDENTIAL_EXISTS_SQL: &str = "SELECT EXISTS(SELECT 1 FROM ironloom.credentials WHERE credential_id=$1 AND deleted_at IS NULL)";
 
 /// Redacted durable storage failures; callers never receive SQL or connection secrets.
 #[derive(Debug, Error)]
@@ -323,6 +324,67 @@ impl Store {
             .bind(kind).bind(id.as_str()).fetch_optional(&self.pool).await?;
         row.map(record).transpose()
     }
+    /// Reads a related set of current records at one PostgreSQL statement watermark.
+    pub async fn get_many(
+        &self,
+        kind: &str,
+        ids: &[ActorId],
+    ) -> Result<std::collections::BTreeMap<ActorId, Record>, DatabaseError> {
+        let keys = ids
+            .iter()
+            .map(|id| id.as_str().to_owned())
+            .collect::<Vec<_>>();
+        let rows=sqlx::query("SELECT record_id,revision::text,project_id,body FROM ironloom.records WHERE kind=$1 AND record_id=ANY($2)")
+            .bind(kind).bind(keys).fetch_all(&self.pool).await?;
+        rows.into_iter()
+            .map(|row| {
+                let id = ActorId::new(row.get::<String, _>("record_id"))
+                    .map_err(|_| DatabaseError::Corrupt)?;
+                Ok((id, record(row)?))
+            })
+            .collect()
+    }
+    /// Checks authoritative project metadata independently from filesystem availability.
+    pub async fn project_exists(&self, project: &ProjectId) -> Result<bool, DatabaseError> {
+        Ok(
+            sqlx::query_scalar(
+                "SELECT EXISTS(SELECT 1 FROM ironloom.projects WHERE project_id=$1)",
+            )
+            .bind(project.as_str())
+            .fetch_one(&self.pool)
+            .await?,
+        )
+    }
+    /// Reads and validates current enrollment; missing enrollment never creates another node.
+    pub async fn node_enrollment(
+        &self,
+        node: &ironloom_core::NodeId,
+    ) -> Result<Option<crate::factory::NodeEnrollment>, DatabaseError> {
+        let body: Option<Value> =
+            sqlx::query_scalar("SELECT enrollment FROM ironloom.nodes WHERE node_id=$1")
+                .bind(node.as_str())
+                .fetch_optional(&self.pool)
+                .await?;
+        decode_enrollment(body, node)
+    }
+    /// Returns installation/project instruction rows at a single consistent watermark, ordered
+    /// by public template identity. The caller resolves effective overrides and current authority.
+    pub async fn instruction_rows(
+        &self,
+        project: Option<&ProjectId>,
+        after: Option<&ironloom_core::InstructionId>,
+        limit: i64,
+    ) -> Result<Vec<(ActorId, Record)>, DatabaseError> {
+        let rows=sqlx::query("SELECT record_id,revision::text,project_id,body FROM ironloom.records WHERE kind='instruction' AND (project_id IS NULL OR project_id=$1) AND ($2::text IS NULL OR record_id COLLATE \"C\">$2 COLLATE \"C\") ORDER BY record_id COLLATE \"C\" LIMIT $3")
+            .bind(project.map(ProjectId::as_str)).bind(after.map(ironloom_core::InstructionId::as_str)).bind(limit.clamp(1,101)).fetch_all(&self.pool).await?;
+        rows.into_iter()
+            .map(|row| {
+                let id = ActorId::new(row.get::<String, _>("record_id"))
+                    .map_err(|_| DatabaseError::Corrupt)?;
+                Ok((id, record(row)?))
+            })
+            .collect()
+    }
     /// Lists records in a selected scope, using bounded stable identity pagination.
     pub async fn list(
         &self,
@@ -379,6 +441,16 @@ impl Store {
     ) -> Result<Option<Vec<u8>>, DatabaseError> {
         Ok(sqlx::query_scalar("DELETE FROM ironloom.oidc_attempts WHERE state_hash=$1 AND expires_at>now() RETURNING protected_context")
             .bind(digest(state)).fetch_optional(&self.pool).await?)
+    }
+    /// Tests selected credential availability without returning private material.
+    pub async fn credential_exists(
+        &self,
+        id: &ironloom_core::CredentialId,
+    ) -> Result<bool, DatabaseError> {
+        Ok(sqlx::query_scalar(CREDENTIAL_EXISTS_SQL)
+            .bind(id.as_str())
+            .fetch_one(&self.pool)
+            .await?)
     }
     /// Returns only protected credential material to the trusted resolver, after its live use check.
     pub async fn credential_ciphertext(
@@ -476,6 +548,63 @@ impl Batch {
         sqlx::query("SELECT revision::text,project_id,body FROM ironloom.records WHERE kind=$1 AND record_id=$2 FOR UPDATE")
             .bind(kind).bind(id.as_str()).fetch_optional(&mut *self.tx).await?.map(record).transpose()
     }
+    /// Tests credential availability within the mutation's existing transaction.
+    pub async fn credential_exists(
+        &mut self,
+        id: &ironloom_core::CredentialId,
+    ) -> Result<bool, DatabaseError> {
+        Ok(sqlx::query_scalar(CREDENTIAL_EXISTS_SQL)
+            .bind(id.as_str())
+            .fetch_one(&mut *self.tx)
+            .await?)
+    }
+    /// Reads node enrollment inside this mutation without acquiring another pool slot.
+    pub async fn node_enrollment(
+        &mut self,
+        node: &ironloom_core::NodeId,
+    ) -> Result<Option<crate::factory::NodeEnrollment>, DatabaseError> {
+        let body: Option<Value> =
+            sqlx::query_scalar("SELECT enrollment FROM ironloom.nodes WHERE node_id=$1")
+                .bind(node.as_str())
+                .fetch_optional(&mut *self.tx)
+                .await?;
+        decode_enrollment(body, node)
+    }
+    /// Lists bounded current records inside this transaction, preserving one mutation's locks.
+    pub async fn list(
+        &mut self,
+        kind: &str,
+        after: Option<&ActorId>,
+        limit: i64,
+    ) -> Result<Vec<(ActorId, Record)>, DatabaseError> {
+        let rows=sqlx::query("SELECT record_id,revision::text,project_id,body FROM ironloom.records WHERE kind=$1 AND ($2::text IS NULL OR record_id>$2) ORDER BY record_id LIMIT $3")
+            .bind(kind).bind(after.map(ActorId::as_str)).bind(limit.clamp(1,100)).fetch_all(&mut *self.tx).await?;
+        rows.into_iter()
+            .map(|row| {
+                let id = ActorId::new(row.get::<String, _>("record_id"))
+                    .map_err(|_| DatabaseError::Corrupt)?;
+                Ok((id, record(row)?))
+            })
+            .collect()
+    }
+    /// Lists bounded records in one assignment, using the same mutation transaction.
+    pub async fn assigned_records(
+        &mut self,
+        kind: &str,
+        assignment: &ironloom_core::AssignmentId,
+        after: Option<&ActorId>,
+        limit: i64,
+    ) -> Result<Vec<(ActorId, Record)>, DatabaseError> {
+        let rows=sqlx::query("SELECT record_id,revision::text,project_id,body FROM ironloom.records WHERE kind=$1 AND assignment_id=$2 AND ($3::text IS NULL OR record_id>$3) ORDER BY record_id LIMIT $4 FOR UPDATE")
+            .bind(kind).bind(assignment.as_str()).bind(after.map(ActorId::as_str)).bind(limit.clamp(1,100)).fetch_all(&mut *self.tx).await?;
+        rows.into_iter()
+            .map(|row| {
+                let id = ActorId::new(row.get::<String, _>("record_id"))
+                    .map_err(|_| DatabaseError::Corrupt)?;
+                Ok((id, record(row)?))
+            })
+            .collect()
+    }
     /// Inserts or compare-and-swaps a record. None requires absence, never overwrites unknown data.
     pub async fn put(
         &mut self,
@@ -491,8 +620,8 @@ impl Batch {
             .checked_add(1)
             .ok_or(DatabaseError::Conflict)?;
         let affected = if let Some(previous) = expected {
-            sqlx::query("UPDATE ironloom.records SET body=$1,revision=$2::text::numeric,updated_at=now() WHERE kind=$3 AND record_id=$4 AND revision=$5::text::numeric")
-                .bind(body).bind(next.to_string()).bind(kind).bind(id.as_str()).bind(previous.to_string()).execute(&mut *self.tx).await?.rows_affected()
+            sqlx::query("UPDATE ironloom.records SET body=$1,revision=$2::text::numeric,updated_at=now() WHERE kind=$3 AND record_id=$4 AND revision=$5::text::numeric AND project_id IS NOT DISTINCT FROM $6 AND assignment_id IS NOT DISTINCT FROM $7")
+                .bind(body).bind(next.to_string()).bind(kind).bind(id.as_str()).bind(previous.to_string()).bind(project.map(ProjectId::as_str)).bind(assignment.map(ActorId::as_str)).execute(&mut *self.tx).await?.rows_affected()
         } else {
             sqlx::query("INSERT INTO ironloom.records(kind,record_id,project_id,assignment_id,revision,body) VALUES($1,$2,$3,$4,1,$5) ON CONFLICT DO NOTHING")
                 .bind(kind).bind(id.as_str()).bind(project.map(ProjectId::as_str)).bind(assignment.map(ActorId::as_str)).bind(body).execute(&mut *self.tx).await?.rows_affected()
@@ -501,6 +630,38 @@ impl Batch {
             return Err(DatabaseError::Conflict);
         }
         Ok(next)
+    }
+    /// Inserts an absent record at the owning domain's initial revision. This supports a first
+    /// durable edit after a virtual shipped default, without accepting stale concurrent edits.
+    pub async fn insert_record(
+        &mut self,
+        kind: &str,
+        id: &ActorId,
+        project: Option<&ProjectId>,
+        assignment: Option<&ActorId>,
+        revision: u64,
+        body: &Value,
+    ) -> Result<(), DatabaseError> {
+        if revision == 0 {
+            return Err(DatabaseError::Corrupt);
+        }
+        let changed=sqlx::query("INSERT INTO ironloom.records(kind,record_id,project_id,assignment_id,revision,body) VALUES($1,$2,$3,$4,$5::text::numeric,$6) ON CONFLICT DO NOTHING")
+            .bind(kind).bind(id.as_str()).bind(project.map(ProjectId::as_str)).bind(assignment.map(ActorId::as_str)).bind(revision.to_string()).bind(body).execute(&mut *self.tx).await?.rows_affected();
+        if changed != 1 {
+            return Err(DatabaseError::Conflict);
+        }
+        Ok(())
+    }
+    /// Durably invalidates dynamic context independently of copied role-template policy.
+    pub async fn context_change(
+        &mut self,
+        kind: &str,
+        id: &ActorId,
+        revision: u64,
+    ) -> Result<(), DatabaseError> {
+        sqlx::query("INSERT INTO ironloom.context_changes(record_kind,record_id,revision) VALUES($1,$2,$3::text::numeric)")
+            .bind(kind).bind(id.as_str()).bind(revision.to_string()).execute(&mut *self.tx).await?;
+        Ok(())
     }
     /// Deletes only an explicitly version-matched record; lesson retention is never tied to cleanup.
     pub async fn delete(
@@ -885,4 +1046,21 @@ impl BootstrapInitialization {
         self.tx.commit().await?;
         Ok(())
     }
+}
+
+fn decode_enrollment(
+    body: Option<Value>,
+    node: &ironloom_core::NodeId,
+) -> Result<Option<crate::factory::NodeEnrollment>, DatabaseError> {
+    body.map(|body| {
+        let enrollment: crate::factory::NodeEnrollment = ironloom_core::validation::decode(
+            &serde_json::to_vec(&body).map_err(|_| DatabaseError::Corrupt)?,
+        )
+        .map_err(|_| DatabaseError::Corrupt)?;
+        if &enrollment.node_id != node {
+            return Err(DatabaseError::Corrupt);
+        }
+        Ok(enrollment)
+    })
+    .transpose()
 }

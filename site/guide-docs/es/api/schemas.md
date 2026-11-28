@@ -44,3 +44,11 @@ Los contratos compartidos del servicio y del registro nativo ahora están en `ir
 Los comandos de configuración de la instalación se guardan antes de crear proyectos. Las conversaciones vacías conservan atómicamente su estado y recibo de reintento con cursor cero, sin evento de ejecución. `DownloadProgress.repository_id` vincula reanudación y cancelación al repositorio autorizado original.
 
 Los límites de descarga de infraestructura son obligatorios: `IRONLOOM_DOWNLOAD_MAX_FILE_BYTES` y `IRONLOOM_DOWNLOAD_MAX_TRANSFER_BYTES`. Ambos deben ser cantidades decimales positivas de bytes; los tamaños del editor no los sustituyen. Helm proporciona valores explícitos editables.
+
+Las plantillas editables usan `GET/POST /api/v1/instructions`; los cambios conservan explícitamente las copias activas o seleccionan asignaciones autorizadas para actualización y confirmación. Los comandos de presupuesto incluyen `{conversation_id, budget}` para identificar el flujo persistente correcto.
+
+Un `ServiceEvent` contiene exactamente un evento de trabajador o una actualización de estado de conversación. El cursor y proyecto de la actualización deben coincidir con el evento exterior; no se inventan identidades de ejecución para cambios de estado.
+
+El equipo estándar comienza deshabilitado, con instrucciones editables y sin modelo inferido. Las reglas puras conservan la herencia por proyecto y permiten perfiles remotos configurados sin GPU. Los controladores persistentes de instrucciones y configuración siguen en implementación.
+
+La delegación del trabajador se limita a su asignación y recurso; CAS conserva el proyecto y la asignación propietarios. La disponibilidad comprueba PostgreSQL y el enlace OpenFGA real, independientemente de la configuración de modelos. La estimación de memoria exige los cinco componentes y suma sin desbordamiento; los datos incompletos siguen siendo desconocidos.

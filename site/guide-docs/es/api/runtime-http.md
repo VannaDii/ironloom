@@ -14,7 +14,7 @@ El acceso al servicio es independiente de las credenciales del proveedor. El ini
 | POST | `/api/v1/auth/bootstrap` | `BootstrapRedeem` → fixed `BootstrapState`; CSRF |
 | POST | `/api/v1/auth/logout` | Revoke current session and clear cookies; CSRF |
 | GET | `/healthz` | Process liveness, root path |
-| GET | `/readyz` | Selected database reachable; separate from execution setup, root path |
+| GET | `/readyz` | Selected PostgreSQL and OpenFGA binding reachable; separate from execution setup, root path |
 
 Configuración obligatoria: `IRONLOOM_DATABASE_URL`, `IRONLOOM_OPENFGA_URL`, `IRONLOOM_CONFIG_KEY` (base64, 32 bytes), `IRONLOOM_PUBLIC_URL` y ambos límites de descarga. Solo la inicialización explícita lee `IRONLOOM_INSTALLER_TOKEN`. Son opcionales `IRONLOOM_OPENFGA_TOKEN` e `IRONLOOM_OIDC_CONNECTIONS`, un arreglo JSON con `{id, issuer, client_id, client_secret, redirects}` y URL de retorno exactas permitidas. El correo electrónico no determina la identidad.
 

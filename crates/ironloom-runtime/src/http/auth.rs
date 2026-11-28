@@ -345,6 +345,7 @@ impl IntoResponse for HttpError {
             ServiceError::Authentication(AuthenticationError::Unavailable)
             | ServiceError::Unavailable => StatusCode::SERVICE_UNAVAILABLE,
             ServiceError::Authentication(_) => StatusCode::FORBIDDEN,
+            ServiceError::ApprovalRequired => StatusCode::PRECONDITION_REQUIRED,
             ServiceError::Conflict | ServiceError::CursorExpired | ServiceError::ResyncRequired => {
                 StatusCode::CONFLICT
             }

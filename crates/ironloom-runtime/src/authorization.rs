@@ -8,7 +8,7 @@ use ironloom_policy::{
 use ironloom_storage::postgres::Store;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Eq, PartialEq)]
 struct Binding {
     store: String,
     model: String,
@@ -25,7 +25,7 @@ impl LiveAuthority {
     /// Opens the existing binding, or initializes the fresh installation once under a shared lock.
     /// A different contract or unavailable dependency fails closed; there is no model upgrade path.
     pub async fn open(database: Store, client: OpenFga) -> Result<Self, AuthorizationError> {
-        let (installation, _, _) = database
+        let (installation, administrator, initialized) = database
             .installation()
             .await
             .map_err(|_| AuthorizationError::Unavailable)?;
@@ -41,6 +41,9 @@ impl LiveAuthority {
             }
             binding
         } else {
+            if administrator.is_some() || initialized {
+                return Err(AuthorizationError::Unavailable);
+            }
             let name = format!("ironloom-{}", installation.as_str());
             let store = match client.find_store(&name).await? {
                 Some(id) => id,
@@ -71,6 +74,34 @@ impl LiveAuthority {
             binding,
             installation: installation.as_str().to_owned(),
         })
+    }
+    /// Checks selected PostgreSQL identity/current binding and actual OpenFGA availability,
+    /// independently of model/team setup. Missing records never initialize a replacement.
+    pub async fn ready(&self) -> Result<(), AuthorizationError> {
+        let (installation, _, _) = self
+            .database
+            .installation()
+            .await
+            .map_err(|_| AuthorizationError::Unavailable)?;
+        if installation.as_str() != self.installation {
+            return Err(AuthorizationError::Unavailable);
+        }
+        let id =
+            ironloom_core::ActorId::new("binding").map_err(|_| AuthorizationError::Unavailable)?;
+        let record = self
+            .database
+            .get("authorization", &id)
+            .await
+            .map_err(|_| AuthorizationError::Unavailable)?
+            .ok_or(AuthorizationError::Unavailable)?;
+        let current: Binding =
+            serde_json::from_value(record.body).map_err(|_| AuthorizationError::Unavailable)?;
+        if current != self.binding || current.contract != model_revision().as_str() {
+            return Err(AuthorizationError::Unavailable);
+        }
+        self.client
+            .binding_available(&self.binding.store, &self.binding.model)
+            .await
     }
 }
 impl Authority for LiveAuthority {

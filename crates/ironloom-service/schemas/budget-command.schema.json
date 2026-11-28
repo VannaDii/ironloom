@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/BudgetCommandData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "BudgetCommandData": {
+      "description": "Unchecked construction draft for `BudgetCommand`; validate before use.",
+      "type": "object",
+      "properties": {
+        "budget": {
+          "description": "Current budget revision, bounds and visible accounting counters.",
+          "$ref": "#/$defs/Validated"
+        },
+        "conversation_id": {
+          "description": "Authorized target stream; never infer a target from recent activity.",
+          "$ref": "#/$defs/ConversationId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "conversation_id",
+        "budget"
+      ]
+    },
+    "BudgetData": {
+      "description": "Unchecked construction draft for `Budget`; validate before use.",
+      "type": "object",
+      "properties": {
+        "currency": {
+          "description": "Budget currency.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "incurred_micros": {
+          "description": "Already accounted charges.",
+          "$ref": "#/$defs/Counter"
+        },
+        "limit_micros": {
+          "description": "None disables budget, not usage accounting.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Counter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reserved_micros": {
+          "description": "Concurrent in-flight exposure.",
+          "$ref": "#/$defs/Counter"
+        },
+        "revision": {
+          "description": "Editable without changing plan approval.",
+          "$ref": "#/$defs/Counter"
+        },
+        "uncertain_usage": {
+          "description": "Unknown usage remains visible and constrains admission.",
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "revision",
+        "currency",
+        "incurred_micros",
+        "reserved_micros",
+        "uncertain_usage"
+      ]
+    },
+    "ConversationId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ConversationId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Counter": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Canonical decimal u64; semantic validation also enforces u64 maximum.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "Validated": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/BudgetData"
+    }
+  }
+}

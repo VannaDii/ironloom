@@ -96,7 +96,7 @@ pub async fn serve(bind: &str) -> Result<(), StartupError> {
     let auth = Arc::new(
         AuthenticationBackend::new(
             store.clone(),
-            authority,
+            authority.clone(),
             SecretCipher::new(&key),
             connections()?,
         )
@@ -107,22 +107,9 @@ pub async fn serve(bind: &str) -> Result<(), StartupError> {
     let transport = AuthTransport::new(auth, &public_url).map_err(|_| StartupError)?;
     // Validate now; the source constructor receives these exact bounds at adapter composition.
     crate::configured_download_limits().map_err(|_| StartupError)?;
-    let database = store.clone();
     let app = axum::Router::new()
         .route("/healthz", axum::routing::get(|| async { "ok" }))
-        .route(
-            "/readyz",
-            axum::routing::get(move || {
-                let database = database.clone();
-                async move {
-                    if database.installation().await.is_ok() {
-                        axum::http::StatusCode::OK
-                    } else {
-                        axum::http::StatusCode::SERVICE_UNAVAILABLE
-                    }
-                }
-            }),
-        );
+        .merge(crate::http::readiness_router(authority));
     let prefix = url::Url::parse(&public_url)
         .map_err(|_| StartupError)?
         .path()
