@@ -115,6 +115,22 @@ class _LessonsPageState extends State<LessonsPage> {
               spacing: 8,
               runSpacing: 8,
               children: [
+                AsyncAction(
+                  label: 'Edit lesson',
+                  action: () async {
+                    await showDialog<void>(
+                      context: context,
+                      builder: (_) => _LessonEditor(
+                        lesson: lesson,
+                        save: (content) => mutate(
+                          lesson,
+                          LessonOperation.edit,
+                          content: content,
+                        ),
+                      ),
+                    );
+                  },
+                ),
                 for (final scope in RecordScope.values)
                   AsyncAction(
                     label: switch (scope) {
@@ -164,6 +180,68 @@ class _LessonsPageState extends State<LessonsPage> {
         ),
       if (page?.nextAfter != null)
         AsyncAction(label: 'Load more lessons', action: () => load(more: true)),
+    ],
+  );
+}
+
+class _LessonEditor extends StatefulWidget {
+  const _LessonEditor({required this.lesson, required this.save});
+  final Lesson lesson;
+  final Future<void> Function(String) save;
+  @override
+  State<_LessonEditor> createState() => _LessonEditorState();
+}
+
+class _LessonEditorState extends State<_LessonEditor> {
+  late final TextEditingController content;
+  @override
+  void initState() {
+    super.initState();
+    content = TextEditingController(text: widget.lesson.content);
+  }
+
+  @override
+  void dispose() {
+    content.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Edit lesson'),
+    content: SizedBox(
+      width: 640,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Current scope: ${widget.lesson.scope.value}. Origin and source provenance are retained.',
+            ),
+            TextField(
+              controller: content,
+              minLines: 5,
+              maxLines: 15,
+              decoration: const InputDecoration(labelText: 'Lesson content'),
+            ),
+            const SizedBox(height: 12),
+            AsyncAction(
+              label: 'Save lesson',
+              action: () async {
+                await widget.save(content.text);
+                if (context.mounted) Navigator.pop(context);
+              },
+            ),
+          ],
+        ),
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Close'),
+      ),
     ],
   );
 }

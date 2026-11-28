@@ -6,9 +6,15 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 
 import '../widgets.dart';
+import 'model_details.dart';
 
 class ModelsPage extends StatefulWidget {
-  const ModelsPage({super.key, required this.client});
+  const ModelsPage({
+    super.key,
+    required this.client,
+    this.configurationRevision,
+  });
+  final Counter? configurationRevision;
   final IronloomClient client;
   @override
   State<ModelsPage> createState() => _ModelsPageState();
@@ -23,9 +29,19 @@ class _ModelsPageState extends State<ModelsPage> {
   ActorId? after;
   final downloads = <String, DownloadProgress>{};
   Timer? timer;
+  int searchGeneration = 0;
   @override
   void initState() {
     super.initState();
+    project.addListener(() {
+      if (mounted) {
+        setState(() {
+          ++searchGeneration;
+          models = [];
+          after = null;
+        });
+      }
+    });
     timer = Timer.periodic(const Duration(seconds: 2), (_) => poll());
   }
 
@@ -41,6 +57,7 @@ class _ModelsPageState extends State<ModelsPage> {
   ProjectId? get selectedProject =>
       project.text.trim().isEmpty ? null : ProjectId(project.text.trim());
   Future<void> search({bool more = false}) async {
+    final generation = ++searchGeneration;
     final result = await widget.client.searchModels(
       SourceQuery(
         query: query.text.trim(),
@@ -51,7 +68,7 @@ class _ModelsPageState extends State<ModelsPage> {
       ),
       project: selectedProject,
     );
-    if (mounted) {
+    if (mounted && generation == searchGeneration) {
       setState(() {
         models = more ? [...models, ...result.models] : result.models;
         after = result.nextAfter;
@@ -181,6 +198,7 @@ class _ModelsPageState extends State<ModelsPage> {
           ),
         ],
       ),
+      ModelInventory(client: widget.client, project: selectedProject),
       if (error != null) Notice(error!, error: true),
       for (final model in models)
         Section(
@@ -191,8 +209,14 @@ class _ModelsPageState extends State<ModelsPage> {
             ),
             const SizedBox(height: 12),
             Text('Access: ${model.source.access.value.replaceAll('_', ' ')}'),
-            const Notice(
-              'Engine compatibility and memory fit: unknown until configured engine capability metadata is available. Backend qualification is separate.',
+            ModelAssessment(
+              key: ValueKey(
+                '${model.repositoryId.value}:${model.source.revision.value}',
+              ),
+              client: widget.client,
+              model: model,
+              project: selectedProject,
+              configurationRevision: widget.configurationRevision,
             ),
             Wrap(
               spacing: 12,

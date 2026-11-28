@@ -3,6 +3,7 @@ import 'package:ironloom_client/ironloom_client.dart';
 import 'package:uuid/uuid.dart';
 
 import '../widgets.dart';
+import 'instructions.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({
@@ -186,6 +187,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           ],
         ),
+        Instructions(client: widget.client),
         Section(
           'Roles',
           children: [
@@ -303,12 +305,15 @@ class RoleEditor extends StatefulWidget {
 class _RoleEditorState extends State<RoleEditor> {
   late bool enabled;
   ModelProfileId? model;
-  late TextEditingController effort, devices;
+  late TextEditingController effort, devices, instructions;
   @override
   void initState() {
     super.initState();
     enabled = widget.role.enabled;
     model = widget.role.modelProfileId;
+    instructions = TextEditingController(
+      text: widget.role.instructionsId.value,
+    );
     effort = TextEditingController(text: widget.role.reasoningEffort?.value);
     devices = TextEditingController(
       text: widget.role.deviceBindings.map((d) => d.value).join(', '),
@@ -317,6 +322,7 @@ class _RoleEditorState extends State<RoleEditor> {
 
   @override
   void dispose() {
+    instructions.dispose();
     effort.dispose();
     devices.dispose();
     super.dispose();
@@ -377,6 +383,15 @@ class _RoleEditorState extends State<RoleEditor> {
               ),
             ),
             const SizedBox(height: 12),
+            TextField(
+              controller: instructions,
+              decoration: const InputDecoration(
+                labelText: 'Instruction template ID',
+                helperText:
+                    'Choose an authorized template from the catalog above.',
+              ),
+            ),
+            const SizedBox(height: 12),
             AsyncAction(
               label: 'Save role',
               action: () => widget.onSave(
@@ -398,7 +413,7 @@ class _RoleEditorState extends State<RoleEditor> {
                             .where((v) => v.isNotEmpty))
                       DeviceId(d),
                   ],
-                  instructionsId: widget.role.instructionsId,
+                  instructionsId: InstructionId(instructions.text.trim()),
                 ),
               ),
             ),

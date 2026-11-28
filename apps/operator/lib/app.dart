@@ -171,7 +171,10 @@ class _OperatorShellState extends State<OperatorShell> {
         },
         reload: load,
       ),
-      2 => ModelsPage(client: widget.client),
+      2 => ModelsPage(
+        client: widget.client,
+        configurationRevision: settings?.revision,
+      ),
       3 => AccessPage(client: widget.client),
       _ => LessonsPage(client: widget.client),
     };
