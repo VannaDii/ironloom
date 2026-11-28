@@ -209,3 +209,12 @@ CREATE TABLE ironloom.audit (
     body jsonb NOT NULL,
     recorded_at timestamptz NOT NULL DEFAULT now()
 );
+-- Context invalidation is durable and independent from assignment/conversation lifetime.
+CREATE TABLE ironloom.context_changes (
+    change_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    record_kind text NOT NULL,
+    record_id text NOT NULL,
+    revision numeric(20,0) NOT NULL,
+    delivered_at timestamptz,
+    UNIQUE (record_kind, record_id, revision)
+);

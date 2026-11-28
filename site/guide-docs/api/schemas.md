@@ -40,3 +40,5 @@ Shared service and native enrollment contracts now live in `ironloom-service::fa
 `POST /api/v1/models/assessments` returns typed engine/version/backend and canonical device placement assessments, with requirement assumptions, memory fit and actual qualification separate. Missing information stays unknown; assessment never loads or runs a model.
 
 `GET /api/v1/models/inventory` exposes authorized provenance, transfer completion, independent checksum/manifest verification and current file availability. Complete bytes remain unverified until the trusted installation pipeline confirms integrity; missing files retain metadata and block use.
+
+Installation configuration commands persist before any project exists. Empty conversations atomically retain their snapshot and retry receipt with cursor zero and no dispatch event. `DownloadProgress.repository_id` binds authorized resume/cancel operations to the original repository.

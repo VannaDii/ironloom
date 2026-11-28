@@ -49,10 +49,17 @@
         },
         "conversation_id": {
           "description": "Authorized event stream.",
-          "$ref": "#/$defs/ConversationId"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ConversationId"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "first_event": {
-          "description": "Validated first event committed with command and outbox."
+          "description": "Optional validated first event. Empty conversations retain cursor zero and dispatch nothing."
         },
         "operator_id": {
           "description": "Authenticated actor idempotency scope.",
@@ -63,8 +70,15 @@
           "$ref": "#/$defs/ActorId"
         },
         "project_id": {
-          "description": "Project authority scope.",
-          "$ref": "#/$defs/ProjectId"
+          "description": "Project authority scope; absent for installation commands before any project exists.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProjectId"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "receipt": {
           "description": "Validated service receipt serialized by composition."
@@ -74,11 +88,8 @@
       "required": [
         "operator_id",
         "command_id",
-        "conversation_id",
-        "project_id",
         "payload_hash",
-        "receipt",
-        "first_event"
+        "receipt"
       ]
     }
   }
