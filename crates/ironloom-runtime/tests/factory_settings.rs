@@ -103,7 +103,7 @@ async fn durable_settings_before_projects_and_explicit_copy_updates_keep_revisio
     )
     .await
     .unwrap();
-    let session = grant.session;
+    let session = grant.session.clone();
     let initial = backend.configuration(session.clone(), None).await.unwrap();
     assert_eq!(initial.revision.get(), 1);
     assert!(initial.setup.is_none());
@@ -255,7 +255,10 @@ async fn durable_settings_before_projects_and_explicit_copy_updates_keep_revisio
         .unwrap();
     assert_eq!(changed.revision.get(), 3);
     assert_eq!(
-        backend.instruction(session, selected).await.unwrap(),
+        backend
+            .instruction(session.clone(), selected)
+            .await
+            .unwrap(),
         changed
     );
     let copy: ironloom_process_graph::factory::InstructionCopy = serde_json::from_value(
@@ -274,5 +277,414 @@ async fn durable_settings_before_projects_and_explicit_copy_updates_keep_revisio
         1,
         "template update cannot forge worker acknowledgment"
     );
+    let create = CreateConversation::new(CreateConversationData {
+        command_id: CommandId::new("create-empty-conversation").unwrap(),
+        project_id: project.clone(),
+    })
+    .unwrap();
+    let initial = backend
+        .create_conversation(session.clone(), create.clone())
+        .await
+        .unwrap();
+    assert_eq!(initial.cursor.sequence.get(), 0);
+    assert!(initial.session.active_turn_id.is_none());
+    assert_eq!(
+        backend
+            .create_conversation(session.clone(), create)
+            .await
+            .unwrap(),
+        initial
+    );
+    assert!(
+        store
+            .events(&initial.session.conversation_id, 0, 10)
+            .await
+            .unwrap()
+            .is_empty()
+    );
+    assert_eq!(
+        backend
+            .snapshot(session.clone(), initial.session.conversation_id.clone())
+            .await
+            .unwrap(),
+        initial
+    );
+    let conversation = initial.session.conversation_id.clone();
+    let query = |direction,
+                 sequence,
+                 before: Option<&str>,
+                 after: Option<&str>,
+                 turn: Option<&str>,
+                 limit| {
+        HistoryQuery::new(HistoryQueryData {
+            as_of: ReplayCursor::new(ReplayCursorData {
+                conversation_id: conversation.clone(),
+                sequence: Counter::new(sequence),
+            })
+            .unwrap(),
+            direction,
+            before: before.map(|id| ItemId::new(id).unwrap()),
+            after: after.map(|id| ItemId::new(id).unwrap()),
+            turn_id: turn.map(|id| TurnId::new(id).unwrap()),
+            limit: Counter::new(limit),
+        })
+        .unwrap()
+    };
+    assert!(
+        backend
+            .history(
+                session.clone(),
+                query(HistoryDirection::Backward, 0, None, None, None, 10)
+            )
+            .await
+            .unwrap()
+            .items
+            .is_empty()
+    );
+    let Operation::Write(mut stream) = store
+        .begin(
+            &session.operator_id,
+            &CommandId::new("scripted-history-events").unwrap(),
+            &json!({"fixture":"history"}),
+            &id(conversation.as_str()),
+        )
+        .await
+        .unwrap()
+    else {
+        panic!("new stream fixture");
+    };
+    for (item, turn, text) in [
+        ("z-first", "turn-one", "Original output"),
+        ("a-second", "turn-one", "Second output"),
+        ("m-third", "turn-two", "Another turn"),
+        ("z-first", "turn-one", "Updated output"),
+    ] {
+        let sequence = stream.next_sequence(&conversation).await.unwrap();
+        let history:HistoryItem=serde_json::from_value(json!({"conversation_id":conversation,"turn_id":turn,"item_id":item,"message":{"role":"assistant","text":text,"tool_calls":[],"tool_result":null}})).unwrap();
+        let mut current = (*initial).clone();
+        current.cursor = ReplayCursor::new(ReplayCursorData {
+            conversation_id: conversation.clone(),
+            sequence: Counter::new(sequence),
+        })
+        .unwrap();
+        current.revision = Counter::new(2);
+        let current = ConversationSnapshot::new(current).unwrap();
+        let event = ServiceEvent::new(ServiceEventData {
+            command_id: CommandId::new("scripted-history-events").unwrap(),
+            cursor: current.cursor.clone(),
+            project_id: project.clone(),
+            event: None,
+            snapshot: Some(current.clone()),
+        })
+        .unwrap();
+        stream
+            .append_event(
+                &conversation,
+                sequence,
+                &serde_json::to_value(event).unwrap(),
+            )
+            .await
+            .unwrap();
+        stream
+            .history_version(
+                &conversation,
+                &history.item_id,
+                &history.turn_id,
+                sequence,
+                &serde_json::to_value(&history).unwrap(),
+            )
+            .await
+            .unwrap();
+        if sequence == 4 {
+            stream
+                .put(
+                    "conversation",
+                    &id(conversation.as_str()),
+                    Some(&project),
+                    None,
+                    Some(1),
+                    &serde_json::to_value(current).unwrap(),
+                )
+                .await
+                .unwrap();
+        }
+    }
+    (*stream)
+        .commit(&json!({"fixture":"history"}))
+        .await
+        .unwrap();
+    let older = backend
+        .history(
+            session.clone(),
+            query(HistoryDirection::Backward, 3, None, None, None, 2),
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        older
+            .items
+            .iter()
+            .map(|item| item.item_id.as_str())
+            .collect::<Vec<_>>(),
+        ["a-second", "m-third"]
+    );
+    assert_eq!(older.next_before.as_ref().unwrap().as_str(), "a-second");
+    let first = backend
+        .history(
+            session.clone(),
+            query(
+                HistoryDirection::Backward,
+                3,
+                Some("a-second"),
+                None,
+                None,
+                2,
+            ),
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        first.items[0].message.text.as_deref(),
+        Some("Original output")
+    );
+    assert!(first.next_before.is_none());
+    let newer = backend
+        .history(
+            session.clone(),
+            query(
+                HistoryDirection::Forward,
+                4,
+                None,
+                None,
+                Some("turn-one"),
+                1,
+            ),
+        )
+        .await
+        .unwrap();
+    assert_eq!(newer.items[0].item_id.as_str(), "z-first");
+    assert_eq!(
+        newer.items[0].message.text.as_deref(),
+        Some("Updated output")
+    );
+    assert_eq!(newer.next_after.as_ref().unwrap().as_str(), "z-first");
+    let next = backend
+        .history(
+            session.clone(),
+            query(
+                HistoryDirection::Forward,
+                4,
+                None,
+                Some("z-first"),
+                Some("turn-one"),
+                1,
+            ),
+        )
+        .await
+        .unwrap();
+    assert_eq!(next.items[0].item_id.as_str(), "a-second");
+    assert!(next.next_after.is_none());
+    assert!(matches!(
+        backend
+            .history(
+                session.clone(),
+                query(
+                    HistoryDirection::Forward,
+                    4,
+                    None,
+                    Some("m-third"),
+                    Some("turn-one"),
+                    1
+                )
+            )
+            .await,
+        Err(ServiceError::Conflict)
+    ));
+    assert!(matches!(
+        backend
+            .history(
+                session.clone(),
+                query(HistoryDirection::Forward, 5, None, None, None, 1)
+            )
+            .await,
+        Err(ServiceError::Conflict)
+    ));
+    let later = backend
+        .create_conversation(
+            session.clone(),
+            CreateConversation::new(CreateConversationData {
+                command_id: CommandId::new("later-conversation").unwrap(),
+                project_id: project.clone(),
+            })
+            .unwrap(),
+        )
+        .await
+        .unwrap();
+    let Operation::Write(mut touched) = store
+        .begin(
+            &session.operator_id,
+            &CommandId::new("human-interaction-order").unwrap(),
+            &json!({"fixture":"human"}),
+            &id(conversation.as_str()),
+        )
+        .await
+        .unwrap()
+    else {
+        panic!("new touch fixture");
+    };
+    let mut current = (*backend
+        .snapshot(session.clone(), conversation.clone())
+        .await
+        .unwrap())
+    .clone();
+    current.session = SessionSummary::new(SessionSummaryData {
+        last_human_interaction_ms: Counter::new(
+            touched
+                .conversation_interaction(&conversation)
+                .await
+                .unwrap(),
+        ),
+        ..(*current.session).clone()
+    })
+    .unwrap();
+    current.revision = Counter::new(3);
+    touched
+        .put(
+            "conversation",
+            &id(conversation.as_str()),
+            Some(&project),
+            None,
+            Some(2),
+            &serde_json::to_value(ConversationSnapshot::new(current).unwrap()).unwrap(),
+        )
+        .await
+        .unwrap();
+    (*touched)
+        .commit(&json!({"fixture":"human"}))
+        .await
+        .unwrap();
+    for (order, expected) in [
+        (
+            SessionOrder::CreatedAt,
+            later.session.conversation_id.clone(),
+        ),
+        (SessionOrder::HumanInteraction, conversation.clone()),
+    ] {
+        let query = SessionQuery::new(SessionQueryData {
+            order: order.clone(),
+            after: None,
+            limit: Counter::new(1),
+            archived: false,
+            provider: None,
+            source: None,
+        })
+        .unwrap();
+        let first = backend.sessions(session.clone(), query).await.unwrap();
+        assert_eq!(first[0].conversation_id, expected);
+        let next = backend
+            .sessions(
+                session.clone(),
+                SessionQuery::new(SessionQueryData {
+                    order,
+                    after: Some(expected),
+                    limit: Counter::new(1),
+                    archived: false,
+                    provider: None,
+                    source: None,
+                })
+                .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(next.len(), 1);
+        assert_ne!(first[0].conversation_id, next[0].conversation_id);
+    }
+    let transport =
+        ironloom_runtime::http::auth::AuthTransport::new(auth, "http://localhost/factory/")
+            .unwrap();
+    let router = axum::Router::new().nest(
+        "/factory",
+        ironloom_runtime::http::factory::router(
+            ironloom_runtime::http::factory::FactoryTransport::new(Arc::new(backend), transport),
+        ),
+    );
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let endpoint = format!("http://{}/factory/api/v1", listener.local_addr().unwrap());
+    let server = tokio::spawn(async move {
+        axum::serve(listener, router).await.unwrap();
+    });
+    let http = reqwest::Client::new();
+    let cookie = format!("ironloom_session={}", grant.cookie_token());
+    let response = http
+        .get(format!("{endpoint}/configuration"))
+        .header("cookie", &cookie)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), 200);
+    assert_eq!(response.headers()["cache-control"], "no-store");
+    let _: ConfigurationSnapshot = response.json().await.unwrap();
+    let response = http
+        .get(format!("{endpoint}/instructions?limit=20"))
+        .header("cookie", &cookie)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), 200);
+    let _: InstructionPage = response.json().await.unwrap();
+    let watermark = encode_cursor(
+        &ReplayCursor::new(ReplayCursorData {
+            conversation_id: conversation.clone(),
+            sequence: Counter::new(3),
+        })
+        .unwrap(),
+    )
+    .unwrap();
+    let response = http
+        .get(format!(
+            "{endpoint}/sessions/{}/history?as_of={watermark}&direction=forward&turn_id=turn-one&limit=1",
+            conversation.as_str()
+        ))
+        .header("cookie", &cookie)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), 200);
+    let history: HistoryPage = response.json().await.unwrap();
+    assert_eq!(
+        history.items[0].message.text.as_deref(),
+        Some("Original output")
+    );
+    assert_eq!(
+        http.post(format!("{endpoint}/sessions"))
+            .header("cookie", &cookie)
+            .json(&json!({"command_id":"http-create","project_id":project}))
+            .send()
+            .await
+            .unwrap()
+            .status(),
+        403
+    );
+    let response = http
+        .post(format!("{endpoint}/sessions"))
+        .header("cookie", &cookie)
+        .header("x-ironloom-csrf", grant.csrf_token())
+        .json(&json!({"command_id":"http-create","project_id":project}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), 200);
+    let empty: ConversationSnapshot = response.json().await.unwrap();
+    assert_eq!(empty.cursor.sequence.get(), 0);
+    assert_eq!(
+        http.get(format!("{endpoint}/configuration"))
+            .send()
+            .await
+            .unwrap()
+            .status(),
+        401
+    );
+    server.abort();
+    let _ = server.await;
     store.close().await;
 }

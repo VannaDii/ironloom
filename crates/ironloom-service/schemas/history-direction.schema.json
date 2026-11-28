@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "HistoryDirection",
+  "description": "Traversal direction at a fixed durable history watermark.",
+  "oneOf": [
+    {
+      "description": "Page toward older items, returning each page oldest first.",
+      "type": "string",
+      "const": "backward"
+    },
+    {
+      "description": "Page toward newer items, returning each page oldest first.",
+      "type": "string",
+      "const": "forward"
+    }
+  ]
+}

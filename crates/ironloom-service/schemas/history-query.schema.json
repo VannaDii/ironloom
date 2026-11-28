@@ -18,16 +18,27 @@
       "type": "string",
       "pattern": "^(0|[1-9][0-9]{0,19})$"
     },
+    "HistoryDirection": {
+      "description": "Traversal direction at a fixed durable history watermark.",
+      "oneOf": [
+        {
+          "description": "Page toward older items, returning each page oldest first.",
+          "type": "string",
+          "const": "backward"
+        },
+        {
+          "description": "Page toward newer items, returning each page oldest first.",
+          "type": "string",
+          "const": "forward"
+        }
+      ]
+    },
     "HistoryQueryData": {
       "description": "Unchecked construction draft for `HistoryQuery`; validate before use.",
       "type": "object",
       "properties": {
-        "as_of": {
-          "description": "Consistent snapshot watermark and authorized conversation.",
-          "$ref": "#/$defs/Validated"
-        },
-        "before": {
-          "description": "Exclusive stable item cursor; absent returns latest page at the watermark.",
+        "after": {
+          "description": "Exclusive newer-page cursor; only valid for forward traversal.",
           "anyOf": [
             {
               "$ref": "#/$defs/ItemId"
@@ -37,14 +48,45 @@
             }
           ]
         },
+        "as_of": {
+          "description": "Consistent snapshot watermark and authorized conversation.",
+          "$ref": "#/$defs/Validated"
+        },
+        "before": {
+          "description": "Exclusive older-page cursor; only valid for backward traversal.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ItemId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "direction": {
+          "description": "Requested traversal; absent cursors start at the corresponding end.",
+          "$ref": "#/$defs/HistoryDirection"
+        },
         "limit": {
           "description": "Bounded page size.",
           "$ref": "#/$defs/Counter"
+        },
+        "turn_id": {
+          "description": "Optional exact turn, checked within the authorized conversation.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TurnId"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "additionalProperties": false,
       "required": [
         "as_of",
+        "direction",
         "limit"
       ]
     },
@@ -73,6 +115,13 @@
         "conversation_id",
         "sequence"
       ]
+    },
+    "TurnId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom TurnId value.",
+      "type": "string",
+      "minLength": 1
     },
     "Validated": {
       "description": "A validated immutable model; no mutable dereference or unchecked constructor.",

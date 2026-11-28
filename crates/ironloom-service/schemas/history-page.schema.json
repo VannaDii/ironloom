@@ -25,6 +25,21 @@
       "type": "string",
       "pattern": "^(0|[1-9][0-9]{0,19})$"
     },
+    "HistoryDirection": {
+      "description": "Traversal direction at a fixed durable history watermark.",
+      "oneOf": [
+        {
+          "description": "Page toward older items, returning each page oldest first.",
+          "type": "string",
+          "const": "backward"
+        },
+        {
+          "description": "Page toward newer items, returning each page oldest first.",
+          "type": "string",
+          "const": "forward"
+        }
+      ]
+    },
     "HistoryItemData": {
       "description": "Unchecked construction draft for `HistoryItem`; validate before use.",
       "type": "object",
@@ -62,6 +77,10 @@
           "description": "Same watermark as the request, even if new work arrives.",
           "$ref": "#/$defs/Validated"
         },
+        "direction": {
+          "description": "Traversal of the request; never inferred from item IDs.",
+          "$ref": "#/$defs/HistoryDirection"
+        },
         "items": {
           "description": "Ordered oldest to newest within this bounded page.",
           "type": "array",
@@ -69,11 +88,33 @@
             "$ref": "#/$defs/Validated2"
           }
         },
-        "next_before": {
-          "description": "Exclusive cursor for the next older page; None means history exhausted.",
+        "next_after": {
+          "description": "Exclusive newer-page cursor, only for forward traversal.",
           "anyOf": [
             {
               "$ref": "#/$defs/ItemId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "next_before": {
+          "description": "Exclusive older-page cursor, only for backward traversal.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ItemId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "turn_id": {
+          "description": "Same optional turn filter as the request.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TurnId"
             },
             {
               "type": "null"
@@ -84,6 +125,7 @@
       "additionalProperties": false,
       "required": [
         "as_of",
+        "direction",
         "items"
       ]
     },

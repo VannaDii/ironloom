@@ -1974,7 +1974,8 @@
           "sequence": "9"
         },
         "before": null,
-        "limit": "20"
+        "limit": "20",
+        "direction": "backward"
       },
       "expected_errors": []
     },
@@ -1987,7 +1988,8 @@
           "sequence": "9"
         },
         "before": null,
-        "limit": "101"
+        "limit": "101",
+        "direction": "backward"
       },
       "expected_errors": [
         {
@@ -2017,7 +2019,8 @@
             }
           }
         ],
-        "next_before": "item-1"
+        "next_before": "item-1",
+        "direction": "backward"
       },
       "expected_errors": []
     },
@@ -2053,7 +2056,8 @@
             }
           }
         ],
-        "next_before": "item-1"
+        "next_before": "item-1",
+        "direction": "backward"
       },
       "expected_errors": [
         {
@@ -2083,7 +2087,8 @@
             }
           }
         ],
-        "next_before": "item-1"
+        "next_before": "item-1",
+        "direction": "backward"
       },
       "expected_errors": [
         {
@@ -2113,7 +2118,8 @@
             }
           }
         ],
-        "next_before": "missing-item"
+        "next_before": "missing-item",
+        "direction": "backward"
       },
       "expected_errors": [
         {
@@ -4302,6 +4308,171 @@
           "code": "complete_demand_mismatch"
         }
       ]
+    },
+    {
+      "contract": "history_query",
+      "name": "forward-turn-history",
+      "input": {
+        "as_of": {
+          "conversation_id": "conversation-1",
+          "sequence": "9"
+        },
+        "before": null,
+        "limit": "20",
+        "direction": "forward",
+        "after": "item-1",
+        "turn_id": "turn-1"
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "history_query",
+      "name": "forward-rejects-before",
+      "input": {
+        "as_of": {
+          "conversation_id": "conversation-1",
+          "sequence": "9"
+        },
+        "before": "item-2",
+        "limit": "20",
+        "direction": "forward",
+        "after": "item-1",
+        "turn_id": "turn-1"
+      },
+      "expected_errors": [
+        {
+          "field": "before",
+          "code": "backward_direction_required"
+        }
+      ]
+    },
+    {
+      "contract": "history_query",
+      "name": "backward-rejects-after",
+      "input": {
+        "as_of": {
+          "conversation_id": "conversation-1",
+          "sequence": "9"
+        },
+        "before": null,
+        "limit": "20",
+        "direction": "backward",
+        "after": "item-1",
+        "turn_id": "turn-1"
+      },
+      "expected_errors": [
+        {
+          "field": "after",
+          "code": "forward_direction_required"
+        }
+      ]
+    },
+    {
+      "contract": "history_page",
+      "name": "forward-history-page",
+      "input": {
+        "as_of": {
+          "conversation_id": "conversation-1",
+          "sequence": "9"
+        },
+        "items": [
+          {
+            "conversation_id": "conversation-1",
+            "turn_id": "turn-1",
+            "item_id": "item-1",
+            "message": {
+              "role": "user",
+              "text": "Original human input.",
+              "tool_calls": [],
+              "tool_result": null
+            }
+          }
+        ],
+        "next_before": null,
+        "direction": "forward",
+        "turn_id": "turn-1",
+        "next_after": "item-1"
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "history_page",
+      "name": "forward-cursor-requires-last-item",
+      "input": {
+        "as_of": {
+          "conversation_id": "conversation-1",
+          "sequence": "9"
+        },
+        "items": [
+          {
+            "conversation_id": "conversation-1",
+            "turn_id": "turn-1",
+            "item_id": "item-1",
+            "message": {
+              "role": "user",
+              "text": "Original human input.",
+              "tool_calls": [],
+              "tool_result": null
+            }
+          }
+        ],
+        "next_before": null,
+        "direction": "forward",
+        "turn_id": "turn-1",
+        "next_after": "absent-item"
+      },
+      "expected_errors": [
+        {
+          "field": "next_after",
+          "code": "newest_item_required"
+        }
+      ]
+    },
+    {
+      "contract": "history_page",
+      "name": "history-rejects-other-turn",
+      "input": {
+        "as_of": {
+          "conversation_id": "conversation-1",
+          "sequence": "9"
+        },
+        "items": [
+          {
+            "conversation_id": "conversation-1",
+            "turn_id": "turn-1",
+            "item_id": "item-1",
+            "message": {
+              "role": "user",
+              "text": "Original human input.",
+              "tool_calls": [],
+              "tool_result": null
+            }
+          }
+        ],
+        "next_before": null,
+        "direction": "forward",
+        "turn_id": "other-turn",
+        "next_after": "item-1"
+      },
+      "expected_errors": [
+        {
+          "field": "items",
+          "code": "turn_mismatch"
+        }
+      ]
+    },
+    {
+      "name": "native-creation-order",
+      "contract": "session_query",
+      "input": {
+        "after": null,
+        "limit": "10",
+        "archived": false,
+        "provider": null,
+        "source": null,
+        "order": "created_at"
+      },
+      "expected_errors": []
     }
   ]
 }

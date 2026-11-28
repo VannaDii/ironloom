@@ -52,3 +52,6 @@ A `ServiceEvent` contains exactly one worker event or conversation snapshot upda
 The shipped standard team starts disabled, with editable instructions and no inferred model. Pure readiness rules preserve project inheritance and allow configured remote-only operation without a GPU. Durable instruction/configuration handlers are still being implemented.
 
 Worker delegation is assignment/resource scoped, and record CAS preserves project/assignment ownership. Readiness checks PostgreSQL and the actual OpenFGA binding independently from team/model setup. Memory-fit estimates require all five demand components and checked addition; missing/overflowed totals remain unknown.
+
+
+History paging now requires an explicit forward/backward direction, accepts an optional turn filter, and keeps each page oldest first at the requested event watermark. Session discovery requires `order=created_at` for native clients or `order=human_interaction` for dashboards. Empty, disabled or disjoint local device placements block execution readiness. Configuration/instruction and conversation catalog/snapshot/history HTTP routes use the shared authenticated backend; full runtime composition remains in progress.

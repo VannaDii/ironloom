@@ -1,8 +1,10 @@
 //! Editable shipped behavior and pure readiness rules. Infrastructure and adapters supply facts.
 use crate::factory::{
-    FactorySetup, ModelProfileConfiguration, RoleConfiguration, RoleConfigurationData,
+    DevicePreference, FactorySetup, ModelProfileConfiguration, RoleConfiguration,
+    RoleConfigurationData,
 };
-use ironloom_core::{ActorId, InstructionId, ModelProfileId};
+use ironloom_core::{ActorId, DeviceId, InstructionId, ModelProfileId};
+use ironloom_models::factory::DeviceIdentity;
 use std::collections::BTreeSet;
 
 /// One shipped role's editable initial instructions; no inference model is preselected.
@@ -71,6 +73,8 @@ pub fn unmet_prerequisites(
     setup: Option<&FactorySetup>,
     roles: &[RoleConfiguration],
     profiles: &[ModelProfileConfiguration],
+    preferences: &[DevicePreference],
+    devices: &[DeviceIdentity],
     facts: &ReadinessFacts<'_>,
 ) -> Vec<ActorId> {
     let mut reasons = BTreeSet::new();
@@ -96,10 +100,55 @@ pub fn unmet_prerequisites(
         }) {
             reasons.insert(format!("role:{}:model_unavailable", role.role_id.as_str()));
         }
+        if let Some(profile) = profiles
+            .iter()
+            .find(|profile| Some(&profile.profile_id) == role.model_profile_id.as_ref())
+        {
+            let invalid = if profile.engine.is_some() {
+                permitted_devices(profile, Some(role), preferences, devices).is_empty()
+            } else {
+                !role.device_bindings.is_empty()
+            };
+            if invalid {
+                reasons.insert(format!(
+                    "role:{}:placement_unavailable",
+                    role.role_id.as_str()
+                ));
+            }
+        }
     }
     reasons
         .into_iter()
         .map(|reason| ActorId::new(reason).expect("service-owned nonempty readiness reason"))
+        .collect()
+}
+/// Resolves the explicit local profile placement intersected with optional role restrictions,
+/// current reconciled device identities and effective preferences. Empty profile placement never
+/// selects a default device. This is readiness only; policy still owns resource admission.
+pub fn permitted_devices(
+    profile: &ModelProfileConfiguration,
+    role: Option<&RoleConfiguration>,
+    preferences: &[DevicePreference],
+    devices: &[DeviceIdentity],
+) -> BTreeSet<DeviceId> {
+    if profile.engine.is_none() {
+        return BTreeSet::new();
+    }
+    profile
+        .device_bindings
+        .iter()
+        .filter(|id| {
+            !preferences
+                .iter()
+                .any(|preference| &preference.device_id == *id && !preference.enabled)
+                && devices
+                    .iter()
+                    .any(|device| &device.device_id == *id && device.reconciled)
+                && role.is_none_or(|role| {
+                    role.device_bindings.is_empty() || role.device_bindings.contains(id)
+                })
+        })
+        .cloned()
         .collect()
 }
 #[cfg(test)]
@@ -120,6 +169,8 @@ mod tests {
                 .iter()
                 .map(StandardRole::unconfigured)
                 .collect::<Vec<_>>(),
+            &[],
+            &[],
             &[],
             &ReadinessFacts {
                 usable_profiles: &empty,

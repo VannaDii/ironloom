@@ -174,7 +174,7 @@ fn cookie<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
     }
     found
 }
-fn body<T: Wire>(headers: &HeaderMap, bytes: &Bytes) -> Result<T, HttpError> {
+pub(crate) fn body<T: Wire>(headers: &HeaderMap, bytes: &Bytes) -> Result<T, HttpError> {
     if headers
         .get(header::CONTENT_TYPE)
         .and_then(|value| value.to_str().ok())
@@ -334,7 +334,7 @@ async fn logout(
     }
     Ok(response)
 }
-struct HttpError(ServiceError);
+pub(crate) struct HttpError(pub(crate) ServiceError);
 impl IntoResponse for HttpError {
     fn into_response(self) -> Response {
         let status = match &self.0 {
