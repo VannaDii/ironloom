@@ -22,3 +22,6 @@
 
 
 历史分页必须明确指定前向或后向，可按轮次筛选；每页按时间正序返回，并绑定请求的事件水位。原生会话列表使用 `order=created_at`，仪表盘使用 `order=human_interaction`。本地设备绑定为空、被禁用或与角色限制无交集时，执行就绪状态为否。配置、指令和会话列表、快照及历史 HTTP 路由使用共享认证后端；完整运行时组合仍在开发中。
+
+
+服务现在在公开部署路径下提供配置、指令、会话状态、历史和可重放 SSE。SSE 要求 `Last-Event-ID`；缓冲区溢出时发送 `ironloom.error` 并要求重新同步。断开连接或关闭传输不会取消执行。请配置稳定的 `IRONLOOM_NODE_ID` 和独立的绝对路径 `IRONLOOM_PROJECTS_ROOT` / `IRONLOOM_MODELS_ROOT`；Helm 提供独立持久卷。适配器、沙箱、托管依赖和完整执行仍在开发中。

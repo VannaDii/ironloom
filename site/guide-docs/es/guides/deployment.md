@@ -19,3 +19,6 @@ El chart lee `IRONLOOM_DATABASE_URL` desde `database.existingSecret` / `database
 Proporcione `IRONLOOM_CONFIG_KEY` mediante el secreto de configuración: base64 de 32 bytes. El token inicial se consume al establecer el administrador autenticado; no es una contraseña reutilizable. El registro de cuentas usa la ruta de autenticación. Configure `runtime.publicUrl` con su ruta base y límites positivos explícitos `download.maxFileBytes` / `download.maxTransferBytes`.
 
 Renderizar el chart no despliega ni valida inferencia. Mantenga separados los directorios persistentes y sus propietarios. No borre PVC ni reinicie datos para eludir fallos de conexión o autenticación.
+
+
+El servicio monta configuración, instrucciones, conversaciones y SSE bajo la ruta pública. SSE requiere `Last-Event-ID`; el desbordamiento emite `ironloom.error` y exige resincronización. Desconectar el transporte no cancela la ejecución. Configure `IRONLOOM_NODE_ID` estable y las rutas absolutas separadas `IRONLOOM_PROJECTS_ROOT` / `IRONLOOM_MODELS_ROOT`; Helm proporciona almacenamiento persistente separado. El registro de adaptadores, el aislamiento y la ejecución completa siguen en desarrollo.

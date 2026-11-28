@@ -105,6 +105,10 @@ spec:
               mountPath: {{ .Values.runtime.stateMountPath }}
             - name: worktrees
               mountPath: {{ .Values.runtime.worktreeMountPath }}
+            - name: projects
+              mountPath: {{ .Values.runtime.projectsMountPath }}
+            - name: models
+              mountPath: {{ .Values.runtime.modelsMountPath }}
             - name: tmp
               mountPath: /tmp
           readinessProbe:
@@ -127,5 +131,11 @@ spec:
             claimName: {{ include "ironloom.fullname" . }}-state
         - name: worktrees
           emptyDir: {}
+        - name: projects
+          persistentVolumeClaim:
+            claimName: {{ include "ironloom.fullname" . }}-projects
+        - name: models
+          persistentVolumeClaim:
+            claimName: {{ include "ironloom.fullname" . }}-models
         - name: tmp
           emptyDir: {}

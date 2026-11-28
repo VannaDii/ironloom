@@ -29,6 +29,9 @@ service:
 runtime:
   bindAddress: "0.0.0.0:8080"
   publicUrl: "https://ironloom.dev"
+  nodeId: ironloom-primary
+  projectsMountPath: /var/lib/ironloom/projects
+  modelsMountPath: /var/lib/ironloom/models
   stateMountPath: /var/lib/ironloom/.ironloom
   worktreeMountPath: /var/lib/ironloom/worktrees
 
@@ -39,6 +42,8 @@ setup:
 
 storage:
   size: 2Gi
+  projectsSize: 10Gi
+  modelsSize: 100Gi
   storageClassName: ""
 
 discord:

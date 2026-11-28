@@ -4,7 +4,99 @@ use ironloom_policy::live::Relationship;
 use ironloom_storage::postgres::{HistoryWindow, SessionWindow};
 
 const CONVERSATION_KIND: &str = "conversation";
+const MAX_REPLAY_ROWS: i64 = 1000;
+const SUBSCRIPTION_BUFFER: usize = 64;
+const EVENT_POLL_INTERVAL: std::time::Duration = std::time::Duration::from_millis(150);
 impl FactoryBackend {
+    /// Reads bounded persisted events after the cursor, rechecking current service/resource grants.
+    /// This is a read operation: it never dispatches, resumes or cancels background work.
+    pub async fn replay(
+        &self,
+        session: AuthenticatedSession,
+        cursor: ReplayCursor,
+    ) -> Result<Vec<ServiceEvent>, ServiceError> {
+        let snapshot = self
+            .snapshot(session, cursor.conversation_id.clone())
+            .await?;
+        if cursor.sequence > snapshot.cursor.sequence {
+            return Err(ServiceError::Conflict);
+        }
+        let rows = self
+            .store
+            .events(
+                &cursor.conversation_id,
+                cursor.sequence.get(),
+                MAX_REPLAY_ROWS,
+            )
+            .await
+            .map_err(database)?;
+        let mut events = Vec::with_capacity(rows.len());
+        let mut last = cursor.sequence.get();
+        for row in rows {
+            let event: ServiceEvent = read(row)?;
+            if event.cursor.conversation_id != cursor.conversation_id
+                || event.project_id != snapshot.session.project_id
+            {
+                return Err(ServiceError::Unavailable);
+            }
+            if Some(event.cursor.sequence.get()) != last.checked_add(1) {
+                return Err(ServiceError::ResyncRequired);
+            }
+            last = event.cursor.sequence.get();
+            events.push(event);
+        }
+        Ok(events)
+    }
+    /// Bridges replay into live delivery by following the same durable log continuously.
+    /// There is no volatile subscription boundary where a committed event can be lost.
+    /// Slow readers receive resync-required before closure; dropping a reader never cancels work.
+    pub async fn subscribe(
+        &self,
+        session: AuthenticatedSession,
+        after: ReplayCursor,
+    ) -> Result<EventSubscription, ServiceError> {
+        let snapshot = self
+            .snapshot(session.clone(), after.conversation_id.clone())
+            .await?;
+        if after.sequence > snapshot.cursor.sequence {
+            return Err(ServiceError::Conflict);
+        }
+        let (sender, events) = tokio::sync::mpsc::channel(SUBSCRIPTION_BUFFER);
+        let service = self.clone();
+        let mut shutdown = self.reader_shutdown.subscribe();
+        tokio::spawn(async move {
+            let mut cursor = after;
+            loop {
+                if *shutdown.borrow() {
+                    return;
+                }
+                let page = match service.replay(session.clone(), cursor.clone()).await {
+                    Ok(page) => page,
+                    Err(error) => {
+                        let _ = sender.try_send(Err(error));
+                        return;
+                    }
+                };
+                for event in page {
+                    // Reserve one slot for an explicit terminal transport error.
+                    if sender.capacity() < 2 {
+                        let _ = sender.try_send(Err(ServiceError::ResyncRequired));
+                        return;
+                    }
+                    cursor = event.cursor.clone();
+                    if sender.try_send(Ok(event)).is_err() {
+                        return;
+                    }
+                }
+                tokio::select! {
+                    _=sender.closed()=>return,
+                    _=shutdown.changed()=>return,
+                    _=tokio::time::sleep(EVENT_POLL_INTERVAL)=>{},
+                }
+            }
+        });
+        Ok(EventSubscription { events })
+    }
     /// Lists only currently authorized sessions in the explicitly selected ordering.
     /// Filters apply to current persisted provider/source bindings; no adapter-side history exists.
     pub async fn sessions(
