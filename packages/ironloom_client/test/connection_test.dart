@@ -31,6 +31,44 @@ Map<String, Object?> event(int sequence) => {
   },
 };
 void main() {
+  test('overlapping refreshes cannot restore an older snapshot', () async {
+    final responses = <Completer<http.Response>>[];
+    final client = IronloomClient(
+      ServerConnection(Uri.parse('https://host/')),
+      MockClient((request) {
+        final response = Completer<http.Response>();
+        responses.add(response);
+        return response.future;
+      }),
+    );
+    final chat = ChatConnection(client, MemoryCommandJournal())
+      ..snapshot = ConversationSnapshot.fromJson(state())
+      ..cursor = ReplayCursor(
+        conversationId: ConversationId('c'),
+        sequence: Counter('0'),
+      );
+    final old = chat.refresh();
+    final fresh = chat.refresh();
+    await Future<void>.delayed(Duration.zero);
+    Map<String, Object?> revision(int n) => {
+      ...state(),
+      'revision': '$n',
+      'cursor': {'conversation_id': 'c', 'sequence': '$n'},
+    };
+    responses[1].complete(http.Response(jsonEncode(revision(3)), 200));
+    await fresh;
+    responses[0].complete(http.Response(jsonEncode(revision(2)), 200));
+    await old;
+    expect(chat.snapshot!.revision.toJson(), '3');
+    final closing = chat.refresh();
+    await Future<void>.delayed(Duration.zero);
+    await chat.close();
+    responses[2].complete(http.Response(jsonEncode(revision(4)), 200));
+    await closing;
+    expect(chat.snapshot!.revision.toJson(), '3');
+    client.close();
+  });
+
   test(
     'deployment path and connection headers stay scoped to one server',
     () async {

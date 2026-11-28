@@ -334,7 +334,22 @@ impl Provider for HttpProvider {
                     final_delivery(&sender, usage).await;
                 }
                 if result.is_err() && !*cancelled.borrow() {
-                    final_delivery(&sender, normalizer.event(StreamKind::Failed, "Provider stream interrupted; completion and final usage are unconfirmed".into(), None)).await;
+                    let detail = match normalizer.anthropic_stop.as_deref() {
+                        Some("max_tokens") => "Provider output truncated: max_tokens",
+                        Some("model_context_window_exceeded") => {
+                            "Provider output truncated: model_context_window_exceeded"
+                        }
+                        Some("pause_turn") => "Provider response paused: pause_turn",
+                        Some("refusal") => "Provider refused output: refusal",
+                        _ => {
+                            "Provider stream interrupted; completion and final usage are unconfirmed"
+                        }
+                    };
+                    final_delivery(
+                        &sender,
+                        normalizer.event(StreamKind::Failed, detail.into(), None),
+                    )
+                    .await;
                 }
             });
             Ok(receiver)
@@ -471,6 +486,7 @@ struct Normalizer {
     cached: Option<u64>,
     completed: bool,
     finish_seen: bool,
+    anthropic_stop: Option<String>,
 }
 impl Normalizer {
     fn new(request: InferenceRequest, dialect: Dialect) -> Self {
@@ -483,6 +499,7 @@ impl Normalizer {
             cached: None,
             completed: false,
             finish_seen: false,
+            anthropic_stop: None,
         }
     }
     fn event(
@@ -608,8 +625,16 @@ impl Normalizer {
                         events.push(event);
                     }
                 }
-                "message_delta" => self.usage(&value["usage"]),
-                "message_stop" => events.extend(self.finish()?),
+                "message_delta" => {
+                    self.usage(&value["usage"]);
+                    if let Some(reason) = value["delta"]["stop_reason"].as_str() {
+                        self.anthropic_stop = Some(reason.into());
+                    }
+                }
+                "message_stop" => {
+                    anthropic_terminal(self.anthropic_stop.as_deref())?;
+                    events.extend(self.finish()?);
+                }
                 "error" => return Err(AdapterError::Interrupted),
                 _ => {}
             },
@@ -638,7 +663,13 @@ impl Normalizer {
                             if let Some(fragment) = call["function"]["arguments"].as_str() {
                                 pending.arguments.push_str(fragment);
                             }
-                            if pending.arguments.len() > super::sse::MAX_FRAME_BYTES {
+                            if pending
+                                .arguments
+                                .len()
+                                .saturating_add(pending.name.len())
+                                .saturating_add(pending.id.len())
+                                > super::sse::MAX_FRAME_BYTES
+                            {
                                 return Err(AdapterError::Interrupted);
                             }
                         }
@@ -677,10 +708,15 @@ impl Normalizer {
                     &value["usage"],
                 )
             }
-            Dialect::Anthropic => (
-                value["content"].as_array().cloned().unwrap_or_default(),
-                &value["usage"],
-            ),
+            Dialect::Anthropic => {
+                self.usage(&value["usage"]);
+                self.anthropic_stop = value["stop_reason"].as_str().map(str::to_owned);
+                anthropic_terminal(self.anthropic_stop.as_deref())?;
+                (
+                    value["content"].as_array().cloned().unwrap_or_default(),
+                    &value["usage"],
+                )
+            }
             Dialect::ChatCompletions => {
                 let choice = &value["choices"][0];
                 if !matches!(
@@ -836,4 +872,13 @@ impl Normalizer {
 }
 fn text(value: &Value) -> String {
     value.as_str().unwrap_or_default().to_owned()
+}
+
+// Only these stop reasons establish a complete provider response. All others
+// remain interrupted; the service decides whether another inference is appropriate.
+fn anthropic_terminal(reason: Option<&str>) -> Result<(), AdapterError> {
+    match reason {
+        Some("end_turn" | "stop_sequence" | "tool_use") => Ok(()),
+        _ => Err(AdapterError::Interrupted),
+    }
 }

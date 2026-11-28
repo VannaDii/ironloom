@@ -407,9 +407,12 @@ impl FileDownloads {
                         .map_err(|_| AdapterError::Unavailable)?;
                     written = if append { offset } else { 0 };
                     let mut reported = written;
+                    let cancellation_id = progress.download_id.clone();
+                    let cancellation = self.wait_cancel(&mut cancel, &cancellation_id);
+                    tokio::pin!(cancellation);
                     loop {
                         let chunk = tokio::select! {
-                            reason = self.wait_cancel(&mut cancel, &progress.download_id)=>{reason?;output.sync_all().await.map_err(|_|AdapterError::Unavailable)?;progress=update(&progress,checked_bytes(received,written,self.limits.transfer_bytes)?,total,false,false,None)?;return self.stopped(progress).await;},
+                            reason = &mut cancellation=>{reason?;output.sync_all().await.map_err(|_|AdapterError::Unavailable)?;progress=update(&progress,checked_bytes(received,written,self.limits.transfer_bytes)?,total,false,false,None)?;return self.stopped(progress).await;},
                             result=tokio::time::timeout(Duration::from_secs(60),response.chunk())=>result.map_err(|_|AdapterError::Interrupted)?.map_err(|_|AdapterError::Interrupted)?
                         };
                         let Some(chunk) = chunk else { break };

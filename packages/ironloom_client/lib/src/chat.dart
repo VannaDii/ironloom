@@ -51,10 +51,12 @@ final class ChatConnection {
   final _changes = StreamController<void>.broadcast();
   StreamSubscription<ServiceEvent>? _subscription;
   final _closed = Completer<void>();
+  int _generation = 0;
   Object? interruption;
   Stream<ServiceEvent> get events => _events.stream;
   Stream<void> get changes => _changes.stream;
   Future<void> connect(ConversationId id) async {
+    final generation = ++_generation;
     await _subscription?.cancel();
     final state = await client.snapshot(id);
     final page = await client.history(
@@ -65,6 +67,7 @@ final class ChatConnection {
         page.asOf.sequence.compareTo(state.cursor.sequence) != 0) {
       throw ApiFailure(502, null);
     }
+    if (_closed.isCompleted || generation != _generation) return;
     snapshot = state;
     history = page;
     cursor = state.cursor;
@@ -75,19 +78,22 @@ final class ChatConnection {
 
   void _listen() {
     if (_closed.isCompleted || cursor == null) return;
+    final generation = _generation;
     _subscription = client
         .events(cursor!)
         .listen(
           (event) {
+            if (_closed.isCompleted || generation != _generation) return;
             cursor = event.cursor;
             _events.add(event);
           },
           onError: (Object error) {
+            if (_closed.isCompleted || generation != _generation) return;
             interruption = error;
             _changes.add(null);
           },
           onDone: () {
-            if (!_closed.isCompleted) {
+            if (!_closed.isCompleted && generation == _generation) {
               interruption ??= ApiFailure(0, null);
               _changes.add(null);
             }
@@ -97,6 +103,7 @@ final class ChatConnection {
 
   /// Explicit reconnect; resync-required responses hydrate a consistent new snapshot.
   Future<void> reconnect() async {
+    ++_generation;
     await _subscription?.cancel();
     if (interruption case ApiFailure(requiresResync: true)) {
       await connect(cursor!.conversationId);
@@ -111,8 +118,11 @@ final class ChatConnection {
   Future<CommandReceipt> send(CommandAction action) async {
     var state = snapshot;
     if (state == null) throw StateError('Connect a conversation first');
+    final generation = _generation;
     state = await client.snapshot(state.session.conversationId);
-    snapshot = state;
+    if (!_accept(state, generation)) {
+      throw StateError('Conversation changed while preparing command');
+    }
     final request = Command(
       commandId: CommandId(const Uuid().v4()),
       projectId: state.session.projectId,
@@ -134,11 +144,30 @@ final class ChatConnection {
 
   Future<void> refresh() async {
     if (cursor == null) return;
-    snapshot = await client.snapshot(cursor!.conversationId);
-    _changes.add(null);
+    final generation = _generation;
+    final state = await client.snapshot(cursor!.conversationId);
+    if (_accept(state, generation)) _changes.add(null);
+  }
+
+  bool _accept(ConversationSnapshot state, int generation) {
+    final previous = snapshot;
+    if (_closed.isCompleted ||
+        generation != _generation ||
+        previous == null ||
+        state.session.conversationId.value !=
+            previous.session.conversationId.value ||
+        state.revision.compareTo(previous.revision) < 0 ||
+        state.cursor.sequence.compareTo(previous.cursor.sequence) < 0 ||
+        (cursor != null &&
+            state.cursor.sequence.compareTo(cursor!.sequence) < 0)) {
+      return false;
+    }
+    snapshot = state;
+    return true;
   }
 
   Future<void> close() async {
+    ++_generation;
     if (!_closed.isCompleted) _closed.complete();
     await _subscription?.cancel();
     await _events.close();

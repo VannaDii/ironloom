@@ -36,11 +36,19 @@ struct Observer {
     progress: Mutex<DownloadProgress>,
     verified: Mutex<usize>,
     done: Notify,
+    load_delay_ms: std::sync::atomic::AtomicU64,
     checkpoints: Mutex<std::collections::BTreeMap<std::path::PathBuf, VerifiedFile>>,
 }
 impl DownloadObserver for Observer {
     fn load(&self, _: ActorId) -> BoxFuture<'_, Result<DownloadProgress, AdapterError>> {
-        Box::pin(async { Ok(self.progress.lock().unwrap().clone()) })
+        Box::pin(async {
+            tokio::time::sleep(std::time::Duration::from_millis(
+                self.load_delay_ms
+                    .load(std::sync::atomic::Ordering::Relaxed),
+            ))
+            .await;
+            Ok(self.progress.lock().unwrap().clone())
+        })
     }
     fn progress(&self, value: DownloadProgress) -> BoxFuture<'_, Result<(), AdapterError>> {
         Box::pin(async move {
@@ -95,6 +103,7 @@ fn observer() -> Arc<Observer> {
         progress: Mutex::new(progress("job")),
         verified: Mutex::new(0),
         done: Notify::new(),
+        load_delay_ms: std::sync::atomic::AtomicU64::new(0),
         checkpoints: Mutex::default(),
     })
 }
@@ -511,4 +520,58 @@ async fn interrupted_multifile_resume_reuses_checkpointed_computed_hashes_withou
         1
     );
     assert!(requests[2].to_lowercase().contains("range: bytes=2-"));
+}
+
+#[tokio::test]
+async fn hot_chunks_do_not_restart_slow_durable_cancellation_reads() {
+    let root = tempfile::tempdir().unwrap();
+    let observer = observer();
+    observer
+        .load_delay_ms
+        .store(50, std::sync::atomic::Ordering::Relaxed);
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let url = format!("http://{}/file", listener.local_addr().unwrap());
+    let server = tokio::spawn(async move {
+        let (mut socket, _) = listener.accept().await.unwrap();
+        let mut request = [0; 8192];
+        assert!(socket.read(&mut request).await.unwrap() > 0);
+        socket
+            .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 10000000\r\n\r\n")
+            .await
+            .unwrap();
+        for _ in 0..10000 {
+            if socket.write_all(&[b'x'; 1000]).await.is_err() {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+        }
+    });
+    let owner = downloader(root.path(), &url, None, None, 10000000, observer.clone());
+    let transfer = tokio::spawn(async move { owner.transfer(progress("job")).await });
+    tokio::time::timeout(std::time::Duration::from_secs(2), async {
+        while std::fs::metadata(partial(root.path()))
+            .map(|m| m.len())
+            .unwrap_or(0)
+            == 0
+        {
+            tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+        }
+    })
+    .await
+    .unwrap();
+    {
+        let mut state = observer.progress.lock().unwrap();
+        let mut data = (**state).clone();
+        data.cancel_requested = true;
+        *state = DownloadProgress::new(data).unwrap();
+    }
+    let stopped = tokio::time::timeout(std::time::Duration::from_millis(500), transfer)
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap();
+    assert!(stopped.cancel_requested && stopped.terminated);
+    assert!(stopped.received_bytes.get() < 10000000);
+    assert_eq!(*observer.verified.lock().unwrap(), 0);
+    server.await.unwrap();
 }

@@ -183,7 +183,7 @@ async fn anthropic_cumulative_usage_is_not_added_twice() {
         json!({"type":"message_start","message":{"usage":{"input_tokens":8,"output_tokens":1}}}),
         json!({"type":"content_block_delta","delta":{"type":"text_delta","text":"fixture"}}),
         json!({"type":"message_delta","usage":{"output_tokens":2}}),
-        json!({"type":"message_delta","usage":{"output_tokens":4}}),
+        json!({"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":4}}),
         json!({"type":"message_stop"}),
     ]);
     let (base, server) = fixture(body).await;
@@ -332,4 +332,64 @@ async fn slow_service_consumer_keeps_burst_output_and_final_usage() {
         300
     );
     server.await.unwrap();
+}
+
+#[tokio::test]
+async fn anthropic_stop_reasons_are_classified_in_streams_and_json() {
+    for reason in [
+        "end_turn",
+        "stop_sequence",
+        "tool_use",
+        "max_tokens",
+        "model_context_window_exceeded",
+        "pause_turn",
+        "refusal",
+        "unknown",
+    ] {
+        for streaming in [true, false] {
+            let body = if streaming {
+                frames(vec![
+                    json!({"type":"message_delta","delta":{"stop_reason":reason}}),
+                    json!({"type":"message_stop"}),
+                ])
+            } else {
+                json!({"content":[],"stop_reason":reason,"usage":{}}).to_string()
+            };
+            let (base, server) = fixture(body).await;
+            let mut config = endpoint(base, Dialect::Anthropic);
+            config.capabilities.streaming = streaming;
+            let provider = HttpProvider::new(config, Arc::new(FixtureCredentials)).unwrap();
+            let events = collect(&provider).await;
+            let success = matches!(reason, "end_turn" | "stop_sequence" | "tool_use");
+            assert_eq!(
+                events.last().unwrap().kind,
+                if success {
+                    StreamKind::Completed
+                } else {
+                    StreamKind::Failed
+                },
+                "{reason}, streaming={streaming}"
+            );
+            if !success && reason != "unknown" {
+                assert!(events.last().unwrap().text.contains(reason));
+            }
+            server.await.unwrap();
+        }
+    }
+}
+#[tokio::test]
+async fn fragmented_tool_names_are_bounded_before_ready() {
+    let fragment = "x".repeat(64 * 1024);
+    let body = frames((0..100).map(|_| json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call","function":{"name":fragment}}]}}]})).collect());
+    let (base, server) = fixture(body).await;
+    let provider = HttpProvider::new(
+        endpoint(base, Dialect::ChatCompletions),
+        Arc::new(FixtureCredentials),
+    )
+    .unwrap();
+    let events = collect(&provider).await;
+    assert_eq!(events.last().unwrap().kind, StreamKind::Failed);
+    assert!(!events.iter().any(|e| e.kind == StreamKind::ToolReady));
+    // Writer may observe the adapter intentionally closing the oversized stream.
+    let _ = server.await;
 }

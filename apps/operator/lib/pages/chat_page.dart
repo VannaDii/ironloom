@@ -20,6 +20,7 @@ class _DashboardPageState extends State<DashboardPage> {
   List<ProjectSummary> projects = [];
   List<SessionSummary> sessions = [];
   ActorId? after;
+  ConversationId? sessionAfter;
   String? error;
   bool busy = true;
   final name = TextEditingController(),
@@ -42,12 +43,20 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Future<void> load({bool next = false}) async {
     try {
-      final projectFuture = widget.client.projects(
-        ProjectQuery(after: next ? after : null, limit: Counter('50')),
-      );
-      final sessionsFuture = widget.client.sessions(
-        SessionQuery(limit: Counter('100'), archived: false),
-      );
+      final projectFuture = next && after == null
+          ? Future.value(ProjectPage(projects: [], nextAfter: null))
+          : widget.client.projects(
+              ProjectQuery(after: next ? after : null, limit: Counter('50')),
+            );
+      final sessionsFuture = next && sessionAfter == null
+          ? Future.value(<SessionSummary>[])
+          : widget.client.sessions(
+              SessionQuery(
+                after: next ? sessionAfter : null,
+                limit: Counter('100'),
+                archived: false,
+              ),
+            );
       final results = await Future.wait<Object>([
         projectFuture,
         sessionsFuture,
@@ -57,7 +66,10 @@ class _DashboardPageState extends State<DashboardPage> {
       if (mounted) {
         setState(() {
           projects = next ? [...projects, ...page.projects] : page.projects;
-          sessions = conversations;
+          sessions = next ? [...sessions, ...conversations] : conversations;
+          sessionAfter = conversations.length == 100
+              ? conversations.last.conversationId
+              : null;
           after = page.nextAfter;
           busy = false;
           error = null;
@@ -143,9 +155,9 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
           ],
         ),
-      if (after != null)
+      if (after != null || sessionAfter != null)
         AsyncAction(
-          label: 'Load more projects',
+          label: 'Load more projects and conversations',
           action: () => load(next: true),
         ),
       Section(
