@@ -19,6 +19,8 @@ use tokio::{
 const PROGRESS_BYTES: u64 = 1024 * 1024;
 const HASH_BUFFER_BYTES: usize = 128 * 1024;
 const MAX_REDIRECTS: usize = 8;
+const CANCEL_POLL: Duration = Duration::from_millis(100);
+const CANCEL_WAIT: Duration = Duration::from_secs(5);
 /// One source-declared file at an immutable repository revision.
 #[derive(Clone, Debug)]
 pub struct DownloadFile {
@@ -46,10 +48,26 @@ pub trait FileCatalog: Send + Sync {
 }
 /// Service-owned PostgreSQL progress/inventory persistence and live authorization.
 pub trait DownloadObserver: Send + Sync {
-    /// Loads an existing authorized transfer; an unknown ID never creates a replacement.
+    /// Loads an existing authorized transfer fenced to this configured writer node/model root.
+    /// Other-root ownership must be routed to its owner or rejected, never interpreted as stopped.
+    /// An unknown ID never creates a replacement.
     fn load(&self, id: ActorId) -> BoxFuture<'_, Result<DownloadProgress, AdapterError>>;
-    /// Saves progress and emits a service notification before returning.
+    /// Atomically merges progress and emits a notification. A writer update must preserve an
+    /// already requested cancellation and cancellation-only updates must preserve newer bytes.
     fn progress(&self, value: DownloadProgress) -> BoxFuture<'_, Result<(), AdapterError>>;
+    /// Reads the checkpoint for this exact source/revision/model-root-relative path.
+    fn file_checkpoint<'a>(
+        &'a self,
+        source: &'a ModelSource,
+        path: &'a Path,
+    ) -> BoxFuture<'a, Result<Option<VerifiedFile>, AdapterError>>;
+    /// Persists the verified staged digest before rename, independently of final inventory.
+    /// Computed hashes must remain distinct from publisher-verified hashes.
+    fn checkpoint_file(
+        &self,
+        source: ModelSource,
+        file: VerifiedFile,
+    ) -> BoxFuture<'_, Result<(), AdapterError>>;
     /// Saves verified local inventory/provenance, independently of project/worktree cleanup.
     fn verified(
         &self,
@@ -238,20 +256,7 @@ impl FileDownloads {
         }
         // Advisory OS file locking coordinates cooperating processes/instances sharing this root,
         // including distinct IDs and adapter objects. Never unlink a lock file while it may be held.
-        let lock_path = self
-            .root
-            .join(format!(".{}.lock", source_key(&initial.source)));
-        if std::fs::symlink_metadata(&lock_path).is_ok_and(|m| m.file_type().is_symlink()) {
-            return Err(AdapterError::Unsupported);
-        }
-        let lock = std::fs::OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .truncate(false)
-            .open(lock_path)
-            .map_err(|_| AdapterError::Unavailable)?;
-        lock.try_lock().map_err(|_| AdapterError::Unavailable)?;
+        let _lock = self.source_lock(&initial.source)?;
         let files = self.catalog.files(&initial.source).await?;
         if files.is_empty() {
             return Err(AdapterError::Unavailable);
@@ -275,13 +280,25 @@ impl FileDownloads {
             }
             let target = self.destination(&progress.source, &file.path).await?;
             if let Ok(metadata) = tokio::fs::metadata(&target).await {
-                if file.bytes == Some(metadata.len()) && file.sha256.is_some() {
-                    let digest = hash(&target).await?;
-                    if file
-                        .sha256
+                let relative = target
+                    .strip_prefix(&self.root)
+                    .map_err(|_| AdapterError::Unsupported)?;
+                let checkpoint = self
+                    .observer
+                    .file_checkpoint(&progress.source, relative)
+                    .await?;
+                let expected = file
+                    .sha256
+                    .as_deref()
+                    .or(checkpoint.as_ref().map(|v| v.sha256.as_str()));
+                let length_matches = file.bytes.is_none_or(|n| n == metadata.len())
+                    && checkpoint
                         .as_ref()
-                        .is_some_and(|expected| expected.eq_ignore_ascii_case(&digest))
-                    {
+                        .is_none_or(|v| v.bytes == metadata.len());
+                if length_matches && let Some(expected) = expected {
+                    let digest = hash(&target).await?;
+                    if expected.eq_ignore_ascii_case(&digest) {
+                        checked_bytes(0, metadata.len(), self.limits.per_file_bytes)?;
                         received =
                             checked_bytes(received, metadata.len(), self.limits.transfer_bytes)?;
                         installed.push(verified(
@@ -289,12 +306,12 @@ impl FileDownloads {
                             &target,
                             metadata.len(),
                             digest,
-                            true,
+                            file.sha256.is_some()
+                                || checkpoint.is_some_and(|v| v.publisher_checksum),
                         )?);
                         continue;
                     }
                 }
-                // Repair/replacement of an already installed file requires service residency checks.
                 return Err(AdapterError::Unsupported);
             }
             let part = target.with_extension(format!(
@@ -329,7 +346,7 @@ impl FileDownloads {
             }
             let mut written = offset;
             if !complete {
-                let mut response = tokio::select! {_ = cancel.changed()=>return self.stopped(progress).await,result=self.response(&file,offset)=>result?};
+                let mut response = tokio::select! {reason = self.wait_cancel(&mut cancel, &progress.download_id)=>{reason?;return self.stopped(progress).await;},result=self.response(&file,offset)=>result?};
                 if response.status() == reqwest::StatusCode::RANGE_NOT_SATISFIABLE {
                     let total = response
                         .headers()
@@ -348,7 +365,7 @@ impl FileDownloads {
                         }
                         offset = 0;
                         written = 0;
-                        response = tokio::select! {_ = cancel.changed()=>return self.stopped(progress).await,result=self.response(&file,0)=>result?};
+                        response = tokio::select! {reason = self.wait_cancel(&mut cancel, &progress.download_id)=>{reason?;return self.stopped(progress).await;},result=self.response(&file,0)=>result?};
                     }
                 }
                 if !complete {
@@ -356,16 +373,30 @@ impl FileDownloads {
                     if !response.status().is_success() {
                         return Err(AdapterError::Unavailable);
                     }
-                    if append {
-                        let range = response
+                    let range = if append {
+                        let value = response
                             .headers()
                             .get(reqwest::header::CONTENT_RANGE)
                             .and_then(|v| v.to_str().ok())
                             .ok_or(AdapterError::Unavailable)?;
-                        if !range.starts_with(&format!("bytes {offset}-")) {
-                            return Err(AdapterError::Unavailable);
+                        let range = parse_range(value)?;
+                        if range.start != offset
+                            || file
+                                .bytes
+                                .zip(range.total)
+                                .is_some_and(|(declared, total)| declared != total)
+                        {
+                            return Err(AdapterError::Interrupted);
                         }
-                    }
+                        let bound = range
+                            .total
+                            .unwrap_or(range.end.checked_add(1).ok_or(AdapterError::Interrupted)?);
+                        checked_bytes(0, bound, self.limits.per_file_bytes)?;
+                        checked_bytes(received, bound, self.limits.transfer_bytes)?;
+                        Some(range)
+                    } else {
+                        None
+                    };
                     let mut output = tokio::fs::OpenOptions::new()
                         .create(true)
                         .write(true)
@@ -378,13 +409,16 @@ impl FileDownloads {
                     let mut reported = written;
                     loop {
                         let chunk = tokio::select! {
-                            _ = cancel.changed()=>{output.sync_all().await.map_err(|_|AdapterError::Unavailable)?;progress=update(&progress,checked_bytes(received,written,self.limits.transfer_bytes)?,total,false,false,None)?;return self.stopped(progress).await;},
+                            reason = self.wait_cancel(&mut cancel, &progress.download_id)=>{reason?;output.sync_all().await.map_err(|_|AdapterError::Unavailable)?;progress=update(&progress,checked_bytes(received,written,self.limits.transfer_bytes)?,total,false,false,None)?;return self.stopped(progress).await;},
                             result=tokio::time::timeout(Duration::from_secs(60),response.chunk())=>result.map_err(|_|AdapterError::Interrupted)?.map_err(|_|AdapterError::Interrupted)?
                         };
                         let Some(chunk) = chunk else { break };
                         written =
                             checked_bytes(written, chunk.len() as u64, self.limits.per_file_bytes)?;
                         checked_bytes(received, written, self.limits.transfer_bytes)?;
+                        if range.as_ref().is_some_and(|r| written > r.end + 1) {
+                            return Err(AdapterError::Interrupted);
+                        }
                         if file.bytes.is_some_and(|n| written > n) {
                             return Err(AdapterError::Interrupted);
                         }
@@ -410,22 +444,62 @@ impl FileDownloads {
                         .await
                         .map_err(|_| AdapterError::Unavailable)?;
                     drop(output);
+                    if let Some(range) = range {
+                        let end = range.end.checked_add(1).ok_or(AdapterError::Interrupted)?;
+                        if written != end || range.total.is_none_or(|total| written != total) {
+                            progress = update(
+                                &progress,
+                                checked_bytes(received, written, self.limits.transfer_bytes)?,
+                                range.total.and_then(|n| received.checked_add(n)),
+                                false,
+                                false,
+                                None,
+                            )?;
+                            self.observer.progress(progress).await?;
+                            return Err(AdapterError::Interrupted);
+                        }
+                    }
                 }
             }
             if file.bytes.is_some_and(|n| written != n) {
                 return Err(AdapterError::Interrupted);
             }
             let digest = hash(&part).await?;
-            if file
+            let checkpoint = self
+                .observer
+                .file_checkpoint(
+                    &progress.source,
+                    target
+                        .strip_prefix(&self.root)
+                        .map_err(|_| AdapterError::Unsupported)?,
+                )
+                .await?;
+            let expected = file
                 .sha256
-                .as_ref()
-                .is_some_and(|expected| !expected.eq_ignore_ascii_case(&digest))
-            {
+                .as_deref()
+                .or(checkpoint.as_ref().map(|value| value.sha256.as_str()));
+            if expected.is_some_and(|expected| !expected.eq_ignore_ascii_case(&digest)) {
                 tokio::fs::remove_file(&part)
                     .await
                     .map_err(|_| AdapterError::Unavailable)?;
                 return Err(AdapterError::Interrupted);
             }
+            let publisher_checksum = file.sha256.is_some()
+                || checkpoint
+                    .as_ref()
+                    .is_some_and(|value| value.publisher_checksum);
+            self.observer
+                .checkpoint_file(
+                    progress.source.clone(),
+                    verified(
+                        &self.root,
+                        &target,
+                        written,
+                        digest.clone(),
+                        publisher_checksum,
+                    )?,
+                )
+                .await?;
             tokio::fs::rename(&part, &target)
                 .await
                 .map_err(|_| AdapterError::Unavailable)?;
@@ -435,7 +509,7 @@ impl FileDownloads {
                 &target,
                 written,
                 digest,
-                file.sha256.is_some(),
+                publisher_checksum,
             )?);
             progress = update(&progress, received, total, false, false, None)?;
             self.observer.progress(progress.clone()).await?;
@@ -464,13 +538,55 @@ impl FileDownloads {
         self.observer.progress(progress.clone()).await?;
         Ok(progress)
     }
+    fn source_lock(&self, source: &ModelSource) -> Result<std::fs::File, AdapterError> {
+        let path = self.root.join(format!(".{}.lock", source_key(source)));
+        if std::fs::symlink_metadata(&path).is_ok_and(|m| m.file_type().is_symlink()) {
+            return Err(AdapterError::Unsupported);
+        }
+        let lock = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(path)
+            .map_err(|_| AdapterError::Unavailable)?;
+        lock.try_lock().map_err(|_| AdapterError::Unavailable)?;
+        Ok(lock)
+    }
+    async fn wait_cancel(
+        &self,
+        token: &mut watch::Receiver<bool>,
+        id: &ActorId,
+    ) -> Result<(), AdapterError> {
+        loop {
+            if *token.borrow() || self.observer.load(id.clone()).await?.cancel_requested {
+                return Ok(());
+            }
+            tokio::select! {_ = token.changed()=>return Ok(()),_ = tokio::time::sleep(CANCEL_POLL)=>{}}
+        }
+    }
+    async fn cancelled(
+        &self,
+        progress: DownloadProgress,
+    ) -> Result<DownloadProgress, AdapterError> {
+        let value = update(
+            &progress,
+            progress.received_bytes.get(),
+            progress.total_bytes.map(Counter::get),
+            true,
+            true,
+            None,
+        )?;
+        self.observer.progress(value.clone()).await?;
+        Ok(value)
+    }
     async fn stopped(&self, progress: DownloadProgress) -> Result<DownloadProgress, AdapterError> {
         let result = update(
             &progress,
             progress.received_bytes.get(),
             progress.total_bytes.map(Counter::get),
             true,
-            true,
+            false,
             None,
         )?;
         self.observer.progress(result.clone()).await?;
@@ -509,6 +625,12 @@ impl DownloadExecutor for FileDownloads {
             };
             tokio::spawn(async move {
                 let outcome = job.inner(progress, token).await;
+                let outcome = match outcome {
+                    Ok(value) if value.cancel_requested && !value.terminated => {
+                        job.cancelled(value).await
+                    }
+                    value => value,
+                };
                 drop(guard);
                 let _ = result.send(outcome);
             });
@@ -518,27 +640,43 @@ impl DownloadExecutor for FileDownloads {
 
     fn cancel(&self, id: ActorId) -> BoxFuture<'_, Result<DownloadProgress, AdapterError>> {
         Box::pin(async move {
+            let current = self.observer.load(id.clone()).await?;
+            if current.terminated {
+                return Ok(current);
+            }
+            let requested = self.stopped(current).await?;
             let mut finished = {
                 let active = self.active.lock().unwrap_or_else(|e| e.into_inner());
-                if let Some(job) = active.get(&id) {
+                active.get(&id).map(|job| {
                     let _ = job.cancel.send(true);
-                    Some(job.finished.clone())
-                } else {
-                    None
-                }
+                    job.finished.clone()
+                })
             };
             if let Some(done) = finished.as_mut() {
-                while !*done.borrow() {
-                    if done.changed().await.is_err() {
-                        break;
+                let _ = tokio::time::timeout(CANCEL_WAIT, async {
+                    while !*done.borrow() {
+                        if done.changed().await.is_err() {
+                            break;
+                        }
                     }
-                }
+                })
+                .await;
             }
-            let progress = self.observer.load(id).await?;
-            if progress.terminated {
-                Ok(progress)
-            } else {
-                self.stopped(progress).await
+            let deadline = tokio::time::Instant::now() + CANCEL_WAIT;
+            loop {
+                if let Ok(lock) = self.source_lock(&requested.source) {
+                    drop(lock);
+                    let value = self.observer.load(id.clone()).await?;
+                    return if value.terminated {
+                        Ok(value)
+                    } else {
+                        self.cancelled(value).await
+                    };
+                }
+                if tokio::time::Instant::now() >= deadline {
+                    return self.observer.load(id).await;
+                }
+                tokio::time::sleep(CANCEL_POLL).await;
             }
         })
     }
@@ -670,4 +808,42 @@ async fn ensure_directory(root: &Path, target: &Path) -> Result<(), AdapterError
         }
     }
     Ok(())
+}
+
+struct ByteRange {
+    start: u64,
+    end: u64,
+    total: Option<u64>,
+}
+fn parse_range(value: &str) -> Result<ByteRange, AdapterError> {
+    let (span, total) = value
+        .strip_prefix("bytes ")
+        .and_then(|v| v.split_once('/'))
+        .ok_or(AdapterError::Interrupted)?;
+    let (start, end) = span.split_once('-').ok_or(AdapterError::Interrupted)?;
+    if start.is_empty()
+        || end.is_empty()
+        || !start.bytes().all(|v| v.is_ascii_digit())
+        || !end.bytes().all(|v| v.is_ascii_digit())
+        || (total != "*" && (total.is_empty() || !total.bytes().all(|v| v.is_ascii_digit())))
+    {
+        return Err(AdapterError::Interrupted);
+    }
+    let start = start
+        .parse::<u64>()
+        .map_err(|_| AdapterError::Interrupted)?;
+    let end = end.parse::<u64>().map_err(|_| AdapterError::Interrupted)?;
+    let total = if total == "*" {
+        None
+    } else {
+        Some(
+            total
+                .parse::<u64>()
+                .map_err(|_| AdapterError::Interrupted)?,
+        )
+    };
+    if start > end || end == u64::MAX || total.is_some_and(|n| n == 0 || end >= n) {
+        return Err(AdapterError::Interrupted);
+    }
+    Ok(ByteRange { start, end, total })
 }

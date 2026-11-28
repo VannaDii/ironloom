@@ -36,14 +36,41 @@ struct Observer {
     progress: Mutex<DownloadProgress>,
     verified: Mutex<usize>,
     done: Notify,
+    checkpoints: Mutex<std::collections::BTreeMap<std::path::PathBuf, VerifiedFile>>,
 }
 impl DownloadObserver for Observer {
     fn load(&self, _: ActorId) -> BoxFuture<'_, Result<DownloadProgress, AdapterError>> {
         Box::pin(async { Ok(self.progress.lock().unwrap().clone()) })
     }
     fn progress(&self, value: DownloadProgress) -> BoxFuture<'_, Result<(), AdapterError>> {
-        Box::pin(async {
-            *self.progress.lock().unwrap() = value;
+        Box::pin(async move {
+            let mut current = self.progress.lock().unwrap();
+            let mut data = (*value).clone();
+            data.cancel_requested |= current.cancel_requested;
+            if current.received_bytes > data.received_bytes {
+                data.received_bytes = current.received_bytes;
+            }
+            *current = DownloadProgress::new(data).unwrap();
+            Ok(())
+        })
+    }
+    fn file_checkpoint<'a>(
+        &'a self,
+        _: &'a ModelSource,
+        path: &'a Path,
+    ) -> BoxFuture<'a, Result<Option<VerifiedFile>, AdapterError>> {
+        Box::pin(async move { Ok(self.checkpoints.lock().unwrap().get(path).cloned()) })
+    }
+    fn checkpoint_file(
+        &self,
+        _: ModelSource,
+        file: VerifiedFile,
+    ) -> BoxFuture<'_, Result<(), AdapterError>> {
+        Box::pin(async move {
+            self.checkpoints
+                .lock()
+                .unwrap()
+                .insert(file.path.clone(), file);
             Ok(())
         })
     }
@@ -53,7 +80,7 @@ impl DownloadObserver for Observer {
         files: Vec<VerifiedFile>,
     ) -> BoxFuture<'_, Result<(), AdapterError>> {
         Box::pin(async move {
-            assert_eq!(files.len(), 1);
+            assert!(!files.is_empty());
             *self.verified.lock().unwrap() += 1;
             self.done.notify_one();
             Ok(())
@@ -68,6 +95,7 @@ fn observer() -> Arc<Observer> {
         progress: Mutex::new(progress("job")),
         verified: Mutex::new(0),
         done: Notify::new(),
+        checkpoints: Mutex::default(),
     })
 }
 fn downloader(
@@ -300,4 +328,187 @@ async fn checksum_rejection_removes_partial_so_retry_can_recover() {
         .unwrap();
     server.await.unwrap();
     assert_eq!(*observer.verified.lock().unwrap(), 1);
+}
+
+#[tokio::test]
+async fn incomplete_206_retains_partial_until_the_advertised_total_is_received() {
+    let root = tempfile::tempdir().unwrap();
+    let observer = observer();
+    let (url, first) = server(b"abcd", "206 Partial Content", Some("bytes 0-3/8")).await;
+    assert!(
+        downloader(root.path(), &url, None, None, 16, observer.clone())
+            .transfer(progress("job"))
+            .await
+            .is_err()
+    );
+    first.await.unwrap();
+    assert_eq!(*observer.verified.lock().unwrap(), 0);
+    assert_eq!(std::fs::read(partial(root.path())).unwrap(), b"abcd");
+    let (url, last) = server(b"efgh", "206 Partial Content", Some("bytes 4-7/8")).await;
+    let done = downloader(root.path(), &url, None, None, 16, observer.clone())
+        .transfer(progress("job"))
+        .await
+        .unwrap();
+    assert_eq!(done.received_bytes.get(), 8);
+    assert_eq!(*observer.verified.lock().unwrap(), 1);
+    assert!(
+        last.await
+            .unwrap()
+            .to_lowercase()
+            .contains("range: bytes=4-")
+    );
+}
+#[tokio::test]
+async fn malformed_206_and_advertised_total_above_ceiling_never_publish_inventory() {
+    for range in [
+        "bytes 0-3/999",
+        "bytes 0-8/8",
+        "bytes 0-3/0",
+        "bytes 3-0/8",
+        "bytes 0-3/*",
+    ] {
+        let root = tempfile::tempdir().unwrap();
+        let observer = observer();
+        let (url, server) = server(b"abcd", "206 Partial Content", Some(range)).await;
+        assert!(
+            downloader(root.path(), &url, None, None, 16, observer.clone())
+                .transfer(progress("job"))
+                .await
+                .is_err()
+        );
+        server.await.unwrap();
+        assert_eq!(*observer.verified.lock().unwrap(), 0);
+    }
+}
+#[tokio::test]
+async fn another_adapter_cancels_via_durable_flag_and_only_confirms_after_writer_release() {
+    let root = tempfile::tempdir().unwrap();
+    let observer = observer();
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let url = format!("http://{}/file", listener.local_addr().unwrap());
+    let (started, ready) = oneshot::channel();
+    let server = tokio::spawn(async move {
+        let (mut socket, _) = listener.accept().await.unwrap();
+        let mut input = [0; 8192];
+        assert!(socket.read(&mut input).await.unwrap() > 0);
+        socket
+            .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 8\r\nConnection: close\r\n\r\nabc")
+            .await
+            .unwrap();
+        started.send(()).unwrap();
+        let _ = socket.read(&mut input).await;
+    });
+    let owner = downloader(root.path(), &url, Some(8), None, 16, observer.clone());
+    let transfer = tokio::spawn(async move { owner.transfer(progress("job")).await });
+    ready.await.unwrap();
+    tokio::time::timeout(std::time::Duration::from_secs(2), async {
+        while std::fs::metadata(partial(root.path()))
+            .map(|m| m.len())
+            .unwrap_or(0)
+            != 3
+        {
+            tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+        }
+    })
+    .await
+    .unwrap();
+    let other = downloader(root.path(), &url, Some(8), None, 16, observer.clone());
+    let stopped = other.cancel(ActorId::new("job").unwrap()).await.unwrap();
+    assert!(stopped.cancel_requested && stopped.terminated);
+    assert!(transfer.await.unwrap().unwrap().terminated);
+    server.await.unwrap();
+    let size = std::fs::metadata(partial(root.path())).unwrap().len();
+    tokio::task::yield_now().await;
+    assert_eq!(std::fs::metadata(partial(root.path())).unwrap().len(), size);
+    assert_eq!(*observer.verified.lock().unwrap(), 0);
+}
+struct ManyFiles(Vec<DownloadFile>);
+impl FileCatalog for ManyFiles {
+    fn files<'a>(
+        &'a self,
+        _: &'a ModelSource,
+    ) -> BoxFuture<'a, Result<Vec<DownloadFile>, AdapterError>> {
+        Box::pin(async { Ok(self.0.clone()) })
+    }
+    fn authorize(
+        &self,
+        request: reqwest::RequestBuilder,
+    ) -> BoxFuture<'_, Result<reqwest::RequestBuilder, AdapterError>> {
+        Box::pin(async { Ok(request) })
+    }
+}
+#[tokio::test]
+async fn interrupted_multifile_resume_reuses_checkpointed_computed_hashes_without_publisher_claims()
+{
+    let root = tempfile::tempdir().unwrap();
+    let observer = observer();
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let base = format!("http://{}/", listener.local_addr().unwrap());
+    let server = tokio::spawn(async move {
+        let mut paths = Vec::new();
+        for (status, range, length, body) in [
+            ("200 OK", "", 5, "first"),
+            ("200 OK", "", 6, "se"),
+            (
+                "206 Partial Content",
+                "Content-Range: bytes 2-5/6\r\n",
+                4,
+                "cond",
+            ),
+        ] {
+            let (mut socket, _) = listener.accept().await.unwrap();
+            let mut input = [0; 8192];
+            let count = socket.read(&mut input).await.unwrap();
+            paths.push(String::from_utf8_lossy(&input[..count]).into_owned());
+            socket.write_all(format!("HTTP/1.1 {status}\r\nContent-Length: {length}\r\n{range}Connection: close\r\n\r\n{body}").as_bytes()).await.unwrap();
+        }
+        paths
+    });
+    let files = vec![
+        DownloadFile {
+            path: "first.bin".into(),
+            url: format!("{base}first").parse().unwrap(),
+            bytes: None,
+            sha256: None,
+        },
+        DownloadFile {
+            path: "second.bin".into(),
+            url: format!("{base}second").parse().unwrap(),
+            bytes: None,
+            sha256: None,
+        },
+    ];
+    let adapter = FileDownloads::new(
+        root.path().into(),
+        Arc::new(ManyFiles(files)),
+        observer.clone(),
+        DownloadLimits {
+            per_file_bytes: 16,
+            transfer_bytes: 32,
+        },
+    )
+    .unwrap();
+    assert!(adapter.transfer(progress("job")).await.is_err());
+    assert_eq!(*observer.verified.lock().unwrap(), 0);
+    assert_eq!(observer.checkpoints.lock().unwrap().len(), 1);
+    let done = adapter.transfer(progress("job")).await.unwrap();
+    assert_eq!(done.received_bytes.get(), 11);
+    assert_eq!(*observer.verified.lock().unwrap(), 1);
+    assert!(
+        observer
+            .checkpoints
+            .lock()
+            .unwrap()
+            .values()
+            .all(|v| !v.publisher_checksum)
+    );
+    let requests = server.await.unwrap();
+    assert_eq!(
+        requests
+            .iter()
+            .filter(|r| r.starts_with("GET /first "))
+            .count(),
+        1
+    );
+    assert!(requests[2].to_lowercase().contains("range: bytes=2-"));
 }

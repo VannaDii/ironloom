@@ -19,6 +19,9 @@ void main() {
     (tester) async {
       var authenticated = false;
       final client = api((request) async {
+        if (request.url.path.endsWith('/auth/session')) {
+          return http.Response('{"authentication":"unauthenticated"}', 401);
+        }
         if (request.url.path.endsWith('/auth/local')) {
           final body = jsonDecode(request.body) as Map<String, Object?>;
           expect(body['username'], 'operator');
@@ -44,6 +47,10 @@ void main() {
         return http.Response('"unavailable"', 503);
       });
       await tester.pumpWidget(OperatorApp(client: client));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 40)),
+      );
+      await tester.pump();
       await tester.enterText(
         find.widgetWithText(TextField, 'Username'),
         'operator',

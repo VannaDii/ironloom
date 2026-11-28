@@ -97,6 +97,11 @@ void main() {
       await settleHttp(tester);
       expect(find.text('history 1'), findsOneWidget);
       expect(find.byTooltip('Assignment controls'), findsOneWidget);
+      await tester.tap(
+        find.widgetWithText(SwitchListTile, 'Steer the active turn'),
+      );
+      await tester.pump();
+      expect(find.widgetWithText(TextField, 'Steering input'), findsOneWidget);
       await tester.tap(find.text('Reconnect'));
       await settleHttp(tester);
       expect(find.text('history 1'), findsNothing);
@@ -105,6 +110,7 @@ void main() {
       await settleHttp(tester);
       expect(find.text('completed'), findsOneWidget);
       expect(find.byTooltip('Assignment controls'), findsNothing);
+      expect(find.widgetWithText(TextField, 'Message or idea'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
       client.close();
     },

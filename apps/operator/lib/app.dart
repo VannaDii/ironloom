@@ -11,9 +11,17 @@ import 'widgets.dart';
 import 'platform/journal.dart';
 
 class OperatorApp extends StatelessWidget {
-  const OperatorApp({super.key, required this.client, this.initialSession});
+  const OperatorApp({
+    super.key,
+    required this.client,
+    this.initialSession,
+    this.returnUri,
+    this.clearReturn,
+  });
   final IronloomClient client;
   final AuthenticatedSession? initialSession;
+  final Uri? returnUri;
+  final VoidCallback? clearReturn;
   @override
   Widget build(BuildContext context) => MaterialApp(
     title: 'Ironloom',
@@ -32,14 +40,27 @@ class OperatorApp extends StatelessWidget {
         brightness: Brightness.dark,
       ),
     ),
-    home: OperatorShell(client: client, initialSession: initialSession),
+    home: OperatorShell(
+      client: client,
+      initialSession: initialSession,
+      returnUri: returnUri,
+      clearReturn: clearReturn,
+    ),
   );
 }
 
 class OperatorShell extends StatefulWidget {
-  const OperatorShell({super.key, required this.client, this.initialSession});
+  const OperatorShell({
+    super.key,
+    required this.client,
+    this.initialSession,
+    this.returnUri,
+    this.clearReturn,
+  });
   final IronloomClient client;
   final AuthenticatedSession? initialSession;
+  final Uri? returnUri;
+  final VoidCallback? clearReturn;
   @override
   State<OperatorShell> createState() => _OperatorShellState();
 }
@@ -50,11 +71,46 @@ class _OperatorShellState extends State<OperatorShell> {
   String? error;
   int page = 0;
   bool initialized = false;
+  bool restoring = true;
   @override
   void initState() {
     super.initState();
     session = widget.initialSession;
-    if (session != null) load();
+    if (session != null) {
+      restoring = false;
+      load();
+    } else {
+      restore();
+    }
+  }
+
+  Future<void> restore() async {
+    try {
+      final uri = widget.returnUri;
+      AuthenticatedSession? value;
+      if (uri != null &&
+          ['code', 'state', 'error'].any(uri.queryParametersAll.containsKey)) {
+        widget.clearReturn?.call();
+        if (uri.queryParametersAll.containsKey('error') ||
+            uri.queryParametersAll['code']?.length != 1 ||
+            uri.queryParametersAll['state']?.length != 1) {
+          throw ApiFailure(401, null);
+        }
+        value = await widget.client.oidcCallback(
+          OidcCallback(
+            state: SecretInput(uri.queryParameters['state']!),
+            code: SecretInput(uri.queryParameters['code']!),
+          ),
+        );
+      } else {
+        value = await widget.client.session();
+      }
+      if (mounted && value != null) await signedIn(value);
+    } on Object catch (e) {
+      if (mounted) setState(() => error = displayError(e));
+    } finally {
+      if (mounted) setState(() => restoring = false);
+    }
   }
 
   Future<void> load() async {
@@ -82,8 +138,21 @@ class _OperatorShellState extends State<OperatorShell> {
 
   @override
   Widget build(BuildContext context) {
+    if (restoring) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(
+            semanticsLabel: 'Restoring service session',
+          ),
+        ),
+      );
+    }
     if (session == null) {
-      return LoginPage(client: widget.client, onSignedIn: signedIn);
+      return LoginPage(
+        client: widget.client,
+        onSignedIn: signedIn,
+        message: error,
+      );
     }
     final destinations = [
       (Icons.space_dashboard_outlined, 'Projects'),
@@ -191,9 +260,15 @@ class _OperatorShellState extends State<OperatorShell> {
 }
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key, required this.client, required this.onSignedIn});
+  const LoginPage({
+    super.key,
+    required this.client,
+    required this.onSignedIn,
+    this.message,
+  });
   final IronloomClient client;
   final Future<void> Function(AuthenticatedSession) onSignedIn;
+  final String? message;
   @override
   State<LoginPage> createState() => _LoginPageState();
 }
@@ -202,16 +277,17 @@ class _LoginPageState extends State<LoginPage> {
   final username = TextEditingController(),
       password = TextEditingController(),
       connection = TextEditingController(),
-      redirect = TextEditingController(text: 'operator');
+      redirect = TextEditingController(text: 'operator'),
+      initialToken = TextEditingController();
   @override
   void dispose() {
-    for (final c in [username, password, connection, redirect]) {
+    for (final c in [username, password, connection, redirect, initialToken]) {
       c.dispose();
     }
     super.dispose();
   }
 
-  bool signingIn = false;
+  bool signingIn = false, creatingAccount = false;
   String? loginError;
   Future<void> login() async {
     if (signingIn) return;
@@ -226,8 +302,34 @@ class _LoginPageState extends State<LoginPage> {
           password: SecretInput(password.text),
         ),
       );
+      if (!mounted) return;
       password.clear();
       await widget.onSignedIn(session);
+    } on Object catch (e) {
+      if (mounted) setState(() => loginError = displayError(e));
+    } finally {
+      if (mounted) setState(() => signingIn = false);
+    }
+  }
+
+  Future<void> register() async {
+    if (signingIn) return;
+    setState(() {
+      signingIn = true;
+      loginError = null;
+    });
+    try {
+      final value = await widget.client.register(
+        LoginRequest(
+          username: ActorId(username.text),
+          password: SecretInput(password.text),
+        ),
+        setupToken: SecretInput(initialToken.text),
+      );
+      if (!mounted) return;
+      password.clear();
+      initialToken.clear();
+      if (mounted) await widget.onSignedIn(value);
     } on Object catch (e) {
       if (mounted) setState(() => loginError = displayError(e));
     } finally {
@@ -248,6 +350,7 @@ class _LoginPageState extends State<LoginPage> {
             const SizedBox(height: 8),
             const Text('Sign in to your software factory'),
             const SizedBox(height: 32),
+            if (widget.message != null) Notice(widget.message!, error: true),
             TextField(
               controller: username,
               autofillHints: const [AutofillHints.username],
@@ -268,6 +371,32 @@ class _LoginPageState extends State<LoginPage> {
               label: signingIn ? 'Signing in…' : 'Sign in',
               action: signingIn ? null : login,
             ),
+            TextButton(
+              onPressed: signingIn
+                  ? null
+                  : () => setState(() => creatingAccount = !creatingAccount),
+              child: Text(
+                creatingAccount
+                    ? 'Use an existing local account'
+                    : 'Create the first local account',
+              ),
+            ),
+            if (creatingAccount) ...[
+              const Notice(
+                'Use the deployment setup token to create a normal account. Administrator bootstrap remains a separate explicit setup action.',
+              ),
+              TextField(
+                controller: initialToken,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Initial setup token for account creation',
+                ),
+              ),
+              AsyncAction(
+                label: 'Create local account',
+                action: signingIn ? null : register,
+              ),
+            ],
             const Divider(height: 40),
             TextField(
               controller: connection,

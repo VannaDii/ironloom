@@ -283,6 +283,7 @@ class _ChatPageState extends State<ChatPage> {
           }
           execution = chat.snapshot?.executionState;
           assignment = chat.snapshot?.activeAssignmentId;
+          if (chat.snapshot?.session.activeTurnId == null) steering = false;
         });
       }
     });
@@ -368,6 +369,7 @@ class _ChatPageState extends State<ChatPage> {
         setState(() {
           execution = chat.snapshot?.executionState;
           assignment = chat.snapshot?.activeAssignmentId;
+          if (chat.snapshot?.session.activeTurnId == null) steering = false;
         });
       }
     } on Object catch (e) {
@@ -409,7 +411,8 @@ class _ChatPageState extends State<ChatPage> {
                 InputCommand(conversationId: widget.id, text: text),
               ),
       );
-      input.clear();
+      if (!mounted) return;
+      if (input.text == text) input.clear();
       await refreshState();
     } on Object catch (e) {
       if (mounted) setState(() => error = displayError(e));

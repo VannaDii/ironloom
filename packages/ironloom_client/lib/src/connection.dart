@@ -7,7 +7,7 @@ import 'contracts.dart';
 
 /// A server connection retains its deployment prefix for every API request.
 final class ServerConnection {
-  ServerConnection(Uri address, {this.headers = const {}})
+  ServerConnection(Uri address, {this.headers = const {}, this.requestHeaders})
     : base = address.replace(
         path: address.path.endsWith('/') ? address.path : '${address.path}/',
         query: '',
@@ -29,6 +29,9 @@ final class ServerConnection {
 
   /// Service-session/CSRF headers supplied by the selected backend authentication transport.
   final Map<String, String> headers;
+
+  /// Live connection-scoped transport proof (for example the readable same-origin CSRF cookie).
+  final Map<String, String> Function()? requestHeaders;
   Uri endpoint(String path, [Map<String, String?> query = const {}]) {
     final url = base.resolve(path.replaceFirst(RegExp(r'^/'), ''));
     final values = {
@@ -61,24 +64,38 @@ final class IronloomClient {
   final ServerConnection connection;
   final http.Client httpClient;
   final Duration timeout;
+  String? _csrf;
   Map<String, String> get _headers => {
+    'x-ironloom-csrf': ?_csrf,
     'Accept': 'application/json',
     ...connection.headers,
+    ...?connection.requestHeaders?.call(),
   };
   Future<Object?> _request(
     String method,
     String path, {
     WireModel? body,
     Map<String, String?> query = const {},
+    Map<String, String> transientHeaders = const {},
   }) async {
     final request = http.Request(method, connection.endpoint(path, query))
-      ..headers.addAll(_headers);
+      ..headers.addAll({..._headers, ...transientHeaders});
     if (body != null) {
       body.validate();
       request.headers['Content-Type'] = 'application/json';
       request.body = jsonEncode(body.toJson());
     }
     final response = await httpClient.send(request).timeout(timeout);
+    final proof = response.headers['x-ironloom-csrf'];
+    if (proof != null &&
+        proof.isNotEmpty &&
+        proof.length <= 1024 &&
+        !proof.contains(RegExp(r'[\r\n]'))) {
+      _csrf = proof;
+    }
+    if (path == 'api/v1/auth/logout' && response.statusCode == 204) {
+      _csrf = null;
+    }
     final bytes = <int>[];
     await for (final chunk in response.stream.timeout(timeout)) {
       if (bytes.length + chunk.length > maxResponseBytes) {
@@ -113,6 +130,35 @@ final class IronloomClient {
     WireModel? body,
     Map<String, String?> query = const {},
   }) async => fromJson(await _request(method, path, body: body, query: query));
+
+  /// Restores only a service-validated cookie session; absence never grants authority.
+  Future<AuthenticatedSession?> session() async {
+    try {
+      return await _model(
+        'GET',
+        'api/v1/auth/session',
+        AuthenticatedSession.fromJson,
+      );
+    } on ApiFailure catch (error) {
+      if (error.status == 401) return null;
+      rethrow;
+    }
+  }
+
+  /// Creates a normal local account. Initial setup proof is transient and never journaled.
+  Future<AuthenticatedSession> register(
+    LoginRequest request, {
+    SecretInput? setupToken,
+  }) async => AuthenticatedSession.fromJson(
+    await _request(
+      'POST',
+      'api/v1/auth/register',
+      body: request,
+      transientHeaders: {
+        if (setupToken != null) 'x-ironloom-setup-token': setupToken.toJson(),
+      },
+    ),
+  );
   Future<AuthenticatedSession> local(LoginRequest request) => _model(
     'POST',
     'api/v1/auth/local',

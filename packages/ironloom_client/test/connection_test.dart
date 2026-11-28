@@ -319,4 +319,66 @@ void main() {
       throwsA(isA<ValidationErrors>()),
     );
   });
+  test('service CSRF proof stays connection scoped and a live cookie proof supersedes stale memory', () async {
+    String? current;
+    var calls = 0;
+    final client = IronloomClient(
+      ServerConnection(
+        Uri.parse('https://host/factory/'),
+        requestHeaders: () => {'x-ironloom-csrf': ?current},
+      ),
+      MockClient((request) async {
+        calls++;
+        if (calls == 1) {
+          return http.Response(
+            '{"operator_id":"user","session_id":"opaque","method":"local","expires_at_ms":"100"}',
+            200,
+            headers: {'x-ironloom-csrf': 'first-proof'},
+          );
+        }
+        expect(
+          request.headers['x-ironloom-csrf'],
+          calls == 2 ? 'first-proof' : 'current-cookie-proof',
+        );
+        return http.Response(
+          '{"operator_id":"user","session_id":"opaque","method":"local","expires_at_ms":"100"}',
+          200,
+        );
+      }),
+    );
+    await client.local(
+      LoginRequest(username: ActorId('user'), password: SecretInput('fixture')),
+    );
+    expect((await client.session())!.operatorId.value, 'user');
+    current = 'current-cookie-proof';
+    await client.session();
+    client.close();
+  });
+  test('initial account proof is transient and registration grants only the service returned session', () async {
+    var count = 0;
+    final client = IronloomClient(
+      ServerConnection(Uri.parse('https://host/')),
+      MockClient((request) async {
+        count++;
+        expect(
+          request.headers['x-ironloom-setup-token'],
+          count == 1 ? 'initial-proof' : isNull,
+        );
+        return http.Response(
+          '{"operator_id":"normal-user","session_id":"opaque","method":"local","expires_at_ms":"100"}',
+          200,
+        );
+      }),
+    );
+    final created = await client.register(
+      LoginRequest(
+        username: ActorId('new-user'),
+        password: SecretInput('fixture'),
+      ),
+      setupToken: SecretInput('initial-proof'),
+    );
+    expect(created.operatorId.value, 'normal-user');
+    await client.session();
+    client.close();
+  });
 }

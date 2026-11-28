@@ -52,7 +52,7 @@ class _LessonsPageState extends State<LessonsPage> {
     String? content,
   }) async {
     final revision = lesson.revision;
-    await widget.client.command(
+    final receipt = await widget.client.command(
       Command(
         commandId: CommandId(const Uuid().v4()),
         projectId: ProjectId(project.text.trim()),
@@ -69,7 +69,10 @@ class _LessonsPageState extends State<LessonsPage> {
         ),
       ),
     );
-    await load();
+    if (receipt.disposition == CommandDisposition.conflict) {
+      throw CommandConflict(receipt);
+    }
+    if (mounted) await load();
   }
 
   @override
