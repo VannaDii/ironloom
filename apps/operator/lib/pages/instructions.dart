@@ -5,14 +5,30 @@ import 'package:uuid/uuid.dart';
 import '../widgets.dart';
 
 class Instructions extends StatefulWidget {
-  const Instructions({super.key, required this.client});
+  const Instructions({super.key, required this.client, this.project});
   final IronloomClient client;
+  final ProjectId? project;
   @override
   State<Instructions> createState() => _InstructionsState();
 }
 
 class _InstructionsState extends State<Instructions> {
-  final project = TextEditingController();
+  late final TextEditingController project;
+  int epoch = 0;
+  @override
+  void initState() {
+    super.initState();
+    project = TextEditingController(text: widget.project?.value);
+    project.addListener(
+      () => setState(() {
+        ++epoch;
+        templates = [];
+        after = null;
+        loadedScope = null;
+      }),
+    );
+  }
+
   List<InstructionTemplate> templates = [];
   InstructionId? after;
   String? loadedScope;
@@ -23,6 +39,7 @@ class _InstructionsState extends State<Instructions> {
   }
 
   Future<void> load({bool more = false}) async {
+    final generation = ++epoch;
     final scope = project.text.trim();
     if (more && loadedScope != scope) {
       throw StateError('Reload instructions for the selected project first');
@@ -34,7 +51,7 @@ class _InstructionsState extends State<Instructions> {
         limit: Counter('50'),
       ),
     );
-    if (!mounted || project.text.trim() != scope) return;
+    if (!mounted || generation != epoch || project.text.trim() != scope) return;
     setState(() {
       templates = more
           ? [...templates, ...page.instructions]
@@ -68,6 +85,7 @@ class _InstructionsState extends State<Instructions> {
       ),
       TextField(
         controller: project,
+        readOnly: widget.project != null,
         decoration: const InputDecoration(
           labelText: 'Instruction project scope (blank for installation)',
         ),

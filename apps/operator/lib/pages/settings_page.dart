@@ -12,7 +12,9 @@ class SettingsPage extends StatefulWidget {
     required this.settings,
     required this.onChanged,
     required this.reload,
+    this.project,
   });
+  final ProjectId? project;
   final IronloomClient client;
   final ConfigurationSnapshot? settings;
   final ValueChanged<ConfigurationSnapshot> onChanged;
@@ -59,10 +61,12 @@ class _SettingsPageState extends State<SettingsPage> {
     final value = await widget.client.configure(
       ConfigurationCommand(
         commandId: CommandId(const Uuid().v4()),
+        projectId: widget.project,
         expectedRevision: current.revision,
         changes: change,
       ),
     );
+    if (!mounted) return;
     widget.onChanged(value);
     if (mounted) setState(() => saved = 'Settings saved.');
   }
@@ -71,7 +75,9 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     final settings = widget.settings;
     return PageBody(
-      title: 'Setup & team',
+      title: widget.project == null
+          ? 'Setup & team'
+          : 'Project ${widget.project!.value} configuration',
       actions: [
         IconButton(
           onPressed: widget.reload,
@@ -85,109 +91,112 @@ class _SettingsPageState extends State<SettingsPage> {
           const Notice(
             'Configuration is unavailable. Check service access; existing installation identity is retained.',
           ),
-        Section(
-          'Installation access',
-          children: [
-            const Text(
-              'The initial setup token can be redeemed once by an authenticated account. Project access is granted separately.',
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: token,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Initial setup token',
+        if (widget.project == null)
+          Section(
+            'Installation access',
+            children: [
+              const Text(
+                'The initial setup token can be redeemed once by an authenticated account. Project access is granted separately.',
               ),
-            ),
-            const SizedBox(height: 12),
-            AsyncAction(
-              label: 'Redeem initial setup token',
-              action: () async {
-                final result = await widget.client.bootstrap(
-                  BootstrapRedeem(token: SecretInput(token.text)),
-                );
-                token.clear();
-                if (mounted) {
-                  setState(
-                    () => saved = result.grantsInitialized
-                        ? 'Administrator established.'
-                        : 'Administrator established; permission initialization is pending.',
+              const SizedBox(height: 12),
+              TextField(
+                controller: token,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Initial setup token',
+                ),
+              ),
+              const SizedBox(height: 12),
+              AsyncAction(
+                label: 'Redeem initial setup token',
+                action: () async {
+                  final result = await widget.client.bootstrap(
+                    BootstrapRedeem(token: SecretInput(token.text)),
                   );
-                }
-                await widget.reload();
-              },
-            ),
-          ],
-        ),
-        Section(
-          'Lessons & delivery',
-          children: [
-            const Text(
-              'Choose how new lessons are shared. Every choice applies lessons immediately in their originating project and assignment.',
-            ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<LessonHandling>(
-              isExpanded: true,
-              initialValue: handling,
-              decoration: const InputDecoration(
-                labelText: 'Required lesson handling',
+                  token.clear();
+                  if (mounted) {
+                    setState(
+                      () => saved = result.grantsInitialized
+                          ? 'Administrator established.'
+                          : 'Administrator established; permission initialization is pending.',
+                    );
+                  }
+                  await widget.reload();
+                },
               ),
-              items: [
-                for (final mode in LessonHandling.values)
-                  DropdownMenuItem(
-                    value: mode,
-                    child: Text(switch (mode) {
-                      LessonHandling.shareAcrossProjects =>
-                        'Share across projects',
-                      LessonHandling.projectOnly => 'Keep within the project',
-                      LessonHandling.trackForReview =>
-                        'Track for later promotion or pruning',
-                    }),
-                  ),
-              ],
-              onChanged: (v) => setState(() => handling = v),
-            ),
-            CheckboxListTile(
-              title: const Text('Publish branches and pull requests'),
-              value: publish,
-              onChanged: (v) => setState(() => publish = v!),
-            ),
-            CheckboxListTile(
-              title: const Text('Allow protected-branch merges'),
-              value: merge,
-              onChanged: (v) => setState(() => merge = v!),
-            ),
-            CheckboxListTile(
-              title: const Text('Allow deployments'),
-              value: deploy,
-              onChanged: (v) => setState(() => deploy = v!),
-            ),
-            CheckboxListTile(
-              title: const Text(
-                'I explicitly confirm these delivery permissions',
+            ],
+          ),
+        if (widget.project == null)
+          Section(
+            'Lessons & delivery',
+            children: [
+              const Text(
+                'Choose how new lessons are shared. Every choice applies lessons immediately in their originating project and assignment.',
               ),
-              value: confirmed,
-              onChanged: (v) => setState(() => confirmed = v!),
-            ),
-            AsyncAction(
-              label: 'Save lesson & delivery choices',
-              action: settings == null || handling == null || !confirmed
-                  ? null
-                  : () => save(
-                      ConfigurationChange(
-                        setup: FactorySetup(
-                          lessonHandling: handling!,
-                          deliveryConfirmed: confirmed,
-                          publishBranch: publish,
-                          merge: merge,
-                          deploy: deploy,
+              const SizedBox(height: 16),
+              DropdownButtonFormField<LessonHandling>(
+                isExpanded: true,
+                initialValue: handling,
+                decoration: const InputDecoration(
+                  labelText: 'Required lesson handling',
+                ),
+                items: [
+                  for (final mode in LessonHandling.values)
+                    DropdownMenuItem(
+                      value: mode,
+                      child: Text(switch (mode) {
+                        LessonHandling.shareAcrossProjects =>
+                          'Share across projects',
+                        LessonHandling.projectOnly => 'Keep within the project',
+                        LessonHandling.trackForReview =>
+                          'Track for later promotion or pruning',
+                      }),
+                    ),
+                ],
+                onChanged: (v) => setState(() => handling = v),
+              ),
+              CheckboxListTile(
+                title: const Text('Publish branches and pull requests'),
+                value: publish,
+                onChanged: (v) => setState(() => publish = v!),
+              ),
+              CheckboxListTile(
+                title: const Text('Allow protected-branch merges'),
+                value: merge,
+                onChanged: (v) => setState(() => merge = v!),
+              ),
+              CheckboxListTile(
+                title: const Text('Allow deployments'),
+                value: deploy,
+                onChanged: (v) => setState(() => deploy = v!),
+              ),
+              CheckboxListTile(
+                title: const Text(
+                  'I explicitly confirm these delivery permissions',
+                ),
+                value: confirmed,
+                onChanged: (v) => setState(() => confirmed = v!),
+              ),
+              AsyncAction(
+                label: 'Save lesson & delivery choices',
+                action: settings == null || handling == null || !confirmed
+                    ? null
+                    : () => save(
+                        ConfigurationChange(
+                          setup: FactorySetup(
+                            lessonHandling: handling!,
+                            deliveryConfirmed: confirmed,
+                            publishBranch: publish,
+                            merge: merge,
+                            deploy: deploy,
+                          ),
                         ),
                       ),
-                    ),
-            ),
-          ],
-        ),
-        Instructions(client: widget.client),
+              ),
+            ],
+          ),
+        if (widget.project == null) ProjectConfiguration(client: widget.client),
+        Instructions(client: widget.client, project: widget.project),
         Section(
           'Roles',
           children: [
@@ -201,6 +210,15 @@ class _SettingsPageState extends State<SettingsPage> {
                   key: ValueKey('${role.roleId.value}:${settings.revision}'),
                   role: role,
                   models: settings.models,
+                  onRemove: () => save(
+                    ConfigurationChange(
+                      roles: [
+                        for (final current in settings.roles)
+                          if (current.roleId.value != role.roleId.value)
+                            current,
+                      ],
+                    ),
+                  ),
                   onSave: (updated) => save(
                     ConfigurationChange(
                       roles: [
@@ -210,9 +228,22 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                   ),
                 ),
-            if (settings?.roles.isEmpty ?? false)
-              const Notice(
-                'No roles are configured. Create the standard team through installation management.',
+            if (settings != null)
+              RoleEditor(
+                key: ValueKey('new-role:${settings.revision}'),
+                models: settings.models,
+                onSave: (role) async {
+                  if (settings.roles.any(
+                    (existing) => existing.roleId.value == role.roleId.value,
+                  )) {
+                    throw ValidationErrors([
+                      const FieldError('role_id', 'duplicate_role'),
+                    ]);
+                  }
+                  await save(
+                    ConfigurationChange(roles: [...settings.roles, role]),
+                  );
+                },
               ),
           ],
         ),
@@ -226,6 +257,15 @@ class _SettingsPageState extends State<SettingsPage> {
                     '${model.profileId.value}:${settings.revision}',
                   ),
                   model: model,
+                  onRemove: () => save(
+                    ConfigurationChange(
+                      models: [
+                        for (final current in settings.models)
+                          if (current.profileId.value != model.profileId.value)
+                            current,
+                      ],
+                    ),
+                  ),
                   onSave: (updated) => save(
                     ConfigurationChange(
                       models: [
@@ -291,11 +331,13 @@ class _SettingsPageState extends State<SettingsPage> {
 class RoleEditor extends StatefulWidget {
   const RoleEditor({
     super.key,
-    required this.role,
+    this.role,
+    this.onRemove,
     required this.models,
     required this.onSave,
   });
-  final RoleConfiguration role;
+  final RoleConfiguration? role;
+  final Future<void> Function()? onRemove;
   final List<ModelProfileConfiguration> models;
   final Future<void> Function(RoleConfiguration) onSave;
   @override
@@ -304,24 +346,29 @@ class RoleEditor extends StatefulWidget {
 
 class _RoleEditorState extends State<RoleEditor> {
   late bool enabled;
+  bool? reasoningApplicable;
+  late TextEditingController roleId;
   ModelProfileId? model;
   late TextEditingController effort, devices, instructions;
   @override
   void initState() {
     super.initState();
-    enabled = widget.role.enabled;
-    model = widget.role.modelProfileId;
+    enabled = widget.role?.enabled ?? false;
+    reasoningApplicable = widget.role?.reasoningApplicable;
+    roleId = TextEditingController(text: widget.role?.roleId.value);
+    model = widget.role?.modelProfileId;
     instructions = TextEditingController(
-      text: widget.role.instructionsId.value,
+      text: widget.role?.instructionsId.value,
     );
-    effort = TextEditingController(text: widget.role.reasoningEffort?.value);
+    effort = TextEditingController(text: widget.role?.reasoningEffort?.value);
     devices = TextEditingController(
-      text: widget.role.deviceBindings.map((d) => d.value).join(', '),
+      text: widget.role?.deviceBindings.map((d) => d.value).join(', '),
     );
   }
 
   @override
   void dispose() {
+    roleId.dispose();
     instructions.dispose();
     effort.dispose();
     devices.dispose();
@@ -330,7 +377,7 @@ class _RoleEditorState extends State<RoleEditor> {
 
   @override
   Widget build(BuildContext context) => ExpansionTile(
-    title: Text(widget.role.roleId.value),
+    title: Text(widget.role?.roleId.value ?? 'Add role'),
     subtitle: Text(
       enabled ? (model?.value ?? 'Model selection required') : 'Disabled',
     ),
@@ -340,6 +387,22 @@ class _RoleEditorState extends State<RoleEditor> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (widget.role == null)
+              TextField(
+                controller: roleId,
+                decoration: const InputDecoration(labelText: 'New role ID'),
+              ),
+            DropdownButtonFormField<bool>(
+              initialValue: reasoningApplicable,
+              decoration: const InputDecoration(
+                labelText: 'Reasoning effort applies to this role',
+              ),
+              items: const [
+                DropdownMenuItem(value: true, child: Text('Yes')),
+                DropdownMenuItem(value: false, child: Text('No')),
+              ],
+              onChanged: (value) => setState(() => reasoningApplicable = value),
+            ),
             SwitchListTile(
               title: const Text('Enable role'),
               value: enabled,
@@ -362,7 +425,7 @@ class _RoleEditorState extends State<RoleEditor> {
               onChanged: (v) =>
                   setState(() => model = v == null ? null : ModelProfileId(v)),
             ),
-            if (widget.role.reasoningApplicable)
+            if (reasoningApplicable == true)
               Padding(
                 padding: const EdgeInsets.only(top: 12),
                 child: TextField(
@@ -392,16 +455,29 @@ class _RoleEditorState extends State<RoleEditor> {
               ),
             ),
             const SizedBox(height: 12),
+            if (widget.onRemove != null)
+              AsyncAction(
+                label: 'Remove role from team',
+                icon: Icons.remove_circle_outline,
+                action: widget.onRemove,
+              ),
             AsyncAction(
               label: 'Save role',
               action: () => widget.onSave(
                 RoleConfiguration(
-                  roleId: widget.role.roleId,
+                  roleId: widget.role?.roleId ?? ActorId(roleId.text.trim()),
                   enabled: enabled,
                   modelProfileId: model,
-                  reasoningApplicable: widget.role.reasoningApplicable,
+                  reasoningApplicable:
+                      reasoningApplicable ??
+                      (throw ValidationErrors([
+                        const FieldError(
+                          'reasoning_applicable',
+                          'explicit_choice_required',
+                        ),
+                      ])),
                   reasoningEffort:
-                      widget.role.reasoningApplicable &&
+                      reasoningApplicable == true &&
                           effort.text.trim().isNotEmpty
                       ? ActorId(effort.text.trim())
                       : null,
@@ -425,8 +501,14 @@ class _RoleEditorState extends State<RoleEditor> {
 }
 
 class ModelEditor extends StatefulWidget {
-  const ModelEditor({super.key, this.model, required this.onSave});
+  const ModelEditor({
+    super.key,
+    this.model,
+    this.onRemove,
+    required this.onSave,
+  });
   final ModelProfileConfiguration? model;
+  final Future<void> Function()? onRemove;
   final Future<void> Function(ModelProfileConfiguration) onSave;
   @override
   State<ModelEditor> createState() => _ModelEditorState();
@@ -551,6 +633,12 @@ class _ModelEditorState extends State<ModelEditor> {
                     ),
                   ),
                 ),
+            if (widget.onRemove != null)
+              AsyncAction(
+                label: 'Remove model profile',
+                icon: Icons.remove_circle_outline,
+                action: widget.onRemove,
+              ),
             AsyncAction(
               label: 'Save model profile',
               action: billing == null
@@ -597,4 +685,124 @@ class _ModelEditorState extends State<ModelEditor> {
       ),
     ],
   );
+}
+
+class ProjectConfiguration extends StatefulWidget {
+  const ProjectConfiguration({super.key, required this.client});
+  final IronloomClient client;
+  @override
+  State<ProjectConfiguration> createState() => _ProjectConfigurationState();
+}
+
+class _ProjectConfigurationState extends State<ProjectConfiguration> {
+  final project = TextEditingController();
+  ConfigurationSnapshot? settings;
+  ProjectId? loadedProject;
+  int epoch = 0;
+  @override
+  void initState() {
+    super.initState();
+    project.addListener(
+      () => setState(() {
+        ++epoch;
+        settings = null;
+        loadedProject = null;
+      }),
+    );
+  }
+
+  @override
+  void dispose() {
+    project.dispose();
+    super.dispose();
+  }
+
+  Future<void> load() async {
+    final generation = ++epoch;
+    final target = ProjectId(project.text.trim());
+    final value = await widget.client.configuration(project: target);
+    if (mounted && generation == epoch) {
+      setState(() {
+        settings = value;
+        loadedProject = target;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final generation = epoch;
+    return Section(
+      'Project configuration',
+      children: [
+        const Text(
+          'Load a project to edit its effective roles, models and devices. Installation setup remains separate.',
+        ),
+        TextField(
+          controller: project,
+          decoration: const InputDecoration(
+            labelText: 'Project configuration ID',
+          ),
+        ),
+        AsyncAction(
+          key: ValueKey(project.text.trim()),
+          label: 'Load project configuration',
+          action: load,
+        ),
+        if (settings != null && loadedProject != null)
+          TextButton(
+            child: const Text('Edit loaded project configuration'),
+            onPressed: () async {
+              final target = loadedProject!;
+              var current = settings!;
+              await showDialog<void>(
+                context: context,
+                builder: (dialogContext) => Dialog.fullscreen(
+                  child: StatefulBuilder(
+                    builder: (dialogContext, update) => Column(
+                      children: [
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: IconButton(
+                            tooltip: 'Close project configuration',
+                            icon: const Icon(Icons.close),
+                            onPressed: () => Navigator.pop(dialogContext),
+                          ),
+                        ),
+                        Expanded(
+                          child: SettingsPage(
+                            client: widget.client,
+                            settings: current,
+                            project: target,
+                            reload: () async {
+                              final value = await widget.client.configuration(
+                                project: target,
+                              );
+                              if (dialogContext.mounted) {
+                                update(() => current = value);
+                              }
+                              if (mounted && generation == epoch) {
+                                setState(() => settings = value);
+                              }
+                            },
+                            onChanged: (value) {
+                              if (dialogContext.mounted) {
+                                update(() => current = value);
+                              }
+                              if (mounted && generation == epoch) {
+                                setState(() => settings = value);
+                              }
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+      ],
+    );
+  }
 }

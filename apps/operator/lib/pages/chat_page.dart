@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 
 import '../platform/journal.dart';
 import '../widgets.dart';
+import 'assignment_instructions.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key, required this.client, required this.session});
@@ -494,6 +495,8 @@ class _ChatPageState extends State<ChatPage> {
                   ),
                 ],
               ),
+            if (state?.pauseRequested == true)
+              const Notice('Pause requested — waiting for a safe boundary.'),
             if (execution != null)
               Padding(
                 padding: const EdgeInsets.symmetric(
@@ -571,6 +574,11 @@ class _ChatPageState extends State<ChatPage> {
                       kinds[entry.key]?.value.replaceAll('_', ' ') ??
                           'Progress',
                       children: [Text(entry.value)],
+                    ),
+                  if (assignment != null)
+                    AssignmentInstructions(
+                      client: widget.client,
+                      assignment: assignment!,
                     ),
                   if (state?.plan != null)
                     Section(

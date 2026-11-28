@@ -50,6 +50,7 @@ void main() {
               'pending_questions': <Object?>[],
               'execution_state': snapshots < 3 ? 'running' : 'completed',
               'active_assignment_id': snapshots < 3 ? 'a' : null,
+              'pause_requested': snapshots < 3 ? true : null,
             };
             return http.StreamedResponse(
               Stream.value(utf8.encode(jsonEncode(data))),
@@ -97,6 +98,7 @@ void main() {
       );
       await settleHttp(tester);
       expect(find.text('history 1'), findsOneWidget);
+      expect(find.textContaining('Pause requested'), findsOneWidget);
       expect(find.byTooltip('Assignment controls'), findsOneWidget);
       await tester.tap(
         find.widgetWithText(SwitchListTile, 'Steer the active turn'),
@@ -110,6 +112,7 @@ void main() {
       await tester.tap(find.byTooltip('Refresh state'));
       await settleHttp(tester);
       expect(find.text('completed'), findsOneWidget);
+      expect(find.textContaining('Pause requested'), findsNothing);
       expect(find.byTooltip('Assignment controls'), findsNothing);
       expect(find.widgetWithText(TextField, 'Message or idea'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
