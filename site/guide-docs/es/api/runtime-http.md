@@ -25,3 +25,6 @@ La paginación del historial requiere una dirección explícita, permite filtrar
 
 
 El servicio monta configuración, instrucciones, conversaciones y SSE bajo la ruta pública. SSE requiere `Last-Event-ID`; el desbordamiento emite `ironloom.error` y exige resincronización. Desconectar el transporte no cancela la ejecución. Configure `IRONLOOM_NODE_ID` estable y las rutas absolutas separadas `IRONLOOM_PROJECTS_ROOT` / `IRONLOOM_MODELS_ROOT`; Helm proporciona almacenamiento persistente separado. El registro de adaptadores, el aislamiento y la ejecución completa siguen en desarrollo.
+
+
+El aislamiento de comandos Linux usa un proceso auxiliar, espacios de nombres de bubblewrap, rutas de escritura explícitas y seccomp. Los fallos de aislamiento impiden ejecutar el comando. Las pruebas nativas cubren aislamiento, enlaces simbólicos y limpieza de descendientes. El contenedor incluye bubblewrap/Git con UID/GID 1000. El flujo completo, la validación de ejecución Alpine y el trabajo Mac/GPU siguen pendientes.

@@ -13,9 +13,9 @@ LABEL org.opencontainers.image.title="Ironloom" \
       org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.vendor="Veritas Labs"
 
-RUN apk add --no-cache ca-certificates tini \
-    && addgroup -S ironloom \
-    && adduser -S -G ironloom -h /var/lib/ironloom ironloom
+RUN apk add --no-cache ca-certificates tini bubblewrap git \
+    && addgroup -g 1000 -S ironloom \
+    && adduser -u 1000 -S -G ironloom -h /var/lib/ironloom ironloom
 
 COPY --from=builder /workspace/target/release/ironloom /usr/local/bin/ironloom
 COPY docker/ironloom-runtime/entrypoint.sh /usr/local/bin/ironloom-entrypoint

@@ -22,3 +22,6 @@ No deployment or inference qualification is performed by rendering the chart. Pe
 
 
 The service now mounts configuration, instructions, conversation state/history and replayable SSE beneath the public deployment path. SSE requires `Last-Event-ID`; reader overflow emits `ironloom.error` and requires resynchronization. Disconnects and transport shutdown do not cancel execution. Set the stable `IRONLOOM_NODE_ID` and separate absolute `IRONLOOM_PROJECTS_ROOT` / `IRONLOOM_MODELS_ROOT`; Helm provides separate persistent claims. Adapter/sandbox registration, bundled dependency lifecycle and complete execution remain in progress.
+
+
+Linux command containment now uses a dedicated helper, bubblewrap namespaces, explicit descriptor-bound writable paths and seccomp. Host paths and Git/service metadata are not writable; enforcement failures never run the command. Native Linux functional tests cover isolation, symlink rejection and descendant cleanup. The container installs bubblewrap/Git with UID/GID 1000. Full fenced workflow wiring, Alpine execution qualification and Mac/GPU work remain separate and unfinished.

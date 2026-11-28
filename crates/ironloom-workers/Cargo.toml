@@ -16,6 +16,11 @@ schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+tokio.workspace = true
+ironloom-worktrees = { path = "../ironloom-worktrees", version = "0.1.0" }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+nix.workspace = true
 
 [lints]
 workspace = true

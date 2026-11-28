@@ -1,5 +1,9 @@
 #![forbid(unsafe_code)]
 
+/// Native Linux command containment. No worker executes when required enforcement fails.
+#[cfg(target_os = "linux")]
+pub mod sandbox;
+
 use std::collections::BTreeMap;
 
 use ironloom_core::{CorrelationId, WorkItemId};

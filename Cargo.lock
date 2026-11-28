@@ -1468,10 +1468,13 @@ dependencies = [
  "ironloom-core",
  "ironloom-observability",
  "ironloom-queue",
+ "ironloom-worktrees",
+ "nix",
  "schemars",
  "serde",
  "serde_json",
  "thiserror",
+ "tokio",
 ]
 
 [[package]]

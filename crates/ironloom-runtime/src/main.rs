@@ -12,6 +12,13 @@ const IRONLOOM_GITHUB_CHECK_REF_ENV: &str = "IRONLOOM_GITHUB_CHECK_REF";
 fn main() {
     let mut args = std::env::args().skip(1);
     match args.next().as_deref() {
+        #[cfg(target_os = "linux")]
+        Some("sandbox-child") => {
+            if ironloom_workers::sandbox::child_main().is_err() {
+                eprintln!("required command containment unavailable or invalid");
+                std::process::exit(1);
+            }
+        }
         Some("serve") => {
             let bind_addr =
                 std::env::var("IRONLOOM_BIND_ADDR").unwrap_or_else(|_| "0.0.0.0:8080".to_owned());

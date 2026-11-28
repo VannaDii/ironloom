@@ -22,3 +22,6 @@ Chart 从 `database.existingSecret` / `database.urlKey` 读取 `IRONLOOM_DATABAS
 
 
 服务现在在公开部署路径下提供配置、指令、会话状态、历史和可重放 SSE。SSE 要求 `Last-Event-ID`；缓冲区溢出时发送 `ironloom.error` 并要求重新同步。断开连接或关闭传输不会取消执行。请配置稳定的 `IRONLOOM_NODE_ID` 和独立的绝对路径 `IRONLOOM_PROJECTS_ROOT` / `IRONLOOM_MODELS_ROOT`；Helm 提供独立持久卷。适配器、沙箱、托管依赖和完整执行仍在开发中。
+
+
+Linux 命令隔离使用独立辅助进程、bubblewrap 命名空间、通过文件描述符固定的写入路径和 seccomp。隔离失败时绝不执行命令。原生 Linux 功能测试覆盖文件系统隔离、符号链接拒绝和后代进程清理。容器包含 bubblewrap/Git，使用 UID/GID 1000。完整工作流、Alpine 执行验证及 Mac/GPU 工作仍未完成。
