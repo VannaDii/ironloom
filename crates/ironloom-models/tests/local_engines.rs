@@ -37,11 +37,7 @@ fn fixture() -> (tempfile::TempDir, LlamaDriver, EngineLoadRequest, Artifact) {
     let executable = root.path().join("scripted-helper");
     std::fs::write(&executable, script).unwrap();
     std::fs::set_permissions(&executable, std::fs::Permissions::from_mode(0o700)).unwrap();
-    std::fs::write(
-        root.path().join("fixture.gguf"),
-        b"inert fixture, never an engine model",
-    )
-    .unwrap();
+    std::fs::write(root.path().join("fixture.gguf"), gguf(1)).unwrap();
     let driver =
         LlamaDriver::new(executable, Sha256::digest(script).into(), capabilities()).unwrap();
     let inference = request();
@@ -302,4 +298,32 @@ async fn admitted_lifecycle_survives_caller_loss_reuses_residency_and_never_refr
         .unwrap();
     assert_eq!(state.state, EngineState::Stopped);
     assert_eq!(state.generation.get(), 2);
+}
+
+fn gguf(shards: u16) -> Vec<u8> {
+    let mut bytes = b"GGUF".to_vec();
+    bytes.extend(3u32.to_le_bytes());
+    bytes.extend(0u64.to_le_bytes());
+    bytes.extend(1u64.to_le_bytes());
+    let key = b"split.count";
+    bytes.extend((key.len() as u64).to_le_bytes());
+    bytes.extend(key);
+    bytes.extend(2u32.to_le_bytes());
+    bytes.extend(shards.to_le_bytes());
+    bytes
+}
+#[tokio::test]
+async fn implicit_gguf_sibling_shards_are_rejected_before_any_helper_process() {
+    let (root, driver, load, artifact) = fixture();
+    std::fs::write(root.path().join("fixture.gguf"), gguf(2)).unwrap();
+    assert!(matches!(
+        driver.load(&load, artifact).await,
+        Err(AdapterError::Unsupported)
+    ));
+    assert!(!root.path().join("helper.pid").exists());
+    std::fs::write(root.path().join("fixture.gguf"), gguf(0)).unwrap();
+    let (_, _, _, mut artifact) = fixture();
+    artifact.root = root.path().into();
+    assert!(driver.load(&load, artifact).await.is_err());
+    assert!(!root.path().join("helper.pid").exists());
 }

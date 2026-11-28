@@ -47,3 +47,5 @@ pub mod llama;
 /// Embedded mistral.rs integration with an isolated private runner.
 #[cfg(feature = "embedded-mistral")]
 pub mod mistral;
+
+mod gguf;

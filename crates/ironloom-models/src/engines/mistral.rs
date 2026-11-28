@@ -18,9 +18,15 @@ use std::{
     sync::{Arc, Mutex as StdMutex},
     time::Duration,
 };
-use tokio::sync::{Mutex, mpsc};
+use tokio::{
+    io::AsyncReadExt,
+    sync::{Mutex, mpsc},
+};
 const STOP_TIMEOUT: Duration = Duration::from_secs(30);
 const OUTPUT_CAPACITY: usize = 128;
+const MAX_INDEX_BYTES: u64 = 4 * 1024 * 1024;
+const MAX_SUPPORT_BYTES: u64 = 256 * 1024 * 1024;
+const INDEX_FILE: &str = "model.safetensors.index.json";
 /// Official EricLBuehler/mistral.rs SDK revision, package mistralrs 0.10.0.
 pub const REVISION: &str = "21da642fdd2210c30ca4028e1eabdd28e9c602fd";
 /// Inert embedded integration; this compiled profile supports CPU safetensors without Python.
@@ -51,6 +57,7 @@ struct Inner {
     facts: StdMutex<Facts>,
     tools: bool,
     efforts: Vec<String>,
+    _view: tempfile::TempDir,
 }
 struct MistralKernel(Arc<Inner>);
 impl Driver for MistralDriver {
@@ -75,18 +82,14 @@ impl Driver for MistralDriver {
             let root = tokio::fs::canonicalize(&artifact.root)
                 .await
                 .map_err(|_| AdapterError::Unavailable)?;
-            for weight in &artifact.weights {
-                let path = super::runtime::local_file(&root, weight).await?;
-                if path.extension().and_then(|v| v.to_str()) != Some("safetensors") {
-                    return Err(AdapterError::Unsupported);
-                }
-            }
-            // Explicit local directory and token source: never substitute a hub model or credential.
-            super::runtime::local_file(&root, std::path::Path::new("config.json")).await?;
-            let mut builder = TextModelBuilder::new(root.to_string_lossy())
+            let view = verified_view(&root, &artifact.weights).await?;
+            // The SDK receives an isolated view whose generated index resolves only the admitted
+            // canonical files. Source indexes/extra shards never select another weight set.
+            let mut builder = TextModelBuilder::new(view.path().to_string_lossy())
                 .with_token_source(TokenSource::None)
                 .with_device(mistralrs::Device::Cpu)
                 .with_force_cpu()
+                .with_device_mapping(mistralrs::DeviceMapMetadata::dummy())
                 .with_max_num_seqs(1)
                 .with_prefix_cache_n(mistralrs::PrefixCacheCapacity::DISABLED)
                 .with_max_model_len(
@@ -103,10 +106,7 @@ impl Driver for MistralDriver {
             );
             if let Some(template) = artifact.template {
                 let path = super::runtime::local_file(&root, &template).await?;
-                let template = tokio::fs::read_to_string(path)
-                    .await
-                    .map_err(|_| AdapterError::Unavailable)?;
-                builder = builder.with_chat_template(template);
+                builder = builder.with_jinja_explicit(path.to_string_lossy().into_owned());
             }
             let tools = self.capabilities.tools && artifact.tools == CapabilitySupport::Supported;
             let (ready, waiting) = tokio::sync::oneshot::channel();
@@ -131,6 +131,7 @@ impl Driver for MistralDriver {
                             }),
                             tools,
                             efforts: artifact.reasoning_efforts,
+                            _view: view,
                         }))
                     })
                     .map_err(|_| AdapterError::Unavailable);
@@ -151,6 +152,105 @@ impl Driver for MistralDriver {
             waiting.await.map_err(|_| AdapterError::Unavailable)?
         })
     }
+}
+async fn verified_view(
+    root: &std::path::Path,
+    weights: &[std::path::PathBuf],
+) -> Result<tempfile::TempDir, AdapterError> {
+    let mut approved = std::collections::BTreeSet::new();
+    for weight in weights {
+        let path = super::runtime::local_file(root, weight).await?;
+        if path.extension().and_then(|value| value.to_str()) != Some("safetensors")
+            || !approved.insert(path)
+        {
+            return Err(AdapterError::Unsupported);
+        }
+    }
+    if approved.is_empty() {
+        return Err(AdapterError::Unsupported);
+    }
+    let index = root.join(INDEX_FILE);
+    if tokio::fs::try_exists(&index)
+        .await
+        .map_err(|_| AdapterError::Unavailable)?
+    {
+        let index = super::runtime::local_file(root, std::path::Path::new(INDEX_FILE)).await?;
+        let mut bytes = Vec::new();
+        tokio::fs::File::open(index)
+            .await
+            .map_err(|_| AdapterError::Unavailable)?
+            .take(MAX_INDEX_BYTES + 1)
+            .read_to_end(&mut bytes)
+            .await
+            .map_err(|_| AdapterError::Unavailable)?;
+        if bytes.len() as u64 > MAX_INDEX_BYTES {
+            return Err(AdapterError::Unsupported);
+        }
+        let index: serde_json::Value =
+            serde_json::from_slice(&bytes).map_err(|_| AdapterError::Unsupported)?;
+        let map = index["weight_map"]
+            .as_object()
+            .ok_or(AdapterError::Unsupported)?;
+        let mut actual = std::collections::BTreeSet::new();
+        for name in map.values() {
+            let name = name.as_str().ok_or(AdapterError::Unsupported)?;
+            if !name.ends_with(".safetensors") {
+                return Err(AdapterError::Unsupported);
+            }
+            actual.insert(super::runtime::local_file(root, std::path::Path::new(name)).await?);
+        }
+        if actual != approved {
+            return Err(AdapterError::Unsupported);
+        }
+    }
+    let view = tempfile::Builder::new()
+        .prefix("ironloom-engine-")
+        .tempdir()
+        .map_err(|_| AdapterError::Unavailable)?;
+    let mut map = serde_json::Map::new();
+    for (index, path) in approved.iter().enumerate() {
+        let name = format!("verified-{index}.safetensors");
+        tokio::fs::symlink(path, view.path().join(&name))
+            .await
+            .map_err(|_| AdapterError::Unavailable)?;
+        map.insert(format!("verified-{index}"), name.into());
+    }
+    // Support metadata comes from the verified installation, while no source weight index or
+    // auxiliary weight directory is exposed. The explicit tokenizer/template paths stay checked.
+    for name in [
+        "config.json",
+        "tokenizer_config.json",
+        "generation_config.json",
+        "special_tokens_map.json",
+        "chat_template.json",
+        "chat_template.jinja",
+    ] {
+        if name == "config.json"
+            || tokio::fs::try_exists(root.join(name))
+                .await
+                .map_err(|_| AdapterError::Unavailable)?
+        {
+            let source = super::runtime::local_file(root, std::path::Path::new(name)).await?;
+            if tokio::fs::metadata(&source)
+                .await
+                .map_err(|_| AdapterError::Unavailable)?
+                .len()
+                > MAX_SUPPORT_BYTES
+            {
+                return Err(AdapterError::Unsupported);
+            }
+            tokio::fs::copy(source, view.path().join(name))
+                .await
+                .map_err(|_| AdapterError::Unavailable)?;
+        }
+    }
+    tokio::fs::write(
+        view.path().join(INDEX_FILE),
+        serde_json::to_vec(&json!({"weight_map":map})).map_err(|_| AdapterError::Unavailable)?,
+    )
+    .await
+    .map_err(|_| AdapterError::Unavailable)?;
+    Ok(view)
 }
 fn messages(request: &InferenceRequest) -> Result<RequestBuilder, AdapterError> {
     let mut builder = RequestBuilder::new().set_sampler_max_len(
@@ -453,6 +553,51 @@ impl Kernel for MistralKernel {
 mod tests {
     use super::*;
     use mistralrs::RequestLike;
+    #[tokio::test]
+    async fn sdk_view_rejects_index_escape_and_undeclared_shards_without_loading() {
+        let root = tempfile::tempdir().unwrap();
+        tokio::fs::write(root.path().join("config.json"), b"{}")
+            .await
+            .unwrap();
+        tokio::fs::write(root.path().join("approved.safetensors"), b"inert")
+            .await
+            .unwrap();
+        tokio::fs::write(root.path().join("extra.safetensors"), b"inert")
+            .await
+            .unwrap();
+        let weights = vec!["approved.safetensors".into()];
+        for path in ["../outside.safetensors", "extra.safetensors"] {
+            tokio::fs::write(
+                root.path().join(INDEX_FILE),
+                serde_json::to_vec(&json!({"weight_map":{"tensor":path}})).unwrap(),
+            )
+            .await
+            .unwrap();
+            assert!(verified_view(root.path(), &weights).await.is_err());
+        }
+        tokio::fs::remove_file(root.path().join(INDEX_FILE))
+            .await
+            .unwrap();
+        let view = verified_view(root.path(), &weights).await.unwrap();
+        assert!(!view.path().join("extra.safetensors").exists());
+        let index: serde_json::Value =
+            serde_json::from_slice(&tokio::fs::read(view.path().join(INDEX_FILE)).await.unwrap())
+                .unwrap();
+        let entries = index["weight_map"].as_object().unwrap();
+        assert_eq!(entries.len(), 1);
+        let actual = tokio::fs::canonicalize(
+            view.path()
+                .join(entries.values().next().unwrap().as_str().unwrap()),
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            actual,
+            tokio::fs::canonicalize(root.path().join("approved.safetensors"))
+                .await
+                .unwrap()
+        );
+    }
     #[tokio::test]
     async fn closed_private_sender_never_reloads_or_reboots_an_engine() {
         let (sender, receiver) = mpsc::channel(1);

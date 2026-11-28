@@ -97,6 +97,10 @@ impl Driver for LlamaDriver {
             if weight.extension().and_then(|v| v.to_str()) != Some("gguf") {
                 return Err(AdapterError::Unsupported);
             }
+            let metadata_path = weight.clone();
+            tokio::task::spawn_blocking(move || super::gguf::single_file(&metadata_path))
+                .await
+                .map_err(|_| AdapterError::Unavailable)??;
             let file = tokio::fs::File::open(&self.executable)
                 .await
                 .map_err(|_| AdapterError::Unavailable)?;

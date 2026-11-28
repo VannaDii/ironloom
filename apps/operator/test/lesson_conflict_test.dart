@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,6 +19,77 @@ Future<void> settleHttp(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets(
+    'late project A response cannot replace B lessons or mutation scope',
+    (tester) async {
+      final responses = <String, Completer<http.Response>>{};
+      String? mutationProject;
+      final client = IronloomClient(
+        ServerConnection(Uri.parse('https://lessons.fixture/')),
+        MockClient((request) async {
+          if (request.method == 'GET') {
+            final project = request.url.pathSegments[3];
+            return (responses[project] = Completer<http.Response>()).future;
+          }
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          mutationProject = body['project_id'] as String;
+          return http.Response(
+            jsonEncode({
+              'command_id': body['command_id'],
+              'disposition': 'accepted',
+            }),
+            200,
+          );
+        }),
+      );
+      http.Response page(String project) => http.Response(
+        jsonEncode({
+          'lessons': [
+            {
+              'lesson_id': 'lesson-$project',
+              'revision': '1',
+              'origin_project': project,
+              'origin_assignment': 'a',
+              'source': 'opaque',
+              'scope': 'project',
+              'content': 'Content $project',
+            },
+          ],
+          'next_after': 'lesson-$project',
+        }),
+        200,
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: LessonsPage(client: client)),
+        ),
+      );
+      await tester.enterText(find.widgetWithText(TextField, 'Project ID'), 'A');
+      await tester.tap(find.text('Review lessons'));
+      await settleHttp(tester);
+      await tester.enterText(find.widgetWithText(TextField, 'Project ID'), 'B');
+      await tester.tap(find.text('Review lessons'));
+      await settleHttp(tester);
+      responses['B']!.complete(page('B'));
+      await settleHttp(tester);
+      responses['A']!.complete(page('A'));
+      await settleHttp(tester);
+      expect(find.text('Content A'), findsNothing);
+      expect(find.text('Content B'), findsOneWidget);
+      final restrict = find.widgetWithText(
+        FilledButton,
+        'Restrict to assignment',
+      );
+      await tester.ensureVisible(restrict);
+      await tester.tap(restrict);
+      await settleHttp(tester);
+      expect(mutationProject, 'B');
+      responses['B']!.complete(page('B'));
+      await settleHttp(tester);
+      await tester.pumpWidget(const SizedBox());
+      client.close();
+    },
+  );
   testWidgets(
     'lesson revision conflict is visible and is not treated as mutation success',
     (tester) async {
