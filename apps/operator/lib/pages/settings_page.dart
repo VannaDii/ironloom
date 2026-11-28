@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 
 import '../widgets.dart';
 import 'instructions.dart';
+import 'endpoint_editors.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({
@@ -284,6 +285,93 @@ class _SettingsPageState extends State<SettingsPage> {
                   ConfigurationChange(models: [...settings.models, model]),
                 ),
               ),
+          ],
+        ),
+        Section(
+          'Provider endpoints',
+          children: [
+            const Text(
+              'Protocols, billing and capability declarations are explicit. Secret material is managed separately; changing a credential destination requires management authority.',
+            ),
+            if (settings != null) ...[
+              for (final endpoint in settings.endpoints)
+                EndpointEditor(
+                  key: ValueKey(
+                    'endpoint:${endpoint.provider.value}:${settings.revision}',
+                  ),
+                  endpoint: endpoint,
+                  onSave: (updated) => save(
+                    ConfigurationChange(
+                      endpoints: [
+                        for (final current in settings.endpoints)
+                          current.provider.value == updated.provider.value
+                              ? updated
+                              : current,
+                      ],
+                    ),
+                  ),
+                  onRemove: () => save(
+                    ConfigurationChange(
+                      endpoints: [
+                        for (final current in settings.endpoints)
+                          if (current.provider.value != endpoint.provider.value)
+                            current,
+                      ],
+                    ),
+                  ),
+                ),
+              EndpointEditor(
+                key: ValueKey('new-endpoint:${settings.revision}'),
+                onSave: (endpoint) => save(
+                  ConfigurationChange(
+                    endpoints: [...settings.endpoints, endpoint],
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+        Section(
+          'Source accounts',
+          children: [
+            const Text(
+              'Choose anonymous access or an authorized credential for each source you use. Saving the list replaces its bindings in this scope.',
+            ),
+            if (settings != null) ...[
+              for (final binding in settings.sourceAccounts)
+                SourceAccountEditor(
+                  key: ValueKey(
+                    'source:${binding.host.value}:${settings.revision}',
+                  ),
+                  binding: binding,
+                  onSave: (updated) => save(
+                    ConfigurationChange(
+                      sourceAccounts: [
+                        for (final current in settings.sourceAccounts)
+                          current.host.value == updated.host.value
+                              ? updated
+                              : current,
+                      ],
+                    ),
+                  ),
+                  onRemove: () => save(
+                    ConfigurationChange(
+                      sourceAccounts: [
+                        for (final current in settings.sourceAccounts)
+                          if (current.host.value != binding.host.value) current,
+                      ],
+                    ),
+                  ),
+                ),
+              SourceAccountEditor(
+                key: ValueKey('new-source:${settings.revision}'),
+                onSave: (binding) => save(
+                  ConfigurationChange(
+                    sourceAccounts: [...settings.sourceAccounts, binding],
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
         Section(

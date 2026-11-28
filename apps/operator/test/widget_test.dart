@@ -34,7 +34,7 @@ void main() {
         }
         if (request.url.path.endsWith('/configuration')) {
           return http.Response(
-            '{"revision":"1","roles":[],"models":[],"device_preferences":[],"discovered_devices":[],"execution_ready":false,"unmet_prerequisites":["lesson_handling","role_models"]}',
+            '{"revision":"1","roles":[],"models":[],"device_preferences":[],"endpoints":[],"source_accounts":[],"discovered_devices":[],"execution_ready":false,"unmet_prerequisites":["lesson_handling","role_models"]}',
             200,
           );
         }
@@ -99,7 +99,7 @@ void main() {
             ? '[]'
             : request.url.path.endsWith('/projects')
             ? '{"projects":[]}'
-            : '{"revision":"1","roles":[],"models":[],"device_preferences":[],"discovered_devices":[],"execution_ready":false,"unmet_prerequisites":["lesson_handling"]}',
+            : '{"revision":"1","roles":[],"models":[],"device_preferences":[],"endpoints":[],"source_accounts":[],"discovered_devices":[],"execution_ready":false,"unmet_prerequisites":["lesson_handling"]}',
         200,
       ),
     );

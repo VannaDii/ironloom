@@ -596,6 +596,23 @@ final class RepositorySlug implements WireModel {
   String toString() => value;
 }
 
+enum ProviderDialect implements WireModel {
+  responses('responses'),
+  anthropic('anthropic'),
+  chatCompletions('chat_completions');
+
+  const ProviderDialect(this.value);
+  final String value;
+  static ProviderDialect fromJson(Object? json) => values.firstWhere(
+    (v) => v.value == json,
+    orElse: () => _fail(r'$', 'invalid_structure'),
+  );
+  @override
+  String toJson() => value;
+  @override
+  void validate() {}
+}
+
 enum LessonHandling implements WireModel {
   shareAcrossProjects('share_across_projects'),
   projectOnly('project_only'),
@@ -1306,6 +1323,118 @@ final class FactoryArtifact implements WireModel {
     'kind': _json(kind),
     'content_hash': _json(contentHash),
     'payload': _json(payload),
+  };
+}
+
+final class ProviderEndpoint implements WireModel {
+  factory ProviderEndpoint({
+    required ActorId provider,
+    required String base,
+    required ProviderDialect dialect,
+    required BillingMode billing,
+    required bool streaming,
+    required bool tools,
+    required bool streamUsage,
+    required List<ActorId> reasoningEfforts,
+  }) => ProviderEndpoint.fromJson({
+    'provider': _json(provider),
+    'base': _json(base),
+    'dialect': _json(dialect),
+    'billing': _json(billing),
+    'streaming': _json(streaming),
+    'tools': _json(tools),
+    'stream_usage': _json(streamUsage),
+    'reasoning_efforts': _json(reasoningEfforts),
+  });
+  ProviderEndpoint._(
+    this.provider,
+    this.base,
+    this.dialect,
+    this.billing,
+    this.streaming,
+    this.tools,
+    this.streamUsage,
+    this.reasoningEfforts,
+  );
+  factory ProviderEndpoint.fromJson(Object? json) {
+    final r = _Reader(json, [
+      "provider",
+      "base",
+      "dialect",
+      "billing",
+      "streaming",
+      "tools",
+      "stream_usage",
+      "reasoning_efforts",
+    ]);
+    final value = ProviderEndpoint._(
+      r.read('provider', ActorId.fromJson),
+      r.read('base', _string),
+      r.read('dialect', ProviderDialect.fromJson),
+      r.read('billing', BillingMode.fromJson),
+      r.read('streaming', _boolean),
+      r.read('tools', _boolean),
+      r.read('stream_usage', _boolean),
+      r.read('reasoning_efforts', (v) => _list(v, ActorId.fromJson)),
+    );
+    value.validate();
+    return value;
+  }
+  final ActorId provider;
+  final String base;
+  final ProviderDialect dialect;
+  final BillingMode billing;
+  final bool streaming;
+  final bool tools;
+  final bool streamUsage;
+  final List<ActorId> reasoningEfforts;
+  @override
+  void validate() {
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'provider': _json(provider),
+    'base': _json(base),
+    'dialect': _json(dialect),
+    'billing': _json(billing),
+    'streaming': _json(streaming),
+    'tools': _json(tools),
+    'stream_usage': _json(streamUsage),
+    'reasoning_efforts': _json(reasoningEfforts),
+  };
+}
+
+final class SourceAccountBinding implements WireModel {
+  factory SourceAccountBinding({
+    required ActorId host,
+    required SourceAccountAccess access,
+  }) => SourceAccountBinding.fromJson({
+    'host': _json(host),
+    'access': _json(access),
+  });
+  SourceAccountBinding._(this.host, this.access);
+  factory SourceAccountBinding.fromJson(Object? json) {
+    final r = _Reader(json, ["host", "access"]);
+    final value = SourceAccountBinding._(
+      r.read('host', ActorId.fromJson),
+      r.read('access', SourceAccountAccess.fromJson),
+    );
+    value.validate();
+    return value;
+  }
+  final ActorId host;
+  final SourceAccountAccess access;
+  @override
+  void validate() {
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'host': _json(host),
+    'access': _json(access),
   };
 }
 
@@ -4723,20 +4852,33 @@ final class ConfigurationChange implements WireModel {
     List<RoleConfiguration>? roles,
     List<ModelProfileConfiguration>? models,
     List<DevicePreference>? devicePreferences,
+    List<ProviderEndpoint>? endpoints,
+    List<SourceAccountBinding>? sourceAccounts,
   }) => ConfigurationChange.fromJson({
     'setup': _json(setup),
     'roles': _json(roles),
     'models': _json(models),
     'device_preferences': _json(devicePreferences),
+    'endpoints': _json(endpoints),
+    'source_accounts': _json(sourceAccounts),
   });
   ConfigurationChange._(
     this.setup,
     this.roles,
     this.models,
     this.devicePreferences,
+    this.endpoints,
+    this.sourceAccounts,
   );
   factory ConfigurationChange.fromJson(Object? json) {
-    final r = _Reader(json, ["setup", "roles", "models", "device_preferences"]);
+    final r = _Reader(json, [
+      "setup",
+      "roles",
+      "models",
+      "device_preferences",
+      "endpoints",
+      "source_accounts",
+    ]);
     final value = ConfigurationChange._(
       r.optional('setup', FactorySetup.fromJson),
       r.optional('roles', (v) => _list(v, RoleConfiguration.fromJson)),
@@ -4744,6 +4886,11 @@ final class ConfigurationChange implements WireModel {
       r.optional(
         'device_preferences',
         (v) => _list(v, DevicePreference.fromJson),
+      ),
+      r.optional('endpoints', (v) => _list(v, ProviderEndpoint.fromJson)),
+      r.optional(
+        'source_accounts',
+        (v) => _list(v, SourceAccountBinding.fromJson),
       ),
     );
     value.validate();
@@ -4753,6 +4900,8 @@ final class ConfigurationChange implements WireModel {
   final List<RoleConfiguration>? roles;
   final List<ModelProfileConfiguration>? models;
   final List<DevicePreference>? devicePreferences;
+  final List<ProviderEndpoint>? endpoints;
+  final List<SourceAccountBinding>? sourceAccounts;
   @override
   void validate() {
     _validateModel(this);
@@ -4764,6 +4913,8 @@ final class ConfigurationChange implements WireModel {
     'roles': _json(roles),
     'models': _json(models),
     'device_preferences': _json(devicePreferences),
+    'endpoints': _json(endpoints),
+    'source_accounts': _json(sourceAccounts),
   };
 }
 
@@ -4828,6 +4979,8 @@ final class ConfigurationSnapshot implements WireModel {
     required List<RoleConfiguration> roles,
     required List<ModelProfileConfiguration> models,
     required List<DevicePreference> devicePreferences,
+    required List<ProviderEndpoint> endpoints,
+    required List<SourceAccountBinding> sourceAccounts,
     required List<DeviceIdentity> discoveredDevices,
     required bool executionReady,
     required List<ActorId> unmetPrerequisites,
@@ -4838,6 +4991,8 @@ final class ConfigurationSnapshot implements WireModel {
     'roles': _json(roles),
     'models': _json(models),
     'device_preferences': _json(devicePreferences),
+    'endpoints': _json(endpoints),
+    'source_accounts': _json(sourceAccounts),
     'discovered_devices': _json(discoveredDevices),
     'execution_ready': _json(executionReady),
     'unmet_prerequisites': _json(unmetPrerequisites),
@@ -4849,6 +5004,8 @@ final class ConfigurationSnapshot implements WireModel {
     this.roles,
     this.models,
     this.devicePreferences,
+    this.endpoints,
+    this.sourceAccounts,
     this.discoveredDevices,
     this.executionReady,
     this.unmetPrerequisites,
@@ -4861,6 +5018,8 @@ final class ConfigurationSnapshot implements WireModel {
       "roles",
       "models",
       "device_preferences",
+      "endpoints",
+      "source_accounts",
       "discovered_devices",
       "execution_ready",
       "unmet_prerequisites",
@@ -4872,6 +5031,8 @@ final class ConfigurationSnapshot implements WireModel {
       r.read('roles', (v) => _list(v, RoleConfiguration.fromJson)),
       r.read('models', (v) => _list(v, ModelProfileConfiguration.fromJson)),
       r.read('device_preferences', (v) => _list(v, DevicePreference.fromJson)),
+      r.read('endpoints', (v) => _list(v, ProviderEndpoint.fromJson)),
+      r.read('source_accounts', (v) => _list(v, SourceAccountBinding.fromJson)),
       r.read('discovered_devices', (v) => _list(v, DeviceIdentity.fromJson)),
       r.read('execution_ready', _boolean),
       r.read('unmet_prerequisites', (v) => _list(v, ActorId.fromJson)),
@@ -4885,6 +5046,8 @@ final class ConfigurationSnapshot implements WireModel {
   final List<RoleConfiguration> roles;
   final List<ModelProfileConfiguration> models;
   final List<DevicePreference> devicePreferences;
+  final List<ProviderEndpoint> endpoints;
+  final List<SourceAccountBinding> sourceAccounts;
   final List<DeviceIdentity> discoveredDevices;
   final bool executionReady;
   final List<ActorId> unmetPrerequisites;
@@ -4902,6 +5065,8 @@ final class ConfigurationSnapshot implements WireModel {
     'roles': _json(roles),
     'models': _json(models),
     'device_preferences': _json(devicePreferences),
+    'endpoints': _json(endpoints),
+    'source_accounts': _json(sourceAccounts),
     'discovered_devices': _json(discoveredDevices),
     'execution_ready': _json(executionReady),
     'unmet_prerequisites': _json(unmetPrerequisites),

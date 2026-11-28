@@ -19,7 +19,7 @@ Future<void> settleHttp(WidgetTester tester) async {
 String session(String method) =>
     '{"operator_id":"authenticated-user","session_id":"opaque","method":"$method","expires_at_ms":"100000"}';
 http.Response configuration() => http.Response(
-  '{"revision":"1","roles":[],"models":[],"device_preferences":[],"discovered_devices":[],"execution_ready":false,"unmet_prerequisites":["lesson_handling"]}',
+  '{"revision":"1","roles":[],"models":[],"device_preferences":[],"endpoints":[],"source_accounts":[],"discovered_devices":[],"execution_ready":false,"unmet_prerequisites":["lesson_handling"]}',
   200,
 );
 void main() {

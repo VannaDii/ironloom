@@ -18,6 +18,8 @@ void main() {
         'roles': [],
         'models': [],
         'device_preferences': [],
+        'endpoints': <Object?>[],
+        'source_accounts': <Object?>[],
         'discovered_devices': [],
         'execution_ready': false,
         'unmet_prerequisites': ['role_models'],

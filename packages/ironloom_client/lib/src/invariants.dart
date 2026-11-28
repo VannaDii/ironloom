@@ -538,13 +538,55 @@ void _validateModel(WireModel model) {
               v.items.first.itemId.value != v.nextBefore!.value)) {
         _fail('next_before', 'oldest_item_required');
       }
+    case ProviderEndpoint v:
+      final uri = Uri.tryParse(v.base.trim());
+      final host =
+          uri?.host.toLowerCase().replaceAll('[', '').replaceAll(']', '') ?? '';
+      final parts = host.split('.');
+      final ipv4Loopback =
+          parts.length == 4 &&
+          parts.first == '127' &&
+          parts.every((part) {
+            final byte = int.tryParse(part);
+            return byte != null && byte >= 0 && byte <= 255;
+          });
+      final loopback = host == 'localhost' || host == '::1' || ipv4Loopback;
+      if (uri == null ||
+          host.isEmpty ||
+          !(uri.scheme == 'https' || (uri.scheme == 'http' && loopback)) ||
+          uri.userInfo.isNotEmpty ||
+          uri.hasQuery ||
+          uri.hasFragment) {
+        _fail('base', 'invalid_api_base');
+      }
+      if (v.billing == BillingMode.localEstimate ||
+          (v.dialect == ProviderDialect.anthropic &&
+              v.billing != BillingMode.apiKey)) {
+        _fail('billing', 'unsupported_endpoint_billing');
+      }
+      final canonical = uri.hasPort && uri.port == 443
+          ? uri.replace(port: 0).toString().replaceFirst(':0/', '/')
+          : uri.toString();
+      if (v.billing == BillingMode.account &&
+          (v.dialect != ProviderDialect.responses ||
+              canonical != 'https://chatgpt.com/backend-api/codex/' ||
+              !v.streaming)) {
+        _fail('billing', 'unsupported_account_endpoint');
+      }
+      if (v.reasoningEfforts.map((effort) => effort.value).toSet().length !=
+          v.reasoningEfforts.length) {
+        _fail('reasoning_efforts', 'duplicate_effort');
+      }
     case ConfigurationChange v:
       if (v.setup == null &&
           v.roles == null &&
           v.models == null &&
-          v.devicePreferences == null) {
+          v.devicePreferences == null &&
+          v.endpoints == null &&
+          v.sourceAccounts == null) {
         _fail(r'$', 'configuration_change_required');
       }
+      _configurationBindings(v.endpoints, v.sourceAccounts);
     case ConfigurationCommand v:
       if (v.projectId != null && v.changes.setup != null) {
         _fail('changes.setup', 'installation_scope_required');
@@ -570,6 +612,7 @@ void _validateModel(WireModel model) {
       )) {
         _fail('roles', 'unknown_model_profile');
       }
+      _configurationBindings(v.endpoints, v.sourceAccounts);
     case LessonMutation v:
       if ((v.operation == LessonOperation.edit) != (v.content != null)) {
         _fail('content', 'edit_content_required_only');
@@ -733,4 +776,20 @@ BigInt? _completeDemand(EngineRequirements value) {
     if (total > BigInt.parse('18446744073709551615')) return null;
   }
   return total;
+}
+
+void _configurationBindings(
+  List<ProviderEndpoint>? endpoints,
+  List<SourceAccountBinding>? sources,
+) {
+  if (endpoints != null &&
+      endpoints.map((endpoint) => endpoint.provider.value).toSet().length !=
+          endpoints.length) {
+    _fail('endpoints', 'duplicate_provider');
+  }
+  if (sources != null &&
+      sources.map((source) => source.host.value).toSet().length !=
+          sources.length) {
+    _fail('source_accounts', 'duplicate_host');
+  }
 }

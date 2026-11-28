@@ -2,6 +2,48 @@ import 'package:ironloom_client/ironloom_client.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test(
+    'source account and endpoint choices validate through browser decode',
+    () {
+      final binding = decode(
+        '{"host":"huggingface","access":{"type":"credential","credential_id":"source"}}',
+        SourceAccountBinding.fromJson,
+      );
+      expect(binding.access.credentialId!.value, 'source');
+      expect(
+        () => decode(
+          '{"host":"huggingface","access":{"type":"anonymous","credential_id":"source"}}',
+          SourceAccountBinding.fromJson,
+        ),
+        throwsA(isA<ValidationErrors>()),
+      );
+      expect(
+        () => decode(
+          '{"host":"huggingface","access":{"type":"credential"}}',
+          SourceAccountBinding.fromJson,
+        ),
+        throwsA(isA<ValidationErrors>()),
+      );
+      final endpoint = ProviderEndpoint(
+        provider: ActorId('custom'),
+        base: 'https://provider.fixture/v1',
+        dialect: ProviderDialect.chatCompletions,
+        billing: BillingMode.apiKey,
+        streaming: false,
+        tools: true,
+        streamUsage: false,
+        reasoningEfforts: [],
+      );
+      expect(ProviderEndpoint.fromJson(endpoint.toJson()).base, endpoint.base);
+      expect(
+        () => ProviderEndpoint.fromJson({
+          ...endpoint.toJson(),
+          'base': 'https://secret@provider.fixture/v1',
+        }),
+        throwsA(isA<ValidationErrors>()),
+      );
+    },
+  );
   test('pending pause survives actual browser decode without becoming confirmed pause', () {
     final value = <String, Object?>{
       'session': <String, Object?>{
