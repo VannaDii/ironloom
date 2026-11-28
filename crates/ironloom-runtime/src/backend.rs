@@ -172,6 +172,7 @@ impl FactoryBackend {
         &self,
         operator: &OperatorId,
         profiles: &[ModelProfileConfiguration],
+        endpoints: &[ironloom_config::factory::ProviderEndpoint],
         preferences: &[ironloom_config::factory::DevicePreference],
         mut batch: Option<&mut Batch>,
     ) -> Result<BTreeSet<ModelProfileId>, ServiceError> {
@@ -183,6 +184,15 @@ impl FactoryBackend {
                 self.infrastructure.providers.contains(&profile.provider)
             };
             if !adapter {
+                continue;
+            }
+            if profile.engine.is_none()
+                && !endpoints.iter().any(|endpoint| {
+                    endpoint.provider == profile.provider
+                        && endpoint.billing == profile.billing
+                        && endpoint.streaming
+                })
+            {
                 continue;
             }
             if profile.engine.is_none() && profile.credential_id.is_none() {
@@ -283,14 +293,31 @@ impl FactoryBackend {
         } else {
             base
         };
-        let available = self
+        let mut available = self
             .usable_profiles(
                 &session.operator_id,
                 &effective.models,
+                &effective.endpoints,
                 &effective.device_preferences,
                 batch.as_deref_mut(),
             )
             .await?;
+        for role in effective.roles.iter().filter(|role| role.enabled) {
+            if let Some(profile) = effective
+                .models
+                .iter()
+                .find(|profile| Some(&profile.profile_id) == role.model_profile_id.as_ref())
+                && profile.engine.is_none()
+                && role.reasoning_effort.as_ref().is_some_and(|effort| {
+                    !effective.endpoints.iter().any(|endpoint| {
+                        endpoint.provider == profile.provider
+                            && endpoint.reasoning_efforts.contains(effort)
+                    })
+                })
+            {
+                available.remove(&profile.profile_id);
+            }
+        }
         let node = if let Some(batch) = batch {
             batch.node_enrollment(&self.infrastructure.node_id).await
         } else {
@@ -354,7 +381,7 @@ impl FactoryBackend {
         if request.changes.setup.as_ref().is_some_and(|setup| {
             setup.lesson_handling == ironloom_config::factory::LessonHandling::ShareAcrossProjects
         }) {
-            self.require(&session.operator_id, resource, Permission::Share)
+            self.require(&session.operator_id, resource.clone(), Permission::Share)
                 .await?;
         }
         let payload = value(&request)?;
@@ -369,9 +396,38 @@ impl FactoryBackend {
             .await
             .map_err(database)?;
         let mut batch = match operation {
-            Operation::Replay(outcome) => return read(outcome),
+            Operation::Replay(outcome) => {
+                self.authenticated(&session).await?;
+                self.require(&session.operator_id, resource.clone(), Permission::Manage)
+                    .await?;
+                if request.changes.setup.as_ref().is_some_and(|setup| {
+                    setup.lesson_handling
+                        == ironloom_config::factory::LessonHandling::ShareAcrossProjects
+                }) {
+                    self.require(&session.operator_id, resource, Permission::Share)
+                        .await?;
+                }
+                return read(outcome);
+            }
             Operation::Write(batch) => batch,
         };
+        if !batch
+            .session_active(&session.session_id)
+            .await
+            .map_err(database)?
+        {
+            return Err(ServiceError::Authentication(
+                AuthenticationError::Unauthenticated,
+            ));
+        }
+        self.require(&session.operator_id, resource.clone(), Permission::Manage)
+            .await?;
+        if request.changes.setup.as_ref().is_some_and(|setup| {
+            setup.lesson_handling == ironloom_config::factory::LessonHandling::ShareAcrossProjects
+        }) {
+            self.require(&session.operator_id, resource, Permission::Share)
+                .await?;
+        }
         let key = configuration_key(request.project_id.as_ref())?;
         let previous = batch
             .get(CONFIGURATION_KIND, &key)

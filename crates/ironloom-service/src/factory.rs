@@ -903,19 +903,25 @@ ConfigurationChange, ConfigurationChangeData {
     models: Option<Vec<ironloom_config::factory::ModelProfileConfiguration>>,
     /// Explicit enable/disable choices; never accept client-supplied discovery facts.
     device_preferences: Option<Vec<ironloom_config::factory::DevicePreference>>,
+    /// Replace explicit provider endpoints in the chosen scope; no secrets or inference probes.
+    endpoints: Option<Vec<ironloom_config::factory::ProviderEndpoint>>,
+    /// Replace explicit host/account choices; omission inherits, an empty list clears the scope.
+    source_accounts: Option<Vec<ironloom_config::factory::SourceAccountBinding>>,
 } |value| {
     let _ = value;
     if value.setup.is_none()
         && value.roles.is_none()
         && value.models.is_none()
         && value.device_preferences.is_none()
+        && value.endpoints.is_none()
+        && value.source_accounts.is_none()
     {
         return Err(ValidationErrors::field(
             "$",
             "configuration_change_required",
         ));
     }
-    Ok(())
+    configuration_bindings(value.endpoints.as_deref(),value.source_accounts.as_deref())
 }
 }
 ironloom_core::contract! {
@@ -956,6 +962,10 @@ ConfigurationSnapshot, ConfigurationSnapshotData {
     models: Vec<ironloom_config::factory::ModelProfileConfiguration>,
     /// Explicit enable/disable settings.
     device_preferences: Vec<ironloom_config::factory::DevicePreference>,
+    /// Effective explicit provider endpoint definitions, inherited only where not overridden.
+    endpoints: Vec<ironloom_config::factory::ProviderEndpoint>,
+    /// Effective explicit source-account bindings; credential material is never exposed.
+    source_accounts: Vec<ironloom_config::factory::SourceAccountBinding>,
     /// Server-resolved device identities; simulations remain unqualified.
     discovered_devices: Vec<ironloom_models::factory::DeviceIdentity>,
     /// Execution readiness independent of functioning setup/web readiness.
@@ -993,8 +1003,35 @@ ConfigurationSnapshot, ConfigurationSnapshotData {
     }) {
         return Err(ValidationErrors::field("roles", "unknown_model_profile"));
     }
-    Ok(())
+    configuration_bindings(Some(&value.endpoints),Some(&value.source_accounts))
 }
+}
+
+fn configuration_bindings(
+    endpoints: Option<&[ironloom_config::factory::ProviderEndpoint]>,
+    accounts: Option<&[ironloom_config::factory::SourceAccountBinding]>,
+) -> Result<(), ValidationErrors> {
+    if let Some(endpoints) = endpoints
+        && endpoints
+            .iter()
+            .map(|endpoint| &endpoint.provider)
+            .collect::<std::collections::BTreeSet<_>>()
+            .len()
+            != endpoints.len()
+    {
+        return Err(ValidationErrors::field("endpoints", "duplicate_provider"));
+    }
+    if let Some(accounts) = accounts
+        && accounts
+            .iter()
+            .map(|account| &account.host)
+            .collect::<std::collections::BTreeSet<_>>()
+            .len()
+            != accounts.len()
+    {
+        return Err(ValidationErrors::field("source_accounts", "duplicate_host"));
+    }
+    Ok(())
 }
 /// Lesson management operation; no action grants approval or private-source access.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]

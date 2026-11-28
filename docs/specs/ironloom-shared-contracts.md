@@ -239,3 +239,7 @@ only explicit completion, confirmed termination or established non-dispatch perm
 Control flags and fenced starts lock the same dispatch row. Pausing yields its executor
 claim only after quiescence; resuming receives a new fence. No model was run to implement
 or test these records. Full role/tool/worktree orchestration remains under implementation.
+
+Configuration adds `endpoints` (provider, API base, explicit dialect/billing, streaming/tools/usage support and effort labels) and `source_accounts` (host plus exactly one anonymous choice or credential reference). Both use `/api/v1/configuration`, inherit by scope, and replace the selected list only when supplied; an empty list clears it. Endpoint URLs reject embedded credentials, query strings, fragments and remote plaintext HTTP. Missing endpoints, incompatible billing or unsupported selected effort block remote-profile readiness without probing a provider. Downloads retain their selected source binding privately; runtime source/engine callback integration remains in progress.
+
+`ProviderDialect` is `responses`, `anthropic`, or `chat_completions`. `SourceAccess` is `{ "type": "anonymous" }` or `{ "type": "credential", "credential_id": "…" }`. Provider IDs and source host IDs must be unique within each replacement list. Account endpoints must explicitly select the supported Responses account base; service login/native control enrollment never supplies inference eligibility. Nested validation errors preserve each field-path segment exactly once.

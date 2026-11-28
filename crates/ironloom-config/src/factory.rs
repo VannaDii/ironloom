@@ -3,6 +3,80 @@ use ironloom_core::validation::{ValidationErrors, required};
 use ironloom_core::{ActorId, CredentialId, DeviceId, InstructionId, ModelProfileId};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+
+/// Explicit HTTP protocol selection; a failed request never selects another dialect.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ProviderDialect {
+    /// Responses streaming API, including explicitly selected eligible account inference.
+    Responses,
+    /// Anthropic Messages API.
+    Anthropic,
+    /// Explicitly configured OpenAI-compatible Chat Completions API.
+    ChatCompletions,
+}
+ironloom_core::contract! {
+/// Human-configured endpoint metadata. Credentials remain separate protected references.
+ProviderEndpoint, ProviderEndpointData {
+    /// Unique provider identity matched by model profiles and every dispatched request.
+    provider: ActorId,
+    /// API base without embedded credentials, query or fragment.
+    base: String,
+    /// Explicit wire dialect, independent from billing.
+    dialect: ProviderDialect,
+    /// Authorized account/API billing choice; local engines are configured separately.
+    billing: ironloom_observability::factory::BillingMode,
+    /// Declared streaming support, without a capability probe.
+    streaming: bool,
+    /// Declared tool-call support; adapters do not execute tools.
+    tools: bool,
+    /// Declared support for reported usage in the stream.
+    stream_usage: bool,
+    /// Supported explicit reasoning effort labels; empty means unsupported.
+    reasoning_efforts: Vec<ActorId>,
+} |value| {
+    let base=url::Url::parse(&value.base).map_err(|_|ValidationErrors::field("base","invalid_api_base"))?;
+    let local=base.host_str().is_some_and(|host| host=="localhost" || host.trim_matches(['[',']']).parse::<std::net::IpAddr>().is_ok_and(|ip|ip.is_loopback()));
+    if base.host_str().is_none() || !(base.scheme()=="https" || (base.scheme()=="http" && local))
+        || !base.username().is_empty() || base.password().is_some() || base.query().is_some() || base.fragment().is_some() {
+        return Err(ValidationErrors::field("base","invalid_api_base"));
+    }
+    use ironloom_observability::factory::BillingMode;
+    if value.billing==BillingMode::LocalEstimate || (value.dialect==ProviderDialect::Anthropic && value.billing!=BillingMode::ApiKey) {
+        return Err(ValidationErrors::field("billing","unsupported_endpoint_billing"));
+    }
+    if value.billing==BillingMode::Account && (value.dialect!=ProviderDialect::Responses || base.as_str()!="https://chatgpt.com/backend-api/codex/" || !value.streaming) {
+        return Err(ValidationErrors::field("billing","unsupported_account_endpoint"));
+    }
+    if value.reasoning_efforts.iter().collect::<std::collections::BTreeSet<_>>().len()!=value.reasoning_efforts.len() {
+        return Err(ValidationErrors::field("reasoning_efforts","duplicate_effort"));
+    }
+    Ok(())
+}
+}
+/// Exactly one explicit source access choice. Absence is not anonymous consent.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(
+    tag = "type",
+    content = "credential_id",
+    rename_all = "snake_case",
+    deny_unknown_fields
+)]
+pub enum SourceAccess {
+    /// Explicit anonymous access, supported only where the selected source permits it.
+    Anonymous,
+    /// Live-authorized credential use, resolved only inside trusted service wiring.
+    Credential(CredentialId),
+}
+ironloom_core::contract! {
+/// Scoped source-host access configuration; publisher identity is independent of hosting.
+SourceAccountBinding, SourceAccountBindingData {
+    /// Stable adapter host identity, not a browser-supplied credential endpoint.
+    host: ActorId,
+    /// Explicit anonymous or credential reference choice.
+    access: SourceAccess,
+} |value| { let _=value; Ok(()) }
+}
 /// Required explicit setup choice; no implicit default.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]

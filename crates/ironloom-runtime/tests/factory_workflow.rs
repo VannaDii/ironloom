@@ -169,12 +169,48 @@ async fn human_input_atomically_creates_owned_queue_history_and_instruction_copi
         )
         .await
         .unwrap();
-    let configuration:ConfigurationCommand=serde_json::from_value(json!({"command_id":"setup-workflow","project_id":null,"expected_revision":"1","changes":{"setup":{"lesson_handling":"project_only","delivery_confirmed":true,"publish_branch":false,"merge":false,"deploy":false},"models":[{"profile_id":"fixture-profile","provider":"fixture","model_id":"scripted","generation_controls":{"max_output_tokens":"128","max_duration_ms":"1000","repetition_window":"16"},"credential_id":credential,"billing":"api_key","engine":null,"device_bindings":[]}],"roles":[{"role_id":"product-manager","enabled":true,"model_profile_id":"fixture-profile","reasoning_applicable":false,"reasoning_effort":null,"device_bindings":[],"instructions_id":"product-manager"}]}})).unwrap();
+    let configuration:ConfigurationCommand=serde_json::from_value(json!({"command_id":"setup-workflow","project_id":null,"expected_revision":"1","changes":{"setup":{"lesson_handling":"project_only","delivery_confirmed":true,"publish_branch":false,"merge":false,"deploy":false},"source_accounts":[{"host":"huggingface","access":{"type":"anonymous"}}],"endpoints":[{"provider":"fixture","base":"http://127.0.0.1:8099/","dialect":"responses","billing":"api_key","streaming":true,"tools":true,"stream_usage":true,"reasoning_efforts":[]}],"models":[{"profile_id":"fixture-profile","provider":"fixture","model_id":"scripted","generation_controls":{"max_output_tokens":"128","max_duration_ms":"1000","repetition_window":"16"},"credential_id":credential,"billing":"api_key","engine":null,"device_bindings":[]}],"roles":[{"role_id":"product-manager","enabled":true,"model_profile_id":"fixture-profile","reasoning_applicable":false,"reasoning_effort":null,"device_bindings":[],"instructions_id":"product-manager"}]}})).unwrap();
     let config = backend
         .configure(alice.session.clone(), configuration)
         .await
         .unwrap();
     assert!(config.execution_ready, "{:?}", config.unmet_prerequisites);
+    assert_eq!(
+        backend
+            .configuration(alice.session.clone(), None)
+            .await
+            .unwrap()
+            .endpoints,
+        config.endpoints
+    );
+    assert_eq!(config.source_accounts[0].host.as_str(), "huggingface");
+    let project_override = |key: &str, revision: u64, endpoints: serde_json::Value| {
+        serde_json::from_value(json!({"command_id":key,"project_id":project,"expected_revision":revision.to_string(),"changes":{"endpoints":endpoints}})).unwrap()
+    };
+    let unavailable = backend
+        .configure(
+            alice.session.clone(),
+            project_override("clear-project-endpoints", 1, json!([])),
+        )
+        .await
+        .unwrap();
+    assert!(!unavailable.execution_ready);
+    assert!(unavailable.endpoints.is_empty());
+    assert_eq!(unavailable.source_accounts, config.source_accounts);
+    let restored = backend
+        .configure(
+            alice.session.clone(),
+            project_override(
+                "set-project-endpoints",
+                2,
+                serde_json::to_value(&config.endpoints).unwrap(),
+            ),
+        )
+        .await
+        .unwrap();
+    assert!(restored.execution_ready);
+    assert_eq!(restored.endpoints, config.endpoints);
+
     let initial = backend
         .create_conversation(
             alice.session.clone(),

@@ -101,6 +101,25 @@ fn rust_and_dart_shared_decode_fixtures() {
         }
     }
 }
+
+#[test]
+fn endpoint_construction_and_decode_reject_the_same_redacted_secrets() {
+    use ironloom_config::factory::{ProviderEndpoint, ProviderEndpointData};
+    let draft = ProviderEndpointData {
+        provider: ironloom_core::ActorId::new("configured-provider").unwrap(),
+        base: "https://user:never-return-this@api.example.test/".into(),
+        dialect: ironloom_config::factory::ProviderDialect::Responses,
+        billing: ironloom_observability::factory::BillingMode::ApiKey,
+        streaming: true,
+        tools: true,
+        stream_usage: true,
+        reasoning_efforts: vec![],
+    };
+    let bytes = serde_json::to_vec(&draft).unwrap();
+    let constructor = ProviderEndpoint::new(draft).unwrap_err();
+    assert_eq!(constructor, decode::<ProviderEndpoint>(&bytes).unwrap_err());
+    assert!(!constructor.to_string().contains("never-return-this"));
+}
 #[test]
 fn instruction_constructor_and_deserializer_share_cross_field_invariants() {
     use ironloom_core::{AssignmentId, Counter, InstructionId};

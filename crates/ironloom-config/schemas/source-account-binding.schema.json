@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/SourceAccountBindingData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "CredentialId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom CredentialId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "SourceAccess": {
+      "description": "Exactly one explicit source access choice. Absence is not anonymous consent.",
+      "oneOf": [
+        {
+          "description": "Explicit anonymous access, supported only where the selected source permits it.",
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "anonymous"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "description": "Live-authorized credential use, resolved only inside trusted service wiring.",
+          "type": "object",
+          "properties": {
+            "credential_id": {
+              "$ref": "#/$defs/CredentialId"
+            },
+            "type": {
+              "type": "string",
+              "const": "credential"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "credential_id"
+          ]
+        }
+      ]
+    },
+    "SourceAccountBindingData": {
+      "description": "Unchecked construction draft for `SourceAccountBinding`; validate before use.",
+      "type": "object",
+      "properties": {
+        "access": {
+          "description": "Explicit anonymous or credential reference choice.",
+          "$ref": "#/$defs/SourceAccess"
+        },
+        "host": {
+          "description": "Stable adapter host identity, not a browser-supplied credential endpoint.",
+          "$ref": "#/$defs/ActorId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "host",
+        "access"
+      ]
+    }
+  }
+}

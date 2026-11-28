@@ -2891,7 +2891,9 @@
         "execution_ready": false,
         "unmet_prerequisites": [
           "lesson_handling"
-        ]
+        ],
+        "endpoints": [],
+        "source_accounts": []
       },
       "expected_errors": []
     },
@@ -2909,7 +2911,9 @@
         "execution_ready": true,
         "unmet_prerequisites": [
           "lesson_handling"
-        ]
+        ],
+        "endpoints": [],
+        "source_accounts": []
       },
       "expected_errors": [
         {
@@ -4542,7 +4546,9 @@
         "execution_ready": false,
         "unmet_prerequisites": [
           "lesson_handling"
-        ]
+        ],
+        "endpoints": [],
+        "source_accounts": []
       },
       "expected_errors": [
         {
@@ -4789,6 +4795,433 @@
         {
           "field": "pause_requested",
           "code": "assignment_control_state_required"
+        }
+      ]
+    },
+    {
+      "contract": "configuration_command",
+      "name": "explicit-endpoint-and-source-access",
+      "input": {
+        "command_id": "configure-endpoints",
+        "project_id": null,
+        "expected_revision": "1",
+        "changes": {
+          "endpoints": [
+            {
+              "provider": "configured-provider",
+              "base": "https://api.example.test/v1/",
+              "dialect": "responses",
+              "billing": "api_key",
+              "streaming": true,
+              "tools": true,
+              "stream_usage": true,
+              "reasoning_efforts": [
+                "medium"
+              ]
+            }
+          ],
+          "source_accounts": [
+            {
+              "host": "huggingface",
+              "access": {
+                "type": "anonymous"
+              }
+            },
+            {
+              "host": "kaggle",
+              "access": {
+                "type": "credential",
+                "credential_id": "selected-source-account"
+              }
+            }
+          ]
+        }
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "configuration_command",
+      "name": "endpoint-userinfo",
+      "input": {
+        "command_id": "configure-endpoints",
+        "project_id": null,
+        "expected_revision": "1",
+        "changes": {
+          "endpoints": [
+            {
+              "provider": "configured-provider",
+              "base": "https://user:never-echo-this@api.example.test/",
+              "dialect": "responses",
+              "billing": "api_key",
+              "streaming": true,
+              "tools": true,
+              "stream_usage": true,
+              "reasoning_efforts": [
+                "medium"
+              ]
+            }
+          ]
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "changes.endpoints.0.base",
+          "code": "invalid_api_base"
+        }
+      ]
+    },
+    {
+      "contract": "configuration_command",
+      "name": "endpoint-query-secret",
+      "input": {
+        "command_id": "configure-endpoints",
+        "project_id": null,
+        "expected_revision": "1",
+        "changes": {
+          "endpoints": [
+            {
+              "provider": "configured-provider",
+              "base": "https://api.example.test/?token=never-echo-this",
+              "dialect": "responses",
+              "billing": "api_key",
+              "streaming": true,
+              "tools": true,
+              "stream_usage": true,
+              "reasoning_efforts": [
+                "medium"
+              ]
+            }
+          ]
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "changes.endpoints.0.base",
+          "code": "invalid_api_base"
+        }
+      ]
+    },
+    {
+      "contract": "configuration_command",
+      "name": "endpoint-remote-plaintext",
+      "input": {
+        "command_id": "configure-endpoints",
+        "project_id": null,
+        "expected_revision": "1",
+        "changes": {
+          "endpoints": [
+            {
+              "provider": "configured-provider",
+              "base": "http://api.example.test/",
+              "dialect": "responses",
+              "billing": "api_key",
+              "streaming": true,
+              "tools": true,
+              "stream_usage": true,
+              "reasoning_efforts": [
+                "medium"
+              ]
+            }
+          ]
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "changes.endpoints.0.base",
+          "code": "invalid_api_base"
+        }
+      ]
+    },
+    {
+      "contract": "configuration_command",
+      "name": "endpoint-local-billing",
+      "input": {
+        "command_id": "configure-endpoints",
+        "project_id": null,
+        "expected_revision": "1",
+        "changes": {
+          "endpoints": [
+            {
+              "provider": "configured-provider",
+              "base": "https://api.example.test/v1/",
+              "dialect": "responses",
+              "billing": "local_estimate",
+              "streaming": true,
+              "tools": true,
+              "stream_usage": true,
+              "reasoning_efforts": [
+                "medium"
+              ]
+            }
+          ]
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "changes.endpoints.0.billing",
+          "code": "unsupported_endpoint_billing"
+        }
+      ]
+    },
+    {
+      "contract": "configuration_command",
+      "name": "endpoint-account-wrong-host",
+      "input": {
+        "command_id": "configure-endpoints",
+        "project_id": null,
+        "expected_revision": "1",
+        "changes": {
+          "endpoints": [
+            {
+              "provider": "configured-provider",
+              "base": "https://api.example.test/v1/",
+              "dialect": "responses",
+              "billing": "account",
+              "streaming": true,
+              "tools": true,
+              "stream_usage": true,
+              "reasoning_efforts": [
+                "medium"
+              ]
+            }
+          ]
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "changes.endpoints.0.billing",
+          "code": "unsupported_account_endpoint"
+        }
+      ]
+    },
+    {
+      "contract": "configuration_command",
+      "name": "endpoint-duplicate-effort",
+      "input": {
+        "command_id": "configure-endpoints",
+        "project_id": null,
+        "expected_revision": "1",
+        "changes": {
+          "endpoints": [
+            {
+              "provider": "configured-provider",
+              "base": "https://api.example.test/v1/",
+              "dialect": "responses",
+              "billing": "api_key",
+              "streaming": true,
+              "tools": true,
+              "stream_usage": true,
+              "reasoning_efforts": [
+                "medium",
+                "medium"
+              ]
+            }
+          ]
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "changes.endpoints.0.reasoning_efforts",
+          "code": "duplicate_effort"
+        }
+      ]
+    },
+    {
+      "contract": "configuration_command",
+      "name": "duplicate-provider-endpoints",
+      "input": {
+        "command_id": "configure-endpoints",
+        "project_id": null,
+        "expected_revision": "1",
+        "changes": {
+          "endpoints": [
+            {
+              "provider": "configured-provider",
+              "base": "https://api.example.test/v1/",
+              "dialect": "responses",
+              "billing": "api_key",
+              "streaming": true,
+              "tools": true,
+              "stream_usage": true,
+              "reasoning_efforts": [
+                "medium"
+              ]
+            },
+            {
+              "provider": "configured-provider",
+              "base": "https://api.example.test/v1/",
+              "dialect": "responses",
+              "billing": "api_key",
+              "streaming": true,
+              "tools": true,
+              "stream_usage": true,
+              "reasoning_efforts": [
+                "medium"
+              ]
+            }
+          ]
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "changes.endpoints",
+          "code": "duplicate_provider"
+        }
+      ]
+    },
+    {
+      "contract": "configuration_command",
+      "name": "duplicate-source-host",
+      "input": {
+        "command_id": "configure-endpoints",
+        "project_id": null,
+        "expected_revision": "1",
+        "changes": {
+          "source_accounts": [
+            {
+              "host": "huggingface",
+              "access": {
+                "type": "anonymous"
+              }
+            },
+            {
+              "host": "huggingface",
+              "access": {
+                "type": "anonymous"
+              }
+            }
+          ]
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "changes.source_accounts",
+          "code": "duplicate_host"
+        }
+      ]
+    },
+    {
+      "contract": "configuration_command",
+      "name": "source-access-must-be-explicit",
+      "input": {
+        "command_id": "configure-endpoints",
+        "project_id": null,
+        "expected_revision": "1",
+        "changes": {
+          "source_accounts": [
+            {
+              "host": "huggingface"
+            }
+          ]
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "changes.source_accounts.0",
+          "code": "invalid_structure"
+        }
+      ]
+    },
+    {
+      "contract": "configuration_command",
+      "name": "source-credential-reference-required",
+      "input": {
+        "command_id": "configure-endpoints",
+        "project_id": null,
+        "expected_revision": "1",
+        "changes": {
+          "source_accounts": [
+            {
+              "host": "kaggle",
+              "access": {
+                "type": "credential"
+              }
+            }
+          ]
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "changes.source_accounts.0.access",
+          "code": "invalid_structure"
+        }
+      ]
+    },
+    {
+      "contract": "configuration_command",
+      "name": "loopback-fixture-endpoint",
+      "input": {
+        "command_id": "configure-endpoints",
+        "project_id": null,
+        "expected_revision": "1",
+        "changes": {
+          "endpoints": [
+            {
+              "provider": "configured-provider",
+              "base": "http://127.0.0.1:8099/",
+              "dialect": "responses",
+              "billing": "api_key",
+              "streaming": true,
+              "tools": true,
+              "stream_usage": true,
+              "reasoning_efforts": [
+                "medium"
+              ]
+            }
+          ]
+        }
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "configuration_command",
+      "name": "explicit-account-endpoint",
+      "input": {
+        "command_id": "configure-endpoints",
+        "project_id": null,
+        "expected_revision": "1",
+        "changes": {
+          "endpoints": [
+            {
+              "provider": "configured-provider",
+              "base": "https://chatgpt.com/backend-api/codex/",
+              "dialect": "responses",
+              "billing": "account",
+              "streaming": true,
+              "tools": true,
+              "stream_usage": true,
+              "reasoning_efforts": [
+                "medium"
+              ]
+            }
+          ]
+        }
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "configuration_command",
+      "name": "anonymous-cannot-carry-a-credential",
+      "input": {
+        "command_id": "config-ambiguous",
+        "project_id": null,
+        "expected_revision": "1",
+        "changes": {
+          "source_accounts": [
+            {
+              "host": "huggingface",
+              "access": {
+                "type": "anonymous",
+                "credential_id": "secret-reference"
+              }
+            }
+          ]
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "changes.source_accounts.0.access",
+          "code": "invalid_structure"
         }
       ]
     }

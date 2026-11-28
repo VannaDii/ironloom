@@ -45,6 +45,16 @@
             "$ref": "#/$defs/Validated6"
           }
         },
+        "endpoints": {
+          "description": "Replace explicit provider endpoints in the chosen scope; no secrets or inference probes.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/$defs/Validated7"
+          }
+        },
         "models": {
           "description": "Replace explicitly selected provider/model/engine/billing profiles.",
           "type": [
@@ -75,6 +85,16 @@
               "type": "null"
             }
           ]
+        },
+        "source_accounts": {
+          "description": "Replace explicit host/account choices; omission inherits, an empty list clears the scope.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/$defs/Validated8"
+          }
         }
       },
       "additionalProperties": false
@@ -304,6 +324,78 @@
       "type": "string",
       "minLength": 1
     },
+    "ProviderDialect": {
+      "description": "Explicit HTTP protocol selection; a failed request never selects another dialect.",
+      "oneOf": [
+        {
+          "description": "Responses streaming API, including explicitly selected eligible account inference.",
+          "type": "string",
+          "const": "responses"
+        },
+        {
+          "description": "Anthropic Messages API.",
+          "type": "string",
+          "const": "anthropic"
+        },
+        {
+          "description": "Explicitly configured OpenAI-compatible Chat Completions API.",
+          "type": "string",
+          "const": "chat_completions"
+        }
+      ]
+    },
+    "ProviderEndpointData": {
+      "description": "Unchecked construction draft for `ProviderEndpoint`; validate before use.",
+      "type": "object",
+      "properties": {
+        "base": {
+          "description": "API base without embedded credentials, query or fragment.",
+          "type": "string"
+        },
+        "billing": {
+          "description": "Authorized account/API billing choice; local engines are configured separately.",
+          "$ref": "#/$defs/BillingMode"
+        },
+        "dialect": {
+          "description": "Explicit wire dialect, independent from billing.",
+          "$ref": "#/$defs/ProviderDialect"
+        },
+        "provider": {
+          "description": "Unique provider identity matched by model profiles and every dispatched request.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "reasoning_efforts": {
+          "description": "Supported explicit reasoning effort labels; empty means unsupported.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ActorId"
+          }
+        },
+        "stream_usage": {
+          "description": "Declared support for reported usage in the stream.",
+          "type": "boolean"
+        },
+        "streaming": {
+          "description": "Declared streaming support, without a capability probe.",
+          "type": "boolean"
+        },
+        "tools": {
+          "description": "Declared tool-call support; adapters do not execute tools.",
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "base",
+        "dialect",
+        "billing",
+        "streaming",
+        "tools",
+        "stream_usage",
+        "reasoning_efforts"
+      ]
+    },
     "RoleConfigurationData": {
       "description": "Unchecked construction draft for `RoleConfiguration`; validate before use.",
       "type": "object",
@@ -363,6 +455,62 @@
         "instructions_id"
       ]
     },
+    "SourceAccess": {
+      "description": "Exactly one explicit source access choice. Absence is not anonymous consent.",
+      "oneOf": [
+        {
+          "description": "Explicit anonymous access, supported only where the selected source permits it.",
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "anonymous"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "description": "Live-authorized credential use, resolved only inside trusted service wiring.",
+          "type": "object",
+          "properties": {
+            "credential_id": {
+              "$ref": "#/$defs/CredentialId"
+            },
+            "type": {
+              "type": "string",
+              "const": "credential"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "credential_id"
+          ]
+        }
+      ]
+    },
+    "SourceAccountBindingData": {
+      "description": "Unchecked construction draft for `SourceAccountBinding`; validate before use.",
+      "type": "object",
+      "properties": {
+        "access": {
+          "description": "Explicit anonymous or credential reference choice.",
+          "$ref": "#/$defs/SourceAccess"
+        },
+        "host": {
+          "description": "Stable adapter host identity, not a browser-supplied credential endpoint.",
+          "$ref": "#/$defs/ActorId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "host",
+        "access"
+      ]
+    },
     "Validated": {
       "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
       "$ref": "#/$defs/FactorySetupData"
@@ -386,6 +534,14 @@
     "Validated6": {
       "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
       "$ref": "#/$defs/DevicePreferenceData"
+    },
+    "Validated7": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/ProviderEndpointData"
+    },
+    "Validated8": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/SourceAccountBindingData"
     }
   }
 }

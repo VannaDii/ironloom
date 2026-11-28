@@ -131,6 +131,12 @@ fn schema_files() -> SchemaResult<Vec<SchemaFile>> {
         schema::<ironloom_config::factory::DevicePreference>(
             "crates/ironloom-config/schemas/device-preference.schema.json",
         )?,
+        schema::<ironloom_config::factory::ProviderEndpoint>(
+            "crates/ironloom-config/schemas/provider-endpoint.schema.json",
+        )?,
+        schema::<ironloom_config::factory::SourceAccountBinding>(
+            "crates/ironloom-config/schemas/source-account-binding.schema.json",
+        )?,
         schema::<ironloom_service::factory::ConfigurationChange>(
             "crates/ironloom-service/schemas/configuration-change.schema.json",
         )?,

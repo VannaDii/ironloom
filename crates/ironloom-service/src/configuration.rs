@@ -45,6 +45,14 @@ pub fn effective_snapshot(
         &devices,
         facts,
     );
+    let endpoints = changes
+        .and_then(|change| change.endpoints.clone())
+        .or_else(|| base.map(|base| base.endpoints.clone()))
+        .unwrap_or_default();
+    let source_accounts = changes
+        .and_then(|change| change.source_accounts.clone())
+        .or_else(|| base.map(|base| base.source_accounts.clone()))
+        .unwrap_or_default();
     ConfigurationSnapshot::new(ConfigurationSnapshotData {
         project_id: project,
         revision,
@@ -52,6 +60,8 @@ pub fn effective_snapshot(
         roles,
         models,
         device_preferences,
+        endpoints,
+        source_accounts,
         discovered_devices: devices,
         execution_ready: blockers.is_empty(),
         unmet_prerequisites: blockers,
@@ -80,6 +90,14 @@ pub fn merge_overrides(
             .device_preferences
             .clone()
             .or_else(|| previous.and_then(|value| value.device_preferences.clone())),
+        endpoints: change
+            .endpoints
+            .clone()
+            .or_else(|| previous.and_then(|value| value.endpoints.clone())),
+        source_accounts: change
+            .source_accounts
+            .clone()
+            .or_else(|| previous.and_then(|value| value.source_accounts.clone())),
     })
 }
 #[cfg(test)]
@@ -102,13 +120,15 @@ mod tests {
             "project_id":null,"revision":"1","setup":{"lesson_handling":"project_only","delivery_confirmed":true,"publish_branch":true,"merge":false,"deploy":false},
             "roles":[{"role_id":"planner","enabled":true,"model_profile_id":"remote-profile","reasoning_applicable":true,"reasoning_effort":"medium","device_bindings":[],"instructions_id":"planner"}],
             "models":[{"profile_id":"remote-profile","provider":"fixture-provider","model_id":"explicit-model","generation_controls":{"max_output_tokens":"100","max_duration_ms":"1000","repetition_window":"20"},"credential_id":null,"billing":"api_key","engine":null,"device_bindings":[]}],
-            "device_preferences":[],"discovered_devices":[],"execution_ready":true,"unmet_prerequisites":[]
+            "device_preferences":[],"endpoints":[],"source_accounts":[],"discovered_devices":[],"execution_ready":true,"unmet_prerequisites":[]
         })).unwrap();
         let change = ConfigurationChange::new(ConfigurationChangeData {
             setup: None,
             roles: None,
             models: None,
             device_preferences: Some(vec![]),
+            endpoints: None,
+            source_accounts: None,
         })
         .unwrap();
         let project = effective_snapshot(
@@ -161,7 +181,7 @@ mod tests {
             "project_id":null,"revision":"1","setup":{"lesson_handling":"project_only","delivery_confirmed":true,"publish_branch":true,"merge":false,"deploy":false},
             "roles":[{"role_id":"planner","enabled":true,"model_profile_id":"local-profile","reasoning_applicable":false,"reasoning_effort":null,"device_bindings":[],"instructions_id":"planner"}],
             "models":[{"profile_id":"local-profile","provider":"local","model_id":"verified-fixture","generation_controls":{"max_output_tokens":"100","max_duration_ms":"1000","repetition_window":"20"},"credential_id":null,"billing":"local_estimate","engine":{"name":"fixture","version":"1","backend":"simulated","configuration_hash":"fixture"},"device_bindings":["device-a"]}],
-            "device_preferences":[],"discovered_devices":[],"execution_ready":true,"unmet_prerequisites":[]
+            "device_preferences":[],"endpoints":[],"source_accounts":[],"discovered_devices":[],"execution_ready":true,"unmet_prerequisites":[]
         })).unwrap();
         let devices=vec![serde_json::from_value(serde_json::json!({"device_id":"device-a","host_id":"fixture-host","parent_id":null,"hardware_key":"fixture-a","reconciled":true})).unwrap()];
         let available = BTreeSet::from([ModelProfileId::new("local-profile").unwrap()]);
