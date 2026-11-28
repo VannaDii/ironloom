@@ -35,6 +35,10 @@ serde_json.workspace = true
 thiserror.workspace = true
 
 
+# Metal SDK source is compiled only on its authorized target host, never on Linux build agents.
+[target.'cfg(target_os = "macos")'.dependencies]
+mistralrs = { workspace = true, optional = true, features = ["metal"] }
+
 [lints]
 workspace = true
 

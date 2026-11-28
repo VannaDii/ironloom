@@ -1,4 +1,4 @@
-//! Embedded CPU mistral.rs SDK, with private runner lifetime and no automatic tool execution.
+//! Embedded mistral.rs SDK, with exact CPU/Metal selection and no automatic tool execution.
 use super::runtime::{Artifact, Driver, Kernel, KernelState};
 use crate::{
     factory::*,
@@ -29,7 +29,7 @@ const MAX_SUPPORT_BYTES: u64 = 256 * 1024 * 1024;
 const INDEX_FILE: &str = "model.safetensors.index.json";
 /// Official EricLBuehler/mistral.rs SDK revision, package mistralrs 0.10.0.
 pub const REVISION: &str = "21da642fdd2210c30ca4028e1eabdd28e9c602fd";
-/// Inert embedded integration; this compiled profile supports CPU safetensors without Python.
+/// Inert embedded integration; CPU and target-gated Metal use verified safetensors without Python.
 pub struct MistralDriver {
     capabilities: EngineCapabilities,
 }
@@ -38,7 +38,8 @@ impl MistralDriver {
     pub fn new(capabilities: EngineCapabilities) -> Result<Self, AdapterError> {
         if capabilities.engine.name.as_str() != "mistral.rs"
             || capabilities.engine.version.as_str() != REVISION
-            || capabilities.engine.backend.as_str() != "cpu"
+            || !(capabilities.engine.backend.as_str() == "cpu"
+                || capabilities.engine.backend.as_str() == "metal" && cfg!(target_os = "macos"))
         {
             return Err(AdapterError::Unsupported);
         }
@@ -88,8 +89,6 @@ impl Driver for MistralDriver {
             // canonical files. Source indexes/extra shards never select another weight set.
             let mut builder = TextModelBuilder::new(view.path().to_string_lossy())
                 .with_token_source(TokenSource::None)
-                .with_device(mistralrs::Device::Cpu)
-                .with_force_cpu()
                 .with_device_mapping(mistralrs::DeviceMapMetadata::dummy())
                 .with_max_num_seqs(1)
                 .with_prefix_cache_n(mistralrs::PrefixCacheCapacity::DISABLED)
@@ -97,6 +96,45 @@ impl Driver for MistralDriver {
                     usize::try_from(request.options.context_tokens.get())
                         .map_err(|_| AdapterError::Unsupported)?,
                 );
+            match self.capabilities.engine.backend.as_str() {
+                "cpu" if artifact.native_device.is_none() => {
+                    builder = builder.with_device(mistralrs::Device::Cpu).with_force_cpu();
+                }
+                #[cfg(target_os = "macos")]
+                "metal" => {
+                    let placement = artifact
+                        .native_device
+                        .as_ref()
+                        .ok_or(AdapterError::Unsupported)?;
+                    super::placement::exact(request, placement)?;
+                    let crate::devices::native::NativeAddress::Metal {
+                        registry_id,
+                        ordinal,
+                        ..
+                    } = &placement.address
+                    else {
+                        return Err(AdapterError::Unsupported);
+                    };
+                    let ordinal =
+                        usize::try_from(ordinal.get()).map_err(|_| AdapterError::Unsupported)?;
+                    // The pinned SDK indexes its fresh device list with swap_remove. Hot removal
+                    // can invalidate a previously observed ordinal; contain that upstream panic.
+                    let device = std::panic::catch_unwind(|| mistralrs::Device::new_metal(ordinal))
+                        .map_err(|_| AdapterError::Unavailable)?
+                        .map_err(|_| AdapterError::Unavailable)?;
+                    if device
+                        .as_metal_device()
+                        .map_err(|_| AdapterError::Unavailable)?
+                        .metal_device()
+                        .registry_id()
+                        != registry_id.get()
+                    {
+                        return Err(AdapterError::Unsupported);
+                    }
+                    builder = builder.with_device(device);
+                }
+                _ => return Err(AdapterError::Unsupported),
+            }
             let tokenizer = artifact
                 .tokenizer
                 .unwrap_or_else(|| "tokenizer.json".into());

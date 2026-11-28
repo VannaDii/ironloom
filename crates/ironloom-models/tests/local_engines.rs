@@ -55,6 +55,7 @@ fn fixture() -> (tempfile::TempDir, LlamaDriver, EngineLoadRequest, Artifact) {
     })
     .unwrap();
     let artifact = Artifact {
+        native_device: None,
         root: root.path().into(),
         weights: vec!["fixture.gguf".into()],
         tokenizer: None,
@@ -253,6 +254,13 @@ impl ironloom_models::engines::runtime::EngineAuthority for Authority {
                 .stderr(std::process::Stdio::null())
                 .kill_on_drop(true);
             command.current_dir(launch.command.as_std().get_current_dir().unwrap());
+            for (key, value) in launch.command.as_std().get_envs() {
+                if let Some(value) = value {
+                    command.env(key, value);
+                } else {
+                    command.env_remove(key);
+                }
+            }
             let mut child = command.spawn().map_err(|_| AdapterError::Unavailable)?;
             let pid = child.id().ok_or(AdapterError::Unavailable)?;
             let process = ironloom_core::ActorId::new(uuid::Uuid::new_v4().to_string()).unwrap();
@@ -557,4 +565,51 @@ async fn failed_stop_persistence_keeps_ownership_uncertain_until_reconciled() {
     assert!(!kernel.state().await.unwrap().alive);
     let confirmed: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
     assert_eq!(confirmed["state"], "stopped");
+}
+
+#[tokio::test]
+async fn explicit_cuda_placement_masks_exact_uuid_in_inert_helper_and_rejects_missing_binding() {
+    use ironloom_models::{devices::native::NativeAddress, engines::runtime::NativePlacement};
+    let (root, _, mut load, mut artifact) = fixture();
+    let mut caps = capabilities();
+    let mut value = serde_json::to_value(&caps).unwrap();
+    value["engine"]["backend"] = "cuda".into();
+    caps = decode(&serde_json::to_vec(&value).unwrap()).unwrap();
+    let mut value = serde_json::to_value(&load).unwrap();
+    value["selection"]["engine"] = serde_json::to_value(&caps.engine).unwrap();
+    value["selection"]["devices"][0] = json!({"device_id":"canonical-gpu","host_id":"host","hardware_key":"physical-gpu","reconciled":true});
+    load = decode(&serde_json::to_vec(&value).unwrap()).unwrap();
+    let uuid = "GPU-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+    std::fs::write(root.path().join("expected-cuda-uuid"), uuid).unwrap();
+    let authority = std::sync::Arc::new(Authority {
+        artifact: artifact.clone(),
+        allowed: std::sync::atomic::AtomicBool::new(true),
+    });
+    let driver = LlamaDriver::new(
+        root.path().join("scripted-helper"),
+        Sha256::digest(include_bytes!("fixtures/llama_helper.py")).into(),
+        caps,
+        authority,
+    )
+    .unwrap();
+    let resident = ironloom_core::ResidentModelId::new("resident").unwrap();
+    assert!(matches!(
+        driver.load(&load, artifact.clone(), resident.clone()).await,
+        Err(AdapterError::Unsupported)
+    ));
+    assert!(!root.path().join("helper.pid").exists());
+    artifact.native_device = Some(NativePlacement {
+        device: request().selection.devices[0].clone(),
+        address: NativeAddress::Cuda { uuid: uuid.into() },
+    });
+    assert!(matches!(
+        driver.load(&load, artifact.clone(), resident.clone()).await,
+        Err(AdapterError::Unsupported)
+    ));
+    assert!(!root.path().join("helper.pid").exists());
+    artifact.native_device.as_mut().unwrap().device = load.selection.devices[0].clone();
+    let kernel = driver.load(&load, artifact, resident).await.unwrap();
+    assert!(kernel.state().await.unwrap().alive);
+    kernel.stop().await.unwrap();
+    assert!(!kernel.state().await.unwrap().alive);
 }

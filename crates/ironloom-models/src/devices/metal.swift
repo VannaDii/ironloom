@@ -5,11 +5,15 @@ import Metal
 
 struct DeviceReport: Encodable {
     let registry_id: String
+    let ordinal: String
+    let system_default: Bool
     let name: String
     let recommended_bytes: String
 }
-let reports = MTLCopyAllDevices().map { device in
-    DeviceReport(registry_id: String(device.registryID), name: device.name,
+let defaultRegistry = MTLCreateSystemDefaultDevice()?.registryID
+let reports = MTLCopyAllDevices().enumerated().map { index, device in
+    DeviceReport(registry_id: String(device.registryID), ordinal: String(index),
+                 system_default: device.registryID == defaultRegistry, name: device.name,
                  recommended_bytes: String(device.recommendedMaxWorkingSetSize))
 }
 do {

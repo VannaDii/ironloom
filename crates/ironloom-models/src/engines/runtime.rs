@@ -13,12 +13,22 @@ use std::{
 };
 use tokio::sync::Mutex;
 
+/// Native handle resolved by the service from the same reconciled device/reservation snapshot.
+#[derive(Clone)]
+pub struct NativePlacement {
+    /// Exact canonical selected device, including enrolled physical host identity.
+    pub device: DeviceIdentity,
+    /// Native backend address; not an independent identity or authorization grant.
+    pub address: crate::devices::native::NativeAddress,
+}
 /// Verified installation paths and metadata resolved by the service's current inventory.
 /// Construction/metadata inspection must not load a model, initialize a device or infer.
 #[derive(Clone)]
 pub struct Artifact {
     /// Existing absolute installation root; never an upstream repository name to auto-download.
     pub root: PathBuf,
+    /// Exact service-resolved GPU placement; absent only for an explicitly selected CPU profile.
+    pub native_device: Option<NativePlacement>,
     /// Exact existing local weight files, relative to root.
     pub weights: Vec<PathBuf>,
     /// Existing explicitly selected tokenizer, when the format does not embed it.

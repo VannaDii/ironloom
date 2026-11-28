@@ -105,10 +105,30 @@ impl ProbeRunner for ProcessRunner {
         })
     }
 }
+/// Backend address from trusted native metadata, separate from canonical identity reconciliation.
+#[derive(Clone)]
+pub enum NativeAddress {
+    /// CUDA visibility can select this exact vendor UUID without exposing other devices.
+    Cuda {
+        /// Native GPU/MIG UUID, not an ordinal or a comma-separated group.
+        uuid: String,
+    },
+    /// Metal ordinal is valid only for this metadata snapshot and registry identity.
+    Metal {
+        /// Exact registry ID retained losslessly as a browser-safe counter.
+        registry_id: Counter,
+        /// SDK ordinal in the same MTLCopyAllDevices result.
+        ordinal: Counter,
+        /// Whether the native helper's system-default Metal device matches this identity.
+        system_default: bool,
+    },
+}
 /// Unqualified hardware view plus resource observations; central policy reconciles physical identity.
 pub struct DeviceView {
     /// Host-scoped UUID/registry identity, always unreconciled until service reconciliation.
     pub identity: DeviceIdentity,
+    /// Native handle from this observation; the service must recheck identity before binding it.
+    pub address: NativeAddress,
     /// Observed pressure only, with unknown external attribution retained as None.
     pub resources: DeviceResourceObservation,
 }
@@ -159,6 +179,9 @@ impl NativeDevices {
                     }
                     result.push(self.view(
                         &format!("nvidia:{}", parts[0]),
+                        NativeAddress::Cuda {
+                            uuid: parts[0].into(),
+                        },
                         mib(parts[1])?,
                         mib(parts[2])?,
                         observed,
@@ -176,14 +199,42 @@ impl NativeDevices {
                     }
                     // Metal's recommended working set is not physical capacity, and currentAllocatedSize
                     // covers only this helper. Neither is misreported as global device memory/pressure.
-                    result.push(self.view(
-                        &format!("metal-registry:{}", registry.get()),
-                        None,
-                        None,
-                        observed,
-                    )?);
+                    result.push(
+                        self.view(
+                            &format!("metal-registry:{}", registry.get()),
+                            NativeAddress::Metal {
+                                registry_id: registry,
+                                ordinal: serde_json::from_value(device["ordinal"].clone())
+                                    .map_err(|_| AdapterError::Unavailable)?,
+                                system_default: device["system_default"]
+                                    .as_bool()
+                                    .ok_or(AdapterError::Unavailable)?,
+                            },
+                            None,
+                            None,
+                            observed,
+                        )?,
+                    );
                 }
             }
+        }
+        let mut ordinals = std::collections::BTreeSet::new();
+        let mut defaults = 0;
+        for view in &result {
+            if let NativeAddress::Metal {
+                ordinal,
+                system_default,
+                ..
+            } = &view.address
+            {
+                if !ordinals.insert(ordinal.get()) {
+                    return Err(AdapterError::Unavailable);
+                }
+                defaults += usize::from(*system_default);
+            }
+        }
+        if defaults > 1 {
+            return Err(AdapterError::Unavailable);
         }
         let mut unique = std::collections::BTreeSet::new();
         if result
@@ -197,6 +248,7 @@ impl NativeDevices {
     fn view(
         &self,
         key: &str,
+        address: NativeAddress,
         total: Option<u64>,
         used: Option<u64>,
         observed: Counter,
@@ -224,6 +276,7 @@ impl NativeDevices {
         .map_err(|_| AdapterError::Unavailable)?;
         Ok(DeviceView {
             identity,
+            address,
             resources,
         })
     }

@@ -30,7 +30,8 @@ pub struct LlamaDriver {
     capabilities: EngineCapabilities,
 }
 impl LlamaDriver {
-    /// Creates an inert CPU integration; unsupported backends require their own qualified build.
+    /// Creates an inert integration for an explicitly selected compiled helper/backend.
+    /// CUDA/Metal support here is source/fixture coverage, never hardware qualification.
     pub fn new(
         executable: PathBuf,
         sha256: [u8; 32],
@@ -40,7 +41,12 @@ impl LlamaDriver {
         if !executable.is_absolute()
             || capabilities.engine.name.as_str() != "llama.cpp"
             || capabilities.engine.version.as_str() != REVISION
-            || capabilities.engine.backend.as_str() != "cpu"
+            || !matches!(
+                capabilities.engine.backend.as_str(),
+                "cpu" | "cuda" | "metal"
+            )
+            || capabilities.engine.backend.as_str() == "cuda" && !cfg!(target_os = "linux")
+            || capabilities.engine.backend.as_str() == "metal" && !cfg!(target_os = "macos")
         {
             return Err(AdapterError::Unsupported);
         }
@@ -96,6 +102,7 @@ impl Driver for LlamaDriver {
             if !artifact.root.is_absolute() {
                 return Err(AdapterError::Unsupported);
             }
+            let placement = super::placement::helper(request, &artifact)?;
             let root = tokio::fs::canonicalize(&artifact.root)
                 .await
                 .map_err(|_| AdapterError::Unavailable)?;
@@ -148,9 +155,11 @@ impl Driver for LlamaDriver {
                 .arg(port.to_string())
                 .args([
                     "--device",
-                    "none",
+                    &placement.device,
                     "--n-gpu-layers",
-                    "0",
+                    placement.layers,
+                ])
+                .args([
                     "--split-mode",
                     "none",
                     "--fit",
@@ -167,6 +176,9 @@ impl Driver for LlamaDriver {
                 .arg(request.options.context_tokens.get().to_string())
                 .arg("--api-key-file")
                 .arg(key_file.path());
+            if let Some(uuid) = placement.cuda_uuid {
+                command.env("CUDA_VISIBLE_DEVICES", uuid);
+            }
             if let Some(template) = artifact.template {
                 command
                     .arg("--chat-template-file")

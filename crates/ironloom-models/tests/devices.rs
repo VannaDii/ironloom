@@ -72,7 +72,7 @@ fn malformed_or_duplicate_views_do_not_create_capacity() {
 #[test]
 fn metal_registry_strings_stay_exact_without_hardware_execution_or_memory_claims() {
     let devices = NativeDevices::new(HostId::new("host").unwrap(), Probe::Metal, Arc::new(Script));
-    let views=devices.decode(br#"[{"registry_id":"18446744073709551615","name":"fixture","recommended_bytes":"100"}]"#,Counter::new(1)).unwrap();
+    let views=devices.decode(br#"[{"registry_id":"18446744073709551615","name":"fixture","ordinal":"0","system_default":true,"recommended_bytes":"100"}]"#,Counter::new(1)).unwrap();
     assert_eq!(
         views[0].identity.hardware_key.as_str(),
         "metal-registry:18446744073709551615"
@@ -84,4 +84,15 @@ fn metal_registry_strings_stay_exact_without_hardware_execution_or_memory_claims
             .decode(br#"[{"registry_id":42}]"#, Counter::new(1))
             .is_err()
     );
+}
+
+#[test]
+fn inconsistent_metal_handles_cannot_select_a_different_registry_device() {
+    let devices = NativeDevices::new(HostId::new("host").unwrap(), Probe::Metal, Arc::new(Script));
+    for raw in [
+        r#"[{"registry_id":"1","ordinal":"0","system_default":true},{"registry_id":"2","ordinal":"0","system_default":false}]"#,
+        r#"[{"registry_id":"1","ordinal":"0","system_default":true},{"registry_id":"2","ordinal":"1","system_default":true}]"#,
+    ] {
+        assert!(devices.decode(raw.as_bytes(), Counter::new(1)).is_err());
+    }
 }

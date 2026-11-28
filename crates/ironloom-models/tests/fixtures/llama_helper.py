@@ -15,7 +15,15 @@ pathlib.Path('helper.pid').write_text(str(os.getpid()))
 while pathlib.Path('hold-startup').exists():
     time.sleep(0.01)
 assert all(flag in flags for flag in ['--offline', '--no-warmup', '--jinja'])
-assert flags[flags.index('--device')+1] == 'none'
+device = flags[flags.index('--device')+1]
+if device == 'none':
+    assert flags[flags.index('--n-gpu-layers')+1] == '0'
+    assert 'CUDA_VISIBLE_DEVICES' not in os.environ
+elif device == 'CUDA0':
+    assert flags[flags.index('--n-gpu-layers')+1] == '999'
+    assert os.environ['CUDA_VISIBLE_DEVICES'] == pathlib.Path('expected-cuda-uuid').read_text()
+else:
+    raise AssertionError('Unexpected fixture backend; no native device is discovered or used')
 assert flags[flags.index('--fit')+1] == 'off'
 class Handler(http.server.BaseHTTPRequestHandler):
     def log_message(self, *_):

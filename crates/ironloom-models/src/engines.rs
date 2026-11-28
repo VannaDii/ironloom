@@ -49,3 +49,5 @@ pub mod llama;
 pub mod mistral;
 
 mod gguf;
+
+mod placement;
