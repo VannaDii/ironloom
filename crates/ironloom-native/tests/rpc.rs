@@ -178,3 +178,62 @@ async fn start_selection_mismatch_never_calls_shared_conversation_creation() {
     assert!(result.message.get("error").is_some());
     assert_eq!(service.creation_calls.load(Ordering::SeqCst), 1);
 }
+
+#[tokio::test]
+async fn item_pages_keep_watermark_scope_and_support_direction_reversal() {
+    fn page(direction: &str, next: Option<&str>) -> HistoryPage {
+        decode(&serde_json::to_vec(&json!({
+            "as_of":{"conversation_id":"c","sequence":"9"},"direction":direction,"turn_id":"turn",
+            "items":[{"conversation_id":"c","turn_id":"turn","item_id":"item-1","message":{"role":"user","text":"Persisted text","tool_calls":[]}}],
+            "next_after":if direction=="forward" { next } else { None },
+            "next_before":if direction=="backward" { next } else { None }
+        })).unwrap()).unwrap()
+    }
+    let service = Service::new(state(), vec![]);
+    service
+        .history_pages
+        .lock()
+        .unwrap()
+        .push_back(page("forward", Some("item-1")));
+    let (rpc, _) = router(service.clone()).await;
+    let first = rpc.dispatch(peer(), json!({"id":1,"method":"thread/items/list","params":{"threadId":"c","turnId":"turn","limit":1}})).await.unwrap().unwrap();
+    let first = &first.message["result"];
+    assert_eq!(
+        first["data"][0]["item"]["content"][0]["text"],
+        "Persisted text"
+    );
+    assert!(!first["backwardsCursor"].is_null());
+    let mut advanced = (**service.state.lock().unwrap()).clone();
+    advanced.cursor = decode(br#"{"conversation_id":"c","sequence":"12"}"#).unwrap();
+    *service.state.lock().unwrap() = ConversationSnapshot::new(advanced).unwrap();
+    service
+        .history_pages
+        .lock()
+        .unwrap()
+        .push_back(page("backward", None));
+    let reply = rpc.dispatch(peer(), json!({"id":2,"method":"thread/items/list","params":{"threadId":"c","turnId":"turn","sortDirection":"desc","cursor":first["backwardsCursor"]}})).await.unwrap().unwrap();
+    assert!(reply.message.get("result").is_some(), "{}", reply.message);
+    {
+        let queries = service.history_queries.lock().unwrap();
+        assert_eq!(queries[1].as_of.sequence.get(), 9);
+        assert_eq!(queries[1].before.as_ref().unwrap().as_str(), "item-1");
+        assert_eq!(queries[1].direction, HistoryDirection::Backward);
+    }
+    for params in [
+        json!({"threadId":"other","turnId":"turn","cursor":first["nextCursor"]}),
+        json!({"threadId":"c","turnId":"other","cursor":first["nextCursor"]}),
+        json!({"threadId":"c","cursor":{"type":"item","itemId":"item-1"}}),
+        json!({"threadId":"c","limit":101}),
+    ] {
+        let reply = rpc
+            .dispatch(
+                peer(),
+                json!({"id":3,"method":"thread/items/list","params":params}),
+            )
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(reply.message.get("error").is_some(), "{}", reply.message);
+    }
+    assert_eq!(service.history_queries.lock().unwrap().len(), 2);
+}

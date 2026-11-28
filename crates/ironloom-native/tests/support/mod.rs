@@ -22,6 +22,8 @@ pub struct Service {
     pub subscriptions: Mutex<Vec<ReplayCursor>>,
     pub commands: Mutex<BTreeMap<String, (Command, CommandReceipt)>>,
     pub creation_calls: AtomicUsize,
+    pub history_pages: Mutex<std::collections::VecDeque<HistoryPage>>,
+    pub history_queries: Mutex<Vec<HistoryQuery>>,
 }
 impl Service {
     pub fn new(state: ConversationSnapshot, events: Vec<ServiceEvent>) -> Arc<Self> {
@@ -31,6 +33,8 @@ impl Service {
             subscriptions: Mutex::default(),
             commands: Mutex::default(),
             creation_calls: AtomicUsize::new(0),
+            history_pages: Mutex::default(),
+            history_queries: Mutex::default(),
         })
     }
 }
@@ -175,9 +179,16 @@ impl FactoryService for Service {
     fn history(
         &self,
         _session: AuthenticatedSession,
-        _query: HistoryQuery,
+        query: HistoryQuery,
     ) -> BoxFuture<'_, Result<HistoryPage, ServiceError>> {
-        Box::pin(async { Err(ServiceError::Unavailable) })
+        Box::pin(async move {
+            self.history_queries.lock().unwrap().push(query);
+            self.history_pages
+                .lock()
+                .unwrap()
+                .pop_front()
+                .ok_or(ServiceError::Unavailable)
+        })
     }
     fn subscribe(
         &self,

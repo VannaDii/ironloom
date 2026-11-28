@@ -10,6 +10,8 @@ use sha2::{Digest, Sha256};
 use std::{collections::BTreeSet, sync::Arc};
 use tokio::sync::Mutex;
 
+mod history;
+
 const MAX_INPUT: usize = 1024 * 1024;
 /// Trusted project/session display metadata; never selected by a native request as authority.
 pub struct ThreadContext {
@@ -197,6 +199,7 @@ impl NativeRpc {
         }
         let key = command_id(peer, &session, message)?;
         match method {
+            "thread/items/list" => self.item_page(session, &params).await,
             "thread/start" => {
                 reject_overrides(&params)?;
                 let project = self
