@@ -85,6 +85,7 @@ void main() {
   testWidgets(
     'complete transfer stays unverified and unavailable inventory preserves provenance',
     (tester) async {
+      ActorId? recovered;
       final pending = fixture('complete-bytes-remain-unverified');
       final unavailable = {
         ...fixture('missing-storage-keeps-provenance'),
@@ -108,7 +109,13 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: SingleChildScrollView(
-              child: ModelInventory(client: client, project: ProjectId('p')),
+              child: ModelInventory(
+                client: client,
+                project: ProjectId('p'),
+                onRecover: (id) async {
+                  recovered = id;
+                },
+              ),
             ),
           ),
         ),
@@ -118,6 +125,11 @@ void main() {
       expect(find.textContaining('Verification: pending'), findsOneWidget);
       expect(find.textContaining('Storage: Unavailable'), findsOneWidget);
       expect(find.textContaining('Verified manifest: None'), findsOneWidget);
+      final recovery = find.text('Open download controls').last;
+      await tester.ensureVisible(recovery);
+      await tester.tap(recovery);
+      await settleHttp(tester);
+      expect(recovered?.value, 'download-missing');
       await tester.pumpWidget(const SizedBox());
       client.close();
     },

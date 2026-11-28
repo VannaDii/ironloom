@@ -300,16 +300,35 @@ void _validateModel(WireModel model) {
       }
     case WorkerPaths v:
       for (final (field, path) in [
-        for (final path in v.writePaths) ('write_paths', path),
+        for (final path in v.writeFiles) ('write_files', path),
+        for (final path in v.writeDirectories) ('write_directories', path),
         ('artifact_area', v.artifactArea),
       ]) {
         _required(field, path);
-        final parts = path.split('/').where((p) => p.isNotEmpty).toList();
-        if (path.startsWith('/') ||
-            parts.isEmpty ||
-            parts.first == '.' ||
-            parts.contains('..')) {
+        if (path.codeUnits.contains(0) ||
+            path.contains('\\') ||
+            path
+                .split('/')
+                .any(
+                  (part) => ['', '.', '..', '.git', '.ironloom'].contains(part),
+                )) {
           _fail(field, 'relative_normal_path_required');
+        }
+      }
+      if (v.writeFiles.toSet().length != v.writeFiles.length) {
+        _fail('write_files', 'duplicate_path');
+      }
+      for (var index = 0; index < v.writeDirectories.length; index++) {
+        final path = v.writeDirectories[index];
+        if (v.writeDirectories
+            .take(index)
+            .any(
+              (other) =>
+                  path == other ||
+                  path.startsWith('$other/') ||
+                  other.startsWith('$path/'),
+            )) {
+          _fail('write_directories', 'overlapping_paths');
         }
       }
     case ValidationContent v:

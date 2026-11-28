@@ -112,9 +112,15 @@ class _ModelAssessmentState extends State<ModelAssessment> {
 }
 
 class ModelInventory extends StatefulWidget {
-  const ModelInventory({super.key, required this.client, this.project});
+  const ModelInventory({
+    super.key,
+    required this.client,
+    this.project,
+    this.onRecover,
+  });
   final IronloomClient client;
   final ProjectId? project;
+  final Future<void> Function(ActorId)? onRecover;
   @override
   State<ModelInventory> createState() => _ModelInventoryState();
 }
@@ -179,8 +185,14 @@ class _ModelInventoryState extends State<ModelInventory> {
       for (final entry in entries)
         ListTile(
           title: SelectableText(entry.model.modelId.value),
+          trailing: entry.downloadId != null && widget.onRecover != null
+              ? AsyncAction(
+                  label: 'Open download controls',
+                  action: () => widget.onRecover!(entry.downloadId!),
+                )
+              : null,
           subtitle: SelectableText(
-            'Publisher: ${entry.model.source.publisher.value} · Host: ${entry.model.source.host.value}\nRevision: ${entry.model.source.revision.value}\nTransfer complete: ${entry.transferComplete}\nVerification: ${entry.verification.value}\nVerified manifest: ${entry.verifiedManifestHash?.value ?? 'None'}\nVerified at: ${entry.verifiedAtMs?.toJson() ?? 'Unknown'}\nStorage: ${entry.storageAvailable ? 'Available' : 'Unavailable'}',
+            'Publisher: ${entry.model.source.publisher.value} · Host: ${entry.model.source.host.value}\nRevision: ${entry.model.source.revision.value}\nDownload: ${entry.downloadId?.value ?? 'None'}\nTransfer complete: ${entry.transferComplete}\nVerification: ${entry.verification.value}\nVerified manifest: ${entry.verifiedManifestHash?.value ?? 'None'}\nVerified at: ${entry.verifiedAtMs?.toJson() ?? 'Unknown'}\nStorage: ${entry.storageAvailable ? 'Available' : 'Unavailable'}',
           ),
         ),
       if (after != null)

@@ -7077,31 +7077,36 @@ final class WorkerPaths implements WireModel {
   factory WorkerPaths({
     required AssignmentId assignmentId,
     required WorkerId workerId,
-    required List<String> writePaths,
+    required List<String> writeFiles,
+    required List<String> writeDirectories,
     required String artifactArea,
   }) => WorkerPaths.fromJson({
     'assignment_id': _json(assignmentId),
     'worker_id': _json(workerId),
-    'write_paths': _json(writePaths),
+    'write_files': _json(writeFiles),
+    'write_directories': _json(writeDirectories),
     'artifact_area': _json(artifactArea),
   });
   WorkerPaths._(
     this.assignmentId,
     this.workerId,
-    this.writePaths,
+    this.writeFiles,
+    this.writeDirectories,
     this.artifactArea,
   );
   factory WorkerPaths.fromJson(Object? json) {
     final r = _Reader(json, [
       "assignment_id",
       "worker_id",
-      "write_paths",
+      "write_files",
+      "write_directories",
       "artifact_area",
     ]);
     final value = WorkerPaths._(
       r.read('assignment_id', AssignmentId.fromJson),
       r.read('worker_id', WorkerId.fromJson),
-      r.read('write_paths', (v) => _list(v, _string)),
+      r.read('write_files', (v) => _list(v, _string)),
+      r.read('write_directories', (v) => _list(v, _string)),
       r.read('artifact_area', _string),
     );
     value.validate();
@@ -7109,7 +7114,8 @@ final class WorkerPaths implements WireModel {
   }
   final AssignmentId assignmentId;
   final WorkerId workerId;
-  final List<String> writePaths;
+  final List<String> writeFiles;
+  final List<String> writeDirectories;
   final String artifactArea;
   @override
   void validate() {
@@ -7120,7 +7126,8 @@ final class WorkerPaths implements WireModel {
   Map<String, Object?> toJson() => {
     'assignment_id': _json(assignmentId),
     'worker_id': _json(workerId),
-    'write_paths': _json(writePaths),
+    'write_files': _json(writeFiles),
+    'write_directories': _json(writeDirectories),
     'artifact_area': _json(artifactArea),
   };
 }

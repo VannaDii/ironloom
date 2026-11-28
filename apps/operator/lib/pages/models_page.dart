@@ -29,20 +29,25 @@ class _ModelsPageState extends State<ModelsPage> {
   ActorId? after;
   final downloads = <String, DownloadProgress>{};
   Timer? timer;
+  bool polling = false;
+  final controlling = <String>{};
   int searchGeneration = 0;
   @override
   void initState() {
     super.initState();
-    project.addListener(() {
-      if (mounted) {
-        setState(() {
-          ++searchGeneration;
-          models = [];
-          after = null;
-        });
-      }
-    });
+    query.addListener(invalidateSearch);
+    project.addListener(invalidateSearch);
     timer = Timer.periodic(const Duration(seconds: 2), (_) => poll());
+  }
+
+  void invalidateSearch() {
+    if (mounted) {
+      setState(() {
+        ++searchGeneration;
+        models = [];
+        after = null;
+      });
+    }
   }
 
   @override
@@ -100,16 +105,30 @@ class _ModelsPageState extends State<ModelsPage> {
   }
 
   Future<void> poll() async {
-    for (final entry in downloads.entries.toList()) {
-      if (entry.value.terminated) continue;
-      try {
-        final value = await widget.client.downloadProgress(
-          entry.value.downloadId,
-        );
-        if (mounted) setState(() => downloads[entry.key] = value);
-      } on Object catch (e) {
-        if (mounted) setState(() => error = displayError(e));
+    if (polling) return;
+    polling = true;
+    try {
+      for (final entry in downloads.entries.toList()) {
+        if (!mounted ||
+            entry.value.terminated ||
+            controlling.contains(entry.key)) {
+          continue;
+        }
+        try {
+          final value = await widget.client.downloadProgress(
+            entry.value.downloadId,
+          );
+          if (mounted &&
+              !controlling.contains(entry.key) &&
+              identical(downloads[entry.key], entry.value)) {
+            setState(() => downloads[entry.key] = value);
+          }
+        } on Object catch (e) {
+          if (mounted) setState(() => error = displayError(e));
+        }
       }
+    } finally {
+      polling = false;
     }
   }
 
@@ -117,17 +136,23 @@ class _ModelsPageState extends State<ModelsPage> {
     DownloadProgress value,
     DownloadOperation operation,
   ) async {
-    final updated = await widget.client.download(
-      DownloadCommand(
-        commandId: CommandId(const Uuid().v4()),
-        projectId: selectedProject,
-        repositoryId: value.repositoryId,
-        revision: value.source.revision,
-        downloadId: value.downloadId,
-        operation: operation,
-      ),
-    );
-    if (mounted) setState(() => downloads[value.downloadId.value] = updated);
+    final id = value.downloadId.value;
+    if (!controlling.add(id)) throw StateError('A download action is pending.');
+    try {
+      final updated = await widget.client.download(
+        DownloadCommand(
+          commandId: CommandId(const Uuid().v4()),
+          projectId: selectedProject,
+          repositoryId: value.repositoryId,
+          revision: value.source.revision,
+          downloadId: value.downloadId,
+          operation: operation,
+        ),
+      );
+      if (mounted) setState(() => downloads[value.downloadId.value] = updated);
+    } finally {
+      controlling.remove(id);
+    }
   }
 
   @override
@@ -158,7 +183,10 @@ class _ModelsPageState extends State<ModelsPage> {
               DropdownMenuItem(value: 'modelscope', child: Text('ModelScope')),
               DropdownMenuItem(value: 'kaggle', child: Text('Kaggle Models')),
             ],
-            onChanged: (v) => setState(() => host = v),
+            onChanged: (v) {
+              host = v;
+              invalidateSearch();
+            },
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
@@ -171,7 +199,10 @@ class _ModelsPageState extends State<ModelsPage> {
               DropdownMenuItem(value: 'mistralai', child: Text('Mistral')),
               DropdownMenuItem(value: 'deepseek-ai', child: Text('DeepSeek')),
             ],
-            onChanged: (v) => setState(() => publisher = v),
+            onChanged: (v) {
+              publisher = v;
+              invalidateSearch();
+            },
           ),
           const SizedBox(height: 12),
           TextField(
@@ -187,6 +218,7 @@ class _ModelsPageState extends State<ModelsPage> {
               AsyncAction(label: 'Search source catalogs', action: search),
               TextButton(
                 onPressed: () => setState(() {
+                  ++searchGeneration;
                   publisher = null;
                   host = null;
                   models = [];
@@ -198,7 +230,14 @@ class _ModelsPageState extends State<ModelsPage> {
           ),
         ],
       ),
-      ModelInventory(client: widget.client, project: selectedProject),
+      ModelInventory(
+        client: widget.client,
+        project: selectedProject,
+        onRecover: (id) async {
+          final value = await widget.client.downloadProgress(id);
+          if (mounted) setState(() => downloads[id.value] = value);
+        },
+      ),
       if (error != null) Notice(error!, error: true),
       for (final model in models)
         Section(

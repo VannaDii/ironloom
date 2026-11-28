@@ -281,8 +281,9 @@ final class IronloomClient {
       CommandReceipt.fromJson,
       body: request,
     );
-    if (receipt.commandId.value != request.commandId.value)
+    if (receipt.commandId.value != request.commandId.value) {
       throw ApiFailure(502, null);
+    }
     return receipt;
   }
 
