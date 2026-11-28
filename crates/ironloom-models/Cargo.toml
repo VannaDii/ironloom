@@ -8,7 +8,19 @@ homepage.workspace = true
 publish.workspace = true
 description = "Ironloom model, engine, source and device adapter contracts."
 
+[features]
+embedded-mistral = ["dep:mistralrs"]
+
 [dependencies]
+tar.workspace = true
+flate2.workspace = true
+mistralrs = { workspace = true, optional = true }
+tempfile.workspace = true
+uuid.workspace = true
+base64.workspace = true
+sha2.workspace = true
+hex.workspace = true
+ironloom-queue = { path = "../ironloom-queue", version = "0.1.0" }
 futures-util.workspace = true
 reqwest.workspace = true
 ironloom-observability = { path = "../ironloom-observability", version = "0.1.0" }
@@ -22,5 +34,9 @@ serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 
+
 [lints]
 workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

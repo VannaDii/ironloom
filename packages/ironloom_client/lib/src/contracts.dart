@@ -199,6 +199,7 @@ final class ServiceError implements WireModel {
           'conflict',
           'cursor_expired',
           'resync_required',
+          'approval_required',
           'unavailable',
         }.contains(json)) {
       return ServiceError._(json, null);
@@ -258,4 +259,45 @@ ReplayCursor decodeCursor(String header) {
     _fail(r'$', 'invalid_structure');
   }
   return decode(json, ReplayCursor.fromJson);
+}
+
+/// Explicit source account choice; absence never grants anonymous access.
+final class SourceAccountAccess implements WireModel {
+  factory SourceAccountAccess.anonymous() =>
+      SourceAccountAccess.fromJson({'type': 'anonymous'});
+  factory SourceAccountAccess.credential(CredentialId credential) =>
+      SourceAccountAccess.fromJson({
+        'type': 'credential',
+        'credential_id': credential.toJson(),
+      });
+  SourceAccountAccess._(this.type, this.credentialId);
+  factory SourceAccountAccess.fromJson(Object? json) {
+    final reader = _Reader(json, ['type', 'credential_id']);
+    final type = reader.read('type', _string);
+    if (type == 'anonymous') {
+      if (reader.data['credential_id'] != null) {
+        _fail(r'$', 'invalid_structure');
+      }
+      return SourceAccountAccess._(type, null);
+    }
+    if (type == 'credential') {
+      return SourceAccountAccess._(
+        type,
+        reader.read('credential_id', CredentialId.fromJson),
+      );
+    }
+    _fail('type', 'invalid_structure');
+  }
+  final String type;
+  final CredentialId? credentialId;
+  @override
+  void validate() {
+    credentialId?.validate();
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'type': type,
+    if (credentialId != null) 'credential_id': credentialId!.toJson(),
+  };
 }

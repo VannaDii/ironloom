@@ -2,6 +2,84 @@ import 'package:ironloom_client/ironloom_client.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test(
+    'source account and endpoint choices validate through browser decode',
+    () {
+      final binding = decode(
+        '{"host":"huggingface","access":{"type":"credential","credential_id":"source"}}',
+        SourceAccountBinding.fromJson,
+      );
+      expect(binding.access.credentialId!.value, 'source');
+      expect(
+        () => decode(
+          '{"host":"huggingface","access":{"type":"anonymous","credential_id":"source"}}',
+          SourceAccountBinding.fromJson,
+        ),
+        throwsA(isA<ValidationErrors>()),
+      );
+      expect(
+        () => decode(
+          '{"host":"huggingface","access":{"type":"credential"}}',
+          SourceAccountBinding.fromJson,
+        ),
+        throwsA(isA<ValidationErrors>()),
+      );
+      final endpoint = ProviderEndpoint(
+        provider: ActorId('custom'),
+        base: 'https://provider.fixture/v1',
+        dialect: ProviderDialect.chatCompletions,
+        billing: BillingMode.apiKey,
+        streaming: false,
+        tools: true,
+        streamUsage: false,
+        reasoningEfforts: [],
+      );
+      expect(ProviderEndpoint.fromJson(endpoint.toJson()).base, endpoint.base);
+      expect(
+        () => ProviderEndpoint.fromJson({
+          ...endpoint.toJson(),
+          'base': 'https://secret@provider.fixture/v1',
+        }),
+        throwsA(isA<ValidationErrors>()),
+      );
+    },
+  );
+  test('pending pause survives actual browser decode without becoming confirmed pause', () {
+    final value = <String, Object?>{
+      'session': <String, Object?>{
+        'conversation_id': 'c',
+        'project_id': 'p',
+        'active_turn_id': 't',
+        'archived': false,
+        'last_human_interaction_ms': '1',
+      },
+      'cursor': <String, Object?>{
+        'conversation_id': 'c',
+        'sequence': '9007199254740993',
+      },
+      'revision': '9007199254740993',
+      'active_assignment_id': 'a',
+      'pause_requested': true,
+      'execution_state': 'running',
+      'pending_questions': <Object?>[],
+    };
+    final snapshot = ConversationSnapshot.fromJson(value);
+    expect(snapshot.pauseRequested, isTrue);
+    expect(snapshot.executionState, ExecutionState.running);
+    expect(snapshot.revision.toJson(), '9007199254740993');
+    expect(
+      () => ConversationSnapshot.fromJson({
+        ...value,
+        'execution_state': 'paused',
+      }),
+      throwsA(isA<ValidationErrors>()),
+    );
+    expect(
+      () => ConversationSnapshot.fromJson({...value, 'pause_requested': null}),
+      throwsA(isA<ValidationErrors>()),
+    );
+  });
+
   test('u64 counters remain exact on VM and browser', () {
     for (final value in ['0', '9007199254740993', '18446744073709551615']) {
       final cursor = decode(

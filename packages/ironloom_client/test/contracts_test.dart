@@ -5,6 +5,22 @@ import 'package:ironloom_client/ironloom_client.dart';
 import 'package:test/test.dart';
 
 final Map<String, WireModel Function(Object?)> decoders = {
+  'stored_command': StoredCommand.fromJson,
+  'command_receipt': CommandReceipt.fromJson,
+  'session_query': SessionQuery.fromJson,
+  'service_event': ServiceEvent.fromJson,
+  'model_inventory_item': ModelInventoryItem.fromJson,
+  'model_assessment_query': ModelAssessmentQuery.fromJson,
+  'instruction_command': InstructionCommand.fromJson,
+  'engine_assessment': EngineAssessment.fromJson,
+  'download_progress': DownloadProgress.fromJson,
+  'download_limits': DownloadLimits.fromJson,
+  'budget_command': BudgetCommand.fromJson,
+  'project_query': ProjectQuery.fromJson,
+  'create_project': CreateProject.fromJson,
+  'credential_command': CredentialCommand.fromJson,
+  'native_connection_command': NativeConnectionCommand.fromJson,
+  'download_command': DownloadCommand.fromJson,
   'create_conversation': CreateConversation.fromJson,
   'source_query': SourceQuery.fromJson,
   'source_page': SourcePage.fromJson,
@@ -43,7 +59,9 @@ final Map<String, WireModel Function(Object?)> decoders = {
 
 void main() {
   final corpus = jsonDecode(
-    File('../../fixtures/contracts/decode.json').readAsStringSync(),
+    File(
+      '${Platform.environment['IRONLOOM_CONTRACT_ROOT'] ?? '../..'}/fixtures/contracts/decode.json',
+    ).readAsStringSync(),
   ) as Map<String, Object?>;
   for (final entry in corpus['cases']! as List<Object?>) {
     final fixture = entry! as Map<String, Object?>;

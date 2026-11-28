@@ -23,3 +23,7 @@ pub trait Provider: Send + Sync {
     /// Requests only this inference cancellation. A later terminal event confirms termination.
     fn cancel(&self, request: InferenceId) -> BoxFuture<'_, Result<(), AdapterError>>;
 }
+
+/// Real HTTP provider implementations and provider-neutral payload/stream mapping.
+pub mod http;
+mod sse;
