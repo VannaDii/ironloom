@@ -4,6 +4,7 @@ Committed Rust schemas cross-check fields. Semantic invariants live in invariant
 shared decode fixtures check the public constructors independently in both languages.
 Run from any directory with python3 packages/ironloom_client/tool/generate_models.py.
 """
+import argparse
 import json
 import pathlib
 import re
@@ -11,11 +12,18 @@ import subprocess
 
 PACKAGE = pathlib.Path(__file__).resolve().parents[1]
 ROOT = PACKAGE.parents[1]
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--models-revision', help='Read reviewed model declarations/schemas from a Git revision without changing the checkout.')
+args = parser.parse_args()
+def read_contract(path):
+    if args.models_revision and path.relative_to(ROOT).parts[:2] == ('crates', 'ironloom-models'):
+        return subprocess.check_output(['git', 'show', f'{args.models_revision}:{path.relative_to(ROOT).as_posix()}'], cwd=ROOT, text=True)
+    return path.read_text()
 SOURCES = sorted((ROOT / 'crates').glob('*/src/factory.rs'))
 records = {}
 enums = {}
 for path in SOURCES:
-    source = path.read_text()
+    source = read_contract(path)
     for name, fields, body in re.findall(
         r'(\w+), \w+Data \{(.*?)\} \|value\| \{(.*?)\n\}', source, re.S
     ):
@@ -28,7 +36,7 @@ for path in SOURCES:
 
 schemas = {}
 for path in (ROOT / 'crates').glob('*/schemas/*.schema.json'):
-    schema = json.loads(path.read_text())
+    schema = json.loads(read_contract(path))
     schemas.update(schema.get('$defs', {}))
 for name, (fields, _) in records.items():
     assert set(dict(fields)) == set(schemas[name + 'Data']['properties']), name

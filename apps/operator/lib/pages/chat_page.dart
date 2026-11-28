@@ -248,6 +248,7 @@ class _ChatPageState extends State<ChatPage> {
       limit = TextEditingController(),
       currency = TextEditingController();
   final focus = FocusNode();
+  HistoryPage? renderedHistory;
   final output = <String, String>{};
   final kinds = <String, StreamKind>{};
   List<HistoryItem> items = [];
@@ -271,7 +272,19 @@ class _ChatPageState extends State<ChatPage> {
     );
     eventSubscription = chat.events.listen(onEvent);
     changeSubscription = chat.changes.listen((_) {
-      if (mounted) setState(() {});
+      if (mounted) {
+        setState(() {
+          if (!identical(renderedHistory, chat.history)) {
+            renderedHistory = chat.history;
+            items = chat.history?.items ?? [];
+            before = chat.history?.nextBefore;
+            output.clear();
+            kinds.clear();
+          }
+          execution = chat.snapshot?.executionState;
+          assignment = chat.snapshot?.activeAssignmentId;
+        });
+      }
     });
     load();
   }
@@ -351,7 +364,12 @@ class _ChatPageState extends State<ChatPage> {
   Future<void> refreshState() async {
     try {
       await chat.refresh();
-      if (mounted) setState(() {});
+      if (mounted) {
+        setState(() {
+          execution = chat.snapshot?.executionState;
+          assignment = chat.snapshot?.activeAssignmentId;
+        });
+      }
     } on Object catch (e) {
       if (mounted) setState(() => error = displayError(e));
     }

@@ -9,6 +9,7 @@ String displayError(Object error) => switch (error) {
               '${f.field.replaceAll('_', ' ')}: ${f.code.replaceAll('_', ' ')}',
         )
         .join('\n'),
+  CommandConflict() => 'State changed; no command was dispatched. Your input is retained. Refresh before retrying.',
   ApiFailure(status: 401) => 'Your session has expired. Sign in again.',
   ApiFailure(status: 403) => 'You do not have permission for this action.',
   ApiFailure(status: 409) =>

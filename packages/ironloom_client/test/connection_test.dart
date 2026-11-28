@@ -196,4 +196,127 @@ void main() {
     );
     client.close();
   });
+  test(
+    'conflicting commands retain their exact envelope and report no dispatch',
+    () async {
+      final journal = MemoryCommandJournal();
+      final client = IronloomClient(
+        ServerConnection(Uri.parse('https://host/')),
+        MockClient((request) async {
+          if (request.url.path.endsWith('/snapshot')) {
+            return http.Response(jsonEncode(state()), 200);
+          }
+          final body = jsonDecode(request.body) as Map<String, Object?>;
+          return http.Response(
+            jsonEncode({
+              'command_id': body['command_id'],
+              'disposition': 'conflict',
+              'cursor': state()['cursor'],
+            }),
+            200,
+          );
+        }),
+      );
+      final chat = ChatConnection(client, journal)
+        ..snapshot = ConversationSnapshot.fromJson(state());
+      await expectLater(
+        chat.send(
+          CommandAction(
+            'input',
+            InputCommand(
+              conversationId: ConversationId('c'),
+              text: 'keep this input',
+            ),
+          ),
+        ),
+        throwsA(isA<CommandConflict>()),
+      );
+      final pending = await journal.pending();
+      expect(
+        (pending.single.action.data.toJson() as Map<String, Object?>)['text'],
+        'keep this input',
+      );
+      await expectLater(
+        chat.retry(pending.single),
+        throwsA(isA<CommandConflict>()),
+      );
+      expect(
+        (await journal.pending()).single.commandId.value,
+        pending.single.commandId.value,
+      );
+      await chat.close();
+      client.close();
+    },
+  );
+  test('chunked expired-cursor error hydrates new snapshot and history without a command', () async {
+    var snapshots = 0, streams = 0;
+    final client = IronloomClient(
+      ServerConnection(Uri.parse('https://host/')),
+      MockClient.streaming((request, body) async {
+        if (request.url.path.endsWith('/events')) {
+          streams++;
+          return http.StreamedResponse(
+            Stream.fromIterable(
+              streams == 1
+                  ? [utf8.encode('"cursor_'), utf8.encode('expired"')]
+                  : <List<int>>[],
+            ),
+            streams == 1 ? 409 : 200,
+          );
+        }
+        expect(request.method, 'GET');
+        if (request.url.path.endsWith('/snapshot')) {
+          snapshots++;
+          final data = state();
+          data['cursor'] = {'conversation_id': 'c', 'sequence': '$snapshots'};
+          return http.StreamedResponse(
+            Stream.value(utf8.encode(jsonEncode(data))),
+            200,
+          );
+        }
+        final asOf = decodeCursor(request.url.queryParameters['as_of']!);
+        return http.StreamedResponse(
+          Stream.value(
+            utf8.encode(
+              jsonEncode({
+                'as_of': asOf.toJson(),
+                'items': <Object?>[],
+                'next_before': null,
+              }),
+            ),
+          ),
+          200,
+        );
+      }),
+    );
+    final chat = ChatConnection(client, MemoryCommandJournal());
+    await chat.connect(ConversationId('c'));
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    expect((chat.interruption as ApiFailure).requiresResync, isTrue);
+    final old = chat.history;
+    await chat.reconnect();
+    expect(snapshots, 2);
+    expect(identical(chat.history, old), isFalse);
+    expect(chat.history!.asOf.sequence.toJson(), '2');
+    await chat.close();
+    client.close();
+  });
+  test('reviewed download contract requires durable repository binding', () {
+    // b382d23 shared fixture: download-retains-repository-binding.
+    final payload = jsonDecode(
+      r'''{"source": {"publisher": "fixture-publisher", "host": "fixture-host", "repository_url": "https://example.com/model", "revision": "pinned-revision", "checksum": null, "access": "accessible", "license": null}, "repository_id": "fixture-repository", "download_id": "download", "received_bytes": "0", "total_bytes": null, "resume_token_ref": null, "cancel_requested": false, "terminated": false}''',
+    ) as Map<String, Object?>;
+    final value = decode(jsonEncode(payload), DownloadProgress.fromJson);
+    expect(value.repositoryId.value, 'fixture-repository');
+    payload.remove('repository_id');
+    expect(
+      () => decode(jsonEncode(payload), DownloadProgress.fromJson),
+      throwsA(isA<ValidationErrors>()),
+    );
+    payload['repository_id'] = '';
+    expect(
+      () => decode(jsonEncode(payload), DownloadProgress.fromJson),
+      throwsA(isA<ValidationErrors>()),
+    );
+  });
 }

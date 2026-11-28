@@ -289,7 +289,13 @@ final class IronloomClient {
     final response = await httpClient.send(request).timeout(timeout);
     if (response.statusCode != 200) {
       // Bound and redact error response bodies rather than exposing upstream HTML/text.
-      final bytes = await http.ByteStream(response.stream.take(1)).toBytes();
+      final bytes = <int>[];
+      await for (final chunk in response.stream.timeout(timeout)) {
+        if (bytes.length + chunk.length > maxResponseBytes) {
+          throw ApiFailure(response.statusCode, null);
+        }
+        bytes.addAll(chunk);
+      }
       ServiceError? error;
       if (bytes.length <= maxResponseBytes) {
         try {

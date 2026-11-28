@@ -2251,6 +2251,7 @@ final class ModelSource implements WireModel {
 final class DownloadProgress implements WireModel {
   factory DownloadProgress({
     required ModelSource source,
+    required ActorId repositoryId,
     required ActorId downloadId,
     required Counter receivedBytes,
     Counter? totalBytes,
@@ -2259,6 +2260,7 @@ final class DownloadProgress implements WireModel {
     required bool terminated,
   }) => DownloadProgress.fromJson({
     'source': _json(source),
+    'repository_id': _json(repositoryId),
     'download_id': _json(downloadId),
     'received_bytes': _json(receivedBytes),
     'total_bytes': _json(totalBytes),
@@ -2268,6 +2270,7 @@ final class DownloadProgress implements WireModel {
   });
   DownloadProgress._(
     this.source,
+    this.repositoryId,
     this.downloadId,
     this.receivedBytes,
     this.totalBytes,
@@ -2278,6 +2281,7 @@ final class DownloadProgress implements WireModel {
   factory DownloadProgress.fromJson(Object? json) {
     final r = _Reader(json, [
       "source",
+      "repository_id",
       "download_id",
       "received_bytes",
       "total_bytes",
@@ -2287,6 +2291,7 @@ final class DownloadProgress implements WireModel {
     ]);
     final value = DownloadProgress._(
       r.read('source', ModelSource.fromJson),
+      r.read('repository_id', ActorId.fromJson),
       r.read('download_id', ActorId.fromJson),
       r.read('received_bytes', Counter.fromJson),
       r.optional('total_bytes', Counter.fromJson),
@@ -2298,6 +2303,7 @@ final class DownloadProgress implements WireModel {
     return value;
   }
   final ModelSource source;
+  final ActorId repositoryId;
   final ActorId downloadId;
   final Counter receivedBytes;
   final Counter? totalBytes;
@@ -2312,6 +2318,7 @@ final class DownloadProgress implements WireModel {
   @override
   Map<String, Object?> toJson() => {
     'source': _json(source),
+    'repository_id': _json(repositoryId),
     'download_id': _json(downloadId),
     'received_bytes': _json(receivedBytes),
     'total_bytes': _json(totalBytes),

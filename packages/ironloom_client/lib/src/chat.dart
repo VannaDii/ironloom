@@ -29,6 +29,15 @@ final class MemoryCommandJournal implements CommandJournal {
   Future<List<Command>> pending() async => List.unmodifiable(_commands.values);
 }
 
+/// A rejected optimistic command. Its exact envelope remains journaled for review/retry.
+final class CommandConflict implements Exception {
+  CommandConflict(this.receipt);
+  final CommandReceipt receipt;
+  @override
+  String toString() =>
+      'State changed; no command was dispatched. Refresh before retrying.';
+}
+
 /// Durable conversation hydration and subscription. An interrupted connection only
 /// reads snapshots/history/events; retrying a command is a separate explicit action.
 final class ChatConnection {
@@ -116,9 +125,10 @@ final class ChatConnection {
 
   Future<CommandReceipt> retry(Command command) async {
     final receipt = await client.command(command);
-    if (receipt.disposition != CommandDisposition.conflict) {
-      await journal.acknowledge(command.commandId);
+    if (receipt.disposition == CommandDisposition.conflict) {
+      throw CommandConflict(receipt);
     }
+    await journal.acknowledge(command.commandId);
     return receipt;
   }
 

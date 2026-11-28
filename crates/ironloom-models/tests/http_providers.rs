@@ -116,6 +116,10 @@ async fn responses_preserve_tool_identity_and_wait_for_terminal_usage() {
     .unwrap();
     let events = collect(&provider).await;
     assert_eq!(events.last().unwrap().kind, StreamKind::Completed);
+    let original = request();
+    assert!(events.iter().all(|event| event.turn_id == original.turn_id
+        && event.item_id == original.item_id
+        && event.assignment_id == original.assignment_id));
     let tool = events
         .iter()
         .find(|e| e.kind == StreamKind::ToolReady)
@@ -135,6 +139,36 @@ async fn responses_preserve_tool_identity_and_wait_for_terminal_usage() {
     let payload: Value = serde_json::from_str(raw.split_once("\r\n\r\n").unwrap().1).unwrap();
     assert_eq!(payload["store"], false);
     assert_eq!(payload["stream"], true);
+    assert!(
+        payload["tools"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|tool| tool["parameters"].is_object())
+    );
+    let original = request();
+    for message in &original.messages {
+        for call in &message.tool_calls {
+            assert!(
+                payload["input"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .any(|value| value["type"] == "function_call"
+                        && value["call_id"] == call.tool_call_id.as_str())
+            );
+        }
+        if let Some(result) = &message.tool_result {
+            assert!(
+                payload["input"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .any(|value| value["type"] == "function_call_output"
+                        && value["call_id"] == result.tool_call_id.as_str())
+            );
+        }
+    }
     assert!(
         payload["input"]
             .as_array()
@@ -232,7 +266,16 @@ async fn stream_eof_is_failure_with_unknown_usage_never_completion() {
 fn explicit_billing_and_effort_never_fall_back() {
     let mut config = endpoint("https://api.openai.com/v1/".into(), Dialect::Responses);
     config.billing = BillingMode::Account;
-    let payload = request_body(&config, &request()).unwrap();
+    assert_eq!(
+        request_body(&config, &request()),
+        Err(AdapterError::Unsupported)
+    );
+    let mut account = (*request()).clone();
+    let mut selection = (*account.selection).clone();
+    selection.billing = BillingMode::Account;
+    account.selection = ironloom_models::factory::ModelSelection::new(selection).unwrap();
+    let account = InferenceRequest::new(account).unwrap();
+    let payload = request_body(&config, &account).unwrap();
     assert_eq!(payload["store"], false);
     config.base = "https://another.example/v1/".parse().unwrap();
     assert!(HttpProvider::new(config, Arc::new(FixtureCredentials)).is_err());
@@ -252,4 +295,41 @@ async fn declared_nonstreaming_endpoint_returns_visible_completed_output() {
     assert!(events.iter().any(|e| e.text == "final"));
     let raw = server.await.unwrap();
     assert!(raw.contains("\"stream\":false"));
+}
+
+#[tokio::test]
+async fn slow_service_consumer_keeps_burst_output_and_final_usage() {
+    let mut values = vec![json!({"type":"response.output_text.delta","delta":"x"}); 300];
+    values.push(json!({"type":"response.completed","response":{"usage":{"input_tokens":1,"output_tokens":300}}}));
+    let (base, server) = fixture(frames(values)).await;
+    let provider = HttpProvider::new(
+        endpoint(base, Dialect::Responses),
+        Arc::new(FixtureCredentials),
+    )
+    .unwrap();
+    let mut receiver = provider.stream(request()).await.unwrap();
+    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    let mut events = Vec::new();
+    while let Some(event) = receiver.recv().await {
+        events.push(event);
+    }
+    assert_eq!(
+        events
+            .iter()
+            .filter(|e| e.kind == StreamKind::TextDelta)
+            .count(),
+        300
+    );
+    assert_eq!(events.last().unwrap().kind, StreamKind::Completed);
+    assert_eq!(
+        events
+            .iter()
+            .find_map(|e| e.usage.as_ref())
+            .unwrap()
+            .output_tokens
+            .unwrap()
+            .get(),
+        300
+    );
+    server.await.unwrap();
 }

@@ -22,7 +22,6 @@ class _ModelsPageState extends State<ModelsPage> {
   List<ModelCard> models = [];
   ActorId? after;
   final downloads = <String, DownloadProgress>{};
-  final repositories = <String, ActorId>{};
   Timer? timer;
   @override
   void initState() {
@@ -80,7 +79,6 @@ class _ModelsPageState extends State<ModelsPage> {
         operation: DownloadOperation.start,
       ),
     );
-    repositories[value.downloadId.value] = model.repositoryId;
     if (mounted) setState(() => downloads[value.downloadId.value] = value);
   }
 
@@ -102,17 +100,11 @@ class _ModelsPageState extends State<ModelsPage> {
     DownloadProgress value,
     DownloadOperation operation,
   ) async {
-    final repository = repositories[value.downloadId.value];
-    if (repository == null) {
-      throw StateError(
-        'Select the pinned source repository to resume this download',
-      );
-    }
     final updated = await widget.client.download(
       DownloadCommand(
         commandId: CommandId(const Uuid().v4()),
         projectId: selectedProject,
-        repositoryId: repository,
+        repositoryId: value.repositoryId,
         revision: value.source.revision,
         downloadId: value.downloadId,
         operation: operation,

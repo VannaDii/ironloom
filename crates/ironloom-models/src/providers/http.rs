@@ -6,10 +6,15 @@ use ironloom_observability::factory::{BillingMode, Usage, UsageBasis, UsageData}
 use ironloom_queue::factory::ExecutionState;
 use ironloom_workers::factory::{StreamKind, WorkerEvent, WorkerEventData};
 use serde_json::{Value, json};
-use std::{collections::BTreeMap, sync::Arc, time::Duration};
-use tokio::sync::{Mutex, mpsc, watch};
+use std::{
+    collections::BTreeMap,
+    sync::{Arc, Mutex},
+    time::Duration,
+};
+use tokio::sync::{mpsc, watch};
 
 const STREAM_CAPACITY: usize = 128;
+const FINAL_FLUSH_TIMEOUT: Duration = Duration::from_secs(30);
 const MAX_TOOL_CALLS: usize = 32;
 const ANTHROPIC_VERSION: &str = "2023-06-01";
 const MAX_MODEL_CATALOG_BYTES: usize = 4 * 1024 * 1024;
@@ -80,6 +85,37 @@ pub struct HttpProvider {
     client: reqwest::Client,
     credentials: Arc<dyn Credentials>,
     active: Arc<Mutex<BTreeMap<InferenceId, watch::Sender<bool>>>>,
+}
+struct ActiveGuard {
+    active: Arc<Mutex<BTreeMap<InferenceId, watch::Sender<bool>>>>,
+    id: InferenceId,
+}
+impl Drop for ActiveGuard {
+    fn drop(&mut self) {
+        self.active
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(&self.id);
+    }
+}
+async fn deliver(
+    sender: &mpsc::Sender<WorkerEvent>,
+    event: WorkerEvent,
+    cancelled: &mut watch::Receiver<bool>,
+    deadline: tokio::time::Instant,
+) -> Result<(), AdapterError> {
+    if *cancelled.borrow() {
+        return Err(AdapterError::Interrupted);
+    }
+    tokio::select! {
+        _ = cancelled.changed() => Err(AdapterError::Interrupted),
+        result = tokio::time::timeout_at(deadline, sender.send(event)) => result.map_err(|_| AdapterError::Interrupted)?.map_err(|_| AdapterError::Interrupted),
+    }
+}
+async fn final_delivery(sender: &mpsc::Sender<WorkerEvent>, event: WorkerEvent) {
+    // Receiver closure or a permanently stalled service ends delivery as uncertain EOF,
+    // never as successful completion. Ordinary slow readers retain all final events.
+    let _ = tokio::time::timeout(FINAL_FLUSH_TIMEOUT, sender.send(event)).await;
 }
 impl HttpProvider {
     /// Builds without performing network discovery, authentication or inference.
@@ -156,31 +192,31 @@ impl HttpProvider {
         serde_json::from_slice(&bytes).map_err(|_| AdapterError::Unavailable)
     }
     fn check(&self, request: &InferenceRequest) -> Result<(), AdapterError> {
-        if request.selection.provider != self.endpoint.provider
-            || request.selection.billing != self.endpoint.billing
-            || (!request.tools.is_empty() && !self.endpoint.capabilities.tools)
-            || request
-                .selection
-                .reasoning_effort
-                .as_ref()
-                .is_some_and(|e| {
-                    !self
-                        .endpoint
-                        .capabilities
-                        .reasoning_efforts
-                        .iter()
-                        .any(|v| v == e.as_str())
-                })
-        {
-            return Err(AdapterError::Unsupported);
-        }
-        if self.endpoint.billing != BillingMode::LocalEstimate
-            && request.selection.credential_id.is_none()
-        {
-            return Err(AdapterError::Unavailable);
-        }
-        Ok(())
+        validate_request(&self.endpoint, request)
     }
+}
+fn validate_request(endpoint: &Endpoint, request: &InferenceRequest) -> Result<(), AdapterError> {
+    if request.selection.provider != endpoint.provider
+        || request.selection.billing != endpoint.billing
+        || (!request.tools.is_empty() && !endpoint.capabilities.tools)
+        || request
+            .selection
+            .reasoning_effort
+            .as_ref()
+            .is_some_and(|e| {
+                !endpoint
+                    .capabilities
+                    .reasoning_efforts
+                    .iter()
+                    .any(|v| v == e.as_str())
+            })
+    {
+        return Err(AdapterError::Unsupported);
+    }
+    if endpoint.billing != BillingMode::LocalEstimate && request.selection.credential_id.is_none() {
+        return Err(AdapterError::Unavailable);
+    }
+    Ok(())
 }
 fn authorize(
     request: reqwest::RequestBuilder,
@@ -216,36 +252,39 @@ impl Provider for HttpProvider {
                 .map_err(|_| AdapterError::Unsupported)?;
             let (cancel, mut cancelled) = watch::channel(false);
             {
-                let mut active = self.active.lock().await;
+                let mut active = self.active.lock().unwrap_or_else(|e| e.into_inner());
                 if active.contains_key(&request.inference_id) {
                     return Err(AdapterError::Unsupported);
                 }
                 active.insert(request.inference_id.clone(), cancel);
             }
+            let guard = ActiveGuard {
+                active: self.active.clone(),
+                id: request.inference_id.clone(),
+            };
             let started = tokio::time::Instant::now();
             let maximum_duration = Duration::from_millis(request.controls.max_duration_ms.get());
             let response = tokio::select! {
-                _ = cancelled.changed() => { self.active.lock().await.remove(&request.inference_id); return Err(AdapterError::Interrupted); },
+                _ = cancelled.changed() => { return Err(AdapterError::Interrupted); },
                 result = tokio::time::timeout(maximum_duration, authorize(self.client.post(url).json(&payload), self.endpoint.dialect, &secret).send()) => result.map_err(|_| AdapterError::Interrupted),
             };
             let mut response = match response {
                 Ok(Ok(value)) if value.status().is_success() => value,
                 _ => {
-                    self.active.lock().await.remove(&request.inference_id);
                     return Err(AdapterError::Unavailable);
                 }
             };
             let (sender, receiver) = mpsc::channel(STREAM_CAPACITY);
             let dialect = self.endpoint.dialect;
             let streaming = self.endpoint.capabilities.streaming;
-            let active = self.active.clone();
             tokio::spawn(async move {
+                let _guard = guard;
                 let mut normalizer = Normalizer::new(request.clone(), dialect);
                 let mut decoder = Decoder::default();
                 let deadline = tokio::time::sleep_until(started + maximum_duration);
                 tokio::pin!(deadline);
-                let _ = sender.try_send(normalizer.event(StreamKind::Started, String::new(), None));
                 let result: Result<(), AdapterError> = async {
+                    deliver(&sender, normalizer.event(StreamKind::Started, String::new(), None), &mut cancelled, started + maximum_duration).await?;
                     if !streaming {
                         let mut bytes = Vec::new();
                         loop {
@@ -259,15 +298,13 @@ impl Provider for HttpProvider {
                             bytes.extend(chunk);
                         }
                         let value = serde_json::from_slice(&bytes).map_err(|_| AdapterError::Interrupted)?;
-                        for event in normalizer.nonstream(value)? { sender.try_send(event).map_err(|_| AdapterError::Interrupted)?; }
+                        for event in normalizer.nonstream(value)? { deliver(&sender, event, &mut cancelled, started + maximum_duration).await?; }
                         return Ok(());
                     }
                     loop {
                         let chunk = tokio::select! {
                             _ = cancelled.changed() => {
                                 // Closing HTTP does not prove hosted inference has stopped.
-                                let event = normalizer.event(StreamKind::StateChanged, "Cancellation requested; remote termination is unconfirmed".into(), None);
-                                let _ = sender.try_send(event);
                                 return Err(AdapterError::Interrupted);
                             },
                             _ = &mut deadline => { return Err(AdapterError::Interrupted); },
@@ -275,27 +312,42 @@ impl Provider for HttpProvider {
                         };
                         let Some(chunk) = chunk else { return if normalizer.completed { Ok(()) } else { Err(AdapterError::Interrupted) }; };
                         for (_, frame) in decoder.push(&chunk)? {
-                            for event in normalizer.frame(&frame)? { sender.try_send(event).map_err(|_| AdapterError::Interrupted)?; }
+                            for event in normalizer.frame(&frame)? { deliver(&sender, event, &mut cancelled, started + maximum_duration).await?; }
                         }
                         if normalizer.completed { return Ok(()); }
                     }
                 }.await;
+                if result.is_err() && *cancelled.borrow() {
+                    final_delivery(
+                        &sender,
+                        normalizer.event(
+                            StreamKind::StateChanged,
+                            "Cancellation requested; remote termination is unconfirmed".into(),
+                            None,
+                        ),
+                    )
+                    .await;
+                }
                 if result.is_err()
                     && let Ok(usage) = normalizer.accounting_event()
                 {
-                    let _ = sender.try_send(usage);
+                    final_delivery(&sender, usage).await;
                 }
                 if result.is_err() && !*cancelled.borrow() {
-                    let _ = sender.try_send(normalizer.event(StreamKind::Failed, "Provider stream interrupted; completion and final usage are unconfirmed".into(), None));
+                    final_delivery(&sender, normalizer.event(StreamKind::Failed, "Provider stream interrupted; completion and final usage are unconfirmed".into(), None)).await;
                 }
-                active.lock().await.remove(&request.inference_id);
             });
             Ok(receiver)
         })
     }
     fn cancel(&self, request: InferenceId) -> BoxFuture<'_, Result<(), AdapterError>> {
         Box::pin(async move {
-            if let Some(cancel) = self.active.lock().await.get(&request) {
+            if let Some(cancel) = self
+                .active
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .get(&request)
+            {
                 cancel.send(true).map_err(|_| AdapterError::Unavailable)?;
             }
             Ok(())
@@ -309,6 +361,7 @@ pub fn request_body(
     endpoint: &Endpoint,
     request: &InferenceRequest,
 ) -> Result<Value, AdapterError> {
+    validate_request(endpoint, request)?;
     let mut body = json!({"model":request.selection.model_id.as_str(),"stream":endpoint.capabilities.streaming});
     match endpoint.dialect {
         Dialect::Responses => {
@@ -524,7 +577,11 @@ impl Normalizer {
                         PendingTool {
                             id: text(&c["id"]),
                             name: text(&c["name"]),
-                            arguments: String::new(),
+                            arguments: c["input"]
+                                .as_object()
+                                .filter(|v| !v.is_empty())
+                                .map(|_| c["input"].to_string())
+                                .unwrap_or_default(),
                             emitted: false,
                         },
                     );
