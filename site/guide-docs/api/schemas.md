@@ -44,3 +44,11 @@ Shared service and native enrollment contracts now live in `ironloom-service::fa
 Installation configuration commands persist before any project exists. Empty conversations atomically retain their snapshot and retry receipt with cursor zero and no dispatch event. `DownloadProgress.repository_id` binds authorized resume/cancel operations to the original repository.
 
 Infrastructure download ceilings are required: `IRONLOOM_DOWNLOAD_MAX_FILE_BYTES` and `IRONLOOM_DOWNLOAD_MAX_TRANSFER_BYTES`. Both must be positive decimal byte counts; optional publisher sizes never override them. Helm supplies explicit editable values.
+
+Editable instruction templates use `GET/POST /api/v1/instructions`; changes explicitly preserve active copies or select authorized assignments for updates and acknowledgment. Budget commands carry `{conversation_id, budget}` to target the correct durable stream.
+
+A `ServiceEvent` contains exactly one worker event or conversation snapshot update. Snapshot cursor/project must match the outer event, so non-worker state updates need no invented execution identity.
+
+The shipped standard team starts disabled, with editable instructions and no inferred model. Pure readiness rules preserve project inheritance and allow configured remote-only operation without a GPU. Durable instruction/configuration handlers are still being implemented.
+
+Worker delegation is assignment/resource scoped, and record CAS preserves project/assignment ownership. Readiness checks PostgreSQL and the actual OpenFGA binding independently from team/model setup. Memory-fit estimates require all five demand components and checked addition; missing/overflowed totals remain unknown.

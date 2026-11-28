@@ -56,10 +56,6 @@ async fn coordinated_live_grants_keep_private_projects_and_credential_management
         .register_local(&bob, "bob", "unused-fixture-hash")
         .await
         .unwrap();
-    store
-        .redeem_bootstrap(&alice, b"fixture-token")
-        .await
-        .unwrap();
     let client = OpenFga::new(&endpoint, None).unwrap();
     let (first, second) = tokio::join!(
         LiveAuthority::open(store.clone(), client.clone()),
@@ -67,6 +63,10 @@ async fn coordinated_live_grants_keep_private_projects_and_credential_management
     );
     let first = first.unwrap();
     let second = std::sync::Arc::new(second.unwrap());
+    store
+        .redeem_bootstrap(&alice, b"fixture-token")
+        .await
+        .unwrap();
     assert!(first.bootstrap(bob.clone()).await.is_err());
     // Force a second node to arrive while the first grant initialization is in flight.
     let initialization = store.bootstrap_initialization(&alice).await.unwrap();
@@ -235,6 +235,174 @@ async fn coordinated_live_grants_keep_private_projects_and_credential_management
             .await,
         AuthorizationOutcome::Allowed
     );
+    // Human access to two projects never broadens an assignment-scoped worker delegation.
+    reopened
+        .write(
+            vec![
+                relation("operator:alice", "owner", "project:scope-a"),
+                relation("operator:alice", "owner", "project:scope-b"),
+                relation("project:scope-a", "project", "assignment:assignment-a"),
+                relation("project:scope-b", "project", "assignment:assignment-b"),
+                relation("worker:worker-a", "delegated", "assignment:assignment-a"),
+                relation("project:scope-a", "project", "conversation:conversation-a"),
+                relation("project:scope-b", "project", "conversation:conversation-b"),
+                relation("assignment:assignment-a", "assignment", "file:file-a"),
+                relation("assignment:assignment-b", "assignment", "file:file-b"),
+            ],
+            vec![],
+        )
+        .await
+        .unwrap();
+    let delegated = |request: AuthorityCheck| {
+        let mut raw: AuthorityCheckData =
+            serde_json::from_value(serde_json::to_value(request).unwrap()).unwrap();
+        raw.worker_id = Some(ironloom_core::WorkerId::new("worker-a").unwrap());
+        raw.assignment_id = Some(ironloom_core::AssignmentId::new("assignment-a").unwrap());
+        AuthorityCheck::new(raw).unwrap()
+    };
+    assert_eq!(
+        reopened
+            .check(delegated(check(
+                &alice,
+                ResourceKind::Project,
+                "scope-a",
+                Some("scope-a"),
+                Permission::Operate
+            )))
+            .await,
+        AuthorizationOutcome::Allowed
+    );
+    for request in [
+        check(
+            &alice,
+            ResourceKind::Project,
+            "scope-b",
+            Some("scope-b"),
+            Permission::Operate,
+        ),
+        check(
+            &alice,
+            ResourceKind::Assignment,
+            "assignment-b",
+            Some("scope-b"),
+            Permission::Operate,
+        ),
+        check(
+            &alice,
+            ResourceKind::Conversation,
+            "conversation-b",
+            Some("scope-b"),
+            Permission::View,
+        ),
+        check(
+            &alice,
+            ResourceKind::Conversation,
+            "conversation-b",
+            Some("scope-a"),
+            Permission::View,
+        ),
+        check(
+            &alice,
+            ResourceKind::File,
+            "file-b",
+            Some("scope-b"),
+            Permission::View,
+        ),
+        check(
+            &alice,
+            ResourceKind::Installation,
+            "live-authorization-fixture",
+            None,
+            Permission::Manage,
+        ),
+        check(
+            &alice,
+            ResourceKind::Credential,
+            "provider",
+            None,
+            Permission::ReplaceCredential,
+        ),
+        check(
+            &alice,
+            ResourceKind::Assignment,
+            "assignment-a",
+            Some("scope-a"),
+            Permission::Approve,
+        ),
+    ] {
+        assert_eq!(
+            reopened.check(delegated(request)).await,
+            AuthorizationOutcome::Denied
+        );
+    }
+    assert_eq!(
+        reopened
+            .check(delegated(check(
+                &alice,
+                ResourceKind::File,
+                "file-a",
+                Some("scope-a"),
+                Permission::View
+            )))
+            .await,
+        AuthorizationOutcome::Allowed
+    );
+    assert_eq!(
+        reopened
+            .check(delegated(check(
+                &alice,
+                ResourceKind::Credential,
+                "provider",
+                None,
+                Permission::UseCredential
+            )))
+            .await,
+        AuthorizationOutcome::Allowed
+    );
+    reopened
+        .write(
+            vec![],
+            vec![relation("operator:alice", "owner", "project:scope-a")],
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        reopened
+            .check(delegated(check(
+                &alice,
+                ResourceKind::Credential,
+                "provider",
+                None,
+                Permission::UseCredential
+            )))
+            .await,
+        AuthorizationOutcome::Denied
+    );
+    // Readiness detects the required authorization dependency without inspecting team/model setup.
+    assert!(reopened.ready().await.is_ok());
+    let probe = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let unavailable_endpoint = format!("http://{}", probe.local_addr().unwrap());
+    drop(probe);
+    let unavailable = std::sync::Arc::new(
+        LiveAuthority::open(
+            store.clone(),
+            OpenFga::new(unavailable_endpoint, None).unwrap(),
+        )
+        .await
+        .unwrap(),
+    );
+    let router = ironloom_runtime::http::readiness_router(unavailable);
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let address = format!("http://{}/readyz", listener.local_addr().unwrap());
+    let server = tokio::spawn(async move {
+        axum::serve(listener, router).await.unwrap();
+    });
+    assert_eq!(reqwest::get(&address).await.unwrap().status(), 503);
+    assert!(
+        store.installation().await.is_ok(),
+        "PostgreSQL remains healthy during authorization loss"
+    );
+    server.abort();
     store.bootstrap_grants_ready(&alice).await.unwrap();
     reopened
         .write(
@@ -259,6 +427,42 @@ async fn coordinated_live_grants_keep_private_projects_and_credential_management
             ))
             .await,
         AuthorizationOutcome::Denied
+    );
+    let binding = store
+        .get("authorization", &ActorId::new("binding").unwrap())
+        .await
+        .unwrap()
+        .unwrap();
+    let operation = store
+        .begin(
+            &alice,
+            &ironloom_core::CommandId::new("lose-binding-fixture").unwrap(),
+            &serde_json::json!({}),
+            &ActorId::new("authorization-binding-fixture").unwrap(),
+        )
+        .await
+        .unwrap();
+    let ironloom_storage::postgres::Operation::Write(mut deletion) = operation else {
+        panic!("new fixture mutation");
+    };
+    deletion
+        .delete(
+            "authorization",
+            &ActorId::new("binding").unwrap(),
+            binding.revision,
+        )
+        .await
+        .unwrap();
+    (*deletion)
+        .commit(&serde_json::json!({"deleted":true}))
+        .await
+        .unwrap();
+    assert!(reopened.ready().await.is_err());
+    assert!(
+        LiveAuthority::open(store.clone(), OpenFga::new(&endpoint, None).unwrap())
+            .await
+            .is_err(),
+        "missing established authorization binding must not be recreated"
     );
     store.close().await;
 }

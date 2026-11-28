@@ -3748,6 +3748,560 @@
           "code": "must_be_positive"
         }
       ]
+    },
+    {
+      "contract": "instruction_command",
+      "name": "preserve-active-copies",
+      "input": {
+        "command_id": "edit-instructions",
+        "project_id": null,
+        "instruction_id": "planner",
+        "expected_revision": "1",
+        "content": "Plan only within approved authority.",
+        "active_update": "preserve_copies",
+        "assignments": []
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "instruction_command",
+      "name": "selected-active-copies",
+      "input": {
+        "command_id": "edit-instructions",
+        "project_id": null,
+        "instruction_id": "planner",
+        "expected_revision": "1",
+        "content": "Plan only within approved authority.",
+        "active_update": "update_selected_copies",
+        "assignments": [
+          "assignment-1"
+        ]
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "instruction_command",
+      "name": "copy-update-requires-selection",
+      "input": {
+        "command_id": "edit-instructions",
+        "project_id": null,
+        "instruction_id": "planner",
+        "expected_revision": "1",
+        "content": "Plan only within approved authority.",
+        "active_update": "update_selected_copies",
+        "assignments": []
+      },
+      "expected_errors": [
+        {
+          "field": "assignments",
+          "code": "active_update_selection_mismatch"
+        }
+      ]
+    },
+    {
+      "contract": "instruction_command",
+      "name": "preserved-copies-forbid-selection",
+      "input": {
+        "command_id": "edit-instructions",
+        "project_id": null,
+        "instruction_id": "planner",
+        "expected_revision": "1",
+        "content": "Plan only within approved authority.",
+        "active_update": "preserve_copies",
+        "assignments": [
+          "assignment-1"
+        ]
+      },
+      "expected_errors": [
+        {
+          "field": "assignments",
+          "code": "active_update_selection_mismatch"
+        }
+      ]
+    },
+    {
+      "contract": "budget_command",
+      "name": "explicit-budget-stream-target",
+      "input": {
+        "conversation_id": "conversation-1",
+        "budget": {
+          "revision": "1",
+          "limit_micros": null,
+          "currency": "USD",
+          "incurred_micros": "0",
+          "reserved_micros": "0",
+          "uncertain_usage": false
+        }
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "service_event",
+      "name": "snapshot-update-without-worker-identity",
+      "input": {
+        "cursor": {
+          "conversation_id": "conversation-1",
+          "sequence": "9"
+        },
+        "command_id": "update-budget",
+        "project_id": "project-1",
+        "event": null,
+        "snapshot": {
+          "session": {
+            "conversation_id": "conversation-1",
+            "active_turn_id": "turn-1",
+            "project_id": "project-1",
+            "archived": false,
+            "last_human_interaction_ms": "1"
+          },
+          "cursor": {
+            "conversation_id": "conversation-1",
+            "sequence": "9"
+          },
+          "revision": "3",
+          "execution_state": "waiting_for_human",
+          "plan": null,
+          "approval": null,
+          "pending_questions": [
+            {
+              "question_id": "question-1",
+              "assignment_id": "assignment-1",
+              "conversation_id": "conversation-1",
+              "turn_id": "turn-1",
+              "item_id": "item-1",
+              "revision": "1",
+              "text": "What should the fixture cover?",
+              "choices": [
+                "a",
+                "b"
+              ],
+              "allow_multiple": true,
+              "allow_text": true,
+              "resolved_by": null
+            }
+          ],
+          "budget": null,
+          "active_assignment_id": "assignment-1"
+        }
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "service_event",
+      "name": "empty-service-event-rejected",
+      "input": {
+        "cursor": {
+          "conversation_id": "conversation-1",
+          "sequence": "9"
+        },
+        "command_id": "update-budget",
+        "project_id": "project-1",
+        "event": null,
+        "snapshot": null
+      },
+      "expected_errors": [
+        {
+          "field": "event",
+          "code": "exactly_one_event_or_snapshot"
+        }
+      ]
+    },
+    {
+      "contract": "service_event",
+      "name": "snapshot-update-watermark-must-match",
+      "input": {
+        "cursor": {
+          "conversation_id": "conversation-1",
+          "sequence": "9"
+        },
+        "command_id": "update-budget",
+        "project_id": "project-1",
+        "event": null,
+        "snapshot": {
+          "session": {
+            "conversation_id": "conversation-1",
+            "active_turn_id": "turn-1",
+            "project_id": "project-1",
+            "archived": false,
+            "last_human_interaction_ms": "1"
+          },
+          "cursor": {
+            "conversation_id": "conversation-1",
+            "sequence": "8"
+          },
+          "revision": "3",
+          "execution_state": "waiting_for_human",
+          "plan": null,
+          "approval": null,
+          "pending_questions": [
+            {
+              "question_id": "question-1",
+              "assignment_id": "assignment-1",
+              "conversation_id": "conversation-1",
+              "turn_id": "turn-1",
+              "item_id": "item-1",
+              "revision": "1",
+              "text": "What should the fixture cover?",
+              "choices": [
+                "a",
+                "b"
+              ],
+              "allow_multiple": true,
+              "allow_text": true,
+              "resolved_by": null
+            }
+          ],
+          "budget": null,
+          "active_assignment_id": "assignment-1"
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "snapshot.cursor",
+          "code": "watermark_mismatch"
+        }
+      ]
+    },
+    {
+      "contract": "service_event",
+      "name": "worker-event-retains-typed-output",
+      "input": {
+        "cursor": {
+          "conversation_id": "conversation-1",
+          "sequence": "9"
+        },
+        "command_id": "update-budget",
+        "project_id": "project-1",
+        "event": {
+          "worker_id": "worker-1",
+          "assignment_id": "assignment-1",
+          "turn_id": "turn-1",
+          "item_id": "item-1",
+          "usage": null,
+          "inference_id": null,
+          "tool_call_id": null,
+          "kind": "state_changed",
+          "text": "",
+          "state": "cancellation_requested"
+        },
+        "snapshot": null
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "service_event",
+      "name": "worker-and-snapshot-payloads-are-exclusive",
+      "input": {
+        "cursor": {
+          "conversation_id": "conversation-1",
+          "sequence": "9"
+        },
+        "command_id": "update-budget",
+        "project_id": "project-1",
+        "event": {
+          "worker_id": "worker-1",
+          "assignment_id": "assignment-1",
+          "turn_id": "turn-1",
+          "item_id": "item-1",
+          "usage": null,
+          "inference_id": null,
+          "tool_call_id": null,
+          "kind": "state_changed",
+          "text": "",
+          "state": "cancellation_requested"
+        },
+        "snapshot": {
+          "session": {
+            "conversation_id": "conversation-1",
+            "active_turn_id": "turn-1",
+            "project_id": "project-1",
+            "archived": false,
+            "last_human_interaction_ms": "1"
+          },
+          "cursor": {
+            "conversation_id": "conversation-1",
+            "sequence": "9"
+          },
+          "revision": "3",
+          "execution_state": "waiting_for_human",
+          "plan": null,
+          "approval": null,
+          "pending_questions": [
+            {
+              "question_id": "question-1",
+              "assignment_id": "assignment-1",
+              "conversation_id": "conversation-1",
+              "turn_id": "turn-1",
+              "item_id": "item-1",
+              "revision": "1",
+              "text": "What should the fixture cover?",
+              "choices": [
+                "a",
+                "b"
+              ],
+              "allow_multiple": true,
+              "allow_text": true,
+              "resolved_by": null
+            }
+          ],
+          "budget": null,
+          "active_assignment_id": "assignment-1"
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "event",
+          "code": "exactly_one_event_or_snapshot"
+        }
+      ]
+    },
+    {
+      "contract": "engine_assessment",
+      "name": "complete-memory-demand-is-checked",
+      "input": {
+        "engine": {
+          "name": "fixture-engine",
+          "version": "1",
+          "backend": "simulated",
+          "configuration_hash": "engine-config-1"
+        },
+        "devices": [
+          {
+            "device_id": "simulated-device",
+            "total_bytes": "1000",
+            "used_bytes": "0",
+            "external_used_bytes": "0",
+            "observed_at_ms": "1"
+          }
+        ],
+        "requirements": {
+          "compatibility": "unknown",
+          "reason": "Cache/runtime metadata or device authority unavailable.",
+          "target_weight_bytes": "100",
+          "draft_weight_bytes": "0",
+          "cache_bytes": "20",
+          "runtime_overhead_bytes": "30",
+          "accelerator_bytes": "0"
+        },
+        "fit": {
+          "compatibility": "unknown",
+          "estimated_bytes": "150",
+          "fits_after_idle_eviction": true,
+          "qualification": "unqualified",
+          "reason": "Missing facts stay unknown; capability metadata is not qualification."
+        }
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "engine_assessment",
+      "name": "partial-demand-cannot-claim-known-fit",
+      "input": {
+        "engine": {
+          "name": "fixture-engine",
+          "version": "1",
+          "backend": "simulated",
+          "configuration_hash": "engine-config-1"
+        },
+        "devices": [
+          {
+            "device_id": "simulated-device",
+            "total_bytes": "1000",
+            "used_bytes": "0",
+            "external_used_bytes": "0",
+            "observed_at_ms": "1"
+          }
+        ],
+        "requirements": {
+          "compatibility": "unknown",
+          "reason": "Cache/runtime metadata or device authority unavailable.",
+          "target_weight_bytes": "100",
+          "draft_weight_bytes": "0",
+          "cache_bytes": null,
+          "runtime_overhead_bytes": "30",
+          "accelerator_bytes": "0"
+        },
+        "fit": {
+          "compatibility": "unknown",
+          "estimated_bytes": "150",
+          "fits_after_idle_eviction": true,
+          "qualification": "unqualified",
+          "reason": "Missing facts stay unknown; capability metadata is not qualification."
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "fit.estimated_bytes",
+          "code": "complete_demand_mismatch"
+        }
+      ]
+    },
+    {
+      "contract": "engine_assessment",
+      "name": "known-memory-demand-must-match-sum",
+      "input": {
+        "engine": {
+          "name": "fixture-engine",
+          "version": "1",
+          "backend": "simulated",
+          "configuration_hash": "engine-config-1"
+        },
+        "devices": [
+          {
+            "device_id": "simulated-device",
+            "total_bytes": "1000",
+            "used_bytes": "0",
+            "external_used_bytes": "0",
+            "observed_at_ms": "1"
+          }
+        ],
+        "requirements": {
+          "compatibility": "unknown",
+          "reason": "Cache/runtime metadata or device authority unavailable.",
+          "target_weight_bytes": "100",
+          "draft_weight_bytes": "0",
+          "cache_bytes": "20",
+          "runtime_overhead_bytes": "30",
+          "accelerator_bytes": "0"
+        },
+        "fit": {
+          "compatibility": "unknown",
+          "estimated_bytes": "149",
+          "fits_after_idle_eviction": true,
+          "qualification": "unqualified",
+          "reason": "Missing facts stay unknown; capability metadata is not qualification."
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "fit.estimated_bytes",
+          "code": "complete_demand_mismatch"
+        }
+      ]
+    },
+    {
+      "contract": "engine_assessment",
+      "name": "known-components-cannot-hide-demand-total",
+      "input": {
+        "engine": {
+          "name": "fixture-engine",
+          "version": "1",
+          "backend": "simulated",
+          "configuration_hash": "engine-config-1"
+        },
+        "devices": [
+          {
+            "device_id": "simulated-device",
+            "total_bytes": "1000",
+            "used_bytes": "0",
+            "external_used_bytes": "0",
+            "observed_at_ms": "1"
+          }
+        ],
+        "requirements": {
+          "compatibility": "unknown",
+          "reason": "Cache/runtime metadata or device authority unavailable.",
+          "target_weight_bytes": "100",
+          "draft_weight_bytes": "0",
+          "cache_bytes": "20",
+          "runtime_overhead_bytes": "30",
+          "accelerator_bytes": "0"
+        },
+        "fit": {
+          "compatibility": "unknown",
+          "estimated_bytes": null,
+          "fits_after_idle_eviction": null,
+          "qualification": "unqualified",
+          "reason": "Missing facts stay unknown; capability metadata is not qualification."
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "fit.estimated_bytes",
+          "code": "complete_demand_mismatch"
+        }
+      ]
+    },
+    {
+      "contract": "engine_assessment",
+      "name": "overflowed-memory-demand-remains-unknown",
+      "input": {
+        "engine": {
+          "name": "fixture-engine",
+          "version": "1",
+          "backend": "simulated",
+          "configuration_hash": "engine-config-1"
+        },
+        "devices": [
+          {
+            "device_id": "simulated-device",
+            "total_bytes": "1000",
+            "used_bytes": "0",
+            "external_used_bytes": "0",
+            "observed_at_ms": "1"
+          }
+        ],
+        "requirements": {
+          "compatibility": "unknown",
+          "reason": "Cache/runtime metadata or device authority unavailable.",
+          "target_weight_bytes": "18446744073709551615",
+          "draft_weight_bytes": "1",
+          "cache_bytes": "0",
+          "runtime_overhead_bytes": "0",
+          "accelerator_bytes": "0"
+        },
+        "fit": {
+          "compatibility": "unknown",
+          "estimated_bytes": null,
+          "fits_after_idle_eviction": null,
+          "qualification": "unqualified",
+          "reason": "Missing facts stay unknown; capability metadata is not qualification."
+        }
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "engine_assessment",
+      "name": "overflowed-memory-demand-cannot-wrap-to-fit",
+      "input": {
+        "engine": {
+          "name": "fixture-engine",
+          "version": "1",
+          "backend": "simulated",
+          "configuration_hash": "engine-config-1"
+        },
+        "devices": [
+          {
+            "device_id": "simulated-device",
+            "total_bytes": "1000",
+            "used_bytes": "0",
+            "external_used_bytes": "0",
+            "observed_at_ms": "1"
+          }
+        ],
+        "requirements": {
+          "compatibility": "unknown",
+          "reason": "Cache/runtime metadata or device authority unavailable.",
+          "target_weight_bytes": "18446744073709551615",
+          "draft_weight_bytes": "1",
+          "cache_bytes": "0",
+          "runtime_overhead_bytes": "0",
+          "accelerator_bytes": "0"
+        },
+        "fit": {
+          "compatibility": "unknown",
+          "estimated_bytes": "0",
+          "fits_after_idle_eviction": true,
+          "qualification": "unqualified",
+          "reason": "Missing facts stay unknown; capability metadata is not qualification."
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "fit.estimated_bytes",
+          "code": "complete_demand_mismatch"
+        }
+      ]
     }
   ]
 }

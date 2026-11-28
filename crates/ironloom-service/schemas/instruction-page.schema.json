@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/InstructionPageData",
+  "$defs": {
+    "Counter": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Canonical decimal u64; semantic validation also enforces u64 maximum.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "InstructionId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom InstructionId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "InstructionPageData": {
+      "description": "Unchecked construction draft for `InstructionPage`; validate before use.",
+      "type": "object",
+      "properties": {
+        "instructions": {
+          "description": "Authorized installation/project templates with globally unique identities.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Validated"
+          }
+        },
+        "next_after": {
+          "description": "Continuation identity, absent when exhausted.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InstructionId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "instructions"
+      ]
+    },
+    "InstructionTemplateData": {
+      "description": "Unchecked construction draft for `InstructionTemplate`; validate before use.",
+      "type": "object",
+      "properties": {
+        "content": {
+          "description": "Effective role instructions; never provider credentials.",
+          "type": "string"
+        },
+        "instruction_id": {
+          "description": "Stable configured template identity.",
+          "$ref": "#/$defs/InstructionId"
+        },
+        "project_id": {
+          "description": "None for installation templates; Some for project-owned templates.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProjectId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "revision": {
+          "description": "Current template revision, independent from each assignment copy revision.",
+          "$ref": "#/$defs/Counter"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "instruction_id",
+        "revision",
+        "content"
+      ]
+    },
+    "ProjectId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ProjectId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Validated": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/InstructionTemplateData"
+    }
+  }
+}

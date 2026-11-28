@@ -542,3 +542,6 @@ mod transfer_limit_tests {
         }
     }
 }
+
+/// Editable standard team instructions and pure execution-readiness evaluation.
+pub mod team;

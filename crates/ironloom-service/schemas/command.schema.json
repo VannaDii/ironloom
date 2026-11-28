@@ -32,6 +32,25 @@
       "type": "string",
       "minLength": 1
     },
+    "BudgetCommandData": {
+      "description": "Unchecked construction draft for `BudgetCommand`; validate before use.",
+      "type": "object",
+      "properties": {
+        "budget": {
+          "description": "Current budget revision, bounds and visible accounting counters.",
+          "$ref": "#/$defs/Validated9"
+        },
+        "conversation_id": {
+          "description": "Authorized target stream; never infer a target from recent activity.",
+          "$ref": "#/$defs/ConversationId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "conversation_id",
+        "budget"
+      ]
+    },
     "BudgetData": {
       "description": "Unchecked construction draft for `Budget`; validate before use.",
       "type": "object",
@@ -573,6 +592,10 @@
       "$ref": "#/$defs/LessonMutationData"
     },
     "Validated8": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/BudgetCommandData"
+    },
+    "Validated9": {
       "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
       "$ref": "#/$defs/BudgetData"
     }

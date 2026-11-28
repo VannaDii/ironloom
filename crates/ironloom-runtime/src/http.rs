@@ -12,3 +12,22 @@ pub fn sse_event(event: &ServiceEvent) -> Result<axum::response::sse::Event, Ser
 
 /// Opaque service-session/OIDC/bootstrap HTTP transport.
 pub mod auth;
+
+/// Readiness for the selected durable authorization dependencies, separate from execution setup.
+pub fn readiness_router(
+    authority: std::sync::Arc<crate::authorization::LiveAuthority>,
+) -> axum::Router {
+    axum::Router::new().route(
+        "/readyz",
+        axum::routing::get(move || {
+            let authority = authority.clone();
+            async move {
+                if authority.ready().await.is_ok() {
+                    axum::http::StatusCode::OK
+                } else {
+                    axum::http::StatusCode::SERVICE_UNAVAILABLE
+                }
+            }
+        }),
+    )
+}

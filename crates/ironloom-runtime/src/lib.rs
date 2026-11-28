@@ -1711,3 +1711,6 @@ pub fn configured_download_limits()
 
 /// Authenticated Axum server and explicit fresh installation initialization.
 pub mod server;
+
+/// Durable factory application orchestration over shared contracts and trusted adapter bindings.
+pub mod backend;

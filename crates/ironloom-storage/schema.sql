@@ -109,7 +109,8 @@ CREATE TABLE ironloom.records (
     revision numeric(20,0) NOT NULL CHECK (revision BETWEEN 1 AND 18446744073709551615),
     body jsonb NOT NULL,
     updated_at timestamptz NOT NULL DEFAULT now(),
-    PRIMARY KEY (kind, record_id)
+    PRIMARY KEY (kind, record_id),
+    CHECK (kind <> 'instruction' OR (body->>'instruction_id' IS NOT NULL AND body->>'instruction_id'=record_id))
 );
 CREATE INDEX records_scope ON ironloom.records(kind, project_id, assignment_id);
 CREATE TABLE ironloom.sessions (

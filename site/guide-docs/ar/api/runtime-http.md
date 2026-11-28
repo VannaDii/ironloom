@@ -14,7 +14,7 @@
 | POST | `/api/v1/auth/bootstrap` | `BootstrapRedeem` → fixed `BootstrapState`; CSRF |
 | POST | `/api/v1/auth/logout` | Revoke current session and clear cookies; CSRF |
 | GET | `/healthz` | Process liveness, root path |
-| GET | `/readyz` | Selected database reachable; separate from execution setup, root path |
+| GET | `/readyz` | Selected PostgreSQL and OpenFGA binding reachable; separate from execution setup, root path |
 
 الإعدادات المطلوبة: `IRONLOOM_DATABASE_URL` و`IRONLOOM_OPENFGA_URL` و`IRONLOOM_CONFIG_KEY` (base64، 32 بايت) و`IRONLOOM_PUBLIC_URL` وحدا التنزيل. تقرأ التهيئة الصريحة فقط `IRONLOOM_INSTALLER_TOKEN`. الإعدادان `IRONLOOM_OPENFGA_TOKEN` و`IRONLOOM_OIDC_CONNECTIONS` اختياريان؛ الثاني مصفوفة JSON بعناصر `{id, issuer, client_id, client_secret, redirects}` وعناوين عودة مسموحة مطابقة تمامًا. البريد الإلكتروني ليس سلطة هوية.
 

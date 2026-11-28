@@ -725,6 +725,22 @@ EngineRequirements, EngineRequirementsData {
     required("reason", &value.reason)
 }
 }
+impl EngineRequirementsData {
+    /// Computes full demand only when every component is known and addition does not overflow.
+    /// Absent draft/cache/overhead/accelerator estimates are unknown, never implicit zero.
+    pub fn total_bytes(&self) -> Option<Counter> {
+        [
+            self.target_weight_bytes,
+            self.draft_weight_bytes,
+            self.cache_bytes,
+            self.runtime_overhead_bytes,
+            self.accelerator_bytes,
+        ]
+        .into_iter()
+        .try_fold(0_u64, |total, bytes| total.checked_add(bytes?.get()))
+        .map(Counter::new)
+    }
+}
 ironloom_core::contract! {
 /// Validated factory record.
 DeviceResourceObservation, DeviceResourceObservationData {

@@ -14,7 +14,7 @@
 | POST | `/api/v1/auth/bootstrap` | `BootstrapRedeem` → fixed `BootstrapState`; CSRF |
 | POST | `/api/v1/auth/logout` | Revoke current session and clear cookies; CSRF |
 | GET | `/healthz` | Process liveness, root path |
-| GET | `/readyz` | Selected database reachable; separate from execution setup, root path |
+| GET | `/readyz` | Selected PostgreSQL and OpenFGA binding reachable; separate from execution setup, root path |
 
 अनिवार्य सेटिंग: `IRONLOOM_DATABASE_URL`, `IRONLOOM_OPENFGA_URL`, `IRONLOOM_CONFIG_KEY` (base64, 32 बाइट), `IRONLOOM_PUBLIC_URL` और दोनों डाउनलोड सीमाएँ। केवल स्पष्ट आरंभीकरण `IRONLOOM_INSTALLER_TOKEN` पढ़ता है। `IRONLOOM_OPENFGA_TOKEN` तथा `IRONLOOM_OIDC_CONNECTIONS` वैकल्पिक हैं; दूसरा `{id, issuer, client_id, client_secret, redirects}` वाली JSON सरणी है, जिसके कॉलबैक URL अनुमति सूची से ठीक मिलते हैं। ईमेल पहचान का अधिकार नहीं देता।
 

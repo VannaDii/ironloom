@@ -328,6 +328,49 @@ async fn concurrent_bootstrap_idempotency_sessions_and_rollback_survive_reconnec
     };
     assert_eq!(first_event.next_sequence(&conversation).await.unwrap(), 1);
     drop(first_event);
+    for (command, wrong_project, wrong_assignment) in [
+        (
+            "wrong-project",
+            Some(ProjectId::new("other-project").unwrap()),
+            None,
+        ),
+        (
+            "wrong-assignment",
+            Some(project.clone()),
+            Some(ActorId::new("other-assignment").unwrap()),
+        ),
+    ] {
+        let Operation::Write(mut mutation) = store
+            .begin(
+                &alice,
+                &CommandId::new(command).unwrap(),
+                &json!({}),
+                &scope,
+            )
+            .await
+            .unwrap()
+        else {
+            panic!("new mismatch command");
+        };
+        assert!(matches!(
+            mutation
+                .put(
+                    "configuration",
+                    &scope,
+                    wrong_project.as_ref(),
+                    wrong_assignment.as_ref(),
+                    Some(1),
+                    &json!({"value":"must-not-change"})
+                )
+                .await,
+            Err(DatabaseError::Conflict)
+        ));
+        drop(mutation);
+        let unchanged = store.get("configuration", &scope).await.unwrap().unwrap();
+        assert_eq!(unchanged.revision, 1);
+        assert_eq!(unchanged.project.as_ref(), Some(&project));
+        assert_eq!(unchanged.body, json!({"value":1}));
+    }
     let abandoned = CommandId::new("abandoned-change").unwrap();
     let Operation::Write(mut batch) = store
         .begin(&alice, &abandoned, &json!({}), &scope)
