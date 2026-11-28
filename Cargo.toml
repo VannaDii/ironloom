@@ -11,6 +11,9 @@ homepage = "https://ironloom.dev"
 publish = false
 
 [workspace.dependencies]
+mistralrs = { git = "https://github.com/EricLBuehler/mistral.rs.git", rev = "21da642fdd2210c30ca4028e1eabdd28e9c602fd", default-features = false, features = ["ring"] }
+tar = "=0.4.46"
+flate2 = "=1.1.11"
 ironloom-service = { path = "crates/ironloom-service", version = "0.1.0" }
 futures-util = "=0.3.34"
 tokio-tungstenite = { version = "=0.30.0", default-features = false, features = ["connect", "rustls-tls-webpki-roots"] }
