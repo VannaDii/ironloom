@@ -21,12 +21,12 @@ COPY --from=builder /workspace/target/release/ironloom /usr/local/bin/ironloom
 COPY docker/ironloom-runtime/entrypoint.sh /usr/local/bin/ironloom-entrypoint
 
 RUN chmod 0755 /usr/local/bin/ironloom /usr/local/bin/ironloom-entrypoint \
-    && mkdir -p /var/lib/ironloom/.ironloom /var/lib/ironloom/worktrees \
+    && mkdir -p /var/lib/ironloom/.ironloom /var/lib/ironloom/worktrees /var/lib/ironloom/projects /var/lib/ironloom/models \
     && chown -R ironloom:ironloom /var/lib/ironloom
 
 USER ironloom
 WORKDIR /var/lib/ironloom
-VOLUME ["/var/lib/ironloom/.ironloom", "/var/lib/ironloom/worktrees"]
+VOLUME ["/var/lib/ironloom/.ironloom", "/var/lib/ironloom/worktrees", "/var/lib/ironloom/projects", "/var/lib/ironloom/models"]
 EXPOSE 8080
 
 ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/ironloom-entrypoint"]

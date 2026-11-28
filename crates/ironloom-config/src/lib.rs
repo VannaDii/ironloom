@@ -543,5 +543,7 @@ mod transfer_limit_tests {
     }
 }
 
+/// Trusted service node identity and separate persistence roots.
+pub mod infrastructure;
 /// Editable standard team instructions and pure execution-readiness evaluation.
 pub mod team;

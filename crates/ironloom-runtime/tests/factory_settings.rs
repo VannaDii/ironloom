@@ -509,6 +509,56 @@ async fn durable_settings_before_projects_and_explicit_copy_updates_keep_revisio
             .await,
         Err(ServiceError::Conflict)
     ));
+    let replay_from = ReplayCursor::new(ReplayCursorData {
+        conversation_id: conversation.clone(),
+        sequence: Counter::new(2),
+    })
+    .unwrap();
+    let mut subscription = backend
+        .subscribe(session.clone(), replay_from)
+        .await
+        .unwrap();
+    for expected in [3, 4] {
+        let event = tokio::time::timeout(
+            std::time::Duration::from_secs(2),
+            subscription.events.recv(),
+        )
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap();
+        assert_eq!(event.cursor.sequence.get(), expected);
+    }
+    let owner = Relationship::new(
+        format!("operator:{}", session.operator_id.as_str()),
+        "owner",
+        "project:settings-project",
+    )
+    .unwrap();
+    authority.write(vec![], vec![owner.clone()]).await.unwrap();
+    let revoked = tokio::time::timeout(
+        std::time::Duration::from_secs(2),
+        subscription.events.recv(),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    assert!(matches!(
+        revoked,
+        Err(ServiceError::Authentication(AuthenticationError::Forbidden))
+    ));
+    assert!(subscription.events.recv().await.is_none());
+    authority.write(vec![owner], vec![]).await.unwrap();
+    assert_eq!(
+        backend
+            .snapshot(session.clone(), conversation.clone())
+            .await
+            .unwrap()
+            .cursor
+            .sequence
+            .get(),
+        4
+    );
     let later = backend
         .create_conversation(
             session.clone(),
@@ -599,6 +649,124 @@ async fn durable_settings_before_projects_and_explicit_copy_updates_keep_revisio
         assert_eq!(next.len(), 1);
         assert_ne!(first[0].conversation_id, next[0].conversation_id);
     }
+    let mut live = backend
+        .subscribe(
+            session.clone(),
+            ReplayCursor::new(ReplayCursorData {
+                conversation_id: conversation.clone(),
+                sequence: Counter::new(4),
+            })
+            .unwrap(),
+        )
+        .await
+        .unwrap();
+    let Operation::Write(mut burst) = store
+        .begin(
+            &session.operator_id,
+            &CommandId::new("background-event-burst").unwrap(),
+            &json!({"fixture":"bounded-live-feed"}),
+            &id(conversation.as_str()),
+        )
+        .await
+        .unwrap()
+    else {
+        panic!("new burst");
+    };
+    let mut latest = (*backend
+        .snapshot(session.clone(), conversation.clone())
+        .await
+        .unwrap())
+    .clone();
+    latest.revision = Counter::new(4);
+    for expected in 5..=75 {
+        let sequence = burst.next_sequence(&conversation).await.unwrap();
+        assert_eq!(sequence, expected);
+        latest.cursor = ReplayCursor::new(ReplayCursorData {
+            conversation_id: conversation.clone(),
+            sequence: Counter::new(sequence),
+        })
+        .unwrap();
+        let snapshot = ConversationSnapshot::new(latest.clone()).unwrap();
+        let event = ServiceEvent::new(ServiceEventData {
+            command_id: CommandId::new("background-event-burst").unwrap(),
+            project_id: project.clone(),
+            cursor: snapshot.cursor.clone(),
+            event: None,
+            snapshot: Some(snapshot),
+        })
+        .unwrap();
+        burst
+            .append_event(
+                &conversation,
+                sequence,
+                &serde_json::to_value(event).unwrap(),
+            )
+            .await
+            .unwrap();
+    }
+    burst
+        .put(
+            "conversation",
+            &id(conversation.as_str()),
+            Some(&project),
+            None,
+            Some(3),
+            &serde_json::to_value(ConversationSnapshot::new(latest).unwrap()).unwrap(),
+        )
+        .await
+        .unwrap();
+    (*burst).commit(&json!({"fixture":"burst"})).await.unwrap();
+    assert_eq!(
+        tokio::time::timeout(std::time::Duration::from_secs(2), live.events.recv())
+            .await
+            .unwrap()
+            .unwrap()
+            .unwrap()
+            .cursor
+            .sequence
+            .get(),
+        5
+    );
+    drop(live);
+    let mut slow = backend
+        .subscribe(
+            session.clone(),
+            ReplayCursor::new(ReplayCursorData {
+                conversation_id: conversation.clone(),
+                sequence: Counter::new(0),
+            })
+            .unwrap(),
+        )
+        .await
+        .unwrap();
+    tokio::time::timeout(std::time::Duration::from_secs(2), async {
+        while !slow.events.is_closed() {
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .unwrap();
+    let mut delivered = 0;
+    while let Some(event) = slow.events.recv().await {
+        match event {
+            Ok(_) => delivered += 1,
+            Err(error) => {
+                assert_eq!(error, ServiceError::ResyncRequired);
+                break;
+            }
+        }
+    }
+    assert!(delivered > 0 && delivered < 75);
+    assert_eq!(
+        backend
+            .snapshot(session.clone(), conversation.clone())
+            .await
+            .unwrap()
+            .cursor
+            .sequence
+            .get(),
+        75
+    );
     let transport =
         ironloom_runtime::http::auth::AuthTransport::new(auth, "http://localhost/factory/")
             .unwrap();

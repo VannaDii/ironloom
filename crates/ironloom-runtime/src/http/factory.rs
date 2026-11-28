@@ -35,6 +35,7 @@ pub fn router(state: FactoryTransport) -> Router {
         .route("/api/v1/sessions", get(sessions).post(create_conversation))
         .route("/api/v1/sessions/{id}/snapshot", get(snapshot))
         .route("/api/v1/sessions/{id}/history", get(history))
+        .route("/api/v1/events", get(events))
         .layer(DefaultBodyLimit::max(MAX_COMMAND_BODY))
         .layer(middleware::map_response(
             |mut response: axum::response::Response| async move {
@@ -46,6 +47,62 @@ pub fn router(state: FactoryTransport) -> Router {
             },
         ))
         .with_state(state)
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct EventsQuery {
+    conversation_id: ConversationId,
+}
+async fn events(
+    State(state): State<FactoryTransport>,
+    headers: HeaderMap,
+    Query(query): Query<EventsQuery>,
+) -> Result<
+    axum::response::Sse<
+        impl futures_util::Stream<Item = Result<axum::response::sse::Event, std::convert::Infallible>>,
+    >,
+    HttpError,
+> {
+    use futures_util::StreamExt;
+    let session = state
+        .auth
+        .authenticate(&headers, false)
+        .await
+        .map_err(HttpError)?;
+    let header = headers
+        .get("last-event-id")
+        .and_then(|value| value.to_str().ok())
+        .ok_or_else(|| {
+            HttpError(ServiceError::Validation(
+                ironloom_core::validation::ValidationErrors::field("cursor", "required"),
+            ))
+        })?;
+    let after = decode_cursor(header).map_err(HttpError)?;
+    if after.conversation_id != query.conversation_id {
+        return Err(HttpError(ServiceError::Validation(
+            ironloom_core::validation::ValidationErrors::field(
+                "cursor.conversation_id",
+                "conversation_mismatch",
+            ),
+        )));
+    }
+    let subscription = state
+        .backend
+        .subscribe(session, after)
+        .await
+        .map_err(HttpError)?;
+    let stream = tokio_stream::wrappers::ReceiverStream::new(subscription.events).map(|result| {
+        let event = result
+            .and_then(|event| super::sse_event(&event))
+            .unwrap_or_else(|error| {
+                axum::response::sse::Event::default()
+                    .event("ironloom.error")
+                    .json_data(error)
+                    .expect("redacted service error serializes")
+            });
+        Ok(event)
+    });
+    Ok(axum::response::Sse::new(stream).keep_alive(axum::response::sse::KeepAlive::default()))
 }
 async fn sessions(
     State(state): State<FactoryTransport>,

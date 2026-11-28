@@ -2,6 +2,7 @@
 use crate::{
     authentication::{AuthenticationBackend, OidcConnection},
     authorization::LiveAuthority,
+    backend::{BackendInfrastructure, FactoryBackend},
     http::auth::{AuthTransport, router},
 };
 use ironloom_core::ActorId;
@@ -104,6 +105,25 @@ pub async fn serve(bind: &str) -> Result<(), StartupError> {
         .map_err(|_| StartupError)?,
     );
     let public_url = required(ironloom_config::IRONLOOM_PUBLIC_URL_ENV)?;
+    let node = ironloom_config::infrastructure::node_configuration(&std::env::vars().collect())
+        .map_err(|_| StartupError)?;
+    let backend = Arc::new(
+        FactoryBackend::new(
+            store.clone(),
+            auth.clone(),
+            authority.clone(),
+            BackendInfrastructure {
+                node_id: node.node_id,
+                projects_root: node.roots.projects.clone().into(),
+                providers: Default::default(),
+                engines: vec![],
+                devices: vec![],
+                sandbox_available: false,
+            },
+        )
+        .await
+        .map_err(|_| StartupError)?,
+    );
     let transport = AuthTransport::new(auth, &public_url).map_err(|_| StartupError)?;
     // Validate now; the source constructor receives these exact bounds at adapter composition.
     crate::configured_download_limits().map_err(|_| StartupError)?;
@@ -115,16 +135,22 @@ pub async fn serve(bind: &str) -> Result<(), StartupError> {
         .path()
         .trim_end_matches('/')
         .to_owned();
+    let routes = router(transport.clone()).merge(crate::http::factory::router(
+        crate::http::factory::FactoryTransport::new(backend.clone(), transport),
+    ));
     let app = if prefix.is_empty() {
-        app.merge(router(transport))
+        app.merge(routes)
     } else {
-        app.nest(&prefix, router(transport))
+        app.nest(&prefix, routes)
     };
     let listener = tokio::net::TcpListener::bind(bind)
         .await
         .map_err(|_| StartupError)?;
     let result = axum::serve(listener, app)
-        .with_graceful_shutdown(shutdown())
+        .with_graceful_shutdown(async move {
+            shutdown().await;
+            backend.close_subscriptions();
+        })
         .await
         .map_err(|_| StartupError);
     store.close().await;

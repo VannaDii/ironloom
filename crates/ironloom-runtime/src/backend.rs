@@ -30,6 +30,7 @@ const CONFIGURATION_KIND: &str = "configuration";
 const CONFIGURATION_SCOPE: &str = "configuration";
 mod conversations;
 /// Trusted current execution bindings supplied by runtime/adapter composition, never browser claims.
+#[derive(Clone)]
 pub struct BackendInfrastructure {
     /// Stable enrolled owning node identity.
     pub node_id: NodeId,
@@ -45,12 +46,14 @@ pub struct BackendInfrastructure {
     pub projects_root: PathBuf,
 }
 /// PostgreSQL-backed application service. Runtime owns adapter composition and background execution.
+#[derive(Clone)]
 pub struct FactoryBackend {
     store: Store,
     authentication: Arc<AuthenticationBackend>,
     authority: Arc<dyn Authority>,
     installation: ActorId,
     infrastructure: BackendInfrastructure,
+    reader_shutdown: tokio::sync::watch::Sender<bool>,
 }
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -74,7 +77,13 @@ impl FactoryBackend {
             authority,
             installation,
             infrastructure,
+            reader_shutdown: tokio::sync::watch::channel(false).0,
         })
+    }
+    /// Closes transport readers during service shutdown so graceful HTTP draining can finish.
+    /// This never cancels or confirms termination of assignment/process execution.
+    pub fn close_subscriptions(&self) {
+        self.reader_shutdown.send_replace(true);
     }
     async fn resource(&self, project: Option<&ProjectId>) -> Result<Resource, ServiceError> {
         if let Some(project) = project {

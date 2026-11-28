@@ -19,3 +19,6 @@ Chart `database.existingSecret` / `database.urlKey` से `IRONLOOM_DATABASE_UR
 मौजूदा setup secret में base64 में 32 बाइट का `IRONLOOM_CONFIG_KEY` दें। प्रारंभिक टोकन प्रमाणित bootstrap में एक बार खर्च होता है; यह पुनः उपयोग योग्य प्रशासक पासवर्ड नहीं है। खाते auth registration मार्ग से बनते हैं। आधार पथ वाला `runtime.publicUrl` और स्पष्ट धनात्मक `download.maxFileBytes` / `download.maxTransferBytes` सेट करें।
 
 Chart रेंडर करने से परिनियोजन या inference qualification नहीं होती। स्थायी मूल और उनके मालिक अलग रखें। कनेक्शन या प्रमाणीकरण त्रुटि से बचने के लिए PVC न हटाएँ और स्थापना रीसेट न करें।
+
+
+सेवा अब सार्वजनिक पथ पर कॉन्फ़िगरेशन, निर्देश, वार्तालाप इतिहास और पुनः चल सकने वाला SSE प्रदान करती है। SSE के लिए `Last-Event-ID` आवश्यक है; बफ़र भरने पर `ironloom.error` पुनः समन्वयन बताता है। कनेक्शन बंद होना निष्पादन रद्द नहीं करता। स्थिर `IRONLOOM_NODE_ID` और अलग पूर्ण पथ `IRONLOOM_PROJECTS_ROOT` / `IRONLOOM_MODELS_ROOT` दें; Helm अलग स्थायी वॉल्यूम देता है। अडैप्टर, सैंडबॉक्स, प्रबंधित निर्भरताएँ और पूर्ण निष्पादन अभी जारी हैं।

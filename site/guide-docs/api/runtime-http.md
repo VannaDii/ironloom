@@ -22,3 +22,6 @@ Role execution, model/source wiring and operator assets are still under implemen
 
 
 History paging now requires an explicit forward/backward direction, accepts an optional turn filter, and keeps each page oldest first at the requested event watermark. Session discovery requires `order=created_at` for native clients or `order=human_interaction` for dashboards. Empty, disabled or disjoint local device placements block execution readiness. Configuration/instruction and conversation catalog/snapshot/history HTTP routes use the shared authenticated backend; full runtime composition remains in progress.
+
+
+The service now mounts configuration, instructions, conversation state/history and replayable SSE beneath the public deployment path. SSE requires `Last-Event-ID`; reader overflow emits `ironloom.error` and requires resynchronization. Disconnects and transport shutdown do not cancel execution. Set the stable `IRONLOOM_NODE_ID` and separate absolute `IRONLOOM_PROJECTS_ROOT` / `IRONLOOM_MODELS_ROOT`; Helm provides separate persistent claims. Adapter/sandbox registration, bundled dependency lifecycle and complete execution remain in progress.

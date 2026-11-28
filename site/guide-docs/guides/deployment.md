@@ -19,3 +19,6 @@ The chart reads `IRONLOOM_DATABASE_URL` from `database.existingSecret` / `databa
 Provide `IRONLOOM_CONFIG_KEY` through the existing setup secret: it is base64-encoded 32-byte key material. The installer token is consumed by initial authenticated bootstrap, not a reusable setup/admin password. Initial account provisioning uses the auth registration route. Service sessions remain separate from provider credentials. Configure `runtime.publicUrl` including its deployment base path, and explicit positive `download.maxFileBytes` / `download.maxTransferBytes`.
 
 No deployment or inference qualification is performed by rendering the chart. Persistent project/model/database roots and their owners must remain distinct. Do not delete PVCs or reset an installation to work around connectivity or authentication failures.
+
+
+The service now mounts configuration, instructions, conversation state/history and replayable SSE beneath the public deployment path. SSE requires `Last-Event-ID`; reader overflow emits `ironloom.error` and requires resynchronization. Disconnects and transport shutdown do not cancel execution. Set the stable `IRONLOOM_NODE_ID` and separate absolute `IRONLOOM_PROJECTS_ROOT` / `IRONLOOM_MODELS_ROOT`; Helm provides separate persistent claims. Adapter/sandbox registration, bundled dependency lifecycle and complete execution remain in progress.
