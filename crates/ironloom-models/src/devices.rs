@@ -6,3 +6,6 @@ pub trait Devices: Send + Sync {
     /// Discovers physical-host-scoped views without loading a model; tests use simulated views.
     fn discover(&self) -> BoxFuture<'_, Result<Vec<DeviceIdentity>, AdapterError>>;
 }
+
+/// Explicit native utility/helper adapters, with scripted decoding paths for deterministic tests.
+pub mod native;

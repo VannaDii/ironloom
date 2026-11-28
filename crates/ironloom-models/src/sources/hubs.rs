@@ -453,7 +453,12 @@ impl HubHttp {
                 let (value, _) = self
                     .json(self.client.get(self.url(&format!("api/models/{repo}"))?))
                     .await?;
-                Ok(self.hf_card(&value)?.source.clone())
+                let card = self.hf_card(&value)?;
+                let mut source = (*card.source).clone();
+                source.access = self
+                    .hf_access(&value, repo, source.revision.as_str())
+                    .await?;
+                ModelSource::new(source).map_err(|_| AdapterError::Unavailable)
             }
             Hub::ModelScope => {
                 let (value, _) = self
@@ -483,6 +488,66 @@ impl HubHttp {
                     .ok_or(AdapterError::Unavailable)?;
                 Ok(self.kaggle_card(&value, instance)?.source.clone())
             }
+        }
+    }
+    async fn hf_access(
+        &self,
+        value: &Value,
+        repo: &str,
+        revision: &str,
+    ) -> Result<SourceAccess, AdapterError> {
+        let declared = access(value);
+        let Some(file) = value["siblings"].as_array().and_then(|files| {
+            files
+                .iter()
+                .filter_map(|v| v["rfilename"].as_str())
+                .find(|name| {
+                    name.ends_with(".safetensors")
+                        || name.ends_with(".gguf")
+                        || name.ends_with(".bin")
+                })
+        }) else {
+            return Ok(declared);
+        };
+        let mut url = self.url("")?;
+        url.path_segments_mut()
+            .map_err(|_| AdapterError::Unsupported)?
+            .pop_if_empty()
+            .extend(repo.split('/'))
+            .push("resolve")
+            .push(revision)
+            .extend(file.split('/'));
+        // A metadata-only HEAD checks this selected account's actual file grant. A public README
+        // cannot establish weight access, and no terms are accepted by the adapter.
+        let response = self
+            .credentials
+            .authorize(self.hub, self.client.head(url))
+            .await?
+            .send()
+            .await
+            .map_err(|_| AdapterError::Unavailable)?;
+        match response.status().as_u16() {
+            200 => Ok(SourceAccess::Accessible),
+            302 | 307
+                if response
+                    .headers()
+                    .get("x-repo-commit")
+                    .and_then(|v| v.to_str().ok())
+                    == Some(revision)
+                    && response.headers().contains_key("x-linked-etag") =>
+            {
+                Ok(SourceAccess::Accessible)
+            }
+            401 => Ok(SourceAccess::AuthenticationRequired),
+            403 if matches!(
+                declared,
+                SourceAccess::TermsRequired | SourceAccess::AwaitingApproval
+            ) =>
+            {
+                Ok(SourceAccess::TermsRequired)
+            }
+            403 => Ok(SourceAccess::Denied),
+            _ => Err(AdapterError::Unavailable),
         }
     }
     fn repo<'a>(&self, handle: &'a ActorId) -> Result<&'a str, AdapterError> {
@@ -703,6 +768,9 @@ impl FileCatalog for HubHttp {
                     metadata.query_pairs_mut().append_pair("blobs", "true");
                     let (value, _) = self.json(self.client.get(metadata)).await?;
                     if value["sha"].as_str() != Some(revision) {
+                        return Err(AdapterError::Unsupported);
+                    }
+                    if self.hf_access(&value, repo, revision).await? != SourceAccess::Accessible {
                         return Err(AdapterError::Unsupported);
                     }
                     let mut files = Vec::new();

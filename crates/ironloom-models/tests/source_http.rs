@@ -85,3 +85,21 @@ async fn huggingface_keeps_publisher_access_and_immutable_revision_distinct() {
     assert!(model.weight_bytes.is_none());
     assert!(task.await.unwrap()[0].contains("search=fixture"));
 }
+
+#[tokio::test]
+async fn gated_repository_rechecks_actual_pinned_weight_access_without_accepting_terms() {
+    let metadata = json!({"id":"Qwen/fixture","sha":"pinned-sha","gated":"manual","siblings":[{"rfilename":"README.md"},{"rfilename":"weights.safetensors"}]});
+    let (base, server) = serve(vec![metadata, json!({})]).await;
+    let hub = HubHttp::new(Hub::HuggingFace, base.parse().unwrap(), Arc::new(Anonymous)).unwrap();
+    let source = hub
+        .metadata(ironloom_core::ActorId::new("huggingface:Qwen/fixture").unwrap())
+        .await
+        .unwrap();
+    assert_eq!(
+        source.access,
+        ironloom_models::factory::SourceAccess::Accessible
+    );
+    let requests = server.await.unwrap();
+    assert!(requests[1].starts_with("HEAD /Qwen/fixture/resolve/pinned-sha/weights.safetensors "));
+    assert!(!requests.iter().any(|v| v.starts_with("POST")));
+}
