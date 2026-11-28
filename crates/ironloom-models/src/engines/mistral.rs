@@ -68,6 +68,7 @@ impl Driver for MistralDriver {
         &'a self,
         request: &'a EngineLoadRequest,
         artifact: Artifact,
+        _resident: ironloom_core::ResidentModelId,
     ) -> BoxFuture<'a, Result<Arc<dyn Kernel>, AdapterError>> {
         Box::pin(async move {
             if request.selection.engine.as_ref() != Some(&self.capabilities.engine)

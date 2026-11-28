@@ -38,8 +38,6 @@ fn fixture() -> (tempfile::TempDir, LlamaDriver, EngineLoadRequest, Artifact) {
     std::fs::write(&executable, script).unwrap();
     std::fs::set_permissions(&executable, std::fs::Permissions::from_mode(0o700)).unwrap();
     std::fs::write(root.path().join("fixture.gguf"), gguf(1)).unwrap();
-    let driver =
-        LlamaDriver::new(executable, Sha256::digest(script).into(), capabilities()).unwrap();
     let inference = request();
     let load = EngineLoadRequest::new(EngineLoadRequestData {
         selection: inference.selection.clone(),
@@ -65,6 +63,17 @@ fn fixture() -> (tempfile::TempDir, LlamaDriver, EngineLoadRequest, Artifact) {
         tools: CapabilitySupport::Supported,
         reasoning_efforts: vec![],
     };
+    let authority = std::sync::Arc::new(Authority {
+        artifact: artifact.clone(),
+        allowed: std::sync::atomic::AtomicBool::new(true),
+    });
+    let driver = LlamaDriver::new(
+        executable,
+        Sha256::digest(script).into(),
+        capabilities(),
+        authority,
+    )
+    .unwrap();
     (root, driver, load, artifact)
 }
 async fn setup() -> (
@@ -72,7 +81,14 @@ async fn setup() -> (
     std::sync::Arc<dyn ironloom_models::engines::runtime::Kernel>,
 ) {
     let (root, driver, load, artifact) = fixture();
-    let kernel = driver.load(&load, artifact).await.unwrap();
+    let kernel = driver
+        .load(
+            &load,
+            artifact,
+            ironloom_core::ResidentModelId::new("resident").unwrap(),
+        )
+        .await
+        .unwrap();
     (root, kernel)
 }
 #[tokio::test]
@@ -141,7 +157,15 @@ async fn owned_helper_streams_scripted_output_and_stops_only_its_own_process() {
 async fn cancelling_startup_reaps_owned_helper_and_preserves_installation_files() {
     let (root, driver, load, artifact) = fixture();
     std::fs::write(root.path().join("hold-startup"), b"scripted startup delay").unwrap();
-    let task = tokio::spawn(async move { driver.load(&load, artifact).await });
+    let task = tokio::spawn(async move {
+        driver
+            .load(
+                &load,
+                artifact,
+                ironloom_core::ResidentModelId::new("resident").unwrap(),
+            )
+            .await
+    });
     let pid = tokio::time::timeout(Duration::from_secs(3), async {
         loop {
             if let Ok(pid) = std::fs::read_to_string(root.path().join("helper.pid")) {
@@ -205,6 +229,81 @@ impl ironloom_models::engines::runtime::EngineAuthority for Authority {
         _: &'a Residency,
     ) -> ironloom_core::BoxFuture<'a, Result<(), AdapterError>> {
         Box::pin(async { Ok(()) })
+    }
+    fn spawn_helper<'a>(
+        &'a self,
+        _: &'a EngineLoadRequest,
+        resident: ironloom_core::ResidentModelId,
+        launch: ironloom_models::engines::runtime::HelperLaunch,
+    ) -> ironloom_core::BoxFuture<
+        'a,
+        Result<ironloom_models::engines::runtime::OwnedHelper, AdapterError>,
+    > {
+        Box::pin(async move {
+            // Inert Linux service fixture. Production uses the runtime's approved native launcher;
+            // this existing host utility installs the same kernel parent-death signal before exec.
+            let mut command = tokio::process::Command::new("/usr/bin/setpriv");
+            command
+                .args(["--pdeathsig", "KILL", "--"])
+                .arg(launch.command.as_std().get_program())
+                .args(launch.command.as_std().get_args())
+                .env_clear()
+                .stdin(std::process::Stdio::null())
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .kill_on_drop(true);
+            command.current_dir(launch.command.as_std().get_current_dir().unwrap());
+            let mut child = command.spawn().map_err(|_| AdapterError::Unavailable)?;
+            let pid = child.id().ok_or(AdapterError::Unavailable)?;
+            let process = ironloom_core::ActorId::new(uuid::Uuid::new_v4().to_string()).unwrap();
+            let recorded = (|| {
+                let stat = std::fs::read_to_string(format!("/proc/{pid}/stat"))?;
+                let start = stat
+                    .rsplit_once(") ")
+                    .unwrap()
+                    .1
+                    .split_whitespace()
+                    .nth(19)
+                    .unwrap();
+                let boot = std::fs::read_to_string("/proc/sys/kernel/random/boot_id")?;
+                use std::{io::Write, os::unix::fs::OpenOptionsExt};
+                let mut record = std::fs::OpenOptions::new()
+                    .create(true)
+                    .truncate(true)
+                    .write(true)
+                    .mode(0o600)
+                    .open(self.artifact.root.join("owned-process.json"))?;
+                record.write_all(serde_json::to_vec(&json!({"process":process,"pid":pid,"start":start,"boot":boot,"resident":resident,"endpoint":launch.endpoint.as_str(),"credential_file":launch.credential_file,"state":"running"})).unwrap().as_slice())?;
+                record.sync_all()
+            })();
+            if recorded.is_err() {
+                let _ = child.kill().await;
+                let _ = child.wait().await;
+                return Err(AdapterError::Unavailable);
+            }
+            Ok(ironloom_models::engines::runtime::OwnedHelper {
+                child,
+                process_id: process,
+            })
+        })
+    }
+    fn helper_stopped(
+        &self,
+        process: ironloom_core::ActorId,
+    ) -> ironloom_core::BoxFuture<'_, Result<(), AdapterError>> {
+        Box::pin(async move {
+            let path = self.artifact.root.join("owned-process.json");
+            let mut record: Value = serde_json::from_slice(
+                &std::fs::read(&path).map_err(|_| AdapterError::Unavailable)?,
+            )
+            .map_err(|_| AdapterError::Unavailable)?;
+            if record["process"] != process.as_str() {
+                return Err(AdapterError::Unavailable);
+            }
+            record["state"] = "stopped".into();
+            std::fs::write(path, serde_json::to_vec(&record).unwrap())
+                .map_err(|_| AdapterError::Unavailable)
+        })
     }
     fn resources(
         &self,
@@ -317,13 +416,145 @@ async fn implicit_gguf_sibling_shards_are_rejected_before_any_helper_process() {
     let (root, driver, load, artifact) = fixture();
     std::fs::write(root.path().join("fixture.gguf"), gguf(2)).unwrap();
     assert!(matches!(
-        driver.load(&load, artifact).await,
+        driver
+            .load(
+                &load,
+                artifact,
+                ironloom_core::ResidentModelId::new("resident").unwrap()
+            )
+            .await,
         Err(AdapterError::Unsupported)
     ));
     assert!(!root.path().join("helper.pid").exists());
     std::fs::write(root.path().join("fixture.gguf"), gguf(0)).unwrap();
     let (_, _, _, mut artifact) = fixture();
     artifact.root = root.path().into();
-    assert!(driver.load(&load, artifact).await.is_err());
+    assert!(
+        driver
+            .load(
+                &load,
+                artifact,
+                ironloom_core::ResidentModelId::new("resident").unwrap()
+            )
+            .await
+            .is_err()
+    );
     assert!(!root.path().join("helper.pid").exists());
+}
+
+#[test]
+fn fixture_parent_service() {
+    let Ok(path) = std::env::var("IRONLOOM_FIXTURE_PARENT_ROOT") else {
+        return;
+    };
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    runtime.block_on(async move {
+        let (_unused, _, request, mut artifact) = fixture();
+        artifact.root = path.clone().into();
+        let authority = std::sync::Arc::new(Authority {
+            artifact: artifact.clone(),
+            allowed: std::sync::atomic::AtomicBool::new(true),
+        });
+        let script = include_bytes!("fixtures/llama_helper.py");
+        let driver = LlamaDriver::new(
+            std::path::Path::new(&path).join("scripted-helper"),
+            Sha256::digest(script).into(),
+            capabilities(),
+            authority,
+        )
+        .unwrap();
+        let _kernel = driver
+            .load(
+                &request,
+                artifact,
+                ironloom_core::ResidentModelId::new("resident").unwrap(),
+            )
+            .await
+            .unwrap();
+        std::fs::write(
+            std::path::Path::new(&path).join("parent-ready"),
+            b"registered",
+        )
+        .unwrap();
+        std::future::pending::<()>().await;
+    });
+}
+
+#[tokio::test]
+async fn killed_service_leaves_durable_identity_and_parent_death_stops_only_its_helper() {
+    let (root, _, _, _) = fixture();
+    let mut unrelated = tokio::process::Command::new("/usr/bin/sleep")
+        .arg("30")
+        .kill_on_drop(true)
+        .spawn()
+        .unwrap();
+    let mut parent = tokio::process::Command::new(std::env::current_exe().unwrap())
+        .args(["--exact", "fixture_parent_service", "--nocapture"])
+        .env("IRONLOOM_FIXTURE_PARENT_ROOT", root.path())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .kill_on_drop(true)
+        .spawn()
+        .unwrap();
+    tokio::time::timeout(Duration::from_secs(10), async {
+        while !root.path().join("parent-ready").exists() {
+            assert!(parent.try_wait().unwrap().is_none());
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .unwrap();
+    let record: Value =
+        serde_json::from_slice(&std::fs::read(root.path().join("owned-process.json")).unwrap())
+            .unwrap();
+    assert_eq!(record["resident"], "resident");
+    assert_eq!(record["state"], "running");
+    assert!(!record["boot"].as_str().unwrap().trim().is_empty());
+    assert!(!record["start"].as_str().unwrap().is_empty());
+    let pid = record["pid"].as_u64().unwrap();
+    parent.kill().await.unwrap();
+    parent.wait().await.unwrap();
+    tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            let state = std::fs::read_to_string(format!("/proc/{pid}/stat"));
+            if state.is_err() || state.unwrap().rsplit_once(") ").unwrap().1.starts_with('Z') {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .unwrap();
+    // A service crash does not run the stopped callback. Durable recovery must reconcile this
+    // exact boot/start identity; it must not infer free reservations solely from parent death.
+    let remaining: Value =
+        serde_json::from_slice(&std::fs::read(root.path().join("owned-process.json")).unwrap())
+            .unwrap();
+    assert_eq!(remaining, record);
+    assert!(unrelated.try_wait().unwrap().is_none());
+    unrelated.kill().await.unwrap();
+    unrelated.wait().await.unwrap();
+    let owned_key = std::path::Path::new(record["credential_file"].as_str().unwrap());
+    assert!(owned_key.exists());
+    // Disposable restart recovery removes only the exact protected path recorded by this fixture.
+    std::fs::remove_file(owned_key).unwrap();
+    assert!(root.path().join("scripted-helper").exists());
+}
+
+#[tokio::test]
+async fn failed_stop_persistence_keeps_ownership_uncertain_until_reconciled() {
+    let (root, kernel) = setup().await;
+    let path = root.path().join("owned-process.json");
+    let record = std::fs::read(&path).unwrap();
+    std::fs::remove_file(&path).unwrap();
+    assert!(kernel.stop().await.is_err());
+    assert!(kernel.state().await.is_err());
+    std::fs::write(&path, record).unwrap();
+    kernel.stop().await.unwrap();
+    assert!(!kernel.state().await.unwrap().alive);
+    let confirmed: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    assert_eq!(confirmed["state"], "stopped");
 }

@@ -4,7 +4,7 @@ use crate::{
     factory::*,
     providers::{AdapterError, InferenceStream, Provider},
 };
-use ironloom_core::{BoxFuture, Counter, InferenceId, ResidentModelId};
+use ironloom_core::{ActorId, BoxFuture, Counter, InferenceId, ResidentModelId};
 use ironloom_policy::factory::ResourceReservation;
 use std::{
     path::PathBuf,
@@ -32,6 +32,23 @@ pub struct Artifact {
     /// Explicit effort labels supported by this model/template; empty means no effort control.
     pub reasoning_efforts: Vec<String>,
 }
+/// Exact helper launch assembled only after verified-file and central residency admission.
+/// Command arguments and the credential path are protected service data, never browser/log data.
+pub struct HelperLaunch {
+    /// Pinned absolute executable, arguments, cleared environment and private working directory.
+    pub command: tokio::process::Command,
+    /// Private loopback endpoint to retain in protected recovery metadata.
+    pub endpoint: url::Url,
+    /// Owned mode-0600 credential file; recovery may remove only this recorded owned file.
+    pub credential_file: PathBuf,
+}
+/// Live child handle whose durable process identity has already been committed by the service.
+pub struct OwnedHelper {
+    /// Exact child launched through the service's parent-death boundary, never an attached PID.
+    pub child: tokio::process::Child,
+    /// Service-owned process record including node, boot/start identity and residency fence.
+    pub process_id: ActorId,
+}
 /// Trusted current inventory/reservation/session callbacks supplied by the service.
 pub trait EngineAuthority: Send + Sync {
     /// Resolves exact verified checkpoint/revision/hash from durable inventory; no download/fallback.
@@ -54,6 +71,21 @@ pub trait EngineAuthority: Send + Sync {
     ) -> BoxFuture<'a, Result<(), AdapterError>>;
     /// Rechecks current unload/restart authority; this callback never selects an eviction candidate.
     fn unload<'a>(&'a self, resident: &'a Residency) -> BoxFuture<'a, Result<(), AdapterError>>;
+    /// Persists a fenced launch intent before spawn, uses the approved parent-death boundary,
+    /// and commits exact PID/boot/start/endpoint ownership before returning a ready child handle.
+    /// Revalidate this resident's actual node/reservations and selected profile. Startup ownership
+    /// must survive caller cancellation: failed/lost delivery stops/reaps the exact child or retains
+    /// a durable uncertain record for recovery. No direct unregistered spawn or fallback is allowed.
+    fn spawn_helper<'a>(
+        &'a self,
+        request: &'a EngineLoadRequest,
+        resident: ResidentModelId,
+        launch: HelperLaunch,
+    ) -> BoxFuture<'a, Result<OwnedHelper, AdapterError>>;
+    /// Persists confirmed exit for this exact service-owned process after the child has been reaped.
+    /// Failure retains uncertain ownership/reservations; recovery rechecks boot/start identity before
+    /// signaling, and never adopts/reaps a reused PID or treats service death as confirmed stop.
+    fn helper_stopped(&self, process: ActorId) -> BoxFuture<'_, Result<(), AdapterError>>;
     /// Returns cached authorized canonical resource observations; no constructor-side discovery.
     fn resources(
         &self,
@@ -90,6 +122,7 @@ pub trait Driver: Send + Sync {
         &'a self,
         request: &'a EngineLoadRequest,
         artifact: Artifact,
+        resident: ResidentModelId,
     ) -> BoxFuture<'a, Result<Arc<dyn Kernel>, AdapterError>>;
 }
 struct Loaded {
@@ -226,7 +259,7 @@ impl Engine for LocalEngine {
                 if artifact.requirements.compatibility != Compatibility::Supported {
                     return Err(AdapterError::Unsupported);
                 }
-                match driver.load(&request, artifact).await {
+                match driver.load(&request, artifact, resident.clone()).await {
                     Ok(kernel) => {
                         let record = Residency::new(ResidencyData {
                             resident_id: resident,

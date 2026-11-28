@@ -1,5 +1,5 @@
 //! Private, service-owned llama.cpp helper. Construction never starts a process or probes hardware.
-use super::runtime::{Artifact, Driver, Kernel, KernelState};
+use super::runtime::{Artifact, Driver, EngineAuthority, HelperLaunch, Kernel, KernelState};
 use crate::{
     factory::*,
     providers::{
@@ -24,6 +24,7 @@ const MAX_BINARY_BYTES: u64 = 512 * 1024 * 1024;
 pub const REVISION: &str = "8e23278c7c36f4429fb237467d50e2935a91e655";
 /// Explicit selected helper binary and its infrastructure-supplied SHA-256, never found through PATH.
 pub struct LlamaDriver {
+    authority: Arc<dyn EngineAuthority>,
     executable: PathBuf,
     sha256: [u8; 32],
     capabilities: EngineCapabilities,
@@ -34,6 +35,7 @@ impl LlamaDriver {
         executable: PathBuf,
         sha256: [u8; 32],
         capabilities: EngineCapabilities,
+        authority: Arc<dyn EngineAuthority>,
     ) -> Result<Self, AdapterError> {
         if !executable.is_absolute()
             || capabilities.engine.name.as_str() != "llama.cpp"
@@ -43,6 +45,7 @@ impl LlamaDriver {
             return Err(AdapterError::Unsupported);
         }
         Ok(Self {
+            authority,
             executable,
             sha256,
             capabilities,
@@ -65,6 +68,8 @@ struct Facts {
     stopped: bool,
 }
 struct Inner {
+    authority: Arc<dyn EngineAuthority>,
+    process_id: ironloom_core::ActorId,
     facts: Mutex<Facts>,
     provider: HttpProvider,
     _key_file: tempfile::NamedTempFile,
@@ -78,6 +83,7 @@ impl Driver for LlamaDriver {
         &'a self,
         request: &'a EngineLoadRequest,
         artifact: Artifact,
+        resident: ironloom_core::ResidentModelId,
     ) -> BoxFuture<'a, Result<Arc<dyn Kernel>, AdapterError>> {
         Box::pin(async move {
             if request.selection.engine.as_ref() != Some(&self.capabilities.engine)
@@ -172,7 +178,6 @@ impl Driver for LlamaDriver {
                 .timeout(Duration::from_secs(2))
                 .build()
                 .map_err(|_| AdapterError::Unavailable)?;
-            let child = command.spawn().map_err(|_| AdapterError::Unavailable)?;
             let base = url::Url::parse(&format!("http://127.0.0.1:{port}/v1/"))
                 .map_err(|_| AdapterError::Unavailable)?;
             let provider = HttpProvider::new(
@@ -191,9 +196,23 @@ impl Driver for LlamaDriver {
                 },
                 Arc::new(Key(key.clone())),
             )?;
+            let owned = self
+                .authority
+                .spawn_helper(
+                    request,
+                    resident,
+                    HelperLaunch {
+                        command,
+                        endpoint: base.clone(),
+                        credential_file: key_file.path().to_owned(),
+                    },
+                )
+                .await?;
             let inner = Arc::new(Inner {
+                authority: self.authority.clone(),
+                process_id: owned.process_id,
                 facts: Mutex::new(Facts {
-                    child,
+                    child: owned.child,
                     active: None,
                     last_used: None,
                     stopped: false,
@@ -273,6 +292,10 @@ async fn stop(inner: Arc<Inner>) -> Result<(), AdapterError> {
                 .map_err(|_| AdapterError::Interrupted)?
                 .map_err(|_| AdapterError::Unavailable)?;
         }
+        inner
+            .authority
+            .helper_stopped(inner.process_id.clone())
+            .await?;
         facts.stopped = true;
         facts.active = None;
         Ok(())
@@ -370,7 +393,11 @@ impl Kernel for LlamaKernel {
                 .try_wait()
                 .map_err(|_| AdapterError::Unavailable)?
                 .is_some();
-            if exited {
+            if exited && !facts.stopped {
+                self.0
+                    .authority
+                    .helper_stopped(self.0.process_id.clone())
+                    .await?;
                 facts.stopped = true;
                 facts.active = None;
             }
