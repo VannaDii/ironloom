@@ -10,7 +10,8 @@ use crate::{
 use ironloom_core::{BoxFuture, Counter, InferenceId};
 use ironloom_workers::factory::{StreamKind, WorkerEvent, WorkerEventData};
 use mistralrs::{
-    Model, Request, RequestBuilder, Response, TextMessageRole, TextModelBuilder, TokenSource,
+    Model, Request, RequestBuilder, RequestLike, Response, TextMessageRole, TextModelBuilder,
+    TokenSource,
 };
 use serde_json::json;
 use std::{
@@ -46,6 +47,7 @@ struct Facts {
 }
 struct Inner {
     model: Mutex<Option<Arc<Model>>>,
+    sender: mpsc::Sender<Request>,
     facts: StdMutex<Facts>,
     tools: bool,
     efforts: Vec<String>,
@@ -112,8 +114,14 @@ impl Driver for MistralDriver {
                 let result = builder
                     .build()
                     .await
-                    .map(|model| {
-                        Arc::new(Inner {
+                    .map_err(|_| AdapterError::Unavailable)
+                    .and_then(|model| {
+                        let sender = model
+                            .inner()
+                            .get_sender(None)
+                            .map_err(|_| AdapterError::Unavailable)?;
+                        Ok(Arc::new(Inner {
+                            sender,
                             model: Mutex::new(Some(Arc::new(model))),
                             facts: StdMutex::new(Facts {
                                 alive: true,
@@ -123,7 +131,7 @@ impl Driver for MistralDriver {
                             }),
                             tools,
                             efforts: artifact.reasoning_efforts,
-                        })
+                        }))
                     })
                     .map_err(|_| AdapterError::Unavailable);
                 match result {
@@ -198,6 +206,58 @@ fn messages(request: &InferenceRequest) -> Result<RequestBuilder, AdapterError> 
     }
     Ok(builder)
 }
+fn sdk_request(mut input: RequestBuilder, response: mpsc::Sender<Response>) -> Request {
+    let (tools, tool_choice) = input
+        .take_tools()
+        .map(|(tools, choice)| (Some(tools), Some(choice)))
+        .unwrap_or((None, None));
+    Request::Normal(Box::new(mistralrs::NormalRequest {
+        audio_output: None,
+        messages: input.take_messages(),
+        sampling_params: input.take_sampling_params(),
+        seed: None,
+        response,
+        return_logprobs: false,
+        is_streaming: true,
+        id: 0,
+        queued_at: None,
+        constraint: mistralrs::Constraint::None,
+        suffix: None,
+        tools,
+        tool_choice,
+        logits_processors: None,
+        return_raw_logits: false,
+        web_search_options: None,
+        enable_code_execution: false,
+        enable_shell: false,
+        shell_options: None,
+        code_execution_permission: None,
+        code_execution_approval_notifier: None,
+        agent_permission: None,
+        agent_approval_handler: None,
+        agent_approval_notifier: None,
+        max_tool_rounds: None,
+        tool_dispatch_url: None,
+        model_id: None,
+        adapter: None,
+        truncate_sequence: false,
+        session_id: None,
+        files: None,
+        input_files: vec![],
+    }))
+}
+async fn dispatch(
+    sender: &mpsc::Sender<Request>,
+    input: RequestBuilder,
+    deadline: tokio::time::Instant,
+) -> Result<mpsc::Receiver<Response>, AdapterError> {
+    let (response, output) = mpsc::channel(1);
+    tokio::time::timeout_at(deadline, sender.send(sdk_request(input, response)))
+        .await
+        .map_err(|_| AdapterError::Interrupted)?
+        .map_err(|_| AdapterError::Unavailable)?;
+    Ok(output)
+}
 async fn stop(inner: Arc<Inner>) -> Result<(), AdapterError> {
     let task = tokio::spawn(async move {
         let mut slot = inner.model.lock().await;
@@ -210,13 +270,9 @@ async fn stop(inner: Arc<Inner>) -> Result<(), AdapterError> {
             .unwrap_or_else(|e| e.into_inner())
             .stopping = true;
         // TerminateAllSeqsNextStep is global upstream state: NEVER use it. This sender is private.
-        let sender = model
-            .inner()
-            .get_sender(None)
-            .map_err(|_| AdapterError::Unavailable);
-        if let Ok(sender) = sender {
-            let _ = sender.send(Request::Terminate).await;
-        }
+        // Capture once during service-admitted loading. get_sender() may auto-reboot/reload;
+        // cancellation and status must never invoke that SDK behavior.
+        let _ = inner.sender.send(Request::Terminate).await;
         let wait = tokio::time::timeout(STOP_TIMEOUT, async {
             while Arc::strong_count(&model) > 1 {
                 tokio::time::sleep(Duration::from_millis(10)).await;
@@ -263,7 +319,11 @@ impl Provider for MistralKernel {
             let model = slot.as_ref().ok_or(AdapterError::Unavailable)?.clone();
             {
                 let mut facts = inner.facts.lock().unwrap_or_else(|e| e.into_inner());
-                if !facts.alive || facts.stopping || facts.active.is_some() {
+                if !facts.alive
+                    || facts.stopping
+                    || facts.active.is_some()
+                    || inner.sender.is_closed()
+                {
                     return Err(AdapterError::Unavailable);
                 }
                 facts.active = Some(request.inference_id.clone());
@@ -276,15 +336,12 @@ impl Provider for MistralKernel {
                 let deadline = tokio::time::Instant::now()
                     + Duration::from_millis(request.controls.max_duration_ms.get());
                 let result: Result<(), AdapterError> = async {
-                    let mut output = model
-                        .stream_chat_request(input)
-                        .await
-                        .map_err(|_| AdapterError::Unavailable)?;
+                    let mut output = dispatch(&inner.sender, input, deadline).await?;
                     let _ = sender
                         .send(normal.event(StreamKind::Started, String::new(), None))
                         .await;
                     loop {
-                        let response = tokio::time::timeout_at(deadline, output.next())
+                        let response = tokio::time::timeout_at(deadline, output.recv())
                             .await
                             .map_err(|_| AdapterError::Interrupted)?
                             .ok_or(AdapterError::Interrupted)?;
@@ -377,7 +434,7 @@ impl Kernel for MistralKernel {
             let facts = self.0.facts.lock().unwrap_or_else(|e| e.into_inner());
             Ok(KernelState {
                 alive: facts.alive,
-                active: if facts.stopping {
+                active: if facts.stopping || (facts.alive && self.0.sender.is_closed()) {
                     None
                 } else {
                     Some(facts.active.iter().cloned().collect())
@@ -396,6 +453,36 @@ impl Kernel for MistralKernel {
 mod tests {
     use super::*;
     use mistralrs::RequestLike;
+    #[tokio::test]
+    async fn closed_private_sender_never_reloads_or_reboots_an_engine() {
+        let (sender, receiver) = mpsc::channel(1);
+        drop(receiver);
+        assert!(matches!(
+            dispatch(
+                &sender,
+                RequestBuilder::new(),
+                tokio::time::Instant::now() + Duration::from_secs(1)
+            )
+            .await,
+            Err(AdapterError::Unavailable)
+        ));
+        let (response, _output) = mpsc::channel(1);
+        let Request::Normal(request) =
+            sdk_request(RequestBuilder::new().set_sampler_max_len(17), response)
+        else {
+            panic!("expected typed SDK request")
+        };
+        assert!(
+            !request.enable_code_execution && !request.enable_shell && !request.truncate_sequence
+        );
+        assert!(
+            request.max_tool_rounds.is_none()
+                && request.tool_dispatch_url.is_none()
+                && request.session_id.is_none()
+        );
+        assert!(request.web_search_options.is_none() && request.agent_approval_handler.is_none());
+        assert_eq!(request.sampling_params.max_len, Some(17));
+    }
     #[test]
     fn shared_decode_preserves_roles_tools_and_effort_in_actual_sdk_request_without_execution() {
         let corpus: serde_json::Value =

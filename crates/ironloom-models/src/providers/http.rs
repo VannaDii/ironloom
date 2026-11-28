@@ -16,18 +16,40 @@ use tokio::sync::{mpsc, watch};
 const STREAM_CAPACITY: usize = 128;
 const FINAL_FLUSH_TIMEOUT: Duration = Duration::from_secs(30);
 const MAX_TOOL_CALLS: usize = 32;
+const MAX_ACCOUNT_ID_BYTES: usize = 1024;
+const OPENAI_ACCOUNT_BASE: &str = "https://chatgpt.com/backend-api/codex/";
 const ANTHROPIC_VERSION: &str = "2023-06-01";
 const MAX_MODEL_CATALOG_BYTES: usize = 4 * 1024 * 1024;
 
 /// Protected resolved credential. Debug never prints submitted material.
-pub struct Secret(String);
+pub struct Secret {
+    token: String,
+    account_id: Option<String>,
+}
 impl Secret {
     /// Creates a nonblank credential only inside trusted service adapter wiring.
     pub fn new(value: String) -> Result<Self, AdapterError> {
         if value.trim().is_empty() {
             return Err(AdapterError::Unavailable);
         }
-        Ok(Self(value))
+        Ok(Self {
+            token: value,
+            account_id: None,
+        })
+    }
+    /// Resolves a separately authorized, inference-eligible OpenAI account credential. The trusted
+    /// service checks current use grants, account eligibility and refresh generation; native control
+    /// enrollment alone never authorizes inference. Account identity remains in protected headers.
+    pub fn account(token: String, account_id: String) -> Result<Self, AdapterError> {
+        let mut secret = Self::new(token)?;
+        if account_id.trim().is_empty()
+            || account_id.len() > MAX_ACCOUNT_ID_BYTES
+            || account_id.bytes().any(|byte| !byte.is_ascii_graphic())
+        {
+            return Err(AdapterError::Unavailable);
+        }
+        secret.account_id = Some(account_id);
+        Ok(secret)
     }
 }
 impl std::fmt::Debug for Secret {
@@ -46,7 +68,7 @@ pub trait Credentials: Send + Sync {
 /// Explicit wire dialect, independent of billing authorization.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Dialect {
-    /// OpenAI Responses, including eligible OAuth at the public API endpoint.
+    /// OpenAI Responses, with eligible account inference on its explicitly selected Codex backend.
     Responses,
     /// Anthropic Messages with BYOK.
     Anthropic,
@@ -138,7 +160,8 @@ impl HttpProvider {
         }
         if endpoint.billing == BillingMode::Account
             && (endpoint.dialect != Dialect::Responses
-                || endpoint.base.as_str() != "https://api.openai.com/v1/")
+                || endpoint.base.as_str() != OPENAI_ACCOUNT_BASE
+                || !endpoint.capabilities.streaming)
         {
             return Err(AdapterError::Unsupported);
         }
@@ -165,6 +188,7 @@ impl HttpProvider {
     pub async fn catalog(&self, authorization: &InferenceRequest) -> Result<Value, AdapterError> {
         self.check(authorization)?;
         let secret = self.credentials.resolve(authorization).await?;
+        check_credential(&self.endpoint, &secret)?;
         let request = self.client.get(
             self.endpoint
                 .base
@@ -219,6 +243,12 @@ fn validate_request(endpoint: &Endpoint, request: &InferenceRequest) -> Result<(
     }
     Ok(())
 }
+fn check_credential(endpoint: &Endpoint, secret: &Secret) -> Result<(), AdapterError> {
+    if (endpoint.billing == BillingMode::Account) != secret.account_id.is_some() {
+        return Err(AdapterError::Unsupported);
+    }
+    Ok(())
+}
 fn authorize(
     request: reqwest::RequestBuilder,
     dialect: Dialect,
@@ -226,10 +256,15 @@ fn authorize(
 ) -> reqwest::RequestBuilder {
     if dialect == Dialect::Anthropic {
         request
-            .header("x-api-key", &secret.0)
+            .header("x-api-key", &secret.token)
             .header("anthropic-version", ANTHROPIC_VERSION)
     } else {
-        request.bearer_auth(&secret.0)
+        let request = request.bearer_auth(&secret.token);
+        if let Some(account) = &secret.account_id {
+            request.header("ChatGPT-Account-ID", account)
+        } else {
+            request
+        }
     }
 }
 impl Provider for HttpProvider {
@@ -241,6 +276,7 @@ impl Provider for HttpProvider {
             self.check(&request)?;
             let payload = request_body(&self.endpoint, &request)?;
             let secret = self.credentials.resolve(&request).await?;
+            check_credential(&self.endpoint, &secret)?;
             let path = match self.endpoint.dialect {
                 Dialect::Responses => "responses",
                 Dialect::Anthropic => "messages",
@@ -890,5 +926,80 @@ fn anthropic_terminal(reason: Option<&str>) -> Result<(), AdapterError> {
     match reason {
         Some("end_turn" | "stop_sequence" | "tool_use") => Ok(()),
         _ => Err(AdapterError::Interrupted),
+    }
+}
+
+#[cfg(test)]
+mod account_tests {
+    use super::*;
+    struct NoResolution;
+    impl Credentials for NoResolution {
+        fn resolve<'a>(
+            &'a self,
+            _: &'a InferenceRequest,
+        ) -> BoxFuture<'a, Result<Secret, AdapterError>> {
+            panic!("constructor must not resolve credentials or call a provider")
+        }
+    }
+    fn endpoint() -> Endpoint {
+        Endpoint {
+            provider: ActorId::new("openai").unwrap(),
+            base: OPENAI_ACCOUNT_BASE.parse().unwrap(),
+            dialect: Dialect::Responses,
+            billing: BillingMode::Account,
+            capabilities: Capabilities {
+                streaming: true,
+                tools: true,
+                reasoning_efforts: vec!["high".into()],
+                stream_usage: false,
+            },
+        }
+    }
+    #[test]
+    fn account_backend_and_protected_headers_are_explicit_and_never_api_key_fallback() {
+        let config = endpoint();
+        let _provider = HttpProvider::new(config.clone(), Arc::new(NoResolution)).unwrap();
+        let secret =
+            Secret::account("eligible-access-token".into(), "selected-account".into()).unwrap();
+        check_credential(&config, &secret).unwrap();
+        assert_eq!(format!("{secret:?}"), "[REDACTED]");
+        let request = authorize(
+            reqwest::Client::new().post(config.base.join("responses").unwrap()),
+            Dialect::Responses,
+            &secret,
+        )
+        .build()
+        .unwrap();
+        assert_eq!(
+            request.url().as_str(),
+            "https://chatgpt.com/backend-api/codex/responses"
+        );
+        assert_eq!(
+            request.headers()["authorization"],
+            "Bearer eligible-access-token"
+        );
+        assert_eq!(request.headers()["chatgpt-account-id"], "selected-account");
+        assert_eq!(
+            check_credential(
+                &config,
+                &Secret::new("api-key-or-native-token-without-inference-account-grant".into())
+                    .unwrap()
+            ),
+            Err(AdapterError::Unsupported)
+        );
+        let mut wrong = config.clone();
+        wrong.base = "https://api.openai.com/v1/".parse().unwrap();
+        assert!(matches!(
+            HttpProvider::new(wrong, Arc::new(NoResolution)),
+            Err(AdapterError::Unsupported)
+        ));
+        let mut api = config;
+        api.billing = BillingMode::ApiKey;
+        api.base = "https://api.openai.com/v1/".parse().unwrap();
+        assert_eq!(
+            check_credential(&api, &secret),
+            Err(AdapterError::Unsupported)
+        );
+        assert!(Secret::account("token".into(), "account\r\nleak".into()).is_err());
     }
 }
