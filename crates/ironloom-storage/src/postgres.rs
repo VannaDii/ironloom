@@ -209,10 +209,10 @@ impl Store {
         csrf: &[u8],
         method: &str,
         lifetime_seconds: i64,
-    ) -> Result<(), DatabaseError> {
-        sqlx::query("INSERT INTO ironloom.sessions (session_id,operator_id,token_hash,csrf_hash,method,expires_at) VALUES ($1,$2,$3,$4,$5,now()+make_interval(secs=>$6::double precision))")
-            .bind(session.as_str()).bind(operator.as_str()).bind(digest(token)).bind(digest(csrf)).bind(method).bind(lifetime_seconds as f64).execute(&self.pool).await?;
-        Ok(())
+    ) -> Result<u64, DatabaseError> {
+        let expiry: i64 = sqlx::query_scalar("INSERT INTO ironloom.sessions (session_id,operator_id,token_hash,csrf_hash,method,expires_at) VALUES ($1,$2,$3,$4,$5,now()+make_interval(secs=>$6::double precision)) RETURNING (extract(epoch FROM expires_at)*1000)::bigint")
+            .bind(session.as_str()).bind(operator.as_str()).bind(digest(token)).bind(digest(csrf)).bind(method).bind(lifetime_seconds as f64).fetch_one(&self.pool).await?;
+        u64::try_from(expiry).map_err(|_| DatabaseError::Corrupt)
     }
     /// Resolves an unexpired, unrevoked session with optional CSRF proof for mutations.
     pub async fn session(
@@ -421,6 +421,20 @@ impl Store {
         .execute(&self.pool)
         .await?;
         Ok(())
+    }
+    /// Serializes fresh authorization binding initialization across installation nodes.
+    /// The returned transaction must be committed explicitly; failure never selects another binding.
+    pub async fn authorization_initialization(
+        &self,
+    ) -> Result<AuthorizationInitialization, DatabaseError> {
+        let mut tx = self.pool.begin().await?;
+        scope_lock(&mut tx, "installation:authorization-initialization").await?;
+        let body: Option<Value> = sqlx::query_scalar(
+            "SELECT body FROM ironloom.records WHERE kind='authorization' AND record_id='binding'",
+        )
+        .fetch_optional(&mut *tx)
+        .await?;
+        Ok(AuthorizationInitialization { tx, body })
     }
     /// Stops pool clients without stopping a database potentially serving other nodes.
     pub async fn close(&self) {
@@ -807,5 +821,29 @@ impl crate::factory::FactoryStore for Store {
             (*batch).commit(&command.receipt).await?;
             Ok(CommandClaim::New)
         })
+    }
+}
+
+/// Exclusive infrastructure initialization transaction; not a project or user command.
+pub struct AuthorizationInitialization {
+    tx: Transaction<'static, Postgres>,
+    body: Option<Value>,
+}
+impl AuthorizationInitialization {
+    /// Returns the persisted current binding. Decode failure must fail closed without replacement.
+    pub fn binding(&self) -> Option<&Value> {
+        self.body.as_ref()
+    }
+    /// Persists a new binding only when absent, or confirms the identical current binding.
+    pub async fn commit(mut self, binding: &Value) -> Result<(), DatabaseError> {
+        if self.body.as_ref().is_some_and(|current| current != binding) {
+            return Err(DatabaseError::Conflict);
+        }
+        if self.body.is_none() {
+            sqlx::query("INSERT INTO ironloom.records(kind,record_id,revision,body) VALUES('authorization','binding',1,$1)")
+                .bind(binding).execute(&mut *self.tx).await?;
+        }
+        self.tx.commit().await?;
+        Ok(())
     }
 }

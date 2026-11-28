@@ -222,6 +222,9 @@ fn schema_files() -> SchemaResult<Vec<SchemaFile>> {
         schema::<ironloom_workers::factory::PendingQuestion>(
             "crates/ironloom-workers/schemas/pending-question.schema.json",
         )?,
+        schema::<ironloom_config::factory::DownloadLimits>(
+            "crates/ironloom-config/schemas/download-limits.schema.json",
+        )?,
         schema::<ironloom_storage::factory::StoredCommand>(
             "crates/ironloom-storage/schemas/stored-command.schema.json",
         )?,

@@ -15,8 +15,32 @@ fn main() {
         Some("serve") => {
             let bind_addr =
                 std::env::var("IRONLOOM_BIND_ADDR").unwrap_or_else(|_| "0.0.0.0:8080".to_owned());
-            if let Err(error) = ironloom_runtime::run_health_server(&bind_addr) {
+            let result = tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .build()
+                .map_err(|_| "runtime startup failed".to_owned())
+                .and_then(|runtime| {
+                    runtime
+                        .block_on(ironloom_runtime::server::serve(&bind_addr))
+                        .map_err(|error| error.to_string())
+                });
+            if let Err(error) = result {
                 eprintln!("failed to start ironloom runtime: {error}");
+                std::process::exit(1);
+            }
+        }
+        Some("initialize") => {
+            let result = tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .build()
+                .map_err(|_| "runtime startup failed".to_owned())
+                .and_then(|runtime| {
+                    runtime
+                        .block_on(ironloom_runtime::server::initialize_selected_database())
+                        .map_err(|error| error.to_string())
+                });
+            if let Err(error) = result {
+                eprintln!("{error}");
                 std::process::exit(1);
             }
         }

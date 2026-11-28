@@ -9,6 +9,12 @@ type installation
   relations
     define administrator: [operator]
     define enroll_node: administrator
+    define viewer: [operator]
+    define operator: [operator]
+    define view: administrator or viewer or operator
+    define operate: administrator or operator
+    define manage: administrator
+    define share: administrator
 
 type project
   relations
@@ -60,11 +66,13 @@ type credential
 
 type lesson
   relations
+    define project: [project]
+    define assignment: [assignment]
     define viewer: [operator, operator:*]
     define manager: [operator]
     define sharer: [operator]
-    define view: viewer or manager or sharer
-    define manage: manager
+    define view: viewer or manager or sharer or view from project or view from assignment
+    define manage: manager or manage from project or manage from assignment
     define share: sharer
 
 type node

@@ -42,3 +42,5 @@ Shared service and native enrollment contracts now live in `ironloom-service::fa
 `GET /api/v1/models/inventory` exposes authorized provenance, transfer completion, independent checksum/manifest verification and current file availability. Complete bytes remain unverified until the trusted installation pipeline confirms integrity; missing files retain metadata and block use.
 
 Installation configuration commands persist before any project exists. Empty conversations atomically retain their snapshot and retry receipt with cursor zero and no dispatch event. `DownloadProgress.repository_id` binds authorized resume/cancel operations to the original repository.
+
+Infrastructure download ceilings are required: `IRONLOOM_DOWNLOAD_MAX_FILE_BYTES` and `IRONLOOM_DOWNLOAD_MAX_TRANSFER_BYTES`. Both must be positive decimal byte counts; optional publisher sizes never override them. Helm supplies explicit editable values.

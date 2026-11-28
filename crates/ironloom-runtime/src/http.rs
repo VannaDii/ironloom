@@ -9,3 +9,6 @@ pub fn sse_event(event: &ServiceEvent) -> Result<axum::response::sse::Event, Ser
         .json_data(event)
         .map_err(|_| ServiceError::Unavailable)
 }
+
+/// Opaque service-session/OIDC/bootstrap HTTP transport.
+pub mod auth;

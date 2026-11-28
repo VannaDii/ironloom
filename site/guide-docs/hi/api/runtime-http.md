@@ -1,47 +1,21 @@
-# Runtime HTTP API
+# रनटाइम HTTP API
 
-Ironloom existing runtime HTTP port पर setup, health और readiness serve करता है।
+प्रमाणित सेवा Tokio/Axum और निर्धारित परिनियोजन आधार पथ का उपयोग करती है। `ironloom serve` चयनित मौजूदा PostgreSQL स्थापना खोलता है। `ironloom initialize` स्पष्ट रूप से नया स्कीमा और एकबारगी प्रारंभिक टोकन स्थिति बनाता है; मौजूदा स्कीमा अस्वीकार होता है। त्रुटि या पुनः आरंभ पर प्रतिस्थापन डेटा नहीं बनता।
 
-## `GET /healthz`
+सेवा लॉगिन प्रदाता की पहचान संबंधी गोपनीय जानकारी से अलग है। लॉगिन `AuthenticatedSession` लौटाता है, HttpOnly `ironloom_session` कुकी सेट करता है और CSRF प्रमाण `ironloom_csrf` तथा `x-ironloom-csrf` प्रतिक्रिया हेडर में देता है। बदलाव वाले अनुरोध में यह हेडर अनिवार्य है। कुकी में आधार पथ, SameSite=Lax और HTTPS पर Secure लागू होते हैं। अन्य मूल से अनुरोध अस्वीकार होते हैं। OIDC कॉलबैक के लिए ब्राउज़र से जुड़ी एकबारगी प्रवाह कुकी भी अनिवार्य है।
 
-HTTP server alive होने पर `200 ok` लौटाता है।
+| Method | Path | Contract / transport |
+| --- | --- | --- |
+| POST | `/api/v1/auth/register` | `LoginRequest`; initial `x-ironloom-setup-token`, later current administrator + CSRF |
+| POST | `/api/v1/auth/local` | `LoginRequest` → `AuthenticatedSession` + cookies |
+| GET | `/api/v1/auth/session` | Current `AuthenticatedSession`; no-store |
+| POST | `/api/v1/auth/oidc/start` | `OidcStart` → authorization URL JSON + HttpOnly flow cookie |
+| POST | `/api/v1/auth/oidc/callback` | `OidcCallback` → `AuthenticatedSession` + cookies |
+| POST | `/api/v1/auth/bootstrap` | `BootstrapRedeem` → fixed `BootstrapState`; CSRF |
+| POST | `/api/v1/auth/logout` | Revoke current session and clear cookies; CSRF |
+| GET | `/healthz` | Process liveness, root path |
+| GET | `/readyz` | Selected database reachable; separate from execution setup, root path |
 
-## `GET /readyz`
+अनिवार्य सेटिंग: `IRONLOOM_DATABASE_URL`, `IRONLOOM_OPENFGA_URL`, `IRONLOOM_CONFIG_KEY` (base64, 32 बाइट), `IRONLOOM_PUBLIC_URL` और दोनों डाउनलोड सीमाएँ। केवल स्पष्ट आरंभीकरण `IRONLOOM_INSTALLER_TOKEN` पढ़ता है। `IRONLOOM_OPENFGA_TOKEN` तथा `IRONLOOM_OIDC_CONNECTIONS` वैकल्पिक हैं; दूसरा `{id, issuer, client_id, client_secret, redirects}` वाली JSON सरणी है, जिसके कॉलबैक URL अनुमति सूची से ठीक मिलते हैं। ईमेल पहचान का अधिकार नहीं देता।
 
-केवल तब `200 ok` लौटाता है जब required runtime configuration environment values या encrypted local setup से resolve हो जाती है। Setup incomplete होने पर `503 setup required` लौटाता है।
-
-## `GET /`
-
-Setup page लौटाता है।
-
-## `GET /setup`
-
-Setup page लौटाता है।
-
-अगर `IRONLOOM_CONFIG_KEY` missing या invalid है, page key instructions दिखाता है और setup input fields नहीं दिखाता।
-
-अगर `IRONLOOM_INSTALLER_TOKEN` missing है, page installer-token instructions दिखाता है।
-
-जब setup prerequisites मौजूद हों, page config form render करता है। Environment-backed fields locked रहते हैं और secret values display नहीं होतीं।
-
-## `POST /setup`
-
-Submitted installer token के `IRONLOOM_INSTALLER_TOKEN` से match होने के बाद setup form values accept करता है।
-
-Successful submissions encrypted setup configuration को `IRONLOOM_STATE_ROOT` के अंतर्गत लिखती हैं और `200 setup saved` लौटाती हैं।
-
-Invalid installer tokens `403 setup rejected` लौटाते हैं।
-
-## `POST /setup/openai/oauth/start`
-
-Config page द्वारा उपयोग किए जाने वाले OpenAI OAuth setup instructions लौटाता है। Resulting OAuth session reference setup form से save किया जा सकता है या `IRONLOOM_OPENAI_OAUTH_SESSION` से bind किया जा सकता है।
-
-## `POST /setup/discord/oauth/start`
-
-Configured application ID के लिए Discord authorization page लौटाता है। Generated URL `bot` और `applications.commands` scopes उपयोग करता है, ताकि Discord server administrator Ironloom को target server में install कर सके।
-
-## `POST /discord/interactions`
-
-`X-Signature-Ed25519` और `X-Signature-Timestamp` से signed Discord interaction webhooks accept करता है।
-
-Ping interactions Discord pong payload लौटाते हैं। Application command interactions Discord channel को operator thread की तरह resolve करते हैं, exactly one persisted work-item binding require करते हैं, selected gate worker को supervisor के माध्यम से dispatch करते हैं, artifact लिखते हैं और channel message response लौटाते हैं। Invalid signatures किसी work के run होने से पहले `401` लौटाती हैं।
+भूमिका निष्पादन, मॉडल और स्रोत संयोजन तथा ऑपरेटर संसाधनों पर काम जारी है। ये प्रमाणीकरण मार्ग लागू हैं; पूरी फ़ैक्टरी अभी पूर्ण नहीं है।

@@ -1,47 +1,21 @@
-# API HTTP del runtime
+# API HTTP del servicio
 
-Ironloom sirve setup, health y readiness en el puerto HTTP existente del runtime.
+El servicio autenticado utiliza Tokio/Axum y la ruta base configurada. `ironloom serve` abre la instalación PostgreSQL existente. `ironloom initialize` crea explícitamente un esquema nuevo y el estado del token inicial; rechaza un esquema existente. Los errores y reinicios nunca crean datos de reemplazo.
 
-## `GET /healthz`
+El acceso al servicio es independiente de las credenciales del proveedor. El inicio de sesión devuelve `AuthenticatedSession`, establece la cookie HttpOnly `ironloom_session` y entrega la prueba CSRF en `ironloom_csrf` y la cabecera `x-ironloom-csrf`. Las mutaciones requieren esa cabecera. Las cookies respetan la ruta base, SameSite=Lax y Secure con HTTPS. Se rechazan solicitudes de otros orígenes. OIDC requiere además una cookie de flujo de un solo uso vinculada al navegador.
 
-Devuelve `200 ok` cuando el servidor HTTP está vivo.
+| Method | Path | Contract / transport |
+| --- | --- | --- |
+| POST | `/api/v1/auth/register` | `LoginRequest`; initial `x-ironloom-setup-token`, later current administrator + CSRF |
+| POST | `/api/v1/auth/local` | `LoginRequest` → `AuthenticatedSession` + cookies |
+| GET | `/api/v1/auth/session` | Current `AuthenticatedSession`; no-store |
+| POST | `/api/v1/auth/oidc/start` | `OidcStart` → authorization URL JSON + HttpOnly flow cookie |
+| POST | `/api/v1/auth/oidc/callback` | `OidcCallback` → `AuthenticatedSession` + cookies |
+| POST | `/api/v1/auth/bootstrap` | `BootstrapRedeem` → fixed `BootstrapState`; CSRF |
+| POST | `/api/v1/auth/logout` | Revoke current session and clear cookies; CSRF |
+| GET | `/healthz` | Process liveness, root path |
+| GET | `/readyz` | Selected database reachable; separate from execution setup, root path |
 
-## `GET /readyz`
+Configuración obligatoria: `IRONLOOM_DATABASE_URL`, `IRONLOOM_OPENFGA_URL`, `IRONLOOM_CONFIG_KEY` (base64, 32 bytes), `IRONLOOM_PUBLIC_URL` y ambos límites de descarga. Solo la inicialización explícita lee `IRONLOOM_INSTALLER_TOKEN`. Son opcionales `IRONLOOM_OPENFGA_TOKEN` e `IRONLOOM_OIDC_CONNECTIONS`, un arreglo JSON con `{id, issuer, client_id, client_secret, redirects}` y URL de retorno exactas permitidas. El correo electrónico no determina la identidad.
 
-Devuelve `200 ok` solo cuando la configuración de runtime requerida se resuelve desde valores de entorno o configuración local cifrada. Devuelve `503 setup required` mientras la configuración siga incompleta.
-
-## `GET /`
-
-Devuelve la página de configuración.
-
-## `GET /setup`
-
-Devuelve la página de configuración.
-
-Si `IRONLOOM_CONFIG_KEY` falta o no es válido, la página muestra instrucciones de clave y ningún campo de entrada de configuración.
-
-Si `IRONLOOM_INSTALLER_TOKEN` falta, la página muestra instrucciones para el token de instalación.
-
-Cuando los prerrequisitos de configuración están presentes, la página renderiza el formulario de configuración. Los campos respaldados por entorno quedan bloqueados y los valores secretos no se muestran.
-
-## `POST /setup`
-
-Acepta valores del formulario de configuración después de que el token de instalación enviado coincida con `IRONLOOM_INSTALLER_TOKEN`.
-
-Los envíos exitosos escriben configuración cifrada bajo `IRONLOOM_STATE_ROOT` y devuelven `200 setup saved`.
-
-Los tokens de instalación inválidos devuelven `403 setup rejected`.
-
-## `POST /setup/openai/oauth/start`
-
-Devuelve las instrucciones de setup OAuth de OpenAI usadas por la página de configuración. La referencia de sesión OAuth resultante puede guardarse mediante el formulario o enlazarse mediante `IRONLOOM_OPENAI_OAUTH_SESSION`.
-
-## `POST /setup/discord/oauth/start`
-
-Devuelve una página de autorización de Discord para el ID de aplicación configurado. La URL generada usa los scopes `bot` y `applications.commands` para que un administrador del servidor pueda instalar Ironloom en el servidor objetivo.
-
-## `POST /discord/interactions`
-
-Acepta webhooks de interacciones de Discord firmados con `X-Signature-Ed25519` y `X-Signature-Timestamp`.
-
-Las interacciones ping devuelven el payload pong de Discord. Las interacciones de comandos de aplicación resuelven el canal de Discord como hilo del operador, requieren exactamente un vínculo persistido a un work item, despachan el worker de control seleccionado mediante el supervisor, escriben un artefacto y devuelven una respuesta de mensaje de canal. Las firmas inválidas devuelven `401` antes de ejecutar trabajo.
+La ejecución de roles, los adaptadores y los recursos del operador siguen en implementación. Estas rutas de autenticación están implementadas; no constituyen una fábrica completa.

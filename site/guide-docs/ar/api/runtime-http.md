@@ -1,47 +1,21 @@
-# API HTTP وقت التشغيل
+# واجهة HTTP للخدمة
 
-يقدم Ironloom الإعداد والصحة والجاهزية على منفذ HTTP الحالي لوقت التشغيل.
+تستخدم الخدمة المصادقة Tokio/Axum ومسار النشر المحدد. يفتح `ironloom serve` تثبيت PostgreSQL الحالي. ينشئ `ironloom initialize` مخططًا جديدًا وحالة رمز التهيئة لمرة واحدة فقط، ويرفض المخطط الموجود. لا تنشئ الأعطال وإعادة التشغيل بيانات بديلة.
 
-## `GET /healthz`
+تسجيل دخول الخدمة منفصل عن بيانات اعتماد مزود الاستدلال. يعيد الدخول `AuthenticatedSession` ويضبط ملف HttpOnly باسم `ironloom_session`، مع إثبات CSRF في `ironloom_csrf` وترويسة `x-ironloom-csrf`. تتطلب عمليات التعديل الترويسة. تستخدم الملفات مسار النشر وSameSite=Lax وSecure مع HTTPS. تُرفض الطلبات من أصل مختلف. تتطلب استجابة OIDC أيضًا ملف تدفق مرتبطًا بالمتصفح وصالحًا لمرة واحدة.
 
-يرجع `200 ok` عندما يكون خادم HTTP حيا.
+| Method | Path | Contract / transport |
+| --- | --- | --- |
+| POST | `/api/v1/auth/register` | `LoginRequest`; initial `x-ironloom-setup-token`, later current administrator + CSRF |
+| POST | `/api/v1/auth/local` | `LoginRequest` → `AuthenticatedSession` + cookies |
+| GET | `/api/v1/auth/session` | Current `AuthenticatedSession`; no-store |
+| POST | `/api/v1/auth/oidc/start` | `OidcStart` → authorization URL JSON + HttpOnly flow cookie |
+| POST | `/api/v1/auth/oidc/callback` | `OidcCallback` → `AuthenticatedSession` + cookies |
+| POST | `/api/v1/auth/bootstrap` | `BootstrapRedeem` → fixed `BootstrapState`; CSRF |
+| POST | `/api/v1/auth/logout` | Revoke current session and clear cookies; CSRF |
+| GET | `/healthz` | Process liveness, root path |
+| GET | `/readyz` | Selected database reachable; separate from execution setup, root path |
 
-## `GET /readyz`
+الإعدادات المطلوبة: `IRONLOOM_DATABASE_URL` و`IRONLOOM_OPENFGA_URL` و`IRONLOOM_CONFIG_KEY` (base64، 32 بايت) و`IRONLOOM_PUBLIC_URL` وحدا التنزيل. تقرأ التهيئة الصريحة فقط `IRONLOOM_INSTALLER_TOKEN`. الإعدادان `IRONLOOM_OPENFGA_TOKEN` و`IRONLOOM_OIDC_CONNECTIONS` اختياريان؛ الثاني مصفوفة JSON بعناصر `{id, issuer, client_id, client_secret, redirects}` وعناوين عودة مسموحة مطابقة تمامًا. البريد الإلكتروني ليس سلطة هوية.
 
-يرجع `200 ok` فقط عندما يمكن حل تهيئة وقت التشغيل المطلوبة من قيم البيئة أو الإعداد المحلي المشفر. يرجع `503 setup required` ما دام الإعداد غير مكتمل.
-
-## `GET /`
-
-يرجع صفحة الإعداد.
-
-## `GET /setup`
-
-يرجع صفحة الإعداد.
-
-إذا كان `IRONLOOM_CONFIG_KEY` مفقودا أو غير صالح، تعرض الصفحة تعليمات المفتاح ولا تعرض حقول إدخال الإعداد.
-
-إذا كان `IRONLOOM_INSTALLER_TOKEN` مفقودا، تعرض الصفحة تعليمات رمز التثبيت.
-
-عندما تكون متطلبات الإعداد موجودة، تعرض الصفحة نموذج التهيئة. تقفل الحقول المدعومة من البيئة ولا تعرض القيم السرية.
-
-## `POST /setup`
-
-يقبل قيم نموذج الإعداد بعد أن يطابق رمز التثبيت المرسل `IRONLOOM_INSTALLER_TOKEN`.
-
-تكتب الإرسالات الناجحة تهيئة إعداد مشفرة تحت `IRONLOOM_STATE_ROOT` وترجع `200 setup saved`.
-
-ترجع رموز التثبيت غير الصالحة `403 setup rejected`.
-
-## `POST /setup/openai/oauth/start`
-
-يرجع تعليمات إعداد OpenAI OAuth التي تستخدمها صفحة التهيئة. يمكن حفظ مرجع جلسة OAuth الناتج من خلال نموذج الإعداد أو ربطه عبر `IRONLOOM_OPENAI_OAUTH_SESSION`.
-
-## `POST /setup/discord/oauth/start`
-
-يرجع صفحة تفويض Discord لمعرف التطبيق المهيأ. يستخدم العنوان المولد النطاقين `bot` و`applications.commands` حتى يتمكن مسؤول خادم Discord من تثبيت Ironloom في الخادم الهدف.
-
-## `POST /discord/interactions`
-
-يقبل webhooks تفاعلات Discord الموقعة باستخدام `X-Signature-Ed25519` و`X-Signature-Timestamp`.
-
-ترجع تفاعلات ping حمولة pong الخاصة ب Discord. تحل تفاعلات أوامر التطبيق قناة Discord كخيط للمشغل، وتتطلب ربطا محفوظا واحدا بعنصر عمل، وتوزع عامل البوابة المختار عبر المشرف، وتكتب قطعة أثرية، وترجع استجابة رسالة قناة. ترجع التواقيع غير الصالحة `401` قبل تشغيل أي عمل.
+تنفيذ الأدوار وربط المحولات وموارد واجهة المشغل ما زال قيد التنفيذ. مسارات المصادقة هذه منفذة؛ المصنع الكامل لم يكتمل بعد.

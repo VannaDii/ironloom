@@ -164,3 +164,16 @@ DevicePreference, DevicePreferenceData {
     Ok(())
 }
 }
+
+ironloom_core::contract! {
+/// Infrastructure-selected hard transfer bounds, independent from publisher metadata.
+DownloadLimits, DownloadLimitsData {
+    /// Maximum bytes for one file, including an unknown-length streaming response.
+    per_file_bytes: ironloom_core::Counter,
+    /// Maximum aggregate bytes for one transfer across all its files.
+    per_transfer_bytes: ironloom_core::Counter,
+} |value| {
+    ironloom_core::validation::positive("per_file_bytes",value.per_file_bytes)?;
+    ironloom_core::validation::positive("per_transfer_bytes",value.per_transfer_bytes)
+}
+}

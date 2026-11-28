@@ -42,3 +42,5 @@ Ironloom 尚未发布：仅初始化全新模式，不支持旧版本兼容、�
 `GET /api/v1/models/inventory` 展示经过授权的来源、传输完成状态、独立的校验和与清单验证状态，以及当前文件可用性。字节传输完成不代表安装已验证；文件不可用时保留元数据并阻止使用。
 
 安装配置命令可在创建任何项目前持久保存。空会话会原子保存快照和重试回执，游标为零且不产生调度事件。`DownloadProgress.repository_id` 将授权的恢复和取消操作绑定到原始仓库。
+
+基础设施必须配置下载上限：`IRONLOOM_DOWNLOAD_MAX_FILE_BYTES` 和 `IRONLOOM_DOWNLOAD_MAX_TRANSFER_BYTES`。两者均为正整数十进制字节数；发布者提供的可选大小不能覆盖这些限制。Helm 提供可编辑的明确值。
