@@ -28,6 +28,7 @@ use std::{
 
 const CONFIGURATION_KIND: &str = "configuration";
 const CONFIGURATION_SCOPE: &str = "configuration";
+mod conversations;
 /// Trusted current execution bindings supplied by runtime/adapter composition, never browser claims.
 pub struct BackendInfrastructure {
     /// Stable enrolled owning node identity.
@@ -155,6 +156,7 @@ impl FactoryBackend {
         &self,
         operator: &OperatorId,
         profiles: &[ModelProfileConfiguration],
+        preferences: &[ironloom_config::factory::DevicePreference],
         mut batch: Option<&mut Batch>,
     ) -> Result<BTreeSet<ModelProfileId>, ServiceError> {
         let mut available = BTreeSet::new();
@@ -211,12 +213,14 @@ impl FactoryBackend {
                 {
                     continue;
                 }
-                if !profile.device_bindings.iter().all(|id| {
-                    self.infrastructure
-                        .devices
-                        .iter()
-                        .any(|device| &device.device_id == id && device.reconciled)
-                }) {
+                if ironloom_config::team::permitted_devices(
+                    profile,
+                    None,
+                    preferences,
+                    &self.infrastructure.devices,
+                )
+                .is_empty()
+                {
                     continue;
                 }
             }
@@ -267,6 +271,7 @@ impl FactoryBackend {
             .usable_profiles(
                 &session.operator_id,
                 &effective.models,
+                &effective.device_preferences,
                 batch.as_deref_mut(),
             )
             .await?;

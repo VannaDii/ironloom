@@ -52,3 +52,6 @@ Un `ServiceEvent` contiene exactamente un evento de trabajador o una actualizaci
 El equipo estándar comienza deshabilitado, con instrucciones editables y sin modelo inferido. Las reglas puras conservan la herencia por proyecto y permiten perfiles remotos configurados sin GPU. Los controladores persistentes de instrucciones y configuración siguen en implementación.
 
 La delegación del trabajador se limita a su asignación y recurso; CAS conserva el proyecto y la asignación propietarios. La disponibilidad comprueba PostgreSQL y el enlace OpenFGA real, independientemente de la configuración de modelos. La estimación de memoria exige los cinco componentes y suma sin desbordamiento; los datos incompletos siguen siendo desconocidos.
+
+
+La paginación del historial requiere una dirección explícita, permite filtrar por turno y conserva el orden cronológico dentro de cada página en la secuencia de eventos solicitada. La búsqueda de conversaciones requiere `order=created_at` para clientes nativos u `order=human_interaction` para el panel. Las ubicaciones locales vacías, desactivadas o sin intersección impiden la ejecución. Las rutas HTTP de configuración, instrucciones e historial usan el servicio autenticado compartido; la composición completa sigue en desarrollo.

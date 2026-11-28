@@ -194,6 +194,9 @@ fn schema_files() -> SchemaResult<Vec<SchemaFile>> {
         schema::<ironloom_service::factory::ConversationSnapshot>(
             "crates/ironloom-service/schemas/conversation-snapshot.schema.json",
         )?,
+        schema::<ironloom_service::factory::HistoryDirection>(
+            "crates/ironloom-service/schemas/history-direction.schema.json",
+        )?,
         schema::<ironloom_service::factory::HistoryQuery>(
             "crates/ironloom-service/schemas/history-query.schema.json",
         )?,
@@ -296,6 +299,9 @@ fn schema_files() -> SchemaResult<Vec<SchemaFile>> {
         )?,
         schema::<ironloom_service::factory::QuestionAnswer>(
             "crates/ironloom-service/schemas/question-answer.schema.json",
+        )?,
+        schema::<ironloom_service::factory::SessionOrder>(
+            "crates/ironloom-service/schemas/session-order.schema.json",
         )?,
         schema::<ironloom_service::factory::SessionQuery>(
             "crates/ironloom-service/schemas/session-query.schema.json",

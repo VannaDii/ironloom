@@ -19,3 +19,6 @@
 必需配置：`IRONLOOM_DATABASE_URL`、`IRONLOOM_OPENFGA_URL`、`IRONLOOM_CONFIG_KEY`（base64，32 字节）、`IRONLOOM_PUBLIC_URL` 和两项下载字节上限。仅明确初始化读取 `IRONLOOM_INSTALLER_TOKEN`。可选项包括 `IRONLOOM_OPENFGA_TOKEN` 及 `IRONLOOM_OIDC_CONNECTIONS`；后者为包含 `{id, issuer, client_id, client_secret, redirects}` 的 JSON 数组，回调地址必须与允许列表精确匹配。电子邮箱不作为身份依据。
 
 角色执行、模型及源适配器连接、操作界面资源仍在实现中。这里的认证路由已实现，但整个软件工厂尚未完成。
+
+
+历史分页必须明确指定前向或后向，可按轮次筛选；每页按时间正序返回，并绑定请求的事件水位。原生会话列表使用 `order=created_at`，仪表盘使用 `order=human_interaction`。本地设备绑定为空、被禁用或与角色限制无交集时，执行就绪状态为否。配置、指令和会话列表、快照及历史 HTTP 路由使用共享认证后端；完整运行时组合仍在开发中。

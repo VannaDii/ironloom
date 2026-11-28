@@ -358,9 +358,20 @@ QuestionAnswer, QuestionAnswerData {
     Ok(())
 }
 }
+/// Explicit newest-first conversation ordering, shared by dashboard and native discovery.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum SessionOrder {
+    /// Most recent authenticated human interaction; background events do not reorder it.
+    HumanInteraction,
+    /// Immutable creation time for native thread discovery.
+    CreatedAt,
+}
 ironloom_core::contract! {
 /// Validated factory record.
 SessionQuery, SessionQueryData {
+    /// Explicit ordering; adapters never infer a different default.
+    order: SessionOrder,
     /// Exclusive stable pagination cursor.
     after: Option<ConversationId>,
     /// Bounded page size.
@@ -753,17 +764,37 @@ ConversationSnapshot, ConversationSnapshotData {
     Ok(())
 }
 }
+/// Traversal direction at a fixed durable history watermark.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum HistoryDirection {
+    /// Page toward older items, returning each page oldest first.
+    Backward,
+    /// Page toward newer items, returning each page oldest first.
+    Forward,
+}
 ironloom_core::contract! {
 /// Validated factory record.
 HistoryQuery, HistoryQueryData {
     /// Consistent snapshot watermark and authorized conversation.
     as_of: ReplayCursor,
-    /// Exclusive stable item cursor; absent returns latest page at the watermark.
+    /// Requested traversal; absent cursors start at the corresponding end.
+    direction: HistoryDirection,
+    /// Exclusive older-page cursor; only valid for backward traversal.
     before: Option<ItemId>,
+    /// Exclusive newer-page cursor; only valid for forward traversal.
+    after: Option<ItemId>,
+    /// Optional exact turn, checked within the authorized conversation.
+    turn_id: Option<TurnId>,
     /// Bounded page size.
     limit: Counter,
 } |value| {
-    let _ = value;
+    if value.direction == HistoryDirection::Forward && value.before.is_some() {
+        return Err(ValidationErrors::field("before", "backward_direction_required"));
+    }
+    if value.direction == HistoryDirection::Backward && value.after.is_some() {
+        return Err(ValidationErrors::field("after", "forward_direction_required"));
+    }
     positive("limit", value.limit)?;
     if value.limit.get() > MAX_SESSION_PAGE {
         return Err(ValidationErrors::field("limit", "page_too_large"));
@@ -792,12 +823,27 @@ ironloom_core::contract! {
 HistoryPage, HistoryPageData {
     /// Same watermark as the request, even if new work arrives.
     as_of: ReplayCursor,
+    /// Traversal of the request; never inferred from item IDs.
+    direction: HistoryDirection,
+    /// Same optional turn filter as the request.
+    turn_id: Option<TurnId>,
     /// Ordered oldest to newest within this bounded page.
     items: Vec<HistoryItem>,
-    /// Exclusive cursor for the next older page; None means history exhausted.
+    /// Exclusive older-page cursor, only for backward traversal.
     next_before: Option<ItemId>,
+    /// Exclusive newer-page cursor, only for forward traversal.
+    next_after: Option<ItemId>,
 } |value| {
-    let _ = value;
+    if value.direction == HistoryDirection::Forward && value.next_before.is_some() {
+        return Err(ValidationErrors::field("next_before", "backward_direction_required"));
+    }
+    if value.direction == HistoryDirection::Backward && value.next_after.is_some() {
+        return Err(ValidationErrors::field("next_after", "forward_direction_required"));
+    }
+    if let Some(turn) = &value.turn_id
+        && value.items.iter().any(|item| &item.turn_id != turn) {
+        return Err(ValidationErrors::field("items", "turn_mismatch"));
+    }
     if value.items.len() > MAX_SESSION_PAGE as usize {
         return Err(ValidationErrors::field("items", "page_too_large"));
     }
@@ -809,6 +855,10 @@ HistoryPage, HistoryPageData {
         if !ids.insert(&item.item_id) {
             return Err(ValidationErrors::field("items", "duplicate_item"));
         }
+    }
+    if let Some(after) = &value.next_after
+        && value.items.last().is_none_or(|item| &item.item_id != after) {
+        return Err(ValidationErrors::field("next_after", "newest_item_required"));
     }
     if let Some(before) = &value.next_before
         && value

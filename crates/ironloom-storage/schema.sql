@@ -70,6 +70,10 @@ CREATE TABLE ironloom.conversations (
     conversation_id text PRIMARY KEY,
     project_id text NOT NULL REFERENCES ironloom.projects,
     archived boolean NOT NULL DEFAULT false,
+    provider_id text,
+    source_id text,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    last_human_interaction_at timestamptz NOT NULL DEFAULT now(),
     next_event_sequence numeric(20,0) NOT NULL DEFAULT 1
         CHECK (next_event_sequence BETWEEN 1 AND 18446744073709551615)
 );
@@ -90,6 +94,25 @@ CREATE TABLE ironloom.events (
     payload jsonb NOT NULL CHECK (jsonb_typeof(payload) = 'object'),
     PRIMARY KEY (conversation_id, sequence),
     FOREIGN KEY (operator_id, command_id, conversation_id) REFERENCES ironloom.commands (operator_id, command_id, conversation_id)
+);
+-- Stable item positions and immutable content versions support both paging directions
+-- at an exact service event watermark, including output edited while streaming.
+CREATE TABLE ironloom.history_items (
+    conversation_id text NOT NULL REFERENCES ironloom.conversations,
+    item_id text NOT NULL,
+    turn_id text NOT NULL,
+    position bigint GENERATED ALWAYS AS IDENTITY,
+    PRIMARY KEY (conversation_id,item_id),
+    UNIQUE (conversation_id,position)
+);
+CREATE TABLE ironloom.history_versions (
+    conversation_id text NOT NULL,
+    item_id text NOT NULL,
+    sequence numeric(20,0) NOT NULL,
+    body jsonb NOT NULL CHECK (jsonb_typeof(body)='object'),
+    PRIMARY KEY (conversation_id,item_id,sequence),
+    FOREIGN KEY (conversation_id,item_id) REFERENCES ironloom.history_items,
+    FOREIGN KEY (conversation_id,sequence) REFERENCES ironloom.events DEFERRABLE INITIALLY DEFERRED
 );
 -- Transactional dispatch/notification outbox; delivery does not prove execution termination.
 CREATE TABLE ironloom.outbox (

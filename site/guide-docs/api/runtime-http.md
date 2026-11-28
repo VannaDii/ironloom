@@ -19,3 +19,6 @@ Service login is separate from provider credentials. Login responses contain `Au
 Required infrastructure: `IRONLOOM_DATABASE_URL`, `IRONLOOM_OPENFGA_URL`, `IRONLOOM_CONFIG_KEY` (base64, 32 bytes), `IRONLOOM_PUBLIC_URL`, and both download byte ceilings. `IRONLOOM_INSTALLER_TOKEN` is read only by explicit initialization. Optional `IRONLOOM_OPENFGA_TOKEN` protects the authorization endpoint. Optional `IRONLOOM_OIDC_CONNECTIONS` is a JSON array of `{id, issuer, client_id, client_secret, redirects}`; redirect IDs map to exact allowlisted callback URLs. No identity is inferred from email.
 
 Role execution, model/source wiring and operator assets are still under implementation in the service lane. These auth routes are implemented; they are not a completed factory.
+
+
+History paging now requires an explicit forward/backward direction, accepts an optional turn filter, and keeps each page oldest first at the requested event watermark. Session discovery requires `order=created_at` for native clients or `order=human_interaction` for dashboards. Empty, disabled or disjoint local device placements block execution readiness. Configuration/instruction and conversation catalog/snapshot/history HTTP routes use the shared authenticated backend; full runtime composition remains in progress.

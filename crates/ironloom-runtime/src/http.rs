@@ -12,6 +12,8 @@ pub fn sse_event(event: &ServiceEvent) -> Result<axum::response::sse::Event, Ser
 
 /// Opaque service-session/OIDC/bootstrap HTTP transport.
 pub mod auth;
+/// Authenticated application commands and durable state queries.
+pub mod factory;
 
 /// Readiness for the selected durable authorization dependencies, separate from execution setup.
 pub fn readiness_router(

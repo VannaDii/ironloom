@@ -37,7 +37,14 @@ pub fn effective_snapshot(
         .and_then(|change| change.device_preferences.clone())
         .or_else(|| base.map(|base| base.device_preferences.clone()))
         .unwrap_or_default();
-    let blockers = unmet_prerequisites(setup.as_ref(), &roles, &models, facts);
+    let blockers = unmet_prerequisites(
+        setup.as_ref(),
+        &roles,
+        &models,
+        &device_preferences,
+        &devices,
+        facts,
+    );
     ConfigurationSnapshot::new(ConfigurationSnapshotData {
         project_id: project,
         revision,
@@ -147,5 +154,81 @@ mod tests {
                 .any(|reason| reason.as_str() == "sandbox_unavailable")
         );
         assert!(snapshot.setup.is_none());
+    }
+    #[test]
+    fn local_readiness_obeys_effective_profile_role_and_device_restrictions() {
+        let base:ConfigurationSnapshot=serde_json::from_value(serde_json::json!({
+            "project_id":null,"revision":"1","setup":{"lesson_handling":"project_only","delivery_confirmed":true,"publish_branch":true,"merge":false,"deploy":false},
+            "roles":[{"role_id":"planner","enabled":true,"model_profile_id":"local-profile","reasoning_applicable":false,"reasoning_effort":null,"device_bindings":[],"instructions_id":"planner"}],
+            "models":[{"profile_id":"local-profile","provider":"local","model_id":"verified-fixture","generation_controls":{"max_output_tokens":"100","max_duration_ms":"1000","repetition_window":"20"},"credential_id":null,"billing":"local_estimate","engine":{"name":"fixture","version":"1","backend":"simulated","configuration_hash":"fixture"},"device_bindings":["device-a"]}],
+            "device_preferences":[],"discovered_devices":[],"execution_ready":true,"unmet_prerequisites":[]
+        })).unwrap();
+        let devices=vec![serde_json::from_value(serde_json::json!({"device_id":"device-a","host_id":"fixture-host","parent_id":null,"hardware_key":"fixture-a","reconciled":true})).unwrap()];
+        let available = BTreeSet::from([ModelProfileId::new("local-profile").unwrap()]);
+        let facts = ReadinessFacts {
+            usable_profiles: &available,
+            workspace_available: true,
+            sandbox_available: true,
+            node_enrolled: true,
+        };
+        assert!(
+            effective_snapshot(
+                None,
+                base.revision,
+                Some(&base),
+                None,
+                devices.clone(),
+                &facts
+            )
+            .unwrap()
+            .execution_ready
+        );
+        for (name, field, changed) in [
+            (
+                "disabled device",
+                "device_preferences",
+                serde_json::json!([{"device_id":"device-a","enabled":false}]),
+            ),
+            ("empty profile placement", "models", {
+                let mut values = serde_json::to_value(&base.models).unwrap();
+                values[0]["device_bindings"] = serde_json::json!([]);
+                values
+            }),
+            ("disjoint role placement", "roles", {
+                let mut values = serde_json::to_value(&base.roles).unwrap();
+                values[0]["device_bindings"] = serde_json::json!(["device-b"]);
+                values
+            }),
+        ] {
+            let change: ConfigurationChange =
+                serde_json::from_value(serde_json::json!({field:changed})).unwrap();
+            let state = effective_snapshot(
+                None,
+                base.revision,
+                Some(&base),
+                Some(&change),
+                devices.clone(),
+                &facts,
+            )
+            .unwrap();
+            assert!(!state.execution_ready, "{name}");
+            assert!(
+                state
+                    .unmet_prerequisites
+                    .iter()
+                    .any(|reason| reason.as_str() == "role:planner:placement_unavailable"),
+                "{name}"
+            );
+            assert!(
+                ironloom_config::team::permitted_devices(
+                    &state.models[0],
+                    Some(&state.roles[0]),
+                    &state.device_preferences,
+                    &devices
+                )
+                .is_empty(),
+                "{name}"
+            );
+        }
     }
 }

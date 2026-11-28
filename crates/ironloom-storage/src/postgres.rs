@@ -1,5 +1,5 @@
 //! PostgreSQL persistence. Transactions own idempotency, scope serialization and event ordering.
-use ironloom_core::{ActorId, CommandId, ConversationId, OperatorId, ProjectId};
+use ironloom_core::{ActorId, CommandId, ConversationId, ItemId, OperatorId, ProjectId, TurnId};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use sqlx::{PgPool, Postgres, Row, Transaction, postgres::PgPoolOptions};
@@ -48,6 +48,38 @@ pub struct Record {
     pub project: Option<ProjectId>,
     /// Serialized owning-crate model; decode and validate independently before domain use.
     pub body: Value,
+}
+/// Authorized history window supplied by service orchestration. Item IDs are opaque;
+/// storage uses immutable item positions rather than lexical ID ordering.
+pub struct HistoryWindow<'a> {
+    /// Existing authorized conversation.
+    pub conversation: &'a ConversationId,
+    /// Inclusive durable service event watermark.
+    pub as_of: u64,
+    /// Optional exact turn filter.
+    pub turn: Option<&'a TurnId>,
+    /// Exclusive stable item cursor in this conversation/filter/watermark.
+    pub anchor: Option<&'a ItemId>,
+    /// True pages toward newer items; false pages toward older items.
+    pub forward: bool,
+    /// Bounded desired rows, including an optional service continuation sentinel.
+    pub limit: u32,
+}
+/// Durable conversation catalog traversal. Current grants are checked by the service
+/// before exposing rows; creation and human-interaction order remain explicit.
+pub struct SessionWindow<'a> {
+    /// Exclusive conversation cursor in the selected ordering.
+    pub after: Option<&'a ConversationId>,
+    /// Read at most this many metadata rows.
+    pub limit: u32,
+    /// Exact archive state.
+    pub archived: bool,
+    /// True orders by creation; false orders by human interaction, both newest first.
+    pub created_order: bool,
+    /// Current provider binding filter; empty conversations have no provider.
+    pub provider: Option<&'a ActorId>,
+    /// Current source binding filter; absence never guesses a source.
+    pub source: Option<&'a ActorId>,
 }
 /// Shared-installation database handle; connecting never initializes or replaces storage.
 #[derive(Clone)]
@@ -414,6 +446,57 @@ impl Store {
             .bind(conversation.as_str()).bind(after.to_string()).bind(limit.clamp(1,1000)).fetch_all(&self.pool).await?;
         Ok(rows)
     }
+    /// Reads immutable item versions visible at a service watermark. Unknown or out-of-scope
+    /// anchors conflict; an empty result never silently treats an invalid cursor as exhaustion.
+    /// Results are always oldest first, including when traversal is backward.
+    pub async fn history(&self, window: HistoryWindow<'_>) -> Result<Vec<Value>, DatabaseError> {
+        const MAX_HISTORY_ROWS: u32 = 101;
+        if window.limit == 0 || window.limit > MAX_HISTORY_ROWS {
+            return Err(DatabaseError::Conflict);
+        }
+        let current: Option<String> = sqlx::query_scalar("SELECT (next_event_sequence-1)::text FROM ironloom.conversations WHERE conversation_id=$1")
+            .bind(window.conversation.as_str()).fetch_optional(&self.pool).await?;
+        let current: u64 = current
+            .ok_or(DatabaseError::NotFound)?
+            .parse()
+            .map_err(|_| DatabaseError::Corrupt)?;
+        if window.as_of > current {
+            return Err(DatabaseError::Conflict);
+        }
+        let anchor: Option<i64> = if let Some(id) = window.anchor {
+            Some(sqlx::query_scalar("SELECT i.position FROM ironloom.history_items i WHERE i.conversation_id=$1 AND i.item_id=$2 AND ($3::text IS NULL OR i.turn_id=$3) AND EXISTS (SELECT 1 FROM ironloom.history_versions v WHERE v.conversation_id=i.conversation_id AND v.item_id=i.item_id AND v.sequence<=$4::text::numeric)")
+                .bind(window.conversation.as_str()).bind(id.as_str()).bind(window.turn.map(TurnId::as_str)).bind(window.as_of.to_string())
+                .fetch_optional(&self.pool).await?.ok_or(DatabaseError::Conflict)?)
+        } else {
+            None
+        };
+        let mut rows: Vec<Value> = sqlx::query_scalar("WITH visible AS (SELECT i.position, v.body FROM ironloom.history_items i CROSS JOIN LATERAL (SELECT body FROM ironloom.history_versions v WHERE v.conversation_id=i.conversation_id AND v.item_id=i.item_id AND v.sequence<=$2::text::numeric ORDER BY v.sequence DESC LIMIT 1) v WHERE i.conversation_id=$1 AND ($3::text IS NULL OR i.turn_id=$3) AND ($4::bigint IS NULL OR CASE WHEN $5 THEN i.position>$4 ELSE i.position<$4 END)) SELECT body FROM visible ORDER BY CASE WHEN $5 THEN position END ASC, CASE WHEN NOT $5 THEN position END DESC LIMIT $6")
+            .bind(window.conversation.as_str()).bind(window.as_of.to_string()).bind(window.turn.map(TurnId::as_str))
+            .bind(anchor).bind(window.forward).bind(i64::from(window.limit)).fetch_all(&self.pool).await?;
+        if !window.forward {
+            rows.reverse();
+        }
+        Ok(rows)
+    }
+    /// Reads newest-first snapshots using the selected persisted timestamp and stable ID tiebreaker.
+    /// Background event writes do not modify human-interaction order.
+    pub async fn session_rows(
+        &self,
+        window: SessionWindow<'_>,
+    ) -> Result<Vec<Value>, DatabaseError> {
+        const MAX_SESSION_ROWS: u32 = 100;
+        if window.limit == 0 || window.limit > MAX_SESSION_ROWS {
+            return Err(DatabaseError::Conflict);
+        }
+        let timestamp: Option<String> = if let Some(after) = window.after {
+            Some(sqlx::query_scalar("SELECT (CASE WHEN $2 THEN created_at ELSE last_human_interaction_at END)::text FROM ironloom.conversations WHERE conversation_id=$1 AND archived=$3 AND ($4::text IS NULL OR provider_id=$4) AND ($5::text IS NULL OR source_id=$5)")
+                .bind(after.as_str()).bind(window.created_order).bind(window.archived).bind(window.provider.map(ActorId::as_str)).bind(window.source.map(ActorId::as_str)).fetch_optional(&self.pool).await?.ok_or(DatabaseError::Conflict)?)
+        } else {
+            None
+        };
+        sqlx::query_scalar("SELECT r.body FROM ironloom.conversations c JOIN ironloom.records r ON r.kind='conversation' AND r.record_id=c.conversation_id AND r.project_id=c.project_id WHERE c.archived=$1 AND ($2::text IS NULL OR c.provider_id=$2) AND ($3::text IS NULL OR c.source_id=$3) AND ($4::text IS NULL OR (CASE WHEN $6 THEN c.created_at ELSE c.last_human_interaction_at END,c.conversation_id COLLATE \"C\") < ($4::text::timestamptz,$5::text COLLATE \"C\")) ORDER BY CASE WHEN $6 THEN c.created_at ELSE c.last_human_interaction_at END DESC,c.conversation_id COLLATE \"C\" DESC LIMIT $7")
+            .bind(window.archived).bind(window.provider.map(ActorId::as_str)).bind(window.source.map(ActorId::as_str)).bind(timestamp).bind(window.after.map(ConversationId::as_str)).bind(window.created_order).bind(i64::from(window.limit)).fetch_all(&self.pool).await.map_err(Into::into)
+    }
     /// Checks a trusted service session identity for expiry/revocation before native/direct operations.
     pub async fn session_active(
         &self,
@@ -713,6 +796,17 @@ impl Batch {
         .await?;
         Ok(())
     }
+    /// Records an authenticated human interaction for conversation ordering and returns its
+    /// database timestamp for the snapshot written in this same transaction. Background events
+    /// never call this method. The service updates the parent project's ordering separately.
+    pub async fn conversation_interaction(
+        &mut self,
+        conversation: &ConversationId,
+    ) -> Result<u64, DatabaseError> {
+        let value:String=sqlx::query_scalar("UPDATE ironloom.conversations SET last_human_interaction_at=clock_timestamp() WHERE conversation_id=$1 RETURNING floor(extract(epoch from last_human_interaction_at)*1000)::text")
+            .bind(conversation.as_str()).fetch_one(&mut *self.tx).await?;
+        value.parse().map_err(|_| DatabaseError::Corrupt)
+    }
     /// Allocates the next durable event sequence under a row lock.
     pub async fn next_sequence(
         &mut self,
@@ -746,6 +840,36 @@ impl Batch {
         .bind(sequence.to_string())
         .execute(&mut *self.tx)
         .await?;
+        Ok(())
+    }
+    /// Persists one immutable item content version after this command has appended its event. Turn binding
+    /// and initial display position never change when later streaming versions are appended.
+    pub async fn history_version(
+        &mut self,
+        conversation: &ConversationId,
+        item: &ItemId,
+        turn: &TurnId,
+        sequence: u64,
+        body: &Value,
+    ) -> Result<(), DatabaseError> {
+        if body.get("conversation_id").and_then(Value::as_str) != Some(conversation.as_str())
+            || body.get("item_id").and_then(Value::as_str) != Some(item.as_str())
+            || body.get("turn_id").and_then(Value::as_str) != Some(turn.as_str())
+        {
+            return Err(DatabaseError::Corrupt);
+        }
+        let owned:bool=sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM ironloom.events WHERE conversation_id=$1 AND sequence=$2::text::numeric AND operator_id=$3 AND command_id=$4)")
+            .bind(conversation.as_str()).bind(sequence.to_string()).bind(self.operator.as_str()).bind(self.command.as_str()).fetch_one(&mut *self.tx).await?;
+        if !owned {
+            return Err(DatabaseError::Conflict);
+        }
+        sqlx::query("INSERT INTO ironloom.history_items(conversation_id,item_id,turn_id) VALUES($1,$2,$3) ON CONFLICT (conversation_id,item_id) DO NOTHING")
+            .bind(conversation.as_str()).bind(item.as_str()).bind(turn.as_str()).execute(&mut *self.tx).await?;
+        let affected = sqlx::query("INSERT INTO ironloom.history_versions(conversation_id,item_id,sequence,body) SELECT $1,$2,$3::text::numeric,$4 FROM ironloom.history_items i JOIN ironloom.events e ON e.conversation_id=i.conversation_id AND e.sequence=$3::text::numeric WHERE i.conversation_id=$1 AND i.item_id=$2 AND i.turn_id=$5 AND e.operator_id=$6 AND e.command_id=$7")
+            .bind(conversation.as_str()).bind(item.as_str()).bind(sequence.to_string()).bind(body).bind(turn.as_str()).bind(self.operator.as_str()).bind(self.command.as_str()).execute(&mut *self.tx).await?.rows_affected();
+        if affected != 1 {
+            return Err(DatabaseError::Conflict);
+        }
         Ok(())
     }
     /// Writes protected secret material atomically with its metadata and audit, never a worker prompt.

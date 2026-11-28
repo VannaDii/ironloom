@@ -25,6 +25,21 @@
       "type": "string",
       "pattern": "^(0|[1-9][0-9]{0,19})$"
     },
+    "SessionOrder": {
+      "description": "Explicit newest-first conversation ordering, shared by dashboard and native discovery.",
+      "oneOf": [
+        {
+          "description": "Most recent authenticated human interaction; background events do not reorder it.",
+          "type": "string",
+          "const": "human_interaction"
+        },
+        {
+          "description": "Immutable creation time for native thread discovery.",
+          "type": "string",
+          "const": "created_at"
+        }
+      ]
+    },
     "SessionQueryData": {
       "description": "Unchecked construction draft for `SessionQuery`; validate before use.",
       "type": "object",
@@ -47,6 +62,10 @@
         "limit": {
           "description": "Bounded page size.",
           "$ref": "#/$defs/Counter"
+        },
+        "order": {
+          "description": "Explicit ordering; adapters never infer a different default.",
+          "$ref": "#/$defs/SessionOrder"
         },
         "provider": {
           "description": "Provider filter.",
@@ -73,6 +92,7 @@
       },
       "additionalProperties": false,
       "required": [
+        "order",
         "limit",
         "archived"
       ]
