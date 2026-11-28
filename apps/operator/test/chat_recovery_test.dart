@@ -58,6 +58,7 @@ void main() {
           }
           final cursor = decodeCursor(request.url.queryParameters['as_of']!);
           final data = {
+            'direction': 'backward',
             'as_of': cursor.toJson(),
             'items': [
               {

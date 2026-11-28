@@ -1,276 +1,11 @@
-use ironloom_core::validation::decode;
-use ironloom_core::*;
-use ironloom_native::{
-    relay::{Peer, RelayError},
-    rpc::{NativeAuthority, ThreadContext, TurnMetadata, TurnStatus},
-    views::{NativeViews, View, ViewStore},
-};
+mod support;
+use ironloom_core::{validation::decode, *};
+use ironloom_native::{relay::Peer, views::NativeViews};
 use ironloom_service::factory::*;
-use serde_json::{Value, json};
-use std::sync::{Arc, Mutex};
+use serde_json::json;
+use std::sync::Arc;
+use support::{Authority, Service, Store};
 use tokio::sync::Notify;
-struct Service {
-    state: ConversationSnapshot,
-    events: Vec<ServiceEvent>,
-    subscriptions: Mutex<Vec<ReplayCursor>>,
-}
-impl FactoryService for Service {
-    fn projects(
-        &self,
-        _session: AuthenticatedSession,
-        _query: ProjectQuery,
-    ) -> BoxFuture<'_, Result<ProjectPage, ServiceError>> {
-        Box::pin(async { Err(ServiceError::Unavailable) })
-    }
-    fn create_project(
-        &self,
-        _session: AuthenticatedSession,
-        _request: CreateProject,
-    ) -> BoxFuture<'_, Result<ProjectSummary, ServiceError>> {
-        Box::pin(async { Err(ServiceError::Unavailable) })
-    }
-    fn self_grant_project(
-        &self,
-        _session: AuthenticatedSession,
-        _project: ProjectId,
-        _command: CommandId,
-    ) -> BoxFuture<'_, Result<ProjectSummary, ServiceError>> {
-        Box::pin(async { Err(ServiceError::Unavailable) })
-    }
-    fn credentials(
-        &self,
-        _session: AuthenticatedSession,
-    ) -> BoxFuture<'_, Result<Vec<CredentialSummary>, ServiceError>> {
-        Box::pin(async { Err(ServiceError::Unavailable) })
-    }
-    fn credential(
-        &self,
-        _session: AuthenticatedSession,
-        _request: CredentialCommand,
-    ) -> BoxFuture<'_, Result<Option<CredentialSummary>, ServiceError>> {
-        Box::pin(async { Err(ServiceError::Unavailable) })
-    }
-    fn native_connection(
-        &self,
-        _session: AuthenticatedSession,
-        _node: NodeId,
-    ) -> BoxFuture<'_, Result<NativeConnectionState, ServiceError>> {
-        Box::pin(async { Err(ServiceError::Unavailable) })
-    }
-    fn configure_native(
-        &self,
-        _session: AuthenticatedSession,
-        _request: NativeConnectionCommand,
-    ) -> BoxFuture<'_, Result<NativeConnectionState, ServiceError>> {
-        Box::pin(async { Err(ServiceError::Unavailable) })
-    }
-    fn source_search(
-        &self,
-        _session: AuthenticatedSession,
-        _project: Option<ProjectId>,
-        _query: ironloom_models::factory::SourceQuery,
-    ) -> BoxFuture<'_, Result<ironloom_models::factory::SourcePage, ServiceError>> {
-        Box::pin(async { Err(ServiceError::Unavailable) })
-    }
-    fn download_status(
-        &self,
-        _session: AuthenticatedSession,
-        _download: ActorId,
-    ) -> BoxFuture<'_, Result<ironloom_models::factory::DownloadProgress, ServiceError>> {
-        Box::pin(async { Err(ServiceError::Unavailable) })
-    }
-    fn download(
-        &self,
-        _session: AuthenticatedSession,
-        _request: DownloadCommand,
-    ) -> BoxFuture<'_, Result<ironloom_models::factory::DownloadProgress, ServiceError>> {
-        Box::pin(async { Err(ServiceError::Unavailable) })
-    }
-    fn create_conversation(
-        &self,
-        _session: AuthenticatedSession,
-        _request: CreateConversation,
-    ) -> BoxFuture<'_, Result<ConversationSnapshot, ServiceError>> {
-        Box::pin(async { Err(ServiceError::Unavailable) })
-    }
-    fn configuration(
-        &self,
-        _session: AuthenticatedSession,
-        _project: Option<ProjectId>,
-    ) -> BoxFuture<'_, Result<ConfigurationSnapshot, ServiceError>> {
-        Box::pin(async { Err(ServiceError::Unavailable) })
-    }
-    fn configure(
-        &self,
-        _session: AuthenticatedSession,
-        _request: ConfigurationCommand,
-    ) -> BoxFuture<'_, Result<ConfigurationSnapshot, ServiceError>> {
-        Box::pin(async { Err(ServiceError::Unavailable) })
-    }
-    fn lessons(
-        &self,
-        _session: AuthenticatedSession,
-        _query: LessonQuery,
-    ) -> BoxFuture<'_, Result<LessonPage, ServiceError>> {
-        Box::pin(async { Err(ServiceError::Unavailable) })
-    }
-    fn snapshot(
-        &self,
-        _session: AuthenticatedSession,
-        _conversation: ConversationId,
-    ) -> BoxFuture<'_, Result<ConversationSnapshot, ServiceError>> {
-        Box::pin(async { Ok(self.state.clone()) })
-    }
-    fn history(
-        &self,
-        _session: AuthenticatedSession,
-        _query: HistoryQuery,
-    ) -> BoxFuture<'_, Result<HistoryPage, ServiceError>> {
-        Box::pin(async { Err(ServiceError::Unavailable) })
-    }
-    fn subscribe(
-        &self,
-        _session: AuthenticatedSession,
-        after: ReplayCursor,
-    ) -> BoxFuture<'_, Result<EventSubscription, ServiceError>> {
-        Box::pin(async move {
-            self.subscriptions.lock().unwrap().push(after.clone());
-            let (tx, rx) = tokio::sync::mpsc::channel(16);
-            for event in &self.events {
-                if event.cursor.sequence > after.sequence {
-                    tx.send(Ok(event.clone())).await.unwrap();
-                }
-            }
-            Ok(EventSubscription { events: rx })
-        })
-    }
-    fn command(
-        &self,
-        _session: AuthenticatedSession,
-        _command: Command,
-    ) -> BoxFuture<'_, Result<CommandReceipt, ServiceError>> {
-        Box::pin(async { Err(ServiceError::Unavailable) })
-    }
-    fn replay(
-        &self,
-        _session: AuthenticatedSession,
-        _cursor: ReplayCursor,
-    ) -> BoxFuture<'_, Result<Vec<ServiceEvent>, ServiceError>> {
-        Box::pin(async { Err(ServiceError::Unavailable) })
-    }
-    fn sessions(
-        &self,
-        _session: AuthenticatedSession,
-        _query: SessionQuery,
-    ) -> BoxFuture<'_, Result<Vec<SessionSummary>, ServiceError>> {
-        Box::pin(async { Err(ServiceError::Unavailable) })
-    }
-}
-struct Authority;
-impl NativeAuthority for Authority {
-    fn session(&self, _peer: Peer) -> BoxFuture<'_, Result<AuthenticatedSession, ServiceError>> {
-        Box::pin(async {
-            decode(br#"{"operator_id":"operator","session_id":"session","method":"local","expires_at_ms":"100"}"#).map_err(ServiceError::Validation)
-        })
-    }
-    fn home(
-        &self,
-        _session: AuthenticatedSession,
-    ) -> BoxFuture<'_, Result<std::path::PathBuf, ServiceError>> {
-        Box::pin(async { Err(ServiceError::Unavailable) })
-    }
-    fn turn(
-        &self,
-        _session: AuthenticatedSession,
-        _conversation: ConversationId,
-        _turn: TurnId,
-    ) -> BoxFuture<'_, Result<TurnMetadata, ServiceError>> {
-        Box::pin(async {
-            Ok(TurnMetadata {
-                status: TurnStatus::Completed,
-                started_at_ms: Some(Counter::new(1)),
-                completed_at_ms: Some(Counter::new(2)),
-                duration_ms: Some(Counter::new(1)),
-            })
-        })
-    }
-    fn project(
-        &self,
-        _session: AuthenticatedSession,
-        _project: Option<ProjectId>,
-        _cwd: Option<String>,
-    ) -> BoxFuture<'_, Result<ProjectId, ServiceError>> {
-        Box::pin(async { Err(ServiceError::Unavailable) })
-    }
-    fn context(
-        &self,
-        _session: AuthenticatedSession,
-        _conversation: ConversationId,
-    ) -> BoxFuture<'_, Result<ThreadContext, ServiceError>> {
-        Box::pin(async { Err(ServiceError::Unavailable) })
-    }
-    fn prepare(
-        &self,
-        _session: AuthenticatedSession,
-        _fingerprint: String,
-        _candidate: Command,
-    ) -> BoxFuture<'_, Result<Command, ServiceError>> {
-        Box::pin(async { Err(ServiceError::Unavailable) })
-    }
-}
-#[derive(Default)]
-struct Store {
-    view: Mutex<Option<View>>,
-    messages: Mutex<Vec<Value>>,
-    changed: Notify,
-}
-impl ViewStore for Store {
-    fn watch(&self, peer: Peer, after: ReplayCursor) -> BoxFuture<'_, Result<(), RelayError>> {
-        Box::pin(async move {
-            *self.view.lock().unwrap() = Some(View {
-                peer,
-                cursor: after,
-            });
-            Ok(())
-        })
-    }
-    fn views(&self, peer: Peer) -> BoxFuture<'_, Result<Vec<View>, RelayError>> {
-        Box::pin(async move {
-            Ok(self
-                .view
-                .lock()
-                .unwrap()
-                .iter()
-                .filter(|v| v.peer == peer)
-                .cloned()
-                .collect())
-        })
-    }
-    fn commit(
-        &self,
-        view: View,
-        after: ReplayCursor,
-        messages: Vec<Value>,
-        _: Vec<Value>,
-    ) -> BoxFuture<'_, Result<(), RelayError>> {
-        Box::pin(async move {
-            let mut current = self.view.lock().unwrap();
-            let current = current.as_mut().ok_or(RelayError::Protocol)?;
-            assert_eq!(current.cursor, view.cursor);
-            assert!(after.sequence >= current.cursor.sequence);
-            current.cursor = after;
-            self.messages.lock().unwrap().extend(messages);
-            self.changed.notify_one();
-            Ok(())
-        })
-    }
-    fn remove(&self, _: Peer, _: Option<ConversationId>) -> BoxFuture<'_, Result<(), RelayError>> {
-        Box::pin(async {
-            *self.view.lock().unwrap() = None;
-            Ok(())
-        })
-    }
-}
 fn state() -> ConversationSnapshot {
     decode(&serde_json::to_vec(&json!({"session":{"conversation_id":"c","project_id":"p","archived":false,"last_human_interaction_ms":"1"},"cursor":{"conversation_id":"c","sequence":"99"},"revision":"4","pending_questions":[]})).unwrap()).unwrap()
 }
@@ -285,15 +20,23 @@ async fn feed_eof_and_provider_completion_never_complete_turn_and_reconnect_uses
         if terminal {
             events.push(event(12, "state_changed", Some("completed")));
         }
-        let service = Arc::new(Service {
-            state: state(),
-            events,
-            subscriptions: Mutex::default(),
-        });
+        let mut live = (*state()).clone();
+        if !terminal {
+            live.session = SessionSummary::new(SessionSummaryData {
+                active_turn_id: Some(TurnId::new("turn").unwrap()),
+                ..(*live.session).clone()
+            })
+            .unwrap();
+            live.active_assignment_id = Some(AssignmentId::new("assignment").unwrap());
+            live.execution_state = Some(serde_json::from_value(json!("running")).unwrap());
+        }
+        let service = Service::new(ConversationSnapshot::new(live).unwrap(), events);
         let store = Arc::new(Store::default());
+        let authority = Authority::new(service.clone());
+        authority.completed.lock().unwrap().push(ironloom_native::items::CompletedItem::Message(decode(br#"{"conversation_id":"c","turn_id":"turn","item_id":"item","message":{"role":"assistant","text":"complete final output","tool_calls":[]}}"#).unwrap()));
         let adapter = NativeViews::new(
             service.clone(),
-            Arc::new(Authority),
+            authority,
             store.clone(),
             Arc::new(Notify::new()),
         );
@@ -302,6 +45,13 @@ async fn feed_eof_and_provider_completion_never_complete_turn_and_reconnect_uses
             stream: ActorId::new("stream").unwrap(),
         };
         let mut initial = (*state()).clone();
+        initial.session = SessionSummary::new(SessionSummaryData {
+            active_turn_id: Some(TurnId::new("turn").unwrap()),
+            ..(*initial.session).clone()
+        })
+        .unwrap();
+        initial.active_assignment_id = Some(AssignmentId::new("assignment").unwrap());
+        initial.execution_state = Some(serde_json::from_value(json!("running")).unwrap());
         initial.cursor = ReplayCursor::new(ReplayCursorData {
             conversation_id: ConversationId::new("c").unwrap(),
             sequence: Counter::new(9),
@@ -344,6 +94,15 @@ async fn feed_eof_and_provider_completion_never_complete_turn_and_reconnect_uses
                 .filter(|v| v["method"] == "turn/completed")
                 .count(),
             usize::from(terminal)
+        );
+        let final_items = messages
+            .iter()
+            .filter(|v| v["method"] == "item/completed")
+            .collect::<Vec<_>>();
+        assert_eq!(final_items.len(), 1);
+        assert_eq!(
+            final_items[0]["params"]["item"]["text"],
+            "complete final output"
         );
         let expected = if terminal { 12 } else { 11 };
         assert_eq!(

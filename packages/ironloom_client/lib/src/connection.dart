@@ -54,6 +54,20 @@ final class ApiFailure implements Exception {
       'Service request failed ($status${error == null ? '' : ', ${error!.kind}'})';
 }
 
+int _serviceStatus(ServiceError error) => switch (error.kind) {
+  'validation' => 400,
+  'authentication' => switch (error.detail) {
+    AuthenticationError.unauthenticated ||
+    AuthenticationError.invalidCredentials => 401,
+    AuthenticationError.unavailable => 503,
+    _ => 403,
+  },
+  'approval_required' => 428,
+  'unavailable' => 503,
+  'conflict' || 'cursor_expired' || 'resync_required' => 409,
+  _ => 502,
+};
+
 /// HTTP commands and streamed events. Reconnection never calls a mutation method.
 final class IronloomClient {
   IronloomClient(
@@ -211,7 +225,7 @@ final class IronloomClient {
   Future<ConversationSnapshot> createConversation(CreateConversation request) =>
       _model(
         'POST',
-        'api/v1/conversations',
+        'api/v1/sessions',
         ConversationSnapshot.fromJson,
         body: request,
       );
@@ -226,6 +240,9 @@ final class IronloomClient {
     HistoryPage.fromJson,
     query: {
       'as_of': encodeCursor(query.asOf),
+      'direction': query.direction.value,
+      'after': query.after?.value,
+      'turn_id': query.turnId?.value,
       'before': query.before?.value,
       'limit': query.limit.toJson(),
     },
@@ -241,6 +258,7 @@ final class IronloomClient {
       'after': query.after?.value,
       'limit': query.limit.toJson(),
       'archived': '${query.archived}',
+      'order': query.order.value,
       'provider': query.provider?.value,
       'source': query.source?.value,
     },
@@ -298,6 +316,40 @@ final class IronloomClient {
     NativeConnectionState.fromJson,
     body: request,
   );
+  Future<InstructionPage> instructions(InstructionQuery query) => _model(
+    'GET',
+    'api/v1/instructions',
+    InstructionPage.fromJson,
+    query: {
+      'project_id': query.projectId?.value,
+      'after': query.after?.value,
+      'limit': query.limit.toJson(),
+    },
+  );
+  Future<InstructionTemplate> instruction(InstructionCommand request) => _model(
+    'POST',
+    'api/v1/instructions',
+    InstructionTemplate.fromJson,
+    body: request,
+  );
+  Future<ModelInventoryPage> inventory(ModelInventoryQuery query) => _model(
+    'GET',
+    'api/v1/models/inventory',
+    ModelInventoryPage.fromJson,
+    query: {
+      'project_id': query.projectId?.value,
+      'after': query.after?.value,
+      'limit': query.limit.toJson(),
+      'publisher': query.publisher?.value,
+      'host': query.host?.value,
+      'verification': query.verification?.value,
+    },
+  );
+  Future<List<EngineAssessment>> assessModel(ModelAssessmentQuery request) =>
+      _model('POST', 'api/v1/models/assessments', (json) {
+        if (json is! List<Object?>) throw ApiFailure(502, null);
+        return List.unmodifiable(json.map(EngineAssessment.fromJson));
+      }, body: request);
   Future<SourcePage> searchModels(SourceQuery request, {ProjectId? project}) =>
       _model(
         'POST',
@@ -355,7 +407,8 @@ final class IronloomClient {
     var last = cursor.sequence;
     await for (final frame in decodeSse(response.stream)) {
       if (frame.event == 'ironloom.error') {
-        throw ApiFailure(409, decode(frame.data, ServiceError.fromJson));
+        final error = decode(frame.data, ServiceError.fromJson);
+        throw ApiFailure(_serviceStatus(error), error);
       }
       if (frame.event != 'ironloom.event') continue;
       final event = decode(frame.data, ServiceEvent.fromJson);

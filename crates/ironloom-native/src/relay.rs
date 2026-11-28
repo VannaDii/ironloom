@@ -23,6 +23,8 @@ pub enum RelayError {
     Unavailable,
     /// Relay rejected its current control token; refresh only the same enrollment generation.
     Authentication,
+    /// A current service operation requires explicit approval, independently from authentication.
+    ApprovalRequired,
     /// Pinned upstream missing-registration detail; reenrollment requires current service authority.
     MissingRegistration,
     /// An unrelated lookup failure must preserve enrollment/server identity.

@@ -5,6 +5,16 @@ import 'package:ironloom_client/ironloom_client.dart';
 import 'package:test/test.dart';
 
 final Map<String, WireModel Function(Object?)> decoders = {
+  'stored_command': StoredCommand.fromJson,
+  'session_query': SessionQuery.fromJson,
+  'service_event': ServiceEvent.fromJson,
+  'model_inventory_item': ModelInventoryItem.fromJson,
+  'model_assessment_query': ModelAssessmentQuery.fromJson,
+  'instruction_command': InstructionCommand.fromJson,
+  'engine_assessment': EngineAssessment.fromJson,
+  'download_progress': DownloadProgress.fromJson,
+  'download_limits': DownloadLimits.fromJson,
+  'budget_command': BudgetCommand.fromJson,
   'project_query': ProjectQuery.fromJson,
   'create_project': CreateProject.fromJson,
   'credential_command': CredentialCommand.fromJson,

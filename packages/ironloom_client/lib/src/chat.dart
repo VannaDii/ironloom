@@ -61,7 +61,11 @@ final class ChatConnection {
     final state = await client.snapshot(id);
     final page = await client.history(
       id,
-      HistoryQuery(asOf: state.cursor, limit: Counter('50')),
+      HistoryQuery(
+        asOf: state.cursor,
+        direction: HistoryDirection.backward,
+        limit: Counter('50'),
+      ),
     );
     if (page.asOf.conversationId.value != id.value ||
         page.asOf.sequence.compareTo(state.cursor.sequence) != 0) {
@@ -85,6 +89,9 @@ final class ChatConnection {
           (event) {
             if (_closed.isCompleted || generation != _generation) return;
             cursor = event.cursor;
+            if (event.snapshot case final state?) {
+              if (_accept(state, generation)) _changes.add(null);
+            }
             _events.add(event);
           },
           onError: (Object error) {

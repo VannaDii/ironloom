@@ -199,6 +199,7 @@ final class ServiceError implements WireModel {
           'conflict',
           'cursor_expired',
           'resync_required',
+          'approval_required',
           'unavailable',
         }.contains(json)) {
       return ServiceError._(json, null);

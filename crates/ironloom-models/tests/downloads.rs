@@ -96,7 +96,7 @@ impl DownloadObserver for Observer {
     }
 }
 fn progress(id: &str) -> DownloadProgress {
-    decode(&serde_json::to_vec(&json!({"download_id":id,"source":{"publisher":"publisher","host":"huggingface","repository_url":"https://huggingface.co/publisher/model","revision":"pinned","access":"accessible"},"received_bytes":"0","cancel_requested":false,"terminated":false})).unwrap()).unwrap()
+    decode(&serde_json::to_vec(&json!({"repository_id":"huggingface:publisher/model","download_id":id,"source":{"publisher":"publisher","host":"huggingface","repository_url":"https://huggingface.co/publisher/model","revision":"pinned","access":"accessible"},"received_bytes":"0","cancel_requested":false,"terminated":false})).unwrap()).unwrap()
 }
 fn observer() -> Arc<Observer> {
     Arc::new(Observer {

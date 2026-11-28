@@ -67,6 +67,7 @@ void main() {
             };
           } else if (request.url.path.endsWith('/history')) {
             data = {
+              'direction': 'backward',
               'as_of': {'conversation_id': 'c100', 'sequence': '0'},
               'items': [],
             };

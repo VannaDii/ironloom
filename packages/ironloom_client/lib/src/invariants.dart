@@ -134,6 +134,86 @@ void _validateModel(WireModel model) {
           url.userInfo.isNotEmpty) {
         _fail('repository_url', 'https_without_credentials_required');
       }
+    case EngineAssessment v:
+      if (v.requirements.compatibility != v.fit.compatibility) {
+        _fail('fit.compatibility', 'assessment_compatibility_mismatch');
+      }
+      if (v.devices.map((d) => d.deviceId.value).toSet().length !=
+          v.devices.length) {
+        _fail('devices', 'duplicate_device');
+      }
+      if (v.fit.estimatedBytes?.value != _completeDemand(v.requirements)) {
+        _fail('fit.estimated_bytes', 'complete_demand_mismatch');
+      }
+      if (v.fit.fitsAfterIdleEviction != null &&
+          (v.devices.isEmpty || v.fit.estimatedBytes == null)) {
+        _fail('fit.fits_after_idle_eviction', 'device_and_demand_required');
+      }
+    case ModelInventoryQuery v:
+      _pageLimit(v.limit);
+    case ModelInventoryItem v:
+      final verified = v.verification == ModelVerification.verified;
+      if (verified && !v.transferComplete) {
+        _fail('transfer_complete', 'verification_requires_completed_transfer');
+      }
+      if (verified != (v.verifiedManifestHash != null) ||
+          verified != (v.verifiedAtMs != null)) {
+        _fail('verified_manifest_hash', 'verification_manifest_required_only');
+      }
+      if (v.verifiedAtMs case final time?) _positive('verified_at_ms', time);
+    case ModelInventoryPage v:
+      if (v.models.length > 100) _fail('models', 'page_too_large');
+      if (v.models.map((m) => m.inventoryId.value).toSet().length !=
+          v.models.length) {
+        _fail('models', 'duplicate_inventory_id');
+      }
+    case InstructionQuery v:
+      _pageLimit(v.limit);
+    case InstructionPage v:
+      if (v.instructions.length > 100) _fail('instructions', 'page_too_large');
+      if (v.instructions.map((i) => i.instructionId.value).toSet().length !=
+          v.instructions.length) {
+        _fail('instructions', 'duplicate_instruction');
+      }
+    case InstructionCommand v:
+      final update =
+          v.activeUpdate == ActiveInstructionUpdate.updateSelectedCopies;
+      if (update == v.assignments.isEmpty) {
+        _fail('assignments', 'active_update_selection_mismatch');
+      }
+      if (v.assignments.map((a) => a.value).toSet().length !=
+          v.assignments.length) {
+        _fail('assignments', 'duplicate_assignment');
+      }
+    case StoredCommand v:
+      if (v.receipt is! Map<String, Object?>) {
+        _fail('receipt', 'object_required');
+      }
+      if (v.conversationId != null && v.projectId == null) {
+        _fail('project_id', 'conversation_requires_project');
+      }
+      if (v.firstEvent != null) {
+        if (v.conversationId == null) {
+          _fail('conversation_id', 'event_requires_conversation');
+        }
+        if (v.firstEvent is! Map<String, Object?>) {
+          _fail('first_event', 'object_required');
+        }
+      }
+    case ServiceEvent v:
+      if ((v.event != null) == (v.snapshot != null)) {
+        _fail('event', 'exactly_one_event_or_snapshot');
+      }
+      if (v.snapshot case final state?) {
+        if (state.cursor.conversationId.value !=
+                v.cursor.conversationId.value ||
+            state.cursor.sequence.compareTo(v.cursor.sequence) != 0) {
+          _fail('snapshot.cursor', 'watermark_mismatch');
+        }
+        if (state.session.projectId.value != v.projectId.value) {
+          _fail('snapshot.session.project_id', 'project_mismatch');
+        }
+      }
     case DownloadProgress v:
       if (v.totalBytes != null && v.receivedBytes > v.totalBytes!) {
         _fail('received_bytes', 'exceeds_total');
@@ -389,15 +469,37 @@ void _validateModel(WireModel model) {
         }
       }
     case HistoryQuery v:
+      if (v.direction == HistoryDirection.forward && v.before != null) {
+        _fail('before', 'backward_direction_required');
+      }
+      if (v.direction == HistoryDirection.backward && v.after != null) {
+        _fail('after', 'forward_direction_required');
+      }
       _pageLimit(v.limit);
     case HistoryPage v:
+      if (v.direction == HistoryDirection.forward && v.nextBefore != null) {
+        _fail('next_before', 'backward_direction_required');
+      }
+      if (v.direction == HistoryDirection.backward && v.nextAfter != null) {
+        _fail('next_after', 'forward_direction_required');
+      }
+      if (v.turnId != null &&
+          v.items.any((item) => item.turnId.value != v.turnId!.value)) {
+        _fail('items', 'turn_mismatch');
+      }
       if (v.items.length > 100) _fail('items', 'page_too_large');
-      final ids = <String>{};
-      for (final item in v.items) {
-        if (item.conversationId.value != v.asOf.conversationId.value) {
-          _fail('items', 'conversation_mismatch');
-        }
-        if (!ids.add(item.itemId.value)) _fail('items', 'duplicate_item');
+      if (v.items.any(
+        (item) => item.conversationId.value != v.asOf.conversationId.value,
+      )) {
+        _fail('items', 'conversation_mismatch');
+      }
+      if (v.items.map((i) => i.itemId.value).toSet().length != v.items.length) {
+        _fail('items', 'duplicate_item');
+      }
+      if (v.nextAfter != null &&
+          (v.items.isEmpty ||
+              v.items.last.itemId.value != v.nextAfter!.value)) {
+        _fail('next_after', 'newest_item_required');
       }
       if (v.nextBefore != null &&
           (v.items.isEmpty ||
@@ -517,6 +619,7 @@ void _validateModel(WireModel model) {
 }
 
 void _pageLimit(Counter limit) {
+  _positive('limit', limit);
   if (limit.value > BigInt.from(100)) _fail('limit', 'page_too_large');
 }
 
@@ -578,4 +681,20 @@ extension PendingQuestionResponseValidation on PendingQuestion {
       _required('text', text);
     }
   }
+}
+
+BigInt? _completeDemand(EngineRequirements value) {
+  var total = BigInt.zero;
+  for (final component in [
+    value.targetWeightBytes,
+    value.draftWeightBytes,
+    value.cacheBytes,
+    value.runtimeOverheadBytes,
+    value.acceleratorBytes,
+  ]) {
+    if (component == null) return null;
+    total += component.value;
+    if (total > BigInt.parse('18446744073709551615')) return null;
+  }
+  return total;
 }

@@ -4,7 +4,7 @@ use crate::{
     relay::Peer,
     rpc::{NativeAuthority, TurnStatus},
 };
-use ironloom_core::{BoxFuture, ConversationId, validation::decode};
+use ironloom_core::{BoxFuture, ConversationId, Counter, TurnId, validation::decode};
 use ironloom_service::factory::{ConversationSnapshot, FactoryService, ReplayCursor, ServiceEvent};
 use serde_json::{Value, json};
 use std::{collections::BTreeMap, sync::Arc};
@@ -20,16 +20,18 @@ pub struct View {
     pub peer: Peer,
     /// Last service event atomically projected into the durable relay outbox.
     pub cursor: ReplayCursor,
+    /// Last rendered authorized snapshot watermark, separate from consumed event replay.
+    pub snapshot_cursor: ReplayCursor,
+    /// Last rendered command revision; overlapping reads never rewind native controls.
+    pub snapshot_revision: Counter,
+    /// Last rendered active turn, used only to project service-confirmed lifecycle changes.
+    pub active_turn_id: Option<TurnId>,
 }
 /// PostgreSQL callbacks for transport projection only. The factory service owns all decisions,
 /// sessions and execution. Implementations share a transaction with the relay outbox.
 pub trait ViewStore: Send + Sync {
     /// Installs/replaces a viewer at the explicitly read snapshot watermark. Never dispatches work.
-    fn watch(
-        &self,
-        peer: Peer,
-        after: ReplayCursor,
-    ) -> BoxFuture<'_, Result<(), crate::relay::RelayError>>;
+    fn watch(&self, view: View) -> BoxFuture<'_, Result<(), crate::relay::RelayError>>;
     /// Loads this peer's durable active viewers, checking the current enrollment generation.
     fn views(&self, peer: Peer) -> BoxFuture<'_, Result<Vec<View>, crate::relay::RelayError>>;
     /// Atomically compares the stored viewer cursor, enqueues messages with conversation scopes
@@ -42,7 +44,7 @@ pub trait ViewStore: Send + Sync {
     fn commit(
         &self,
         view: View,
-        after: ReplayCursor,
+        after: View,
         messages: Vec<Value>,
         prompts: Vec<Value>,
     ) -> BoxFuture<'_, Result<(), crate::relay::RelayError>>;
@@ -85,7 +87,15 @@ impl NativeViews {
     ) -> Result<(), crate::relay::RelayError> {
         self.abort(&peer, Some(&state.session.conversation_id))
             .await;
-        self.store.watch(peer, state.cursor.clone()).await
+        self.store
+            .watch(View {
+                peer,
+                cursor: state.cursor.clone(),
+                snapshot_cursor: state.cursor.clone(),
+                snapshot_revision: state.revision,
+                active_turn_id: state.session.active_turn_id.clone(),
+            })
+            .await
     }
     /// Starts feeds after the request's durable RPC reply is queued, preserving native wire order.
     pub async fn ready(&self, peer: Peer) -> Result<(), crate::relay::RelayError> {
@@ -157,26 +167,27 @@ impl NativeViews {
 /// Maps one normalized service event without interpreting stream EOF/provider completion as turn
 /// completion. Persisted turn transitions are projected separately with service-owned outcomes.
 pub fn project(event: &ServiceEvent) -> Result<Vec<Value>, crate::relay::RelayError> {
-    let value =
-        serde_json::to_value(&event.event).map_err(|_| crate::relay::RelayError::Protocol)?;
+    let Some(worker) = &event.event else {
+        return Ok(Vec::new());
+    };
+    let value = serde_json::to_value(worker).map_err(|_| crate::relay::RelayError::Protocol)?;
     let kind = value["kind"]
         .as_str()
         .ok_or(crate::relay::RelayError::Protocol)?;
     let thread = &event.cursor.conversation_id;
-    let turn = &event.event.turn_id;
-    let item = &event.event.item_id;
+    let turn = &worker.turn_id;
+    let item = &worker.item_id;
     let message = match kind {
         "text_delta" | "progress" | "stdout" | "stderr" => Some(
-            json!({"method":"item/agentMessage/delta","params":{"threadId":thread,"turnId":turn,"itemId":item,"delta":event.event.text}}),
+            json!({"method":"item/agentMessage/delta","params":{"threadId":thread,"turnId":turn,"itemId":item,"delta":worker.text}}),
         ),
         "started" => Some(
             json!({"method":"item/started","params":{"threadId":thread,"turnId":turn,"item":{"type":"agentMessage","id":item,"text":""}}}),
         ),
         "tool_ready" => {
             let tool: ironloom_models::factory::ToolInvocation =
-                decode(event.event.text.as_bytes())
-                    .map_err(|_| crate::relay::RelayError::Protocol)?;
-            if event.event.tool_call_id.as_ref() != Some(&tool.tool_call_id) {
+                decode(worker.text.as_bytes()).map_err(|_| crate::relay::RelayError::Protocol)?;
+            if worker.tool_call_id.as_ref() != Some(&tool.tool_call_id) {
                 return Err(crate::relay::RelayError::Protocol);
             }
             Some(
@@ -184,7 +195,7 @@ pub fn project(event: &ServiceEvent) -> Result<Vec<Value>, crate::relay::RelayEr
             )
         }
         "failed" => Some(
-            json!({"method":"error","params":{"threadId":thread,"turnId":turn,"willRetry":false,"error":{"message":event.event.text,"codexErrorInfo":null,"additionalDetails":null}}}),
+            json!({"method":"error","params":{"threadId":thread,"turnId":turn,"willRetry":false,"error":{"message":worker.text,"codexErrorInfo":null,"additionalDetails":null}}}),
         ),
         _ => None,
     };
@@ -198,44 +209,198 @@ async fn run_view(
     store: Arc<dyn ViewStore>,
     wakeup: Arc<Notify>,
 ) {
-    let result:Result<(),crate::relay::RelayError>=async {
-                    let session=authority.session(view.peer.clone()).await.map_err(|_|crate::relay::RelayError::Authentication)?;
-                    let state=service.snapshot(session.clone(),view.cursor.conversation_id.clone()).await.map_err(|_|crate::relay::RelayError::Unavailable)?;
-                    let initial=prompts::requests(&state).map_err(|_|crate::relay::RelayError::Protocol)?;
-                    store.commit(view.clone(),view.cursor.clone(),Vec::new(),initial).await?;wakeup.notify_one();
-                    let mut feed=service.subscribe(session,view.cursor.clone()).await.map_err(|_|crate::relay::RelayError::Unavailable)?;
-                    while let Some(event)=feed.events.recv().await {
-                        let event=event.map_err(|_|crate::relay::RelayError::Unavailable)?;
-                        if event.cursor.conversation_id!=view.cursor.conversation_id || event.cursor.sequence<=view.cursor.sequence {return Err(crate::relay::RelayError::Protocol);}
-                        // Revalidate identity on every event, independently from transport liveness.
-                        let session=authority.session(view.peer.clone()).await.map_err(|_|crate::relay::RelayError::Authentication)?;
-                        let state=service.snapshot(session.clone(),view.cursor.conversation_id.clone()).await.map_err(|_|crate::relay::RelayError::Unavailable)?;
-                        if state.cursor.sequence<event.cursor.sequence {return Err(crate::relay::RelayError::Unavailable);}
-                        let mut messages=project(&event)?;
-                        let value=serde_json::to_value(&event.event).map_err(|_|crate::relay::RelayError::Protocol)?;
-                        if matches!(value["kind"].as_str(),Some("state_changed"|"termination_confirmed")) && matches!(value["state"].as_str(),Some("completed"|"failed"|"terminated")) {
-                            let metadata=authority.turn(session,view.cursor.conversation_id.clone(),event.event.turn_id.clone()).await.map_err(|_|crate::relay::RelayError::Unavailable)?;
-                            if !matches!(metadata.status,TurnStatus::InProgress) {
-                                messages.push(json!({"method":"turn/completed","params":{"threadId":view.cursor.conversation_id,"turn":{"id":event.event.turn_id,"items":[],"itemsView":"notLoaded","status":metadata.status,"error":null,"startedAt":metadata.started_at_ms.map(|n|n.get()/1000),"completedAt":metadata.completed_at_ms.map(|n|n.get()/1000),"durationMs":metadata.duration_ms.map(|n|n.get())}}}));
-                            }
-                        }
-                        let prompts=prompts::requests(&state).map_err(|_|crate::relay::RelayError::Protocol)?;
-                        store.commit(view.clone(),event.cursor.clone(),messages,prompts).await?;
-                        view.cursor=event.cursor.clone();wakeup.notify_one();
-                    }
-                    Err(crate::relay::RelayError::Unavailable) // EOF is viewer interruption only.
-                }.await;
+    let result = run_feed(&mut view, service, authority, store.clone(), wakeup.clone()).await;
     if result.is_err() {
-        // A native thread/closed notification detaches a viewer; it makes no claim
-        // about execution. Explicit resume rehydrates history before another feed.
+        // Detach this viewer only; no turn/execution outcome is inferred from transport failure.
         let closed =
             json!({"method":"thread/closed","params":{"threadId":view.cursor.conversation_id}});
         if store
-            .commit(view.clone(), view.cursor.clone(), vec![closed], Vec::new())
+            .commit(view.clone(), view.clone(), vec![closed], Vec::new())
             .await
             .is_ok()
         {
             wakeup.notify_one();
         }
     }
+}
+async fn run_feed(
+    view: &mut View,
+    service: Arc<dyn FactoryService>,
+    authority: Arc<dyn NativeAuthority>,
+    store: Arc<dyn ViewStore>,
+    wakeup: Arc<Notify>,
+) -> Result<(), crate::relay::RelayError> {
+    let session = authority
+        .session(view.peer.clone())
+        .await
+        .map_err(crate::rpc::relay_error)?;
+    let state = service
+        .snapshot(session.clone(), view.cursor.conversation_id.clone())
+        .await
+        .map_err(crate::rpc::relay_error)?;
+    if state.cursor.sequence < view.snapshot_cursor.sequence
+        || state.revision < view.snapshot_revision
+    {
+        return Err(crate::relay::RelayError::Unavailable);
+    }
+    let mut next = view.clone();
+    let initial = controls(&mut next, &state, authority.as_ref(), session.clone()).await?;
+    let prompts = prompts::requests(&state).map_err(|_| crate::relay::RelayError::Protocol)?;
+    store
+        .commit(view.clone(), next.clone(), initial, prompts)
+        .await?;
+    *view = next;
+    wakeup.notify_one();
+    let mut feed = service
+        .subscribe(session, view.cursor.clone())
+        .await
+        .map_err(crate::rpc::relay_error)?;
+    while let Some(event) = feed.events.recv().await {
+        let event = event.map_err(crate::rpc::relay_error)?;
+        if event.cursor.conversation_id != view.cursor.conversation_id
+            || event.cursor.sequence <= view.cursor.sequence
+        {
+            return Err(crate::relay::RelayError::Protocol);
+        }
+        let session = authority
+            .session(view.peer.clone())
+            .await
+            .map_err(crate::rpc::relay_error)?;
+        let state = service
+            .snapshot(session.clone(), view.cursor.conversation_id.clone())
+            .await
+            .map_err(crate::rpc::relay_error)?;
+        if state.cursor.sequence < event.cursor.sequence
+            || state.cursor.sequence < view.snapshot_cursor.sequence
+            || state.revision < view.snapshot_revision
+        {
+            return Err(crate::relay::RelayError::Unavailable);
+        }
+        let mut next = view.clone();
+        next.cursor = event.cursor.clone();
+        let mut messages = controls(&mut next, &state, authority.as_ref(), session.clone()).await?;
+        messages.extend(project(&event)?);
+        if let Some(worker) = &event.event {
+            let value =
+                serde_json::to_value(worker).map_err(|_| crate::relay::RelayError::Protocol)?;
+            if matches!(
+                value["kind"].as_str(),
+                Some("completed" | "failed" | "termination_confirmed")
+            ) {
+                for item in authority
+                    .completed(
+                        session.clone(),
+                        event.cursor.clone(),
+                        worker.item_id.clone(),
+                    )
+                    .await
+                    .map_err(crate::rpc::relay_error)?
+                {
+                    messages.push(item.notification(
+                        &view.cursor.conversation_id,
+                        &worker.turn_id,
+                        &worker.item_id,
+                    )?);
+                }
+            }
+            if next.active_turn_id.as_ref() == Some(&worker.turn_id)
+                && matches!(
+                    value["kind"].as_str(),
+                    Some("state_changed" | "termination_confirmed")
+                )
+                && matches!(
+                    value["state"].as_str(),
+                    Some("completed" | "failed" | "terminated")
+                )
+            {
+                let metadata = authority
+                    .turn(
+                        session.clone(),
+                        view.cursor.conversation_id.clone(),
+                        worker.turn_id.clone(),
+                    )
+                    .await
+                    .map_err(crate::rpc::relay_error)?;
+                if !matches!(metadata.status, TurnStatus::InProgress) {
+                    messages.push(turn_completed(
+                        &view.cursor.conversation_id,
+                        &worker.turn_id,
+                        metadata,
+                    )?);
+                    next.active_turn_id = None;
+                }
+            }
+        }
+        let prompts = prompts::requests(&state).map_err(|_| crate::relay::RelayError::Protocol)?;
+        store
+            .commit(view.clone(), next.clone(), messages, prompts)
+            .await?;
+        *view = next;
+        wakeup.notify_one();
+    }
+    Err(crate::relay::RelayError::Unavailable)
+}
+async fn controls(
+    view: &mut View,
+    state: &ConversationSnapshot,
+    authority: &dyn NativeAuthority,
+    session: ironloom_service::factory::AuthenticatedSession,
+) -> Result<Vec<Value>, crate::relay::RelayError> {
+    if state.cursor.sequence < view.snapshot_cursor.sequence
+        || state.revision < view.snapshot_revision
+    {
+        return Ok(Vec::new());
+    }
+    let mut messages = Vec::new();
+    if state.cursor.sequence == view.snapshot_cursor.sequence
+        && state.revision == view.snapshot_revision
+    {
+        return Ok(messages);
+    }
+    if view.active_turn_id != state.session.active_turn_id {
+        if let Some(previous) = &view.active_turn_id {
+            let metadata = authority
+                .turn(
+                    session.clone(),
+                    view.cursor.conversation_id.clone(),
+                    previous.clone(),
+                )
+                .await
+                .map_err(crate::rpc::relay_error)?;
+            if !matches!(metadata.status, TurnStatus::InProgress) {
+                messages.push(turn_completed(
+                    &view.cursor.conversation_id,
+                    previous,
+                    metadata,
+                )?);
+            }
+        }
+        if let Some(current) = &state.session.active_turn_id {
+            messages.push(json!({"method":"turn/started","params":{"threadId":view.cursor.conversation_id,"turn":{"id":current,"items":[],"itemsView":"notLoaded","status":"inProgress","error":null,"startedAt":null,"completedAt":null,"durationMs":null}}}));
+        }
+        messages.push(json!({"method":"thread/status/changed","params":{"threadId":view.cursor.conversation_id,"status":{"type":if state.session.active_turn_id.is_some(){"active"}else{"idle"},"activeFlags":[]}}}));
+    }
+    view.active_turn_id = state.session.active_turn_id.clone();
+    view.snapshot_cursor = state.cursor.clone();
+    view.snapshot_revision = state.revision;
+    Ok(messages)
+}
+fn turn_completed(
+    conversation: &ConversationId,
+    turn: &TurnId,
+    metadata: crate::rpc::TurnMetadata,
+) -> Result<Value, crate::relay::RelayError> {
+    fn number(value: Option<Counter>, divisor: u64) -> Result<Value, crate::relay::RelayError> {
+        value
+            .map(|value| {
+                i64::try_from(value.get() / divisor)
+                    .map(Value::from)
+                    .map_err(|_| crate::relay::RelayError::Unavailable)
+            })
+            .transpose()
+            .map(|value| value.unwrap_or(Value::Null))
+    }
+    Ok(
+        json!({"method":"turn/completed","params":{"threadId":conversation,"turn":{"id":turn,"items":[],"itemsView":"notLoaded","status":metadata.status,"error":null,"startedAt":number(metadata.started_at_ms,1000)?,"completedAt":number(metadata.completed_at_ms,1000)?,"durationMs":number(metadata.duration_ms,1)?}}}),
+    )
 }

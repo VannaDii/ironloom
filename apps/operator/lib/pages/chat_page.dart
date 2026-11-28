@@ -52,6 +52,7 @@ class _DashboardPageState extends State<DashboardPage> {
           ? Future.value(<SessionSummary>[])
           : widget.client.sessions(
               SessionQuery(
+                order: SessionOrder.humanInteraction,
                 after: next ? sessionAfter : null,
                 limit: Counter('100'),
                 archived: false,
@@ -332,6 +333,9 @@ class _ChatPageState extends State<ChatPage> {
   void onEvent(ServiceEvent event) {
     if (!mounted) return;
     final value = event.event;
+    if (value == null) {
+      return; // Snapshot variants are applied atomically by ChatConnection.
+    }
     setState(() {
       assignment = value.assignmentId;
       kinds[value.itemId.value] = value.kind;
@@ -533,6 +537,7 @@ class _ChatPageState extends State<ChatPage> {
                         final page = await widget.client.history(
                           widget.id,
                           HistoryQuery(
+                            direction: HistoryDirection.backward,
                             asOf: chat.history!.asOf,
                             before: before,
                             limit: Counter('50'),
@@ -652,17 +657,21 @@ class _ChatPageState extends State<ChatPage> {
                             await chat.send(
                               CommandAction(
                                 'budget',
-                                Budget(
-                                  revision: old?.revision ?? Counter('1'),
-                                  limitMicros: budgetEnabled
-                                      ? Counter(limit.text.trim())
-                                      : null,
-                                  currency: ActorId(currency.text.trim()),
-                                  incurredMicros:
-                                      old?.incurredMicros ?? Counter('0'),
-                                  reservedMicros:
-                                      old?.reservedMicros ?? Counter('0'),
-                                  uncertainUsage: old?.uncertainUsage ?? false,
+                                BudgetCommand(
+                                  conversationId: widget.id,
+                                  budget: Budget(
+                                    revision: old?.revision ?? Counter('1'),
+                                    limitMicros: budgetEnabled
+                                        ? Counter(limit.text.trim())
+                                        : null,
+                                    currency: ActorId(currency.text.trim()),
+                                    incurredMicros:
+                                        old?.incurredMicros ?? Counter('0'),
+                                    reservedMicros:
+                                        old?.reservedMicros ?? Counter('0'),
+                                    uncertainUsage:
+                                        old?.uncertainUsage ?? false,
+                                  ),
                                 ),
                               ),
                             );

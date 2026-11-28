@@ -69,6 +69,61 @@ void main() {
     client.close();
   });
 
+  test('snapshot-only SSE updates controls without fabricated worker output', () async {
+    final updated = {
+      ...state(),
+      'revision': '2',
+      'cursor': {'conversation_id': 'c', 'sequence': '1'},
+    };
+    final client = IronloomClient(
+      ServerConnection(Uri.parse('https://host/')),
+      MockClient.streaming((request, _) async {
+        Object body;
+        if (request.url.path.endsWith('/snapshot')) {
+          body = state();
+        } else if (request.url.path.endsWith('/history')) {
+          expect(request.url.queryParameters['direction'], 'backward');
+          body = {
+            'direction': 'backward',
+            'as_of': state()['cursor'],
+            'items': <Object?>[],
+          };
+        } else {
+          final change = ServiceEvent.fromJson({
+            'cursor': updated['cursor'],
+            'command_id': 'cmd',
+            'project_id': 'p',
+            'snapshot': updated,
+          });
+          return http.StreamedResponse(
+            Stream.value(
+              utf8.encode(
+                'event: ironloom.event\nid: ${encodeCursor(change.cursor)}\ndata: ${jsonEncode(change.toJson())}\n\n',
+              ),
+            ),
+            200,
+          );
+        }
+        return http.StreamedResponse(
+          Stream.value(utf8.encode(jsonEncode(body))),
+          200,
+        );
+      }),
+    );
+    final chat = ChatConnection(client, MemoryCommandJournal());
+    final events = <ServiceEvent>[];
+    final subscription = chat.events.listen(events.add);
+    await chat.connect(ConversationId('c'));
+    await Future<void>.delayed(Duration.zero);
+    expect(chat.snapshot!.revision.toJson(), '2');
+    expect(chat.cursor!.sequence.toJson(), '1');
+    expect(events.single.event, isNull);
+    expect(events.single.snapshot, isNotNull);
+    await subscription.cancel();
+    await chat.close();
+    client.close();
+  });
+
   test(
     'deployment path and connection headers stay scoped to one server',
     () async {
@@ -80,7 +135,7 @@ void main() {
         MockClient((request) async {
           expect(
             request.url.toString(),
-            'https://host/dev/ivy/p/8000/api/v1/conversations',
+            'https://host/dev/ivy/p/8000/api/v1/sessions',
           );
           expect(request.headers['X-CSRF-Token'], 'fixture');
           expect(request.body, '{"command_id":"new","project_id":"p"}');
@@ -134,7 +189,11 @@ void main() {
           return http.StreamedResponse(
             Stream.value(
               utf8.encode(
-                jsonEncode({'as_of': state()['cursor'], 'items': <Object?>[]}),
+                jsonEncode({
+                  'direction': 'backward',
+                  'as_of': state()['cursor'],
+                  'items': <Object?>[],
+                }),
               ),
             ),
             200,
@@ -317,6 +376,7 @@ void main() {
           Stream.value(
             utf8.encode(
               jsonEncode({
+                'direction': 'backward',
                 'as_of': asOf.toJson(),
                 'items': <Object?>[],
                 'next_before': null,

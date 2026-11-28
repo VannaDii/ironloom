@@ -34,7 +34,7 @@ void main() {
           }
           if (request.url.path.endsWith('/history')) {
             return http.Response(
-              '{"as_of":{"conversation_id":"c","sequence":"0"},"items":[]}',
+              '{"direction":"backward","as_of":{"conversation_id":"c","sequence":"0"},"items":[]}',
               200,
             );
           }

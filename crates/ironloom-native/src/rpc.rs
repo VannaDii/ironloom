@@ -54,6 +54,17 @@ pub struct TurnMetadata {
     /// Recorded elapsed duration, absent when unknown.
     pub duration_ms: Option<Counter>,
 }
+/// Optional native selection assertions. The service validates these against its actual configured workflow role;
+/// they never create another model/profile selection or authorize a fallback.
+#[derive(Clone)]
+pub struct StartHints {
+    /// Requested model, if the native client supplied one.
+    pub model: Option<ActorId>,
+    /// Requested inference provider, separate from native account authentication.
+    pub provider: Option<ActorId>,
+    /// Requested effort, if supplied; no adapter default.
+    pub effort: Option<ActorId>,
+}
 /// Service-owned identity, context and durable command preparation. No sessions are minted here.
 pub trait NativeAuthority: Send + Sync {
     /// Revalidates enrollment-to-human mapping and an existing service session for every call.
@@ -71,6 +82,30 @@ pub trait NativeAuthority: Send + Sync {
         conversation: ConversationId,
         turn: TurnId,
     ) -> BoxFuture<'_, Result<TurnMetadata, ServiceError>>;
+    /// Returns only confirmed persisted final item/tool outcomes at the requested event watermark.
+    /// Resolve original tool names/call IDs/results from shared storage and recheck current grants;
+    /// incomplete/unknown outcomes return no completed items, never inferred success from EOF.
+    fn completed(
+        &self,
+        session: AuthenticatedSession,
+        cursor: ReplayCursor,
+        item: ItemId,
+    ) -> BoxFuture<'_, Result<Vec<crate::items::CompletedItem>, ServiceError>>;
+    /// Executes the shared empty-conversation creation operation with native selection assertions.
+    /// First look up actor/key/fingerprint and recheck current project authority for replay. For a
+    /// new operation validate hints against current authorized configuration under the SAME service
+    /// transaction/locks used to persist the shared conversation and actor/key outcome. A mismatch
+    /// or configuration race must persist neither a conversation nor a command outcome. When the
+    /// empty conversation has no selected role, reject nonempty model/provider/effort overrides;
+    /// do not choose a role or add a setup choice merely to satisfy the native request. Never use
+    /// separate native conversation/session storage or select a replacement role/model.
+    fn start(
+        &self,
+        session: AuthenticatedSession,
+        request: CreateConversation,
+        hints: StartHints,
+        fingerprint: String,
+    ) -> BoxFuture<'_, Result<ConversationSnapshot, ServiceError>>;
     /// Resolves a currently authorized existing project from optional native project/cwd hints.
     fn project(
         &self,
@@ -84,6 +119,15 @@ pub trait NativeAuthority: Send + Sync {
         session: AuthenticatedSession,
         conversation: ConversationId,
     ) -> BoxFuture<'_, Result<ThreadContext, ServiceError>>;
+    /// Looks up the original actor/key/fingerprint envelope before mutable turn/question checks.
+    /// Changed payload conflicts. Recheck current session and actual stored-resource grants;
+    /// never treat a prior grant or a transport peer as continuing authority.
+    fn replay(
+        &self,
+        session: AuthenticatedSession,
+        key: CommandId,
+        fingerprint: String,
+    ) -> BoxFuture<'_, Result<Option<Command>, ServiceError>>;
     /// Atomically retains the FIRST validated command under its actor/key and canonical native
     /// payload hash. Repeated identical calls return that exact envelope/revision; changed payload
     /// conflicts. This prevents reconnect from rebuilding a command at a newer revision.
@@ -163,16 +207,19 @@ impl NativeRpc {
                         optional_text(&params, "cwd")?,
                     )
                     .await?;
+                let hints = start_hints(&params)?;
+                let fingerprint = hex::encode(Sha256::digest(
+                    json!({"method":method,"params":params}).to_string(),
+                ));
                 let request = decode_json(json!({"command_id":key,"project_id":project}))?;
                 let snapshot = self
-                    .service
-                    .create_conversation(session.clone(), request)
+                    .authority
+                    .start(session.clone(), request, hints, fingerprint)
                     .await?;
                 let context = self
                     .authority
                     .context(session, snapshot.session.conversation_id.clone())
                     .await?;
-                selected(&params, &context)?;
                 self.views
                     .watch(peer.clone(), &snapshot)
                     .await
@@ -250,7 +297,7 @@ impl NativeRpc {
                 }
                 if params["sortKey"]
                     .as_str()
-                    .is_some_and(|v| v != "updated_at")
+                    .is_some_and(|v| v != "updated_at" && v != "created_at")
                     || params["sortDirection"]
                         .as_str()
                         .is_some_and(|v| v != "desc")
@@ -259,7 +306,7 @@ impl NativeRpc {
                 }
                 let limit = limit(&params)?;
                 let query = decode_json(
-                    json!({"after":params.get("cursor"),"limit":limit.to_string(),"archived":params["archived"].as_bool().unwrap_or(false),"provider":provider,"source":null}),
+                    json!({"order":if params["sortKey"]=="updated_at" {"human_interaction"}else{"created_at"},"after":params.get("cursor"),"limit":limit.to_string(),"archived":params["archived"].as_bool().unwrap_or(false),"provider":provider,"source":null}),
                 )?;
                 let sessions = self.service.sessions(session.clone(), query).await?;
                 let mut data = Vec::new();
@@ -284,42 +331,49 @@ impl NativeRpc {
             "turn/start" | "turn/steer" | "turn/interrupt" => {
                 reject_overrides(&params)?;
                 let conversation = conversation(&params)?;
-                let state = self
-                    .service
-                    .snapshot(session.clone(), conversation.clone())
-                    .await?;
-                let context = self
-                    .authority
-                    .context(session.clone(), conversation.clone())
-                    .await?;
-                selected(&params, &context)?;
-                let action = match method {
-                    "turn/start" => {
-                        json!({"type":"input","data":{"conversation_id":conversation,"text":input(&params)?}})
-                    }
-                    "turn/steer" => {
-                        json!({"type":"steer","data":{"conversation_id":conversation,"expected_turn_id":required(&params,"expectedTurnId")?,"text":input(&params)?}})
-                    }
-                    _ => {
-                        if state.session.active_turn_id.as_ref().map(TurnId::as_str)
-                            != Some(required(&params, "turnId")?)
-                        {
-                            return Err(Failure::Conflict);
-                        }
-                        json!({"type":"control","data":{"assignment_id":state.active_assignment_id.as_ref().ok_or(Failure::Conflict)?,"action":"cancel"}})
-                    }
-                };
-                let candidate = decode_json(
-                    json!({"command_id":key,"project_id":state.session.project_id,"expected_revision":state.revision,"action":action}),
-                )?;
                 let fingerprint = hex::encode(Sha256::digest(
                     serde_json::to_vec(&json!({"method":method,"params":params}))
                         .map_err(|_| Failure::Invalid)?,
                 ));
-                let command = self
+                let command = if let Some(command) = self
                     .authority
-                    .prepare(session.clone(), fingerprint, candidate)
-                    .await?;
+                    .replay(session.clone(), key.clone(), fingerprint.clone())
+                    .await?
+                {
+                    command
+                } else {
+                    let state = self
+                        .service
+                        .snapshot(session.clone(), conversation.clone())
+                        .await?;
+                    let context = self
+                        .authority
+                        .context(session.clone(), conversation.clone())
+                        .await?;
+                    selected(&params, &context)?;
+                    let action = match method {
+                        "turn/start" => {
+                            json!({"type":"input","data":{"conversation_id":conversation,"text":input(&params)?}})
+                        }
+                        "turn/steer" => {
+                            json!({"type":"steer","data":{"conversation_id":conversation,"expected_turn_id":required(&params,"expectedTurnId")?,"text":input(&params)?}})
+                        }
+                        _ => {
+                            if state.session.active_turn_id.as_ref().map(TurnId::as_str)
+                                != Some(required(&params, "turnId")?)
+                            {
+                                return Err(Failure::Conflict);
+                            }
+                            json!({"type":"control","data":{"assignment_id":state.active_assignment_id.as_ref().ok_or(Failure::Conflict)?,"action":"cancel"}})
+                        }
+                    };
+                    let candidate = decode_json(
+                        json!({"command_id":key,"project_id":state.session.project_id,"expected_revision":state.revision,"action":action}),
+                    )?;
+                    self.authority
+                        .prepare(session.clone(), fingerprint, candidate)
+                        .await?
+                };
                 let receipt = self.service.command(session.clone(), command).await?;
                 if receipt.disposition == CommandDisposition::Conflict {
                     return Err(Failure::Conflict);
@@ -336,7 +390,7 @@ impl NativeRpc {
                     .service
                     .history(
                         session.clone(),
-                        decode_json(json!({"as_of":receipt.cursor,"before":null,"limit":"1"}))?,
+                        decode_json(json!({"as_of":receipt.cursor,"direction":"backward","before":null,"after":null,"turn_id":null,"limit":"1"}))?,
                     )
                     .await?;
                 let item = page.items.last().ok_or(Failure::Unavailable)?;
@@ -367,27 +421,36 @@ impl NativeRpc {
     ) -> Result<(), RelayError> {
         let id = message["id"].as_str().ok_or(RelayError::Protocol)?;
         let conversation = crate::prompts::conversation(id).map_err(|_| RelayError::Protocol)?;
-        let state = self
-            .service
-            .snapshot(session.clone(), conversation)
-            .await
-            .map_err(|_| RelayError::Unavailable)?;
         if message.get("error").is_some() {
-            // Dismissing a native prompt never approves or answers a service request.
             return Ok(());
         }
-        let action = crate::prompts::answer(&state, &session.operator_id, id, &message["result"])
-            .map_err(|_| RelayError::Protocol)?;
-        let key = hex::encode(Sha256::digest(
+        let key = CommandId::new(hex::encode(Sha256::digest(
             json!(["native-prompt", session.operator_id, id]).to_string(),
-        ));
-        let candidate=decode_json(json!({"command_id":key,"project_id":state.session.project_id,"expected_revision":state.revision,"action":action})).map_err(|_|RelayError::Protocol)?;
+        )))
+        .map_err(|_| RelayError::Protocol)?;
         let fingerprint = hex::encode(Sha256::digest(json!([id, message["result"]]).to_string()));
-        let command = self
+        let command = if let Some(command) = self
             .authority
-            .prepare(session.clone(), fingerprint, candidate)
+            .replay(session.clone(), key.clone(), fingerprint.clone())
             .await
-            .map_err(|_| RelayError::Unavailable)?;
+            .map_err(relay_error)?
+        {
+            command
+        } else {
+            let state = self
+                .service
+                .snapshot(session.clone(), conversation)
+                .await
+                .map_err(relay_error)?;
+            let action =
+                crate::prompts::answer(&state, &session.operator_id, id, &message["result"])
+                    .map_err(|_| RelayError::Protocol)?;
+            let candidate=decode_json(json!({"command_id":key,"project_id":state.session.project_id,"expected_revision":state.revision,"action":action})).map_err(|_|RelayError::Protocol)?;
+            self.authority
+                .prepare(session.clone(), fingerprint, candidate)
+                .await
+                .map_err(relay_error)?
+        };
         let receipt = self
             .service
             .command(session, command)
@@ -407,7 +470,7 @@ impl NativeRpc {
             .service
             .history(
                 session.clone(),
-                decode_json(json!({"as_of":state.cursor,"before":null,"limit":"100"}))?,
+                decode_json(json!({"as_of":state.cursor,"direction":"backward","before":null,"after":null,"turn_id":null,"limit":"100"}))?,
             )
             .await?;
         // A bounded read is explicitly a summary when older items remain; never claim full history.
@@ -464,7 +527,7 @@ impl Dispatcher for NativeRpc {
             let id = message.get("id").cloned();
             let session = self.authority.session(peer.clone()).await;
             if crate::prompts::is_prompt(&message["id"]) && message.get("method").is_none() {
-                let session = session.map_err(|_| RelayError::Authentication)?;
+                let session = session.map_err(relay_error)?;
                 self.answer_prompt(peer, session, &message).await?;
                 return Ok(None);
             }
@@ -538,20 +601,23 @@ impl Dispatcher for NativeRpc {
     }
 }
 #[derive(Debug)]
-enum Failure {
+pub(crate) enum Failure {
     Invalid,
     Unsupported,
     NotInitialized,
     Conflict,
     Denied,
     Unavailable,
+    ApprovalRequired,
 }
 impl From<ServiceError> for Failure {
     fn from(value: ServiceError) -> Self {
         match value {
             ServiceError::Validation(_) => Self::Invalid,
+            ServiceError::Authentication(AuthenticationError::Unavailable) => Self::Unavailable,
             ServiceError::Authentication(_) => Self::Denied,
             ServiceError::Conflict => Self::Conflict,
+            ServiceError::ApprovalRequired => Self::ApprovalRequired,
             _ => Self::Unavailable,
         }
     }
@@ -565,6 +631,7 @@ impl Failure {
             Self::Conflict => -32009,
             Self::Denied => -32001,
             Self::Unavailable => -32000,
+            Self::ApprovalRequired => -32003,
         }
     }
     fn message(&self) -> &'static str {
@@ -575,6 +642,7 @@ impl Failure {
             Self::Conflict => "State changed; refresh before retrying",
             Self::Denied => "Authentication or access denied",
             Self::Unavailable => "Service unavailable",
+            Self::ApprovalRequired => "Approval required",
         }
     }
 }
@@ -722,7 +790,7 @@ fn thread(
 fn turn(id: &str, items: Vec<Value>, status: &str, view: &str) -> Value {
     json!({"id":id,"rootTurnId":null,"items":items,"itemsView":view,"status":status,"error":null,"startedAt":null,"completedAt":null,"durationMs":null})
 }
-fn history_item(item: &HistoryItem) -> Result<Value, Failure> {
+pub(crate) fn history_item(item: &HistoryItem) -> Result<Value, Failure> {
     let value = serde_json::to_value(&item.message).map_err(|_| Failure::Unavailable)?;
     let mut text = value["text"].as_str().unwrap_or("").to_owned();
     match value["role"].as_str() {
@@ -765,4 +833,31 @@ fn timestamp(value: Option<Counter>) -> Result<Value, Failure> {
         })
         .transpose()
         .map(|v| v.unwrap_or(Value::Null))
+}
+
+pub(crate) fn relay_error(error: ServiceError) -> RelayError {
+    match error {
+        ServiceError::Authentication(AuthenticationError::Unavailable) => RelayError::Unavailable,
+        ServiceError::Authentication(_) => RelayError::Authentication,
+        ServiceError::ApprovalRequired => RelayError::ApprovalRequired,
+        _ => RelayError::Unavailable,
+    }
+}
+
+fn start_hints(params: &Value) -> Result<StartHints, Failure> {
+    fn id(params: &Value, key: &str) -> Result<Option<ActorId>, Failure> {
+        optional_text(params, key)?
+            .map(|v| ActorId::new(v).map_err(|_| Failure::Invalid))
+            .transpose()
+    }
+    let effort = id(params, "effort")?;
+    let reasoning = id(params, "reasoningEffort")?;
+    if effort.is_some() && reasoning.is_some() && effort != reasoning {
+        return Err(Failure::Invalid);
+    }
+    Ok(StartHints {
+        model: id(params, "model")?,
+        provider: id(params, "modelProvider")?,
+        effort: effort.or(reasoning),
+    })
 }

@@ -12,6 +12,8 @@ String displayError(Object error) => switch (error) {
   CommandConflict() => 'State changed; no command was dispatched. Your input is retained. Refresh before retrying.',
   ApiFailure(status: 401) => 'Your session has expired. Sign in again.',
   ApiFailure(status: 403) => 'You do not have permission for this action.',
+  ApiFailure(status: 428) =>
+    'Approval is required before this action can continue.',
   ApiFailure(status: 409) =>
     'This changed elsewhere. Refresh before trying again.',
   ApiFailure() =>

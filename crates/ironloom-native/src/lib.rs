@@ -18,3 +18,6 @@ pub mod views;
 /// Public upstream protocol/source revision used for the direct remote-host implementation.
 /// Native-client and hardware qualification remain separate from protocol fixture coverage.
 pub const UPSTREAM_REVISION: &str = "e2e7dabd4587c7b0fbf934e6a93b6cec8245751d";
+
+/// Confirmed service item/tool outcomes rendered as native item completion notifications.
+pub mod items;
