@@ -476,7 +476,7 @@ impl ViewStore for Store {
         view: View,
         after: View,
         messages: Vec<Value>,
-        _: Vec<Value>,
+        _: Option<Vec<Value>>,
     ) -> BoxFuture<'_, Result<(), RelayError>> {
         Box::pin(async move {
             let mut current = self.view.lock().unwrap();

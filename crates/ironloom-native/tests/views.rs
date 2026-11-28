@@ -104,6 +104,25 @@ async fn feed_eof_and_provider_completion_never_complete_turn_and_reconnect_uses
             final_items[0]["params"]["item"]["text"],
             "complete final output"
         );
+        if terminal {
+            let completed_item = messages
+                .iter()
+                .position(|message| message["method"] == "item/completed")
+                .unwrap();
+            let completed_turn = messages
+                .iter()
+                .position(|message| message["method"] == "turn/completed")
+                .unwrap();
+            assert!(
+                completed_item < completed_turn,
+                "latest terminal snapshot must not precede retained item replay"
+            );
+            assert!(
+                !messages[..completed_item]
+                    .iter()
+                    .any(|message| message["method"] == "thread/status/changed")
+            );
+        }
         let expected = if terminal { 12 } else { 11 };
         assert_eq!(
             store

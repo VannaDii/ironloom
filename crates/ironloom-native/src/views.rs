@@ -38,15 +38,17 @@ pub trait ViewStore: Send + Sync {
     /// and advances only to `after`. Identical replay must not enqueue twice; changed payload at
     /// an existing native request ID conflicts. Equal cursor is allowed for idempotent snapshot
     /// prompts. Reconcile the complete current prompt list by its request IDs: retain unchanged
-    /// prompts, enqueue new ones once, and emit serverRequest/resolved for removed IDs. This is
-    /// presentation state only; the service snapshot remains the sole approval/question authority.
+    /// prompts, enqueue new ones once, and emit serverRequest/resolved for removed IDs.
+    /// None preserves pending prompts while replay is behind the latest snapshot; Some reconciles
+    /// the complete prompt list only at its consumed watermark. This is presentation state only;
+    /// the service snapshot remains the sole approval/question authority.
     /// Current human/resource authorization must be rechecked in this transaction.
     fn commit(
         &self,
         view: View,
         after: View,
         messages: Vec<Value>,
-        prompts: Vec<Value>,
+        prompts: Option<Vec<Value>>,
     ) -> BoxFuture<'_, Result<(), crate::relay::RelayError>>;
     /// Detaches a conversation or all this peer's viewers; never cancels background assignments.
     fn remove(
@@ -215,7 +217,7 @@ async fn run_view(
         let closed =
             json!({"method":"thread/closed","params":{"threadId":view.cursor.conversation_id}});
         if store
-            .commit(view.clone(), view.clone(), vec![closed], Vec::new())
+            .commit(view.clone(), view.clone(), vec![closed], None)
             .await
             .is_ok()
         {
@@ -243,14 +245,18 @@ async fn run_feed(
     {
         return Err(crate::relay::RelayError::Unavailable);
     }
-    let mut next = view.clone();
-    let initial = controls(&mut next, &state, authority.as_ref(), session.clone()).await?;
-    let prompts = prompts::requests(&state).map_err(|_| crate::relay::RelayError::Protocol)?;
-    store
-        .commit(view.clone(), next.clone(), initial, prompts)
-        .await?;
-    *view = next;
-    wakeup.notify_one();
+    // A current snapshot can be ahead of this viewer's retained source cursor. Replay item output
+    // first; never announce its later lifecycle/prompts before consuming their source watermark.
+    if state.cursor == view.cursor {
+        let mut next = view.clone();
+        let initial = controls(&mut next, &state, authority.as_ref(), session.clone()).await?;
+        let prompts = prompts::requests(&state).map_err(|_| crate::relay::RelayError::Protocol)?;
+        store
+            .commit(view.clone(), next.clone(), initial, Some(prompts))
+            .await?;
+        *view = next;
+        wakeup.notify_one();
+    }
     let mut feed = service
         .subscribe(session, view.cursor.clone())
         .await
@@ -278,8 +284,7 @@ async fn run_feed(
         }
         let mut next = view.clone();
         next.cursor = event.cursor.clone();
-        let mut messages = controls(&mut next, &state, authority.as_ref(), session.clone()).await?;
-        messages.extend(project(&event)?);
+        let mut messages = project(&event)?;
         if let Some(worker) = &event.event {
             let value =
                 serde_json::to_value(worker).map_err(|_| crate::relay::RelayError::Protocol)?;
@@ -331,7 +336,18 @@ async fn run_feed(
                 }
             }
         }
-        let prompts = prompts::requests(&state).map_err(|_| crate::relay::RelayError::Protocol)?;
+        let render = event
+            .snapshot
+            .as_ref()
+            .or_else(|| (state.cursor == event.cursor).then_some(&state));
+        let prompts = if let Some(render) = render {
+            // The item's final result above precedes lifecycle changes at the same watermark.
+            messages
+                .extend(controls(&mut next, render, authority.as_ref(), session.clone()).await?);
+            Some(prompts::requests(render).map_err(|_| crate::relay::RelayError::Protocol)?)
+        } else {
+            None
+        };
         store
             .commit(view.clone(), next.clone(), messages, prompts)
             .await?;
