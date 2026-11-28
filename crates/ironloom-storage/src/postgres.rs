@@ -713,6 +713,13 @@ pub struct Batch {
     command: CommandId,
 }
 impl Batch {
+    /// Rechecks this command actor's session after waiting for mutation locks. The shared row
+    /// lock serializes logout against the commit without requiring a second pool connection.
+    pub async fn session_active(&mut self, session: &ActorId) -> Result<bool, DatabaseError> {
+        let session:Option<String>=sqlx::query_scalar("SELECT session_id FROM ironloom.sessions WHERE session_id=$1 AND operator_id=$2 AND revoked_at IS NULL AND expires_at>clock_timestamp() FOR SHARE")
+            .bind(session.as_str()).bind(self.operator.as_str()).fetch_optional(&mut *self.tx).await?;
+        Ok(session.is_some())
+    }
     /// Reads and locks a record in this transaction.
     pub async fn get(&mut self, kind: &str, id: &ActorId) -> Result<Option<Record>, DatabaseError> {
         sqlx::query("SELECT revision::text,project_id,assignment_id,body FROM ironloom.records WHERE kind=$1 AND record_id=$2 FOR UPDATE")

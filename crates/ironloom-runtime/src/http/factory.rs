@@ -90,15 +90,12 @@ async fn command(
         .await
         .map_err(HttpError)?;
     let request: Command = body(&headers, &bytes)?;
-    match request.action {
-        CommandAction::Lesson(_) => state
-            .backend
-            .lesson_command(session, request)
-            .await
-            .map(Json)
-            .map_err(HttpError),
-        _ => Err(HttpError(ServiceError::Unavailable)),
-    }
+    state
+        .backend
+        .command(session, request)
+        .await
+        .map(Json)
+        .map_err(HttpError)
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]

@@ -25,3 +25,6 @@ pub struct AuditRecord {
 
 /// Software factory contracts for the unreleased application.
 pub mod factory;
+
+/// Pure optional budget editing independent from service-owned accounting.
+pub mod budget;

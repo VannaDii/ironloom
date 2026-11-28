@@ -265,14 +265,7 @@ impl FactoryBackend {
             .await
             .map_err(database)?
             .ok_or_else(forbidden)?;
-        let snapshot: ConversationSnapshot = read(record.body)?;
-        if snapshot.session.conversation_id != conversation
-            || Some(&snapshot.session.project_id) != record.project.as_ref()
-            || snapshot.revision.get() != record.revision
-            || record.assignment.is_some()
-        {
-            return Err(ServiceError::Unavailable);
-        }
+        let snapshot = stored_snapshot(record, &conversation)?;
         self.require(
             &session.operator_id,
             Resource::new(ResourceData {
@@ -344,4 +337,20 @@ impl FactoryBackend {
         })
         .map_err(|_| ServiceError::Unavailable)
     }
+}
+
+/// Validates the durable header and owning payload before any conversation operation.
+pub(super) fn stored_snapshot(
+    record: Record,
+    conversation: &ConversationId,
+) -> Result<ConversationSnapshot, ServiceError> {
+    let snapshot: ConversationSnapshot = read(record.body)?;
+    if &snapshot.session.conversation_id != conversation
+        || Some(&snapshot.session.project_id) != record.project.as_ref()
+        || snapshot.revision.get() != record.revision
+        || record.assignment.is_some()
+    {
+        return Err(ServiceError::Unavailable);
+    }
+    Ok(snapshot)
 }
