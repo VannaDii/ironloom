@@ -3614,6 +3614,103 @@
           "code": "verification_requires_completed_transfer"
         }
       ]
+    },
+    {
+      "contract": "stored_command",
+      "name": "installation-before-project",
+      "input": {
+        "operator_id": "alice",
+        "command_id": "setup",
+        "conversation_id": null,
+        "project_id": null,
+        "payload_hash": "fingerprint",
+        "receipt": {
+          "revision": "1"
+        },
+        "first_event": null
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "stored_command",
+      "name": "empty-conversation-without-event",
+      "input": {
+        "operator_id": "alice",
+        "command_id": "setup",
+        "conversation_id": "empty-conversation",
+        "project_id": "project",
+        "payload_hash": "fingerprint",
+        "receipt": {
+          "cursor": "0"
+        },
+        "first_event": null
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "stored_command",
+      "name": "event-requires-conversation",
+      "input": {
+        "operator_id": "alice",
+        "command_id": "setup",
+        "conversation_id": null,
+        "project_id": "project",
+        "payload_hash": "fingerprint",
+        "receipt": {
+          "cursor": "0"
+        },
+        "first_event": {}
+      },
+      "expected_errors": [
+        {
+          "field": "conversation_id",
+          "code": "event_requires_conversation"
+        }
+      ]
+    },
+    {
+      "contract": "stored_command",
+      "name": "conversation-requires-project",
+      "input": {
+        "operator_id": "alice",
+        "command_id": "setup",
+        "conversation_id": "empty-conversation",
+        "project_id": null,
+        "payload_hash": "fingerprint",
+        "receipt": {
+          "cursor": "0"
+        },
+        "first_event": null
+      },
+      "expected_errors": [
+        {
+          "field": "project_id",
+          "code": "conversation_requires_project"
+        }
+      ]
+    },
+    {
+      "contract": "download_progress",
+      "name": "download-retains-repository-binding",
+      "input": {
+        "source": {
+          "publisher": "fixture-publisher",
+          "host": "fixture-host",
+          "repository_url": "https://example.com/model",
+          "revision": "pinned-revision",
+          "checksum": null,
+          "access": "accessible",
+          "license": null
+        },
+        "repository_id": "fixture-repository",
+        "download_id": "download",
+        "received_bytes": "0",
+        "total_bytes": null,
+        "resume_token_ref": null,
+        "cancel_requested": false,
+        "terminated": false
+      },
+      "expected_errors": []
     }
   ]
 }

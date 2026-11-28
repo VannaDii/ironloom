@@ -123,6 +123,30 @@ impl Store {
         tx.commit().await?;
         Ok(())
     }
+    /// Provisions the initial local account only while the one-time setup token remains valid,
+    /// locking bootstrap against concurrent redemption. It grants no administrator authority.
+    pub async fn register_initial(
+        &self,
+        operator: &OperatorId,
+        username: &str,
+        password_hash: &str,
+        token: &[u8],
+    ) -> Result<(), DatabaseError> {
+        let mut tx = self.pool.begin().await?;
+        let valid=sqlx::query_scalar::<_,bool>("SELECT true FROM ironloom.installation WHERE singleton AND administrator_id IS NULL AND bootstrap_token_hash=$1 FOR UPDATE")
+            .bind(digest(token)).fetch_optional(&mut *tx).await?.unwrap_or(false);
+        if !valid {
+            return Err(DatabaseError::Conflict);
+        }
+        sqlx::query("INSERT INTO ironloom.operators(operator_id) VALUES($1)")
+            .bind(operator.as_str())
+            .execute(&mut *tx)
+            .await?;
+        sqlx::query("INSERT INTO ironloom.local_logins(operator_id,username,password_hash) VALUES($1,$2,$3)")
+            .bind(operator.as_str()).bind(username).bind(password_hash).execute(&mut *tx).await?;
+        tx.commit().await?;
+        Ok(())
+    }
     /// Finds a local password hash; no secret is returned through public service responses.
     pub async fn local_identity(
         &self,
@@ -253,15 +277,25 @@ impl Store {
         payload: &Value,
         scope: &ActorId,
     ) -> Result<Operation, DatabaseError> {
+        let fingerprint = hex::encode(digest(
+            &serde_json::to_vec(payload).map_err(|_| DatabaseError::Corrupt)?,
+        ));
+        self.begin_fingerprint(operator, command, &fingerprint, scope)
+            .await
+    }
+    async fn begin_fingerprint(
+        &self,
+        operator: &OperatorId,
+        command: &CommandId,
+        fingerprint: &str,
+        scope: &ActorId,
+    ) -> Result<Operation, DatabaseError> {
         let mut tx = self.pool.begin().await?;
         scope_lock(
             &mut tx,
             &format!("command:{}:{}", operator.as_str(), command.as_str()),
         )
         .await?;
-        let fingerprint = hex::encode(digest(
-            &serde_json::to_vec(payload).map_err(|_| DatabaseError::Corrupt)?,
-        ));
         if let Some(row)=sqlx::query("SELECT payload_hash,receipt FROM ironloom.commands WHERE operator_id=$1 AND command_id=$2")
             .bind(operator.as_str()).bind(command.as_str()).fetch_optional(&mut *tx).await? {
             if row.get::<String,_>("payload_hash")!=fingerprint { return Err(DatabaseError::Conflict); }
@@ -317,6 +351,76 @@ impl Store {
         let rows=sqlx::query_scalar("SELECT payload FROM ironloom.events WHERE conversation_id=$1 AND sequence>$2::text::numeric ORDER BY sequence LIMIT $3")
             .bind(conversation.as_str()).bind(after.to_string()).bind(limit.clamp(1,1000)).fetch_all(&self.pool).await?;
         Ok(rows)
+    }
+    /// Checks a trusted service session identity for expiry/revocation before native/direct operations.
+    pub async fn session_active(
+        &self,
+        session: &ActorId,
+        operator: &OperatorId,
+    ) -> Result<bool, DatabaseError> {
+        Ok(sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM ironloom.sessions WHERE session_id=$1 AND operator_id=$2 AND revoked_at IS NULL AND expires_at>now())")
+            .bind(session.as_str()).bind(operator.as_str()).fetch_one(&self.pool).await?)
+    }
+    /// Stores encrypted, expiring single-use OIDC state. No code, verifier or nonce is stored plaintext.
+    pub async fn save_oidc_attempt(
+        &self,
+        state: &[u8],
+        protected: &[u8],
+        lifetime_seconds: i64,
+    ) -> Result<(), DatabaseError> {
+        sqlx::query("INSERT INTO ironloom.oidc_attempts(state_hash,protected_context,expires_at) VALUES($1,$2,now()+make_interval(secs=>$3::double precision))")
+            .bind(digest(state)).bind(protected).bind(lifetime_seconds as f64).execute(&self.pool).await?;
+        Ok(())
+    }
+    /// Consumes login state atomically; an expired or replayed callback cannot authenticate.
+    pub async fn consume_oidc_attempt(
+        &self,
+        state: &[u8],
+    ) -> Result<Option<Vec<u8>>, DatabaseError> {
+        Ok(sqlx::query_scalar("DELETE FROM ironloom.oidc_attempts WHERE state_hash=$1 AND expires_at>now() RETURNING protected_context")
+            .bind(digest(state)).fetch_optional(&self.pool).await?)
+    }
+    /// Returns only protected credential material to the trusted resolver, after its live use check.
+    pub async fn credential_ciphertext(
+        &self,
+        id: &ironloom_core::CredentialId,
+    ) -> Result<Option<ProtectedCredential>, DatabaseError> {
+        let row=sqlx::query("SELECT owner_id,revision,protected_secret FROM ironloom.credentials WHERE credential_id=$1 AND deleted_at IS NULL")
+            .bind(id.as_str()).fetch_optional(&self.pool).await?;
+        row.map(|row| {
+            let owner: String = row.get("owner_id");
+            let revision: i64 = row.get("revision");
+            Ok(ProtectedCredential {
+                owner: OperatorId::new(owner).map_err(|_| DatabaseError::Corrupt)?,
+                revision: u64::try_from(revision).map_err(|_| DatabaseError::Corrupt)?,
+                ciphertext: row.get("protected_secret"),
+            })
+        })
+        .transpose()
+    }
+    /// Returns pending already-audited grant intents for retry after a cross-service interruption.
+    pub async fn grant_intents(&self) -> Result<Vec<(ActorId, Value)>, DatabaseError> {
+        let rows=sqlx::query("SELECT operation_id,body FROM ironloom.authorization_outbox WHERE completed_at IS NULL ORDER BY operation_id LIMIT 100")
+            .fetch_all(&self.pool).await?;
+        rows.into_iter()
+            .map(|row| {
+                Ok((
+                    ActorId::new(row.get::<String, _>("operation_id"))
+                        .map_err(|_| DatabaseError::Corrupt)?,
+                    row.get("body"),
+                ))
+            })
+            .collect()
+    }
+    /// Marks one applied grant intent complete, without assuming a distributed transaction.
+    pub async fn grant_applied(&self, id: &ActorId) -> Result<(), DatabaseError> {
+        sqlx::query(
+            "UPDATE ironloom.authorization_outbox SET completed_at=now() WHERE operation_id=$1",
+        )
+        .bind(id.as_str())
+        .execute(&self.pool)
+        .await?;
+        Ok(())
     }
     /// Stops pool clients without stopping a database potentially serving other nodes.
     pub async fn close(&self) {
@@ -404,6 +508,8 @@ impl Batch {
             .bind(project.as_str())
             .execute(&mut *self.tx)
             .await?;
+        sqlx::query("UPDATE ironloom.commands SET conversation_id=$1 WHERE operator_id=$2 AND command_id=$3")
+            .bind(id.as_str()).bind(self.operator.as_str()).bind(self.command.as_str()).execute(&mut *self.tx).await?;
         Ok(())
     }
     /// Updates dashboard ordering only for an authenticated human interaction.
@@ -449,6 +555,43 @@ impl Batch {
         .bind(sequence.to_string())
         .execute(&mut *self.tx)
         .await?;
+        Ok(())
+    }
+    /// Writes protected secret material atomically with its metadata and audit, never a worker prompt.
+    pub async fn write_credential(
+        &mut self,
+        id: &ironloom_core::CredentialId,
+        owner: &OperatorId,
+        expected: Option<u64>,
+        protected: &[u8],
+    ) -> Result<(), DatabaseError> {
+        let affected = if let Some(revision) = expected {
+            sqlx::query("UPDATE ironloom.credentials SET protected_secret=$1,revision=revision+1 WHERE credential_id=$2 AND owner_id=$3 AND revision=$4 AND deleted_at IS NULL")
+                .bind(protected).bind(id.as_str()).bind(owner.as_str()).bind(i64::try_from(revision).map_err(|_|DatabaseError::Conflict)?).execute(&mut *self.tx).await?.rows_affected()
+        } else {
+            sqlx::query("INSERT INTO ironloom.credentials(credential_id,owner_id,protected_secret) VALUES($1,$2,$3) ON CONFLICT DO NOTHING")
+                .bind(id.as_str()).bind(owner.as_str()).bind(protected).execute(&mut *self.tx).await?.rows_affected()
+        };
+        if affected != 1 {
+            return Err(DatabaseError::Conflict);
+        }
+        Ok(())
+    }
+    /// Explicitly deletes version-matched private material; no cleanup path calls this implicitly.
+    pub async fn delete_credential(
+        &mut self,
+        id: &ironloom_core::CredentialId,
+        expected: u64,
+    ) -> Result<(), DatabaseError> {
+        let result =
+            sqlx::query("DELETE FROM ironloom.credentials WHERE credential_id=$1 AND revision=$2")
+                .bind(id.as_str())
+                .bind(i64::try_from(expected).map_err(|_| DatabaseError::Conflict)?)
+                .execute(&mut *self.tx)
+                .await?;
+        if result.rows_affected() != 1 {
+            return Err(DatabaseError::Conflict);
+        }
         Ok(())
     }
     /// Records a permission mutation for retry against OpenFGA without assuming cross-service atomicity.
@@ -511,4 +654,158 @@ async fn scope_lock(tx: &mut Transaction<'_, Postgres>, scope: &str) -> Result<(
 /// Deterministic fingerprint; credentials/tokens are persisted only as hashes or protected ciphertext.
 pub fn digest(bytes: &[u8]) -> Vec<u8> {
     Sha256::digest(bytes).to_vec()
+}
+
+/// Protected credential record, never serialized as a client response.
+pub struct ProtectedCredential {
+    /// Immutable private owner, also part of the encryption-associated context.
+    pub owner: OperatorId,
+    /// Current secret revision.
+    pub revision: u64,
+    /// Authenticated ciphertext only; raw secrets exist solely in trusted adapter call scope.
+    pub ciphertext: Vec<u8>,
+}
+
+impl From<DatabaseError> for crate::factory::StoreFailure {
+    fn from(error: DatabaseError) -> Self {
+        match error {
+            DatabaseError::Unavailable => Self::Unavailable,
+            DatabaseError::Corrupt | DatabaseError::NotFound => Self::Corrupt,
+            DatabaseError::Conflict => Self::Conflict,
+        }
+    }
+}
+impl crate::factory::FactoryStore for Store {
+    fn redeem_bootstrap(
+        &self,
+        operator: OperatorId,
+        token_hash: ActorId,
+    ) -> ironloom_core::BoxFuture<
+        '_,
+        Result<crate::factory::BootstrapState, crate::factory::StoreFailure>,
+    > {
+        Box::pin(async move {
+            use crate::factory::{BootstrapState, BootstrapStateData, StoreFailure};
+            let hash = hex::decode(token_hash.as_str()).map_err(|_| StoreFailure::Conflict)?;
+            if hash.len() != 32 {
+                return Err(StoreFailure::Conflict);
+            }
+            let row = sqlx::query("UPDATE ironloom.installation SET administrator_id=$1,bootstrap_consumed_at=now(),bootstrap_token_hash=NULL WHERE singleton AND administrator_id IS NULL AND bootstrap_token_hash=$2 RETURNING installation_id")
+                .bind(operator.as_str()).bind(hash).fetch_optional(&self.pool).await.map_err(DatabaseError::from)?.ok_or(StoreFailure::Conflict)?;
+            BootstrapState::new(BootstrapStateData {
+                installation_id: ironloom_core::InstallationId::new(
+                    row.get::<String, _>("installation_id"),
+                )
+                .map_err(|_| StoreFailure::Corrupt)?,
+                administrator: operator,
+                grants_initialized: false,
+            })
+            .map_err(|_| StoreFailure::Corrupt)
+        })
+    }
+    fn enroll_node(
+        &self,
+        enrollment: crate::factory::NodeEnrollment,
+    ) -> ironloom_core::BoxFuture<'_, Result<(), crate::factory::StoreFailure>> {
+        Box::pin(async move {
+            let mut tx = self.pool.begin().await.map_err(DatabaseError::from)?;
+            let installation: String = sqlx::query_scalar(
+                "SELECT installation_id FROM ironloom.installation WHERE singleton",
+            )
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(DatabaseError::from)?;
+            if installation != enrollment.installation_id.as_str() {
+                return Err(crate::factory::StoreFailure::Conflict);
+            }
+            let body = serde_json::to_value(&enrollment)
+                .map_err(|_| crate::factory::StoreFailure::Corrupt)?;
+            let changed = sqlx::query("INSERT INTO ironloom.nodes(node_id,host_id,approved_by,enrollment) VALUES($1,$2,$3,$4) ON CONFLICT(node_id) DO UPDATE SET enrollment=EXCLUDED.enrollment WHERE ironloom.nodes.enrollment=EXCLUDED.enrollment")
+                .bind(enrollment.node_id.as_str()).bind(enrollment.host_id.as_str()).bind(enrollment.approved_by.as_str()).bind(body).execute(&mut *tx).await.map_err(DatabaseError::from)?.rows_affected();
+            if changed != 1 {
+                return Err(crate::factory::StoreFailure::Conflict);
+            }
+            tx.commit().await.map_err(DatabaseError::from)?;
+            Ok(())
+        })
+    }
+    fn save_lesson(
+        &self,
+        lesson: crate::factory::Lesson,
+    ) -> ironloom_core::BoxFuture<'_, Result<(), crate::factory::StoreFailure>> {
+        Box::pin(async move {
+            let mut tx = self.pool.begin().await.map_err(DatabaseError::from)?;
+            scope_lock(&mut tx, &format!("lesson:{}", lesson.lesson_id.as_str())).await?;
+            let revision = lesson.revision.get();
+            let body =
+                serde_json::to_value(&lesson).map_err(|_| crate::factory::StoreFailure::Corrupt)?;
+            let changed = sqlx::query("INSERT INTO ironloom.records(kind,record_id,project_id,assignment_id,revision,body) SELECT 'lesson',$1,$2,$3,1,$4 WHERE $5::text::numeric=1 ON CONFLICT(kind,record_id) DO NOTHING")
+                .bind(lesson.lesson_id.as_str()).bind(lesson.origin_project.as_str()).bind(lesson.origin_assignment.as_str()).bind(&body).bind(revision.to_string()).execute(&mut *tx).await.map_err(DatabaseError::from)?.rows_affected();
+            if changed == 0 {
+                let changed = sqlx::query("UPDATE ironloom.records SET body=$1,revision=$2::text::numeric,updated_at=now() WHERE kind='lesson' AND record_id=$3 AND revision=$2::text::numeric-1 AND project_id=$4 AND assignment_id=$5")
+                    .bind(&body).bind(revision.to_string()).bind(lesson.lesson_id.as_str()).bind(lesson.origin_project.as_str()).bind(lesson.origin_assignment.as_str()).execute(&mut *tx).await.map_err(DatabaseError::from)?.rows_affected();
+                if changed != 1 {
+                    return Err(crate::factory::StoreFailure::Conflict);
+                }
+            }
+            sqlx::query("INSERT INTO ironloom.context_changes(record_kind,record_id,revision) VALUES('lesson',$1,$2::text::numeric)")
+                .bind(lesson.lesson_id.as_str()).bind(revision.to_string()).execute(&mut *tx).await.map_err(DatabaseError::from)?;
+            tx.commit().await.map_err(DatabaseError::from)?;
+            Ok(())
+        })
+    }
+    fn commit_command(
+        &self,
+        command: crate::factory::StoredCommand,
+    ) -> ironloom_core::BoxFuture<
+        '_,
+        Result<crate::factory::CommandClaim, crate::factory::StoreFailure>,
+    > {
+        Box::pin(async move {
+            use crate::factory::{CommandClaim, StoreFailure};
+            let scope = ActorId::new(
+                command
+                    .conversation_id
+                    .as_ref()
+                    .map(ConversationId::as_str)
+                    .or_else(|| command.project_id.as_ref().map(ProjectId::as_str))
+                    .unwrap_or("installation"),
+            )
+            .map_err(|_| StoreFailure::Corrupt)?;
+            let operation = self
+                .begin_fingerprint(
+                    &command.operator_id,
+                    &command.command_id,
+                    command.payload_hash.as_str(),
+                    &scope,
+                )
+                .await;
+            let mut batch = match operation {
+                Ok(Operation::Replay(_)) => return Ok(CommandClaim::Existing),
+                Ok(Operation::Write(batch)) => batch,
+                Err(DatabaseError::Conflict) => return Ok(CommandClaim::Conflict),
+                Err(error) => return Err(error.into()),
+            };
+            if let Some(conversation) = &command.conversation_id {
+                let project: Option<String> = sqlx::query_scalar(
+                    "SELECT project_id FROM ironloom.conversations WHERE conversation_id=$1",
+                )
+                .bind(conversation.as_str())
+                .fetch_optional(&mut *batch.tx)
+                .await
+                .map_err(DatabaseError::from)?;
+                if project.as_deref() != command.project_id.as_ref().map(ProjectId::as_str) {
+                    return Err(StoreFailure::Conflict);
+                }
+                sqlx::query("UPDATE ironloom.commands SET conversation_id=$1 WHERE operator_id=$2 AND command_id=$3")
+                    .bind(conversation.as_str()).bind(command.operator_id.as_str()).bind(command.command_id.as_str()).execute(&mut *batch.tx).await.map_err(DatabaseError::from)?;
+                if let Some(event) = &command.first_event {
+                    let sequence = batch.next_sequence(conversation).await?;
+                    batch.append_event(conversation, sequence, event).await?;
+                }
+            }
+            (*batch).commit(&command.receipt).await?;
+            Ok(CommandClaim::New)
+        })
+    }
 }

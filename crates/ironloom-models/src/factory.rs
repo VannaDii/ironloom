@@ -448,6 +448,8 @@ ironloom_core::contract! {
 DownloadProgress, DownloadProgressData {
     /// Pinned provenance.
     source: ModelSource,
+    /// Authorized repository binding for resumable transfer commands.
+    repository_id: ActorId,
     /// Stable resumable download identity.
     download_id: ActorId,
     /// Persisted verified byte progress.

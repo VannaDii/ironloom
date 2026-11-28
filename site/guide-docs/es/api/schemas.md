@@ -40,3 +40,5 @@ Los contratos compartidos del servicio y del registro nativo ahora están en `ir
 `POST /api/v1/models/assessments` devuelve evaluaciones tipadas por motor, versión, backend y dispositivos canónicos, separando supuestos, ajuste de memoria y validación real. Lo desconocido sigue siendo desconocido; la evaluación no carga ni ejecuta modelos.
 
 `GET /api/v1/models/inventory` muestra procedencia autorizada, finalización de transferencia, verificación independiente de integridad/manifiesto y disponibilidad actual. Los bytes completos no equivalen a instalación verificada; los archivos ausentes conservan metadatos y bloquean el uso.
+
+Los comandos de configuración de la instalación se guardan antes de crear proyectos. Las conversaciones vacías conservan atómicamente su estado y recibo de reintento con cursor cero, sin evento de ejecución. `DownloadProgress.repository_id` vincula reanudación y cancelación al repositorio autorizado original.
