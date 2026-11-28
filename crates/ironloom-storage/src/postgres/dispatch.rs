@@ -129,7 +129,8 @@ impl Batch {
         Ok(())
     }
     /// Persists pause/cancellation under the same row lock as all fenced starts. Cancellation
-    /// is monotonic. Returns true only when every owned request/process/mutation/path is quiescent.
+    /// is monotonic. Returns true only for an unclaimed queued job with quiescent ledgers.
+    /// An existing executor must acknowledge and yield its own claim, even before it starts I/O.
     pub async fn set_dispatch_control(
         &mut self,
         assignment: &AssignmentId,
@@ -140,14 +141,17 @@ impl Batch {
         if suspended && cancel {
             return Err(DatabaseError::Conflict);
         }
-        let previous:Option<bool>=sqlx::query_scalar("SELECT cancellation_requested FROM ironloom.dispatch WHERE assignment_id=$1 AND project_id=$2 AND state<>'finished' FOR UPDATE")
+        let previous=sqlx::query("SELECT cancellation_requested,(claim_node_id IS NULL AND state='queued') AS unclaimed FROM ironloom.dispatch WHERE assignment_id=$1 AND project_id=$2 AND state<>'finished' FOR UPDATE")
             .bind(assignment.as_str()).bind(project.as_str()).fetch_optional(&mut *self.tx).await?;
         let previous = previous.ok_or(DatabaseError::Conflict)?;
-        if previous && !cancel {
+        if previous.get::<bool, _>("cancellation_requested") && !cancel {
             return Err(DatabaseError::Conflict);
         }
         sqlx::query("UPDATE ironloom.dispatch SET suspended=$2,cancellation_requested=cancellation_requested OR $3 WHERE assignment_id=$1")
             .bind(assignment.as_str()).bind(suspended).bind(cancel).execute(&mut *self.tx).await?;
+        if !previous.get::<bool, _>("unclaimed") {
+            return Ok(false);
+        }
         match self.require_quiescent(assignment).await {
             Ok(()) => Ok(true),
             Err(DatabaseError::Conflict) => Ok(false),

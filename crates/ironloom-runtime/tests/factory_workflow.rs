@@ -499,10 +499,75 @@ async fn human_input_atomically_creates_owned_queue_history_and_instruction_copi
         .unwrap()
         .unwrap();
     assert_eq!(lease.fence.get(), 2);
+    // Claiming with no I/O still requires the actual owner's pause acknowledgment/yield.
     backend
         .command(
             alice.session.clone(),
-            control("request-cancel", &project, &assignment, 8, "cancel"),
+            control("pause-claimed-idle", &project, &assignment, 8, "pause"),
+        )
+        .await
+        .unwrap();
+    let idle_pause = backend
+        .snapshot(
+            alice.session.clone(),
+            snapshot.session.conversation_id.clone(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(idle_pause.pause_requested, Some(true));
+    assert_ne!(
+        idle_pause.execution_state,
+        Some(ironloom_queue::factory::ExecutionState::Paused)
+    );
+    backend
+        .reconcile_control_boundary(&lease)
+        .await
+        .unwrap()
+        .unwrap();
+    let idle_confirmed = backend
+        .snapshot(
+            alice.session.clone(),
+            snapshot.session.conversation_id.clone(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(idle_confirmed.pause_requested, Some(false));
+    assert_eq!(
+        idle_confirmed.execution_state,
+        Some(ironloom_queue::factory::ExecutionState::Paused)
+    );
+    assert!(
+        store
+            .claim_next(
+                &node,
+                &id("cannot-claim-paused"),
+                std::time::Duration::from_secs(30)
+            )
+            .await
+            .unwrap()
+            .is_none()
+    );
+    backend
+        .command(
+            alice.session.clone(),
+            control("resume-claimed-idle", &project, &assignment, 10, "resume"),
+        )
+        .await
+        .unwrap();
+    let lease = store
+        .claim_next(
+            &node,
+            &id("idle-resumed-instance"),
+            std::time::Duration::from_secs(30),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(lease.fence.get(), 3);
+    backend
+        .command(
+            alice.session.clone(),
+            control("request-cancel", &project, &assignment, 11, "cancel"),
         )
         .await
         .unwrap();
@@ -570,7 +635,7 @@ async fn human_input_atomically_creates_owned_queue_history_and_instruction_copi
             .await
             .unwrap()
             .len(),
-        9
+        12
     );
     assert!(
         store
