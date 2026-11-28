@@ -83,6 +83,18 @@ fn schema_files() -> SchemaResult<Vec<SchemaFile>> {
         schema::<ironloom_service::factory::ModelInventoryQuery>(
             "crates/ironloom-service/schemas/model-inventory-query.schema.json",
         )?,
+        schema::<ironloom_service::factory::ModelFilesQuery>(
+            "crates/ironloom-service/schemas/model-files-query.schema.json",
+        )?,
+        schema::<ironloom_service::factory::ModelFilesPage>(
+            "crates/ironloom-service/schemas/model-files-page.schema.json",
+        )?,
+        schema::<ironloom_models::factory::ModelFileMetadata>(
+            "crates/ironloom-models/schemas/model-file-metadata.schema.json",
+        )?,
+        schema::<ironloom_config::factory::LocalModelBinding>(
+            "crates/ironloom-config/schemas/local-model-binding.schema.json",
+        )?,
         schema::<ironloom_service::factory::ModelInventoryItem>(
             "crates/ironloom-service/schemas/model-inventory-item.schema.json",
         )?,

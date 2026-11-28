@@ -5224,6 +5224,535 @@
           "code": "invalid_structure"
         }
       ]
+    },
+    {
+      "contract": "local_model_binding",
+      "name": "explicit-local-file-set-and-options",
+      "input": {
+        "inventory_id": "immutable-inventory",
+        "weights": [
+          "weights/model-q4.gguf"
+        ],
+        "tokenizer": null,
+        "template": null,
+        "options": {
+          "draft": null,
+          "cache": null,
+          "context_tokens": "8192",
+          "concurrency": "1",
+          "accelerators": []
+        }
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "local_model_binding",
+      "name": "no-weight-fallback",
+      "input": {
+        "inventory_id": "immutable-inventory",
+        "weights": [],
+        "tokenizer": null,
+        "template": null,
+        "options": {
+          "draft": null,
+          "cache": null,
+          "context_tokens": "8192",
+          "concurrency": "1",
+          "accelerators": []
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "weights",
+          "code": "weight_files_required"
+        }
+      ]
+    },
+    {
+      "contract": "local_model_binding",
+      "name": "duplicate-weight-selection",
+      "input": {
+        "inventory_id": "immutable-inventory",
+        "weights": [
+          "one.gguf",
+          "one.gguf"
+        ],
+        "tokenizer": null,
+        "template": null,
+        "options": {
+          "draft": null,
+          "cache": null,
+          "context_tokens": "8192",
+          "concurrency": "1",
+          "accelerators": []
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "weights",
+          "code": "duplicate_file"
+        }
+      ]
+    },
+    {
+      "contract": "local_model_binding",
+      "name": "weight-parent-escape",
+      "input": {
+        "inventory_id": "immutable-inventory",
+        "weights": [
+          "../outside.gguf"
+        ],
+        "tokenizer": null,
+        "template": null,
+        "options": {
+          "draft": null,
+          "cache": null,
+          "context_tokens": "8192",
+          "concurrency": "1",
+          "accelerators": []
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "weights.0",
+          "code": "relative_normal_path_required"
+        }
+      ]
+    },
+    {
+      "contract": "local_model_binding",
+      "name": "absolute-weight-path",
+      "input": {
+        "inventory_id": "immutable-inventory",
+        "weights": [
+          "/host/model.gguf"
+        ],
+        "tokenizer": null,
+        "template": null,
+        "options": {
+          "draft": null,
+          "cache": null,
+          "context_tokens": "8192",
+          "concurrency": "1",
+          "accelerators": []
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "weights.0",
+          "code": "relative_normal_path_required"
+        }
+      ]
+    },
+    {
+      "contract": "local_model_binding",
+      "name": "load-options-recursive-validation",
+      "input": {
+        "inventory_id": "immutable-inventory",
+        "weights": [
+          "weights/model-q4.gguf"
+        ],
+        "tokenizer": null,
+        "template": null,
+        "options": {
+          "draft": null,
+          "cache": null,
+          "context_tokens": "0",
+          "concurrency": "1",
+          "accelerators": []
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "options.context_tokens",
+          "code": "must_be_positive"
+        }
+      ]
+    },
+    {
+      "contract": "model_file_metadata",
+      "name": "unknown-file-facts-remain-unknown",
+      "input": {
+        "path": "weights/model-q4.gguf",
+        "bytes": null,
+        "sha256": null,
+        "checksum_provenance": "unknown"
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "model_file_metadata",
+      "name": "publisher-hash-is-not-local-verification",
+      "input": {
+        "path": "weights/model-q4.gguf",
+        "bytes": null,
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "checksum_provenance": "publisher"
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "model_file_metadata",
+      "name": "computed-hash-needs-measured-size",
+      "input": {
+        "path": "weights/model-q4.gguf",
+        "bytes": null,
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "checksum_provenance": "computed"
+      },
+      "expected_errors": [
+        {
+          "field": "bytes",
+          "code": "measured_size_required"
+        }
+      ]
+    },
+    {
+      "contract": "model_file_metadata",
+      "name": "metadata-file-url-is-not-a-path",
+      "input": {
+        "path": "https://signed.example.test/model?token=never-return-this",
+        "bytes": null,
+        "sha256": null,
+        "checksum_provenance": "unknown"
+      },
+      "expected_errors": [
+        {
+          "field": "path",
+          "code": "relative_normal_path_required"
+        }
+      ]
+    },
+    {
+      "contract": "model_file_metadata",
+      "name": "hash-must-be-sha256",
+      "input": {
+        "path": "weights/model-q4.gguf",
+        "bytes": null,
+        "sha256": "invalid-digest",
+        "checksum_provenance": "publisher"
+      },
+      "expected_errors": [
+        {
+          "field": "sha256",
+          "code": "invalid_sha256"
+        }
+      ]
+    },
+    {
+      "contract": "model_files_query",
+      "name": "inventory-file-selector",
+      "input": {
+        "project_id": null,
+        "inventory_id": "immutable-inventory",
+        "host": null,
+        "repository_id": null,
+        "revision": null,
+        "after": null,
+        "limit": "100"
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "model_files_query",
+      "name": "pinned-source-file-selector",
+      "input": {
+        "project_id": null,
+        "inventory_id": null,
+        "host": "huggingface",
+        "repository_id": "publisher/model",
+        "revision": "source-commit",
+        "after": null,
+        "limit": "100"
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "model_files_query",
+      "name": "file-source-must-be-pinned",
+      "input": {
+        "project_id": null,
+        "inventory_id": null,
+        "host": "huggingface",
+        "repository_id": "publisher/model",
+        "revision": null,
+        "after": null,
+        "limit": "100"
+      },
+      "expected_errors": [
+        {
+          "field": "host",
+          "code": "complete_pinned_source_required"
+        }
+      ]
+    },
+    {
+      "contract": "model_files_query",
+      "name": "inventory-cannot-mix-source-selector",
+      "input": {
+        "project_id": null,
+        "inventory_id": "immutable-inventory",
+        "host": "huggingface",
+        "repository_id": null,
+        "revision": null,
+        "after": null,
+        "limit": "100"
+      },
+      "expected_errors": [
+        {
+          "field": "inventory_id",
+          "code": "exclusive_file_selector_required"
+        }
+      ]
+    },
+    {
+      "contract": "configuration_command",
+      "name": "account-still-requires-streaming",
+      "input": {
+        "command_id": "account-nonstreaming",
+        "project_id": null,
+        "expected_revision": "1",
+        "changes": {
+          "endpoints": [
+            {
+              "provider": "account",
+              "base": "https://chatgpt.com/backend-api/codex/",
+              "dialect": "responses",
+              "billing": "account",
+              "streaming": false,
+              "tools": true,
+              "stream_usage": true,
+              "reasoning_efforts": []
+            }
+          ]
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "changes.endpoints.0.billing",
+          "code": "unsupported_account_endpoint"
+        }
+      ]
+    },
+    {
+      "contract": "model_files_page",
+      "name": "pinned-publisher-file-page",
+      "input": {
+        "source": {
+          "publisher": "publisher-1",
+          "host": "hub-1",
+          "repository_url": "https://example.org/models/model-1",
+          "revision": "revision-1",
+          "checksum": null,
+          "access": "accessible",
+          "license": "license-1"
+        },
+        "repository_id": "publisher/model",
+        "inventory_id": null,
+        "files": [
+          {
+            "path": "model-q4.gguf",
+            "bytes": null,
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "checksum_provenance": "publisher"
+          }
+        ],
+        "next_after": null
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "model_files_page",
+      "name": "duplicate-file-page",
+      "input": {
+        "source": {
+          "publisher": "publisher-1",
+          "host": "hub-1",
+          "repository_url": "https://example.org/models/model-1",
+          "revision": "revision-1",
+          "checksum": null,
+          "access": "accessible",
+          "license": "license-1"
+        },
+        "repository_id": "publisher/model",
+        "inventory_id": null,
+        "files": [
+          {
+            "path": "model-q4.gguf",
+            "bytes": null,
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "checksum_provenance": "publisher"
+          },
+          {
+            "path": "model-q4.gguf",
+            "bytes": null,
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "checksum_provenance": "publisher"
+          }
+        ],
+        "next_after": null
+      },
+      "expected_errors": [
+        {
+          "field": "files",
+          "code": "duplicate_path"
+        }
+      ]
+    },
+    {
+      "contract": "model_files_page",
+      "name": "source-metadata-cannot-claim-local-verification",
+      "input": {
+        "source": {
+          "publisher": "publisher-1",
+          "host": "hub-1",
+          "repository_url": "https://example.org/models/model-1",
+          "revision": "revision-1",
+          "checksum": null,
+          "access": "accessible",
+          "license": "license-1"
+        },
+        "repository_id": "publisher/model",
+        "inventory_id": null,
+        "files": [
+          {
+            "path": "model-q4.gguf",
+            "bytes": "64",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "checksum_provenance": "publisher_verified"
+          }
+        ],
+        "next_after": null
+      },
+      "expected_errors": [
+        {
+          "field": "files",
+          "code": "inventory_required_for_local_provenance"
+        }
+      ]
+    },
+    {
+      "contract": "model_files_page",
+      "name": "installed-file-verified-provenance",
+      "input": {
+        "source": {
+          "publisher": "publisher-1",
+          "host": "hub-1",
+          "repository_url": "https://example.org/models/model-1",
+          "revision": "revision-1",
+          "checksum": null,
+          "access": "accessible",
+          "license": "license-1"
+        },
+        "repository_id": "publisher/model",
+        "inventory_id": "inventory-1",
+        "files": [
+          {
+            "path": "model-q4.gguf",
+            "bytes": "64",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "checksum_provenance": "publisher_verified"
+          }
+        ],
+        "next_after": null
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "configuration_command",
+      "name": "explicit-local-profile-binding",
+      "input": {
+        "command_id": "persist-local-binding",
+        "project_id": null,
+        "expected_revision": "1",
+        "changes": {
+          "models": [
+            {
+              "profile_id": "explicit-local",
+              "provider": "local",
+              "model_id": "selected-model",
+              "generation_controls": {
+                "max_output_tokens": "100",
+                "max_duration_ms": "1000",
+                "repetition_window": "20"
+              },
+              "credential_id": null,
+              "billing": "local_estimate",
+              "engine": {
+                "name": "fixture",
+                "version": "1",
+                "backend": "simulated",
+                "configuration_hash": "fixture"
+              },
+              "device_bindings": [],
+              "local_binding": {
+                "inventory_id": "immutable-inventory",
+                "weights": [
+                  "weights/model-q4.gguf"
+                ],
+                "tokenizer": null,
+                "template": null,
+                "options": {
+                  "draft": null,
+                  "cache": null,
+                  "context_tokens": "8192",
+                  "concurrency": "1",
+                  "accelerators": []
+                }
+              }
+            }
+          ]
+        }
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "configuration_command",
+      "name": "remote-profile-cannot-use-local-file-binding",
+      "input": {
+        "command_id": "persist-local-binding",
+        "project_id": null,
+        "expected_revision": "1",
+        "changes": {
+          "models": [
+            {
+              "profile_id": "explicit-local",
+              "provider": "local",
+              "model_id": "selected-model",
+              "generation_controls": {
+                "max_output_tokens": "100",
+                "max_duration_ms": "1000",
+                "repetition_window": "20"
+              },
+              "credential_id": null,
+              "billing": "api_key",
+              "engine": null,
+              "device_bindings": [],
+              "local_binding": {
+                "inventory_id": "immutable-inventory",
+                "weights": [
+                  "weights/model-q4.gguf"
+                ],
+                "tokenizer": null,
+                "template": null,
+                "options": {
+                  "draft": null,
+                  "cache": null,
+                  "context_tokens": "8192",
+                  "concurrency": "1",
+                  "accelerators": []
+                }
+              }
+            }
+          ]
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "changes.models.0.local_binding",
+          "code": "local_engine_required"
+        }
+      ]
     }
   ]
 }

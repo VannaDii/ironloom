@@ -3,6 +3,60 @@ use ironloom_core::validation::{ValidationErrors, positive, required};
 use ironloom_core::*;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+
+/// Validates a normalized model-root-relative file name without exposing submitted contents.
+/// Source paths are metadata, never arbitrary host paths or download URLs.
+pub fn validate_model_file_path(field: &str, path: &str) -> Result<(), ValidationErrors> {
+    if path.contains(['\\', '\0'])
+        || path
+            .split('/')
+            .any(|part| matches!(part, "" | "." | ".." | ".git" | ".ironloom"))
+    {
+        return Err(ValidationErrors::field(
+            field,
+            "relative_normal_path_required",
+        ));
+    }
+    Ok(())
+}
+/// Per-file checksum provenance, independent from whole-installation verification.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum FileChecksumProvenance {
+    /// A checksum or its provenance is unavailable.
+    Unknown,
+    /// Publisher metadata reports this checksum; downloaded bytes are not thereby verified.
+    Publisher,
+    /// The service computed the digest of the owned local file.
+    Computed,
+    /// Owned local bytes were checked against the publisher's digest.
+    PublisherVerified,
+}
+ironloom_core::contract! {
+/// Nonsecret pinned model file metadata. No source-issued transfer URL or host filesystem path.
+ModelFileMetadata, ModelFileMetadataData {
+    /// Normalized path relative to the pinned repository/installation root.
+    path: String,
+    /// Publisher-reported or measured size; unavailable stays unknown.
+    bytes: Option<Counter>,
+    /// Full SHA-256 when known; not a repository revision or manifest identity.
+    sha256: Option<ActorId>,
+    /// Distinguishes reported metadata from checked local bytes.
+    checksum_provenance: FileChecksumProvenance,
+} |value| {
+    validate_model_file_path("path",&value.path)?;
+    if let Some(digest)=&value.sha256 && (digest.as_str().len()!=64 || !digest.as_str().bytes().all(|byte|byte.is_ascii_hexdigit())) {
+        return Err(ValidationErrors::field("sha256","invalid_sha256"));
+    }
+    if value.sha256.is_none() && value.checksum_provenance!=FileChecksumProvenance::Unknown {
+        return Err(ValidationErrors::field("sha256","checksum_required"));
+    }
+    if matches!(value.checksum_provenance,FileChecksumProvenance::Computed|FileChecksumProvenance::PublisherVerified) && value.bytes.is_none() {
+        return Err(ValidationErrors::field("bytes","measured_size_required"));
+    }
+    Ok(())
+}
+}
 ironloom_core::contract! {
 /// Validated factory record.
 EngineIdentity, EngineIdentityData {

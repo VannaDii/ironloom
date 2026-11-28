@@ -31,6 +31,48 @@
         }
       ]
     },
+    "ContextCacheData": {
+      "description": "Unchecked construction draft for `ContextCache`; validate before use.",
+      "type": "object",
+      "properties": {
+        "cache_id": {
+          "description": "Request/session-scoped cache identity, separate from resident weights.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "capacity_bytes": {
+          "description": "Configured bound if known.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Counter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "conversation_id": {
+          "description": "Authorized conversation boundary; sharing weights does not share this context.",
+          "$ref": "#/$defs/ConversationId"
+        },
+        "owner": {
+          "description": "Authorized human scope; resolve independently at dispatch.",
+          "$ref": "#/$defs/OperatorId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "cache_id",
+        "conversation_id",
+        "owner"
+      ]
+    },
+    "ConversationId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ConversationId value.",
+      "type": "string",
+      "minLength": 1
+    },
     "Counter": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "title": "string",
@@ -51,6 +93,52 @@
       "description": "Validated Ironloom DeviceId value.",
       "type": "string",
       "minLength": 1
+    },
+    "DraftModelData": {
+      "description": "Unchecked construction draft for `DraftModel`; validate before use.",
+      "type": "object",
+      "properties": {
+        "checkpoint_hash": {
+          "description": "Verified draft manifest hash.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "model_id": {
+          "description": "Explicit optional draft checkpoint, never a fallback target.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "quantization": {
+          "description": "Draft quantization where applicable.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "revision": {
+          "description": "Exact draft revision.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "weight_bytes": {
+          "description": "Draft memory estimate; unknown is not zero.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Counter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "model_id",
+        "revision",
+        "checkpoint_hash"
+      ]
     },
     "EngineIdentityData": {
       "description": "Unchecked construction draft for `EngineIdentity`; validate before use.",
@@ -81,6 +169,55 @@
         "configuration_hash"
       ]
     },
+    "EngineLoadOptionsData": {
+      "description": "Unchecked construction draft for `EngineLoadOptions`; validate before use.",
+      "type": "object",
+      "properties": {
+        "accelerators": {
+          "description": "Explicit additional accelerators; engine may report unsupported.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ActorId"
+          }
+        },
+        "cache": {
+          "description": "Optional isolated context cache; absence does not imply cross-session reuse.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Validated6"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "concurrency": {
+          "description": "Configured concurrent demand.",
+          "$ref": "#/$defs/Counter"
+        },
+        "context_tokens": {
+          "description": "Configured context demand for estimates/admission.",
+          "$ref": "#/$defs/Counter"
+        },
+        "draft": {
+          "description": "Explicit optional draft model.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Validated5"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "context_tokens",
+        "concurrency",
+        "accelerators"
+      ]
+    },
     "GenerationControlsData": {
       "description": "Unchecked construction draft for `GenerationControls`; validate before use.",
       "type": "object",
@@ -103,6 +240,47 @@
         "max_output_tokens",
         "max_duration_ms",
         "repetition_window"
+      ]
+    },
+    "LocalModelBindingData": {
+      "description": "Unchecked construction draft for `LocalModelBinding`; validate before use.",
+      "type": "object",
+      "properties": {
+        "inventory_id": {
+          "description": "Service-owned pinned inventory identity; runtime rechecks integrity and source access.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "options": {
+          "description": "Explicit context/concurrency/draft/cache/accelerator settings; unsupported remains visible.",
+          "$ref": "#/$defs/Validated4"
+        },
+        "template": {
+          "description": "Explicit template, or None when embedded/not applicable.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tokenizer": {
+          "description": "Explicit tokenizer, or None when embedded/not applicable.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "weights": {
+          "description": "Exact weight files relative to that installation root, including every selected shard.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "inventory_id",
+        "weights",
+        "options"
       ]
     },
     "ModelProfileConfigurationData": {
@@ -146,6 +324,17 @@
           "description": "Explicit generation bounds, independent of optional monetary budgets.",
           "$ref": "#/$defs/Validated"
         },
+        "local_binding": {
+          "description": "Explicit verified installation/file/options selection for local execution. None retains\nincomplete configuration and blocks local readiness; no first-file selection is inferred.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Validated3"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "model_id": {
           "description": "Configured provider model/checkpoint.",
           "$ref": "#/$defs/ActorId"
@@ -176,6 +365,13 @@
       "type": "string",
       "minLength": 1
     },
+    "OperatorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom OperatorId value.",
+      "type": "string",
+      "minLength": 1
+    },
     "Validated": {
       "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
       "$ref": "#/$defs/GenerationControlsData"
@@ -183,6 +379,22 @@
     "Validated2": {
       "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
       "$ref": "#/$defs/EngineIdentityData"
+    },
+    "Validated3": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/LocalModelBindingData"
+    },
+    "Validated4": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/EngineLoadOptionsData"
+    },
+    "Validated5": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/DraftModelData"
+    },
+    "Validated6": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/ContextCacheData"
     }
   }
 }

@@ -196,11 +196,17 @@ ModelProfileConfiguration, ModelProfileConfigurationData {
     billing: ironloom_observability::factory::BillingMode,
     /// Explicit local engine/version/backend; no default engine fallback.
     engine: Option<ironloom_models::factory::EngineIdentity>,
+    /// Explicit verified installation/file/options selection for local execution. None retains
+    /// incomplete configuration and blocks local readiness; no first-file selection is inferred.
+    local_binding: Option<LocalModelBinding>,
     /// Desired configured local devices; discovery and admission recheck identity.
     device_bindings: Vec<DeviceId>,
 } |value| {
     let _ = value;
     let local = value.engine.is_some();
+    if !local && value.local_binding.is_some() {
+        return Err(ValidationErrors::field("local_binding","local_engine_required"));
+    }
     if local != (value.billing == ironloom_observability::factory::BillingMode::LocalEstimate) {
         return Err(ValidationErrors::field(
             "billing",
@@ -223,6 +229,32 @@ ModelProfileConfiguration, ModelProfileConfigurationData {
             "duplicate_device",
         ));
     }
+    Ok(())
+}
+}
+ironloom_core::contract! {
+/// Exact human-selected files and load controls for one immutable local inventory identity.
+LocalModelBinding, LocalModelBindingData {
+    /// Service-owned pinned inventory identity; runtime rechecks integrity and source access.
+    inventory_id: ActorId,
+    /// Exact weight files relative to that installation root, including every selected shard.
+    weights: Vec<String>,
+    /// Explicit tokenizer, or None when embedded/not applicable.
+    tokenizer: Option<String>,
+    /// Explicit template, or None when embedded/not applicable.
+    template: Option<String>,
+    /// Explicit context/concurrency/draft/cache/accelerator settings; unsupported remains visible.
+    options: ironloom_models::factory::EngineLoadOptions,
+} |value| {
+    if value.weights.is_empty() { return Err(ValidationErrors::field("weights","weight_files_required")); }
+    if value.weights.iter().collect::<std::collections::BTreeSet<_>>().len()!=value.weights.len() {
+        return Err(ValidationErrors::field("weights","duplicate_file"));
+    }
+    for (index,path) in value.weights.iter().enumerate() {
+        ironloom_models::factory::validate_model_file_path(&format!("weights.{index}"),path)?;
+    }
+    if let Some(path)=&value.tokenizer {ironloom_models::factory::validate_model_file_path("tokenizer",path)?;}
+    if let Some(path)=&value.template {ironloom_models::factory::validate_model_file_path("template",path)?;}
     Ok(())
 }
 }

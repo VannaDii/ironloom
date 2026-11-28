@@ -223,16 +223,22 @@ impl FactoryBackend {
                 }
             }
             if profile.engine.is_some() {
+                let Some(binding) = &profile.local_binding else {
+                    continue;
+                };
                 let record = if let Some(batch) = batch.as_deref_mut() {
-                    batch.get("inventory", &profile.model_id).await
+                    batch.get("inventory", &binding.inventory_id).await
                 } else {
-                    self.store.get("inventory", &profile.model_id).await
+                    self.store.get("inventory", &binding.inventory_id).await
                 }
                 .map_err(database)?;
                 let Some(record) = record else {
                     continue;
                 };
                 let inventory: ModelInventoryItem = read(record.body)?;
+                if inventory.inventory_id != binding.inventory_id {
+                    return Err(ServiceError::Unavailable);
+                }
                 if inventory.verification != ModelVerification::Verified
                     || !inventory.storage_available
                 {

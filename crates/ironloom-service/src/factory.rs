@@ -521,6 +521,13 @@ pub trait FactoryService: Send + Sync {
         session: AuthenticatedSession,
         query: ModelInventoryQuery,
     ) -> BoxFuture<'_, Result<ModelInventoryPage, ServiceError>>;
+    /// Lists authorized pinned repository or installed-file metadata for explicit file selection.
+    /// Source-issued transfer URLs remain private; archive-only sources use installed inventory.
+    fn model_files(
+        &self,
+        session: AuthenticatedSession,
+        query: ModelFilesQuery,
+    ) -> BoxFuture<'_, Result<ModelFilesPage, ServiceError>>;
     /// Computes metadata/capability/resource assessments for configured engine placements.
     /// Unknown facts stay unknown; no load, warm-up or inference probe is permitted.
     fn assess_model(
@@ -1659,6 +1666,57 @@ pub enum ModelVerification {
     Verified,
     /// Integrity validation failed; the installation cannot be used.
     Failed,
+}
+ironloom_core::contract! {
+/// Metadata-only file selection for exactly one pinned source or inventory record.
+ModelFilesQuery, ModelFilesQueryData {
+    /// Current authorized configuration/source context.
+    project_id: Option<ProjectId>,
+    /// Installed inventory selector; mutually exclusive with source selector fields.
+    inventory_id: Option<ActorId>,
+    /// Registered source host, required with repository and exact revision for source discovery.
+    host: Option<ActorId>,
+    /// Pinned repository identity; never an arbitrary authenticated URL.
+    repository_id: Option<ActorId>,
+    /// Exact selected source revision; never silently switch to latest.
+    revision: Option<ActorId>,
+    /// Opaque continuation scoped to the selected source/inventory and source-account binding.
+    after: Option<ActorId>,
+    /// Required bounded page size.
+    limit: Counter,
+} |value| {
+    positive("limit",value.limit)?;
+    if value.limit.get()>MAX_SESSION_PAGE {return Err(ValidationErrors::field("limit","page_too_large"));}
+    let source=value.host.is_some() || value.repository_id.is_some() || value.revision.is_some();
+    if value.inventory_id.is_some() && source {return Err(ValidationErrors::field("inventory_id","exclusive_file_selector_required"));}
+    if value.inventory_id.is_none() && !(value.host.is_some() && value.repository_id.is_some() && value.revision.is_some()) {
+        return Err(ValidationErrors::field("host","complete_pinned_source_required"));
+    }
+    Ok(())
+}
+}
+ironloom_core::contract! {
+/// Pinned file page. Local integrity and transfer-completion status remain on ModelInventoryItem.
+ModelFilesPage, ModelFilesPageData {
+    /// Exact source provenance at which these names/sizes/checksums were obtained.
+    source: ironloom_models::factory::ModelSource,
+    /// Source repository identity, independent from publisher and host.
+    repository_id: ActorId,
+    /// Present for an installed inventory query; absent for source discovery.
+    inventory_id: Option<ActorId>,
+    /// Nonsecret metadata only; computed provenance does not alone verify an installation.
+    files: Vec<ironloom_models::factory::ModelFileMetadata>,
+    /// Scoped continuation, absent at exhaustion.
+    next_after: Option<ActorId>,
+} |value| {
+    if value.files.len()>MAX_SESSION_PAGE as usize {return Err(ValidationErrors::field("files","page_too_large"));}
+    if value.files.iter().map(|file|&file.path).collect::<std::collections::BTreeSet<_>>().len()!=value.files.len() {return Err(ValidationErrors::field("files","duplicate_path"));}
+    if value.files.is_empty() && value.next_after.is_some() {return Err(ValidationErrors::field("next_after","nonempty_page_required"));}
+    if value.inventory_id.is_none() && value.files.iter().any(|file| matches!(file.checksum_provenance,ironloom_models::factory::FileChecksumProvenance::Computed|ironloom_models::factory::FileChecksumProvenance::PublisherVerified)) {
+        return Err(ValidationErrors::field("files","inventory_required_for_local_provenance"));
+    }
+    Ok(())
+}
 }
 ironloom_core::contract! {
 /// Validated factory record.

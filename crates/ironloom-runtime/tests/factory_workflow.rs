@@ -301,7 +301,22 @@ async fn human_input_atomically_creates_owned_queue_history_and_instruction_copi
         )
         .await
         .unwrap();
-    backend.configure(bob.session.clone(),serde_json::from_value(json!({"command_id":"retain-private-model-selection","project_id":private_project,"expected_revision":"1","changes":{"roles":config.roles,"models":config.models}})).unwrap()).await.unwrap();
+    backend.configure(bob.session.clone(),serde_json::from_value(json!({"command_id":"retain-private-model-selection","project_id":private_project,"expected_revision":"1","changes":{"roles":config.roles,"models":[config.models[0],{"profile_id":"explicit-local-fixture","provider":"local","model_id":"selected-quantization","generation_controls":{"max_output_tokens":"100","max_duration_ms":"1000","repetition_window":"20"},"credential_id":null,"billing":"local_estimate","engine":{"name":"fixture-engine","version":"1","backend":"simulated","configuration_hash":"fixture"},"device_bindings":[],"local_binding":{"inventory_id":"not-loaded-fixture","weights":["weights/selected-q4.gguf"],"tokenizer":null,"template":null,"options":{"context_tokens":"8192","concurrency":"1","draft":null,"cache":null,"accelerators":[]}}}]}})).unwrap()).await.unwrap();
+    let private_settings = backend
+        .configuration(bob.session.clone(), Some(private_project.clone()))
+        .await
+        .unwrap();
+    let binding = private_settings
+        .models
+        .iter()
+        .find(|model| model.profile_id.as_str() == "explicit-local-fixture")
+        .unwrap()
+        .local_binding
+        .as_ref()
+        .unwrap();
+    assert_eq!(binding.inventory_id.as_str(), "not-loaded-fixture");
+    assert_eq!(binding.weights, vec!["weights/selected-q4.gguf"]);
+    assert_eq!(binding.options.context_tokens.get(), 8192);
     backend.configure(alice.session.clone(),serde_json::from_value(json!({"command_id":"clear-global-model-selection","project_id":null,"expected_revision":"2","changes":{"roles":[],"models":[]}})).unwrap()).await.unwrap();
     authority
         .write(
