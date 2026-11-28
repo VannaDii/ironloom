@@ -422,6 +422,22 @@ impl Store {
         .await?;
         Ok(())
     }
+    /// Locks the installation's initial-grant operation across nodes. The completion recheck,
+    /// external idempotent grant write and ready update must occur while this guard is held.
+    pub async fn bootstrap_initialization(
+        &self,
+        operator: &OperatorId,
+    ) -> Result<BootstrapInitialization, DatabaseError> {
+        let mut tx = self.pool.begin().await?;
+        scope_lock(&mut tx, "installation:bootstrap-grants").await?;
+        let initialized:Option<bool>=sqlx::query_scalar("SELECT grants_initialized_at IS NOT NULL FROM ironloom.installation WHERE singleton AND administrator_id=$1 FOR UPDATE")
+            .bind(operator.as_str()).fetch_optional(&mut *tx).await?;
+        Ok(BootstrapInitialization {
+            tx,
+            operator: operator.clone(),
+            initialized: initialized.ok_or(DatabaseError::Conflict)?,
+        })
+    }
     /// Serializes fresh authorization binding initialization across installation nodes.
     /// The returned transaction must be committed explicitly; failure never selects another binding.
     pub async fn authorization_initialization(
@@ -842,6 +858,29 @@ impl AuthorizationInitialization {
         if self.body.is_none() {
             sqlx::query("INSERT INTO ironloom.records(kind,record_id,revision,body) VALUES('authorization','binding',1,$1)")
                 .bind(binding).execute(&mut *self.tx).await?;
+        }
+        self.tx.commit().await?;
+        Ok(())
+    }
+}
+
+/// Storage-owned cross-node bootstrap serialization guard. Dropping it rolls back completion.
+pub struct BootstrapInitialization {
+    tx: Transaction<'static, Postgres>,
+    operator: OperatorId,
+    initialized: bool,
+}
+impl BootstrapInitialization {
+    /// Returns completion rechecked after acquiring the exclusive installation lock.
+    pub fn initialized(&self) -> bool {
+        self.initialized
+    }
+    /// Commits completion while still holding the lock, after the initial grant write succeeds.
+    /// Already-complete callers commit without writing or restoring any external relationship.
+    pub async fn complete(mut self) -> Result<(), DatabaseError> {
+        if !self.initialized {
+            sqlx::query("UPDATE ironloom.installation SET grants_initialized_at=now() WHERE singleton AND administrator_id=$1")
+                .bind(self.operator.as_str()).execute(&mut *self.tx).await?;
         }
         self.tx.commit().await?;
         Ok(())

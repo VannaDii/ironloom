@@ -17,8 +17,8 @@ use std::{
     },
 };
 
-#[derive(Default)]
 struct Grants {
+    database: Mutex<Store>,
     unavailable: AtomicBool,
     administrators: Mutex<Vec<OperatorId>>,
 }
@@ -35,11 +35,25 @@ impl Authority for Grants {
     }
     fn bootstrap(&self, operator: OperatorId) -> BoxFuture<'_, Result<(), AuthorizationError>> {
         Box::pin(async move {
+            let database = self.database.lock().unwrap().clone();
+            let initialization = database
+                .bootstrap_initialization(&operator)
+                .await
+                .map_err(|_| AuthorizationError::Unavailable)?;
+            if initialization.initialized() {
+                return initialization
+                    .complete()
+                    .await
+                    .map_err(|_| AuthorizationError::Unavailable);
+            }
             if self.unavailable.load(Ordering::SeqCst) {
                 return Err(AuthorizationError::Unavailable);
             }
             self.administrators.lock().unwrap().push(operator);
-            Ok(())
+            initialization
+                .complete()
+                .await
+                .map_err(|_| AuthorizationError::Unavailable)
         })
     }
 }
@@ -68,7 +82,11 @@ async fn local_accounts_sessions_and_same_administrator_grant_recovery_survive_r
         )
         .await
         .unwrap();
-    let grants = Arc::new(Grants::default());
+    let grants = Arc::new(Grants {
+        database: Mutex::new(store.clone()),
+        unavailable: AtomicBool::new(false),
+        administrators: Mutex::new(vec![]),
+    });
     grants.unavailable.store(true, Ordering::SeqCst);
     let auth = AuthenticationBackend::new(
         store.clone(),
@@ -149,6 +167,7 @@ async fn local_accounts_sessions_and_same_administrator_grant_recovery_survive_r
     drop(auth);
     store.close().await;
     let reopened = Store::connect(&url).await.unwrap();
+    *grants.database.lock().unwrap() = reopened.clone();
     grants.unavailable.store(false, Ordering::SeqCst);
     let auth = AuthenticationBackend::new(
         reopened.clone(),

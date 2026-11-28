@@ -87,3 +87,12 @@ ingress:
 download:
   maxFileBytes: "68719476736"
   maxTransferBytes: "549755813888"
+
+# Current service connection wiring. Bundled lifecycle/persistence composition follows in this lane.
+database:
+  existingSecret: ironloom-database
+  urlKey: database-url
+openfga:
+  url: "http://openfga:8080"
+  existingSecret: ""
+  tokenKey: token

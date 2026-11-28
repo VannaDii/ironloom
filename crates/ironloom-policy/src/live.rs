@@ -82,6 +82,7 @@ pub trait Authority: Send + Sync {
         deletes: Vec<Relationship>,
     ) -> BoxFuture<'_, Result<(), AuthorizationError>>;
     /// Initializes/retries grants for the persisted sole bootstrap administrator, never another account.
+    /// Persistence serialization covers completion recheck, external write and durable completion.
     fn bootstrap(&self, operator: OperatorId) -> BoxFuture<'_, Result<(), AuthorizationError>>;
 }
 /// Thin OpenFGA HTTP transport. Storage/model initialization remains runtime orchestration.

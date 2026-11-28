@@ -66,10 +66,51 @@ async fn coordinated_live_grants_keep_private_projects_and_credential_management
         LiveAuthority::open(store.clone(), client)
     );
     let first = first.unwrap();
-    let second = second.unwrap();
+    let second = std::sync::Arc::new(second.unwrap());
     assert!(first.bootstrap(bob.clone()).await.is_err());
+    // Force a second node to arrive while the first grant initialization is in flight.
+    let initialization = store.bootstrap_initialization(&alice).await.unwrap();
+    assert!(!initialization.initialized());
+    let administrator = relation(
+        "operator:alice",
+        "administrator",
+        "installation:live-authorization-fixture",
+    );
+    first
+        .write(vec![administrator.clone()], vec![])
+        .await
+        .unwrap();
+    let later = second.clone();
+    let later_operator = alice.clone();
+    let mut delayed = tokio::spawn(async move { later.bootstrap(later_operator).await });
+    assert!(
+        tokio::time::timeout(std::time::Duration::from_millis(100), &mut delayed)
+            .await
+            .is_err(),
+        "second node must wait for storage-owned completion recheck"
+    );
+    initialization.complete().await.unwrap();
+    // Deliberate revocation after completion must survive the already-started retry.
+    first
+        .write(vec![], vec![administrator.clone()])
+        .await
+        .unwrap();
+    delayed.await.unwrap().unwrap();
+    assert_eq!(
+        second
+            .check(check(
+                &alice,
+                ResourceKind::Installation,
+                "live-authorization-fixture",
+                None,
+                Permission::Manage
+            ))
+            .await,
+        AuthorizationOutcome::Denied
+    );
+    // Normal authorized fixture grant permits the independent resource tests below.
+    first.write(vec![administrator], vec![]).await.unwrap();
     first.bootstrap(alice.clone()).await.unwrap();
-    first.bootstrap(alice.clone()).await.unwrap(); // interrupted duplicate writes are safe.
     assert_eq!(
         second
             .check(check(

@@ -558,18 +558,12 @@ impl Authentication for AuthenticationBackend {
                 Some(_) => {}
             }
             // An interrupted grant initialization retries only the already-persisted account.
-            let initialized = grants_initialized
-                || self
-                    .authority
-                    .bootstrap(session.operator_id.clone())
-                    .await
-                    .is_ok();
-            if initialized && !grants_initialized {
-                self.store
-                    .bootstrap_grants_ready(&session.operator_id)
-                    .await
-                    .map_err(database_auth)?;
+            if !grants_initialized {
+                // The concrete authority holds the storage lock across its completion recheck,
+                // idempotent OpenFGA write and durable completion, including concurrent retries.
+                let _ = self.authority.bootstrap(session.operator_id.clone()).await;
             }
+            let (_, _, initialized) = self.store.installation().await.map_err(database_auth)?;
             BootstrapState::new(BootstrapStateData {
                 installation_id: InstallationId::new(installation.as_str())
                     .map_err(|_| AuthenticationError::Unavailable)?,
