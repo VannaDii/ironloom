@@ -491,3 +491,54 @@ fn is_empty(value: &str) -> bool {
 
 /// Software factory contracts for the unreleased application.
 pub mod factory;
+
+/// Infrastructure byte ceiling for each downloaded file, independent of source-provided length.
+pub const DOWNLOAD_MAX_FILE_BYTES_ENV: &str = "IRONLOOM_DOWNLOAD_MAX_FILE_BYTES";
+/// Infrastructure byte ceiling for each complete model transfer across its files.
+pub const DOWNLOAD_MAX_TRANSFER_BYTES_ENV: &str = "IRONLOOM_DOWNLOAD_MAX_TRANSFER_BYTES";
+/// Parses required infrastructure transfer ceilings without defaults or submitted-value errors.
+pub fn download_limits(
+    environment: &BTreeMap<String, String>,
+) -> Result<factory::DownloadLimits, ironloom_core::validation::ValidationErrors> {
+    use ironloom_core::{Counter, validation::ValidationErrors};
+    let parse = |name: &str, field: &str| {
+        let raw = environment
+            .get(name)
+            .ok_or_else(|| ValidationErrors::field(field, "configuration_required"))?;
+        let bytes = raw
+            .parse::<u64>()
+            .map_err(|_| ValidationErrors::field(field, "invalid_counter"))?;
+        if raw != &bytes.to_string() {
+            return Err(ValidationErrors::field(field, "invalid_counter"));
+        }
+        Ok(Counter::new(bytes))
+    };
+    factory::DownloadLimits::new(factory::DownloadLimitsData {
+        per_file_bytes: parse(DOWNLOAD_MAX_FILE_BYTES_ENV, "per_file_bytes")?,
+        per_transfer_bytes: parse(DOWNLOAD_MAX_TRANSFER_BYTES_ENV, "per_transfer_bytes")?,
+    })
+}
+#[cfg(test)]
+mod transfer_limit_tests {
+    use super::*;
+    #[test]
+    fn limits_require_both_positive_exact_counters_and_never_expose_input() {
+        let mut environment = BTreeMap::new();
+        assert!(download_limits(&environment).is_err());
+        environment.insert(DOWNLOAD_MAX_FILE_BYTES_ENV.into(), "100".into());
+        assert!(download_limits(&environment).is_err());
+        environment.insert(DOWNLOAD_MAX_TRANSFER_BYTES_ENV.into(), "200".into());
+        assert_eq!(
+            download_limits(&environment).unwrap().per_file_bytes.get(),
+            100
+        );
+        for invalid in ["0", "-1", "18446744073709551616", "01", "secret-invalid"] {
+            environment.insert(DOWNLOAD_MAX_FILE_BYTES_ENV.into(), invalid.into());
+            let error = download_limits(&environment).unwrap_err();
+            assert!(
+                !error.to_string().contains(invalid),
+                "error must not include submitted configuration"
+            );
+        }
+    }
+}

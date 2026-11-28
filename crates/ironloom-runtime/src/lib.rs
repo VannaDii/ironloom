@@ -1684,3 +1684,30 @@ impl GateExecutor for CountingGateExecutor {
 
 /// HTTP transport codecs and API routing.
 pub mod http;
+
+/// Local/OIDC account authentication with durable opaque sessions and bootstrap recovery.
+pub mod authentication;
+
+/// Coordinated OpenFGA binding and live authority orchestration.
+pub mod authorization;
+
+/// Reads the required infrastructure transfer ceilings for injection into the source adapter.
+/// Missing/invalid configuration blocks transfers; publisher metadata never supplies a fallback.
+pub fn configured_download_limits()
+-> Result<ironloom_config::factory::DownloadLimits, ironloom_core::validation::ValidationErrors> {
+    let values = [
+        ironloom_config::DOWNLOAD_MAX_FILE_BYTES_ENV,
+        ironloom_config::DOWNLOAD_MAX_TRANSFER_BYTES_ENV,
+    ]
+    .into_iter()
+    .filter_map(|name| {
+        std::env::var(name)
+            .ok()
+            .map(|value| (name.to_owned(), value))
+    })
+    .collect();
+    ironloom_config::download_limits(&values)
+}
+
+/// Authenticated Axum server and explicit fresh installation initialization.
+pub mod server;

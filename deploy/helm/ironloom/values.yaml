@@ -82,3 +82,8 @@ ingress:
   className: ""
   hosts: []
   tls: []
+
+# Infrastructure ceilings enforced independently from optional publisher lengths.
+download:
+  maxFileBytes: "68719476736"
+  maxTransferBytes: "549755813888"

@@ -1,47 +1,21 @@
 # 运行时 HTTP API
 
-Ironloom 在现有运行时 HTTP 端口上提供设置、健康和就绪接口。
+认证服务使用 Tokio/Axum 和配置的部署基础路径。`ironloom serve` 打开所选的现有 PostgreSQL 安装。`ironloom initialize` 明确创建全新模式及一次性引导令牌状态，拒绝已有模式。存储故障或重启不会创建替代数据。
 
-## `GET /healthz`
+服务登录与推理提供者凭据分离。登录返回 `AuthenticatedSession`，设置 HttpOnly 的 `ironloom_session`，并通过 `ironloom_csrf` Cookie 和 `x-ironloom-csrf` 响应头提供 CSRF 证明。修改请求必须携带此请求头。Cookie 使用部署路径、SameSite=Lax，HTTPS 时启用 Secure。跨源请求被拒绝。OIDC 回调还需要绑定浏览器的一次性流程 Cookie。
 
-当 HTTP 服务器存活时返回 `200 ok`。
+| Method | Path | Contract / transport |
+| --- | --- | --- |
+| POST | `/api/v1/auth/register` | `LoginRequest`; initial `x-ironloom-setup-token`, later current administrator + CSRF |
+| POST | `/api/v1/auth/local` | `LoginRequest` → `AuthenticatedSession` + cookies |
+| GET | `/api/v1/auth/session` | Current `AuthenticatedSession`; no-store |
+| POST | `/api/v1/auth/oidc/start` | `OidcStart` → authorization URL JSON + HttpOnly flow cookie |
+| POST | `/api/v1/auth/oidc/callback` | `OidcCallback` → `AuthenticatedSession` + cookies |
+| POST | `/api/v1/auth/bootstrap` | `BootstrapRedeem` → fixed `BootstrapState`; CSRF |
+| POST | `/api/v1/auth/logout` | Revoke current session and clear cookies; CSRF |
+| GET | `/healthz` | Process liveness, root path |
+| GET | `/readyz` | Selected database reachable; separate from execution setup, root path |
 
-## `GET /readyz`
+必需配置：`IRONLOOM_DATABASE_URL`、`IRONLOOM_OPENFGA_URL`、`IRONLOOM_CONFIG_KEY`（base64，32 字节）、`IRONLOOM_PUBLIC_URL` 和两项下载字节上限。仅明确初始化读取 `IRONLOOM_INSTALLER_TOKEN`。可选项包括 `IRONLOOM_OPENFGA_TOKEN` 及 `IRONLOOM_OIDC_CONNECTIONS`；后者为包含 `{id, issuer, client_id, client_secret, redirects}` 的 JSON 数组，回调地址必须与允许列表精确匹配。电子邮箱不作为身份依据。
 
-只有当必需运行时配置能从环境值或加密本地设置解析出来时，才返回 `200 ok`。当设置仍未完成时返回 `503 setup required`。
-
-## `GET /`
-
-返回设置页面。
-
-## `GET /setup`
-
-返回设置页面。
-
-如果 `IRONLOOM_CONFIG_KEY` 缺失或无效，页面只显示密钥说明，不显示设置输入字段。
-
-如果 `IRONLOOM_INSTALLER_TOKEN` 缺失，页面显示安装令牌说明。
-
-当设置前置条件存在时，页面渲染配置表单。由环境提供的字段会被锁定，密钥值不会显示。
-
-## `POST /setup`
-
-在提交的安装令牌与 `IRONLOOM_INSTALLER_TOKEN` 匹配后，接受设置表单值。
-
-提交成功会将加密设置配置写入 `IRONLOOM_STATE_ROOT`，并返回 `200 setup saved`。
-
-无效安装令牌返回 `403 setup rejected`。
-
-## `POST /setup/openai/oauth/start`
-
-返回配置页面使用的 OpenAI OAuth 设置说明。生成的 OAuth 会话引用可以通过设置表单保存，也可以通过 `IRONLOOM_OPENAI_OAUTH_SESSION` 绑定。
-
-## `POST /setup/discord/oauth/start`
-
-返回已配置应用 ID 的 Discord 授权页面。生成的 URL 使用 `bot` 和 `applications.commands` scope，让 Discord 服务器管理员可以把 Ironloom 安装到目标服务器。
-
-## `POST /discord/interactions`
-
-接受带有 `X-Signature-Ed25519` 和 `X-Signature-Timestamp` 签名的 Discord interaction webhook。
-
-Ping interaction 返回 Discord pong 载荷。应用命令 interaction 会把 Discord channel 解析为操作员线程，要求存在唯一持久化工作项绑定，通过监督器调度选中的关卡工作器，写入工件，并返回 channel message response。无效签名会在任何工作运行前返回 `401`。
+角色执行、模型及源适配器连接、操作界面资源仍在实现中。这里的认证路由已实现，但整个软件工厂尚未完成。

@@ -3711,6 +3711,43 @@
         "terminated": false
       },
       "expected_errors": []
+    },
+    {
+      "contract": "download_limits",
+      "name": "required-independent-transfer-limits",
+      "input": {
+        "per_file_bytes": "100",
+        "per_transfer_bytes": "200"
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "download_limits",
+      "name": "zero-file-limit",
+      "input": {
+        "per_file_bytes": "0",
+        "per_transfer_bytes": "200"
+      },
+      "expected_errors": [
+        {
+          "field": "per_file_bytes",
+          "code": "must_be_positive"
+        }
+      ]
+    },
+    {
+      "contract": "download_limits",
+      "name": "zero-transfer-limit",
+      "input": {
+        "per_file_bytes": "100",
+        "per_transfer_bytes": "0"
+      },
+      "expected_errors": [
+        {
+          "field": "per_transfer_bytes",
+          "code": "must_be_positive"
+        }
+      ]
     }
   ]
 }

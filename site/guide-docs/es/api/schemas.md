@@ -42,3 +42,5 @@ Los contratos compartidos del servicio y del registro nativo ahora están en `ir
 `GET /api/v1/models/inventory` muestra procedencia autorizada, finalización de transferencia, verificación independiente de integridad/manifiesto y disponibilidad actual. Los bytes completos no equivalen a instalación verificada; los archivos ausentes conservan metadatos y bloquean el uso.
 
 Los comandos de configuración de la instalación se guardan antes de crear proyectos. Las conversaciones vacías conservan atómicamente su estado y recibo de reintento con cursor cero, sin evento de ejecución. `DownloadProgress.repository_id` vincula reanudación y cancelación al repositorio autorizado original.
+
+Los límites de descarga de infraestructura son obligatorios: `IRONLOOM_DOWNLOAD_MAX_FILE_BYTES` y `IRONLOOM_DOWNLOAD_MAX_TRANSFER_BYTES`. Ambos deben ser cantidades decimales positivas de bytes; los tamaños del editor no los sustituyen. Helm proporciona valores explícitos editables.

@@ -1287,8 +1287,11 @@ name = "ironloom-policy"
 version = "0.1.0"
 dependencies = [
  "ironloom-core",
+ "reqwest",
  "schemars",
  "serde",
+ "serde_json",
+ "thiserror",
 ]
 
 [[package]]
@@ -1342,14 +1345,17 @@ dependencies = [
  "ironloom-workers",
  "ironloom-worktrees",
  "jsonwebtoken",
+ "reqwest",
  "schemars",
  "serde",
  "serde_json",
+ "sha2 0.11.0",
  "tempfile",
  "thiserror",
  "tokio",
  "tokio-stream",
  "url",
+ "uuid",
 ]
 
 [[package]]

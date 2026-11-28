@@ -32,6 +32,7 @@ fn rust_and_dart_shared_decode_fixtures() {
         serde_json::from_str(include_str!("../../../fixtures/contracts/decode.json")).unwrap();
     for case in &fixtures.cases {
         match case.contract.as_str() {
+            "download_limits" => check::<ironloom_config::factory::DownloadLimits>(case),
             "stored_command" => check::<ironloom_storage::factory::StoredCommand>(case),
             "download_progress" => check::<ironloom_models::factory::DownloadProgress>(case),
             "model_inventory_item" => check::<ironloom_service::factory::ModelInventoryItem>(case),

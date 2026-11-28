@@ -1,47 +1,21 @@
 # Runtime HTTP API
 
-Ironloom serves setup, health, and readiness on the existing runtime HTTP port.
+The authenticated service uses Tokio/Axum and the configured deployment base path. `ironloom serve` opens the selected existing PostgreSQL installation. `ironloom initialize` explicitly creates a fresh schema and one-time bootstrap token state; it rejects an existing schema. Neither storage errors nor restarts initialize replacement data.
 
-## `GET /healthz`
+Service login is separate from provider credentials. Login responses contain `AuthenticatedSession` JSON, set an HttpOnly `ironloom_session` cookie, and provide CSRF proof through `ironloom_csrf` and the `x-ironloom-csrf` response header. Authenticated mutations require that proof in the request header. Cookies use the deployment path, SameSite=Lax, and Secure on HTTPS. Cross-origin requests fail closed. OIDC callbacks additionally require the browser-bound one-time flow cookie.
 
-Returns `200 ok` when the HTTP server is alive.
+| Method | Path | Contract / transport |
+| --- | --- | --- |
+| POST | `/api/v1/auth/register` | `LoginRequest`; initial `x-ironloom-setup-token`, later current administrator + CSRF |
+| POST | `/api/v1/auth/local` | `LoginRequest` → `AuthenticatedSession` + cookies |
+| GET | `/api/v1/auth/session` | Current `AuthenticatedSession`; no-store |
+| POST | `/api/v1/auth/oidc/start` | `OidcStart` → authorization URL JSON + HttpOnly flow cookie |
+| POST | `/api/v1/auth/oidc/callback` | `OidcCallback` → `AuthenticatedSession` + cookies |
+| POST | `/api/v1/auth/bootstrap` | `BootstrapRedeem` → fixed `BootstrapState`; CSRF |
+| POST | `/api/v1/auth/logout` | Revoke current session and clear cookies; CSRF |
+| GET | `/healthz` | Process liveness, root path |
+| GET | `/readyz` | Selected database reachable; separate from execution setup, root path |
 
-## `GET /readyz`
+Required infrastructure: `IRONLOOM_DATABASE_URL`, `IRONLOOM_OPENFGA_URL`, `IRONLOOM_CONFIG_KEY` (base64, 32 bytes), `IRONLOOM_PUBLIC_URL`, and both download byte ceilings. `IRONLOOM_INSTALLER_TOKEN` is read only by explicit initialization. Optional `IRONLOOM_OPENFGA_TOKEN` protects the authorization endpoint. Optional `IRONLOOM_OIDC_CONNECTIONS` is a JSON array of `{id, issuer, client_id, client_secret, redirects}`; redirect IDs map to exact allowlisted callback URLs. No identity is inferred from email.
 
-Returns `200 ok` only when required runtime configuration resolves from environment values or encrypted local setup. Returns `503 setup required` while setup remains incomplete.
-
-## `GET /`
-
-Returns the setup page.
-
-## `GET /setup`
-
-Returns the setup page.
-
-If `IRONLOOM_CONFIG_KEY` is missing or invalid, the page shows key instructions and no setup input fields.
-
-If `IRONLOOM_INSTALLER_TOKEN` is missing, the page shows installer-token instructions.
-
-When setup prerequisites are present, the page renders the config form. Environment-backed fields are locked and secret values are not displayed.
-
-## `POST /setup`
-
-Accepts setup form values after the submitted installer token matches `IRONLOOM_INSTALLER_TOKEN`.
-
-Successful submissions write encrypted setup configuration under `IRONLOOM_STATE_ROOT` and return `200 setup saved`.
-
-Invalid installer tokens return `403 setup rejected`.
-
-## `POST /setup/openai/oauth/start`
-
-Returns the OpenAI OAuth setup instructions used by the config page. The resulting OAuth session reference can be saved through the setup form or bound through `IRONLOOM_OPENAI_OAUTH_SESSION`.
-
-## `POST /setup/discord/oauth/start`
-
-Returns a Discord authorization page for the configured application ID. The generated URL uses the `bot` and `applications.commands` scopes so a Discord server administrator can install Ironloom into the target server.
-
-## `POST /discord/interactions`
-
-Accepts Discord interaction webhooks signed with `X-Signature-Ed25519` and `X-Signature-Timestamp`.
-
-Ping interactions return the Discord pong payload. Application command interactions resolve the Discord channel as the operator thread, require exactly one persisted work-item binding, dispatch the selected gate worker through the supervisor, write an artifact, and return a channel message response. Invalid signatures return `401` before any work runs.
+Role execution, model/source wiring and operator assets are still under implementation in the service lane. These auth routes are implemented; they are not a completed factory.
