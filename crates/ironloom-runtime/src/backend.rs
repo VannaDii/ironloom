@@ -31,6 +31,7 @@ const CONFIGURATION_SCOPE: &str = "configuration";
 mod conversations;
 mod lessons;
 mod maintenance;
+mod projects;
 /// Trusted current execution bindings supplied by runtime/adapter composition, never browser claims.
 #[derive(Clone)]
 pub struct BackendInfrastructure {

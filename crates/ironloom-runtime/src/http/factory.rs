@@ -30,6 +30,7 @@ impl FactoryTransport {
 /// Builds currently implemented routes relative to the configured deployment base.
 pub fn router(state: FactoryTransport) -> Router {
     Router::new()
+        .route("/api/v1/projects", get(projects))
         .route("/api/v1/configuration", get(configuration).post(configure))
         .route("/api/v1/instructions", get(instructions).post(instruction))
         .route("/api/v1/sessions", get(sessions).post(create_conversation))
@@ -49,6 +50,34 @@ pub fn router(state: FactoryTransport) -> Router {
             },
         ))
         .with_state(state)
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ProjectParameters {
+    after: Option<ActorId>,
+    limit: Counter,
+}
+async fn projects(
+    State(state): State<FactoryTransport>,
+    headers: HeaderMap,
+    Query(query): Query<ProjectParameters>,
+) -> Result<Json<ProjectPage>, HttpError> {
+    let session = state
+        .auth
+        .authenticate(&headers, false)
+        .await
+        .map_err(HttpError)?;
+    let query = ProjectQuery::new(ProjectQueryData {
+        after: query.after,
+        limit: query.limit,
+    })
+    .map_err(|error| HttpError(ServiceError::Validation(error)))?;
+    state
+        .backend
+        .projects(session, query)
+        .await
+        .map(Json)
+        .map_err(HttpError)
 }
 async fn command(
     State(state): State<FactoryTransport>,

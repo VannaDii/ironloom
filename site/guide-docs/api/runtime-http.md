@@ -34,3 +34,5 @@ Dispatch claims now bind the owning node, exact service instance and monotonic f
 
 
 Lesson HTTP reads and edit/scope/delete commands now enforce current manage/share grants independently from source access. Deletion removes lesson content; authorized retries retain only a content-free identity marker. Current-state outbox recovery repairs interrupted grant publication without restoring older visibility. Workflow command execution remains in progress.
+
+`GET /api/v1/projects?limit=100` returns live-authorized project metadata in human-interaction order, with an opaque `after` cursor. Unavailable mounts and remote owner nodes remain visible with `storage: unavailable`; catalog reads never create replacement directories. Git accessibility is checked without running hooks or inference. Project creation/source provisioning is still being implemented.

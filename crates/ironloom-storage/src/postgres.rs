@@ -14,6 +14,8 @@ const CREDENTIAL_EXISTS_SQL: &str = "SELECT EXISTS(SELECT 1 FROM ironloom.creden
 pub mod dispatch;
 /// Durable filesystem ownership shared by commands, file tools and Git operations.
 pub mod paths;
+/// Durable project discovery independent from workspace mounts.
+pub mod projects;
 
 /// Redacted durable storage failures; callers never receive SQL or connection secrets.
 #[derive(Debug, Error)]

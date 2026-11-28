@@ -34,3 +34,5 @@ Las reservas de ejecución vinculan el nodo, la instancia exacta del servicio y 
 
 
 Las lecturas y los comandos HTTP para editar, cambiar ámbito o eliminar lecciones verifican permisos actuales de gestión y uso compartido sin exigir acceso al origen. La eliminación borra el contenido y conserva solo identidad sin contenido para reintentos autorizados. La recuperación usa el estado actual, sin restaurar visibilidad anterior. La ejecución de flujos sigue en desarrollo.
+
+`GET /api/v1/projects?limit=100` devuelve metadatos con autorización vigente, ordenados por interacción humana y con cursor opaco `after`. Los montajes no disponibles y los nodos propietarios remotos permanecen visibles con `storage: unavailable`; leer el catálogo nunca crea directorios sustitutos. Se comprueba Git sin ejecutar hooks ni inferencia. La creación de proyectos y el aprovisionamiento de fuentes siguen en desarrollo.

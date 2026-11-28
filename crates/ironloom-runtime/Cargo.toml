@@ -21,6 +21,7 @@ futures-util.workspace = true
 jsonwebtoken.workspace = true
 argon2.workspace = true
 ironloom-service.workspace = true
+ironloom-worktrees = { path = "../ironloom-worktrees", version = "0.1.0" }
 base64.workspace = true
 axum.workspace = true
 tokio.workspace = true
@@ -49,7 +50,6 @@ url.workspace = true
 [dev-dependencies]
 ironloom-native = { path = "../ironloom-native", version = "0.1.0" }
 ironloom-artifacts = { path = "../ironloom-artifacts", version = "0.1.0" }
-ironloom-worktrees = { path = "../ironloom-worktrees", version = "0.1.0" }
 tempfile.workspace = true
 
 [lints]
