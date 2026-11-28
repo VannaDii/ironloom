@@ -31,6 +31,48 @@ Map<String, Object?> event(int sequence) => {
   },
 };
 void main() {
+  test('project configuration rejects global or foreign scope after real response decode', () async {
+    for (final returnedScope in [null, 'other-project']) {
+      final client = IronloomClient(
+        ServerConnection(Uri.parse('https://service/')),
+        MockClient(
+          (request) async => http.Response(
+            jsonEncode({
+              'project_id': returnedScope,
+              'revision': '2',
+              'roles': <Object?>[],
+              'models': <Object?>[],
+              'device_preferences': <Object?>[],
+              'discovered_devices': <Object?>[],
+              'execution_ready': false,
+              'unmet_prerequisites': ['role_models'],
+            }),
+            200,
+          ),
+        ),
+      );
+      final rejected = throwsA(
+        isA<ApiFailure>().having((error) => error.status, 'status', 502),
+      );
+      await expectLater(
+        client.configuration(project: ProjectId('project')),
+        rejected,
+      );
+      await expectLater(
+        client.configure(
+          ConfigurationCommand(
+            commandId: CommandId('configuration'),
+            projectId: ProjectId('project'),
+            expectedRevision: Counter('1'),
+            changes: ConfigurationChange(devicePreferences: const []),
+          ),
+        ),
+        rejected,
+      );
+      client.close();
+    }
+  });
+
   test('overlapping refreshes cannot restore an older snapshot', () async {
     final responses = <Completer<http.Response>>[];
     final client = IronloomClient(

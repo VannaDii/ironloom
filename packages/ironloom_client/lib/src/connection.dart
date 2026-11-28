@@ -209,19 +209,53 @@ final class IronloomClient {
     body: request,
   );
   Future<void> logout() => _request('POST', 'api/v1/auth/logout');
-  Future<ConfigurationSnapshot> configuration({ProjectId? project}) => _model(
-    'GET',
-    'api/v1/configuration',
-    ConfigurationSnapshot.fromJson,
-    query: {'project_id': project?.value},
-  );
-  Future<ConfigurationSnapshot> configure(ConfigurationCommand request) =>
-      _model(
-        'POST',
-        'api/v1/configuration',
-        ConfigurationSnapshot.fromJson,
-        body: request,
-      );
+  Future<List<InstructionCopy>> instructionCopies(
+    AssignmentId assignment,
+  ) async {
+    final copies = await _model<List<InstructionCopy>>(
+      'GET',
+      'api/v1/assignments/${Uri.encodeComponent(assignment.value)}/instructions',
+      (json) {
+        if (json is! List<Object?>) throw ApiFailure(502, null);
+        return List<InstructionCopy>.unmodifiable(
+          json.map(InstructionCopy.fromJson),
+        );
+      },
+    );
+    if (copies.any((copy) => copy.assignmentId.value != assignment.value) ||
+        copies.map((copy) => copy.instructionId.value).toSet().length !=
+            copies.length) {
+      throw ApiFailure(502, null);
+    }
+    return copies;
+  }
+
+  Future<ConfigurationSnapshot> configuration({ProjectId? project}) async {
+    final value = await _model(
+      'GET',
+      'api/v1/configuration',
+      ConfigurationSnapshot.fromJson,
+      query: {'project_id': project?.value},
+    );
+    if (value.projectId?.value != project?.value) {
+      throw ApiFailure(502, null);
+    }
+    return value;
+  }
+
+  Future<ConfigurationSnapshot> configure(ConfigurationCommand request) async {
+    final value = await _model(
+      'POST',
+      'api/v1/configuration',
+      ConfigurationSnapshot.fromJson,
+      body: request,
+    );
+    if (value.projectId?.value != request.projectId?.value) {
+      throw ApiFailure(502, null);
+    }
+    return value;
+  }
+
   Future<ConversationSnapshot> createConversation(CreateConversation request) =>
       _model(
         'POST',

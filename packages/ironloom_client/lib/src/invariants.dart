@@ -465,6 +465,19 @@ void _validateModel(WireModel model) {
       if (v.activeAssignmentId != null && v.executionState == null) {
         _fail('execution_state', 'assignment_state_required');
       }
+      if ((v.activeAssignmentId != null) != (v.pauseRequested != null)) {
+        _fail('pause_requested', 'assignment_control_state_required');
+      }
+      if (v.pauseRequested == true &&
+          {
+            ExecutionState.paused,
+            ExecutionState.cancellationRequested,
+            ExecutionState.terminated,
+            ExecutionState.completed,
+            ExecutionState.failed,
+          }.contains(v.executionState)) {
+        _fail('pause_requested', 'pending_pause_state_mismatch');
+      }
       if (v.session.conversationId.value != v.cursor.conversationId.value) {
         _fail('cursor.conversation_id', 'conversation_mismatch');
       }

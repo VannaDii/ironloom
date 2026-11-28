@@ -4449,6 +4449,7 @@ final class ConversationSnapshot implements WireModel {
     required ReplayCursor cursor,
     required Counter revision,
     AssignmentId? activeAssignmentId,
+    bool? pauseRequested,
     ExecutionState? executionState,
     PlanRevision? plan,
     PlanApproval? approval,
@@ -4459,6 +4460,7 @@ final class ConversationSnapshot implements WireModel {
     'cursor': _json(cursor),
     'revision': _json(revision),
     'active_assignment_id': _json(activeAssignmentId),
+    'pause_requested': _json(pauseRequested),
     'execution_state': _json(executionState),
     'plan': _json(plan),
     'approval': _json(approval),
@@ -4470,6 +4472,7 @@ final class ConversationSnapshot implements WireModel {
     this.cursor,
     this.revision,
     this.activeAssignmentId,
+    this.pauseRequested,
     this.executionState,
     this.plan,
     this.approval,
@@ -4482,6 +4485,7 @@ final class ConversationSnapshot implements WireModel {
       "cursor",
       "revision",
       "active_assignment_id",
+      "pause_requested",
       "execution_state",
       "plan",
       "approval",
@@ -4493,6 +4497,7 @@ final class ConversationSnapshot implements WireModel {
       r.read('cursor', ReplayCursor.fromJson),
       r.read('revision', Counter.fromJson),
       r.optional('active_assignment_id', AssignmentId.fromJson),
+      r.optional('pause_requested', _boolean),
       r.optional('execution_state', ExecutionState.fromJson),
       r.optional('plan', PlanRevision.fromJson),
       r.optional('approval', PlanApproval.fromJson),
@@ -4506,6 +4511,7 @@ final class ConversationSnapshot implements WireModel {
   final ReplayCursor cursor;
   final Counter revision;
   final AssignmentId? activeAssignmentId;
+  final bool? pauseRequested;
   final ExecutionState? executionState;
   final PlanRevision? plan;
   final PlanApproval? approval;
@@ -4523,6 +4529,7 @@ final class ConversationSnapshot implements WireModel {
     'cursor': _json(cursor),
     'revision': _json(revision),
     'active_assignment_id': _json(activeAssignmentId),
+    'pause_requested': _json(pauseRequested),
     'execution_state': _json(executionState),
     'plan': _json(plan),
     'approval': _json(approval),
