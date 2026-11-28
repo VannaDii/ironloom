@@ -26,3 +26,5 @@ pub mod compatibility;
 pub mod downloads;
 /// Direct official hub APIs and publisher distribution metadata.
 pub mod hubs;
+
+mod archive;

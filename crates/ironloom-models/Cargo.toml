@@ -12,6 +12,8 @@ description = "Ironloom model, engine, source and device adapter contracts."
 embedded-mistral = ["dep:mistralrs"]
 
 [dependencies]
+tar.workspace = true
+flate2.workspace = true
 mistralrs = { workspace = true, optional = true }
 tempfile.workspace = true
 uuid.workspace = true

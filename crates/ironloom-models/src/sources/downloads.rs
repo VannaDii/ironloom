@@ -21,9 +21,21 @@ const HASH_BUFFER_BYTES: usize = 128 * 1024;
 const MAX_REDIRECTS: usize = 8;
 const CANCEL_POLL: Duration = Duration::from_millis(100);
 const CANCEL_WAIT: Duration = Duration::from_secs(5);
+/// Source-declared transfer representation; never guessed from a browser filename.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum DownloadFormat {
+    /// One regular repository file.
+    File,
+    /// Current tar/gzip model bundle, requiring bounded verified extraction before installation.
+    TarGzip,
+}
+/// Reserved compressed transfer cache for a single current bundle; it is not runnable inventory.
+pub const ARCHIVE_FILE: &str = ".source-bundle.tar.gz";
 /// One source-declared file at an immutable repository revision.
 #[derive(Clone, Debug)]
 pub struct DownloadFile {
+    /// Actual source representation; archive bytes alone cannot establish installation.
+    pub format: DownloadFormat,
     /// Safe repository-relative destination; never an arbitrary browser-selected path.
     pub path: String,
     /// Source-issued URL, with source credentials applied only on its own origin.
@@ -261,6 +273,16 @@ impl FileDownloads {
         if files.is_empty() {
             return Err(AdapterError::Unavailable);
         }
+        if files
+            .iter()
+            .any(|file| file.format == DownloadFormat::TarGzip)
+            && (files.len() != 1 || files[0].path != ARCHIVE_FILE)
+        {
+            return Err(AdapterError::Unsupported);
+        }
+        let bundle = files
+            .first()
+            .is_some_and(|file| file.format == DownloadFormat::TarGzip);
         let mut progress = initial;
         let mut installed = Vec::new();
         let mut received = 0_u64;
@@ -517,6 +539,78 @@ impl FileDownloads {
             progress = update(&progress, received, total, false, false, None)?;
             self.observer.progress(progress.clone()).await?;
         }
+        if bundle {
+            let archive = self.destination(&progress.source, ARCHIVE_FILE).await?;
+            let directory = archive
+                .parent()
+                .ok_or(AdapterError::Unsupported)?
+                .to_path_buf();
+            let staged = {
+                let (signal, token) = watch::channel(*cancel.borrow());
+                let extraction = super::archive::extract(
+                    archive,
+                    directory,
+                    self.limits,
+                    received,
+                    token,
+                    _lock.try_clone().map_err(|_| AdapterError::Unavailable)?,
+                );
+                tokio::pin!(extraction);
+                let cancellation_id = progress.download_id.clone();
+                let cancellation = self.wait_cancel(&mut cancel, &cancellation_id);
+                tokio::pin!(cancellation);
+                tokio::select! {
+                    result=&mut extraction=>result?,
+                    reason=&mut cancellation=>{let _=signal.send(true);let _=extraction.await;reason?;return self.stopped(progress).await;}
+                }
+            };
+            for file in &staged.files {
+                if *cancel.borrow()
+                    || self
+                        .observer
+                        .load(progress.download_id.clone())
+                        .await?
+                        .cancel_requested
+                {
+                    return self.stopped(progress).await;
+                }
+                if file.path == Path::new(ARCHIVE_FILE) {
+                    return Err(AdapterError::Unsupported);
+                }
+                let target = self
+                    .destination(
+                        &progress.source,
+                        file.path.to_str().ok_or(AdapterError::Unsupported)?,
+                    )
+                    .await?;
+                if tokio::fs::try_exists(&target)
+                    .await
+                    .map_err(|_| AdapterError::Unavailable)?
+                {
+                    if hash(&target).await? != file.sha256 {
+                        return Err(AdapterError::Unsupported);
+                    }
+                } else {
+                    // Persist the computed staged digest before publication; interrupted retries
+                    // can verify the same source bytes without attributing a publisher checksum.
+                    let verified =
+                        verified(&self.root, &target, file.bytes, file.sha256.clone(), false)?;
+                    self.observer
+                        .checkpoint_file(progress.source.clone(), verified)
+                        .await?;
+                    tokio::fs::rename(staged.directory.path().join(&file.path), &target)
+                        .await
+                        .map_err(|_| AdapterError::Unavailable)?;
+                }
+                installed.push(verified(
+                    &self.root,
+                    &target,
+                    file.bytes,
+                    file.sha256.clone(),
+                    false,
+                )?);
+            }
+        }
         // Stable manifest hash includes file identities and actual hashes, not a repository revision.
         installed.sort_by(|a, b| a.path.cmp(&b.path));
         let mut manifest = Sha256::new();
@@ -715,7 +809,7 @@ fn safe_relative(path: &str) -> Result<(), AdapterError> {
     if path.is_empty()
         || Path::new(path)
             .components()
-            .any(|part| !matches!(part, Component::Normal(_)))
+            .any(|part| !matches!(part, Component::Normal(name) if name != ".ironloom" && name != ".git"))
     {
         return Err(AdapterError::Unsupported);
     }

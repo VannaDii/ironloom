@@ -103,3 +103,33 @@ async fn gated_repository_rechecks_actual_pinned_weight_access_without_accepting
     assert!(requests[1].starts_with("HEAD /Qwen/fixture/resolve/pinned-sha/weights.safetensors "));
     assert!(!requests.iter().any(|v| v.starts_with("POST")));
 }
+
+#[tokio::test]
+async fn kaggle_download_descriptor_keeps_explicit_current_archive_and_pinned_version() {
+    use ironloom_models::{
+        factory::ModelSource,
+        sources::downloads::{ARCHIVE_FILE, DownloadFormat, FileCatalog},
+    };
+    let hub = HubHttp::official(Hub::Kaggle, Arc::new(Anonymous)).unwrap();
+    let source: ModelSource = decode(
+        &serde_json::to_vec(&json!({
+            "host":"kaggle", "publisher":"publisher", "revision":"7",
+            "repository_url":"https://www.kaggle.com/models/publisher/model/gguf/variation/7",
+            "access":"accessible"
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let files = hub.files(&source).await.unwrap();
+    assert_eq!(files.len(), 1);
+    assert_eq!(files[0].format, DownloadFormat::TarGzip);
+    assert_eq!(files[0].path, ARCHIVE_FILE);
+    assert_eq!(
+        files[0].url.as_str(),
+        "https://www.kaggle.com/api/v1/models/publisher/model/gguf/variation/7/download"
+    );
+    assert!(files[0].sha256.is_none());
+    let mut wrong = (*source).clone();
+    wrong.revision = ironloom_core::ActorId::new("8").unwrap();
+    assert!(hub.files(&ModelSource::new(wrong).unwrap()).await.is_err());
+}

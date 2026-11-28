@@ -1,7 +1,7 @@
 //! Official hub HTTP APIs. No Python SDK, publisher-invented API or inference probe is used.
 use super::{
     Sources,
-    downloads::{DownloadExecutor, DownloadFile, FileCatalog},
+    downloads::{ARCHIVE_FILE, DownloadExecutor, DownloadFile, DownloadFormat, FileCatalog},
 };
 use crate::{factory::*, providers::AdapterError};
 use base64::Engine as _;
@@ -793,6 +793,7 @@ impl FileCatalog for HubHttp {
                         let length = file["size"].as_u64().or(file["lfs"]["size"].as_u64());
                         let hash = file["lfs"]["sha256"].as_str().map(str::to_owned);
                         files.push(DownloadFile {
+                            format: DownloadFormat::File,
                             path: name.into(),
                             url: download,
                             bytes: length,
@@ -821,6 +822,7 @@ impl FileCatalog for HubHttp {
                             .append_pair("Revision", revision)
                             .append_pair("FilePath", name);
                         files.push(DownloadFile {
+                            format: DownloadFormat::File,
                             path: name.into(),
                             url: download,
                             bytes: file["Size"].as_u64(),
@@ -830,9 +832,38 @@ impl FileCatalog for HubHttp {
                     Ok(files)
                 }
                 Hub::Kaggle => {
-                    // The official transfer is an archive. Until bounded extraction is wired,
-                    // never advertise archive bytes as a verified runnable installation.
-                    Err(AdapterError::Unsupported)
+                    let (repo, pinned) = repo
+                        .trim_end_matches('/')
+                        .rsplit_once('/')
+                        .ok_or(AdapterError::Unsupported)?;
+                    repository(repo, 4)?;
+                    if pinned != revision
+                        || revision.parse::<u64>().ok().filter(|n| *n > 0).is_none()
+                    {
+                        return Err(AdapterError::Unsupported);
+                    }
+                    // Current documented REST download route, not a publisher-invented API.
+                    let base = if self.base.as_str() == "https://api.kaggle.com/" {
+                        url::Url::parse("https://www.kaggle.com/")
+                            .map_err(|_| AdapterError::Unavailable)?
+                    } else {
+                        self.base.clone()
+                    };
+                    let download = base
+                        .join(&format!("api/v1/models/{repo}/{revision}/download"))
+                        .map_err(|_| AdapterError::Unsupported)?;
+                    // Resolve current source-account use even when a complete local archive is resumed.
+                    let _ = self
+                        .credentials
+                        .authorize(self.hub, self.client.get(download.clone()))
+                        .await?;
+                    Ok(vec![DownloadFile {
+                        format: DownloadFormat::TarGzip,
+                        path: ARCHIVE_FILE.into(),
+                        url: download,
+                        bytes: None,
+                        sha256: None,
+                    }])
                 }
             }
         })
