@@ -29,6 +29,8 @@ use std::{
 const CONFIGURATION_KIND: &str = "configuration";
 const CONFIGURATION_SCOPE: &str = "configuration";
 mod conversations;
+mod lessons;
+mod maintenance;
 /// Trusted current execution bindings supplied by runtime/adapter composition, never browser claims.
 #[derive(Clone)]
 pub struct BackendInfrastructure {
@@ -798,6 +800,7 @@ fn configuration_record(
         || state.revision.get() != record.revision
         || state.project_id.as_ref() != project
         || record.project.as_ref() != project
+        || record.assignment.is_some()
     {
         return Err(ServiceError::Unavailable);
     }

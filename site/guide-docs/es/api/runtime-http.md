@@ -28,3 +28,9 @@ El servicio monta configuración, instrucciones, conversaciones y SSE bajo la ru
 
 
 El aislamiento de comandos Linux usa un proceso auxiliar, espacios de nombres de bubblewrap, rutas de escritura explícitas y seccomp. Los fallos de aislamiento impiden ejecutar el comando. Las pruebas nativas cubren aislamiento, enlaces simbólicos y limpieza de descendientes. El contenedor incluye bubblewrap/Git con UID/GID 1000. El flujo completo, la validación de ejecución Alpine y el trabajo Mac/GPU siguen pendientes.
+
+
+Las reservas de ejecución vinculan el nodo, la instancia exacta del servicio y un contador de propiedad monotónico. Una reserva caducada no se renueva ni se reintenta automáticamente; los procesos o cambios externos sin resolver impiden la recuperación explícita. El proceso auxiliar protege la terminación del padre desde el inicio. Las pruebas nativas pasan; la política Docker de este host impide crear espacios de nombres, por lo que los trabajadores del contenedor no se ejecutan. El flujo completo sigue en desarrollo.
+
+
+Las lecturas y los comandos HTTP para editar, cambiar ámbito o eliminar lecciones verifican permisos actuales de gestión y uso compartido sin exigir acceso al origen. La eliminación borra el contenido y conserva solo identidad sin contenido para reintentos autorizados. La recuperación usa el estado actual, sin restaurar visibilidad anterior. La ejecución de flujos sigue en desarrollo.

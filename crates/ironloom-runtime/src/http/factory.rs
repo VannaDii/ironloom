@@ -36,6 +36,8 @@ pub fn router(state: FactoryTransport) -> Router {
         .route("/api/v1/sessions/{id}/snapshot", get(snapshot))
         .route("/api/v1/sessions/{id}/history", get(history))
         .route("/api/v1/events", get(events))
+        .route(COMMANDS_PATH, axum::routing::post(command))
+        .route("/api/v1/projects/{project}/lessons", get(lessons))
         .layer(DefaultBodyLimit::max(MAX_COMMAND_BODY))
         .layer(middleware::map_response(
             |mut response: axum::response::Response| async move {
@@ -47,6 +49,61 @@ pub fn router(state: FactoryTransport) -> Router {
             },
         ))
         .with_state(state)
+}
+async fn command(
+    State(state): State<FactoryTransport>,
+    headers: HeaderMap,
+    bytes: Bytes,
+) -> Result<Json<CommandReceipt>, HttpError> {
+    let session = state
+        .auth
+        .authenticate(&headers, true)
+        .await
+        .map_err(HttpError)?;
+    let request: Command = body(&headers, &bytes)?;
+    match request.action {
+        CommandAction::Lesson(_) => state
+            .backend
+            .lesson_command(session, request)
+            .await
+            .map(Json)
+            .map_err(HttpError),
+        _ => Err(HttpError(ServiceError::Unavailable)),
+    }
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct LessonParameters {
+    assignment_id: Option<AssignmentId>,
+    scope: Option<ironloom_storage::factory::RecordScope>,
+    after: Option<LessonId>,
+    limit: Counter,
+}
+async fn lessons(
+    State(state): State<FactoryTransport>,
+    headers: HeaderMap,
+    Path(project): Path<ProjectId>,
+    Query(query): Query<LessonParameters>,
+) -> Result<Json<LessonPage>, HttpError> {
+    let session = state
+        .auth
+        .authenticate(&headers, false)
+        .await
+        .map_err(HttpError)?;
+    let query = LessonQuery::new(LessonQueryData {
+        project_id: project,
+        assignment_id: query.assignment_id,
+        scope: query.scope,
+        after: query.after,
+        limit: query.limit,
+    })
+    .map_err(|error| HttpError(ServiceError::Validation(error)))?;
+    state
+        .backend
+        .lessons(session, query)
+        .await
+        .map(Json)
+        .map_err(HttpError)
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]

@@ -25,3 +25,6 @@ The service now mounts configuration, instructions, conversation state/history a
 
 
 Linux command containment now uses a dedicated helper, bubblewrap namespaces, explicit descriptor-bound writable paths and seccomp. Host paths and Git/service metadata are not writable; enforcement failures never run the command. Native Linux functional tests cover isolation, symlink rejection and descendant cleanup. The container installs bubblewrap/Git with UID/GID 1000. Full fenced workflow wiring, Alpine execution qualification and Mac/GPU work remain separate and unfinished.
+
+
+Dispatch claims now bind the owning node, exact service instance and monotonic fence. Expired leases cannot renew or retry automatically; unresolved owned processes or external mutations block explicit recovery. The sandbox helper guards parent death before startup. Native tests pass, while this host’s default Docker policy denies namespace creation; container workers fail closed and remain unqualified. Full scheduler/workflow wiring is still in progress.

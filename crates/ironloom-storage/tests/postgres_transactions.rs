@@ -401,8 +401,264 @@ async fn concurrent_bootstrap_idempotency_sessions_and_rollback_survive_reconnec
         json!({"value":1})
     );
     let (_, same_winner, grants) = store.installation().await.unwrap();
-    assert_eq!(same_winner, Some(winner));
+    assert_eq!(same_winner, Some(winner.clone()));
     assert!(grants);
+    // Claims are node-local and instance-fenced; an expired lease is not process termination.
+    let node = ironloom_core::NodeId::new("dispatch-node").unwrap();
+    store
+        .enroll_node(
+            ironloom_storage::factory::NodeEnrollment::new(
+                ironloom_storage::factory::NodeEnrollmentData {
+                    installation_id: ironloom_core::InstallationId::new(installation.as_str())
+                        .unwrap(),
+                    node_id: node.clone(),
+                    host_id: ironloom_core::HostId::new("dispatch-host").unwrap(),
+                    approved_by: winner.clone(),
+                    public_key: ActorId::new("fixture-public-key").unwrap(),
+                    key_access_ref: ironloom_core::CredentialId::new("fixture-key-reference")
+                        .unwrap(),
+                    protocol_revision: ironloom_core::Counter::new(1),
+                },
+            )
+            .unwrap(),
+        )
+        .await
+        .unwrap();
+    let assignment = ironloom_core::AssignmentId::new("dispatch-assignment").unwrap();
+    let lesson = ironloom_storage::factory::Lesson::new(ironloom_storage::factory::LessonData {
+        lesson_id: ironloom_core::LessonId::new("lesson-local").unwrap(),
+        revision: ironloom_core::Counter::new(1),
+        origin_project: project.clone(),
+        origin_assignment: assignment.clone(),
+        source: ActorId::new("source-reference").unwrap(),
+        scope: ironloom_storage::factory::RecordScope::Project,
+        content: "Apply locally now".into(),
+    })
+    .unwrap();
+    store.save_lesson(lesson.clone()).await.unwrap();
+    let rows = store
+        .lesson_rows(&project, None, None, None, 10)
+        .await
+        .unwrap();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].1.assignment.as_ref(), Some(&assignment));
+    assert_eq!(
+        serde_json::from_value::<ironloom_storage::factory::Lesson>(rows[0].1.body.clone())
+            .unwrap(),
+        lesson
+    );
+    let mut restricted = (*lesson).clone();
+    restricted.lesson_id = ironloom_core::LessonId::new("lesson-restricted").unwrap();
+    restricted.scope = ironloom_storage::factory::RecordScope::Assignment;
+    store
+        .save_lesson(ironloom_storage::factory::Lesson::new(restricted).unwrap())
+        .await
+        .unwrap();
+    assert_eq!(
+        store
+            .lesson_rows(&project, None, None, None, 10)
+            .await
+            .unwrap()
+            .len(),
+        2
+    );
+    assert_eq!(
+        store
+            .lesson_rows(
+                &project,
+                Some(&ironloom_core::AssignmentId::new("another-assignment").unwrap()),
+                None,
+                None,
+                10
+            )
+            .await
+            .unwrap()
+            .len(),
+        1
+    );
+    assert_eq!(
+        store
+            .lesson_rows(
+                &project,
+                None,
+                Some(&ironloom_storage::factory::RecordScope::Project),
+                None,
+                10
+            )
+            .await
+            .unwrap()
+            .len(),
+        1
+    );
+    let instance_a = ActorId::new("instance-a").unwrap();
+    let instance_b = ActorId::new("instance-b").unwrap();
+    let lease_duration = std::time::Duration::from_secs(30);
+    let Operation::Write(mut queued) = store
+        .begin(
+            &alice,
+            &CommandId::new("queue-dispatch").unwrap(),
+            &json!({"fixture":"dispatch"}),
+            &scope,
+        )
+        .await
+        .unwrap()
+    else {
+        panic!("fresh dispatch command");
+    };
+    queued
+        .enqueue_dispatch(
+            &assignment,
+            &project,
+            &node,
+            &json!({"fixture":"scripted-role"}),
+        )
+        .await
+        .unwrap();
+    (*queued).commit(&json!({"queued":true})).await.unwrap();
+    assert!(
+        store
+            .claim_next(
+                &ironloom_core::NodeId::new("another-node").unwrap(),
+                &instance_a,
+                lease_duration
+            )
+            .await
+            .unwrap()
+            .is_none()
+    );
+    let (first, second) = tokio::join!(
+        store.claim_next(&node, &instance_a, lease_duration),
+        store.claim_next(&node, &instance_b, lease_duration)
+    );
+    let first = first.unwrap();
+    let second = second.unwrap();
+    assert_eq!(
+        usize::from(first.is_some()) + usize::from(second.is_some()),
+        1
+    );
+    let claim = first.or(second).unwrap();
+    assert_eq!(claim.fence.get(), 1);
+    let renewed = store.renew_claim(&claim, lease_duration).await.unwrap();
+    assert!(renewed.expires_at_ms >= claim.expires_at_ms);
+    let mut forged = claim.clone();
+    forged.instance = ActorId::new("different-instance").unwrap();
+    assert!(matches!(
+        store.renew_claim(&forged, lease_duration).await,
+        Err(DatabaseError::Conflict)
+    ));
+    sqlx::query("UPDATE ironloom.dispatch SET lease_expires_at=clock_timestamp()-interval '1 second' WHERE assignment_id=$1").bind(assignment.as_str()).execute(&pool).await.unwrap();
+    assert!(matches!(
+        store.renew_claim(&claim, lease_duration).await,
+        Err(DatabaseError::Conflict)
+    ));
+    assert!(
+        store
+            .claim_next(&node, &instance_b, lease_duration)
+            .await
+            .unwrap()
+            .is_none()
+    );
+    assert_eq!(store.uncertain_claims(&node, None).await.unwrap().len(), 1);
+    sqlx::query("INSERT INTO ironloom.processes(process_id,assignment_id,node_id,fence,os_pid,boot_identity,state,body) VALUES('fixture-process',$1,$2,1,NULL,'fixture-boot','running','{}')").bind(assignment.as_str()).bind(node.as_str()).execute(&pool).await.unwrap();
+    for process_stopped in [false, true] {
+        if process_stopped {
+            sqlx::query(
+                "UPDATE ironloom.processes SET state='stopped' WHERE process_id='fixture-process'",
+            )
+            .execute(&pool)
+            .await
+            .unwrap();
+            sqlx::query("INSERT INTO ironloom.external_mutations(mutation_id,assignment_id,fence,operation,state,body) VALUES('fixture-mutation',$1,1,'fixture-git','uncertain','{}')").bind(assignment.as_str()).execute(&pool).await.unwrap();
+        }
+        let Operation::Write(mut recovery) = store
+            .begin(
+                &alice,
+                &CommandId::new(if process_stopped {
+                    "blocked-mutation"
+                } else {
+                    "blocked-process"
+                })
+                .unwrap(),
+                &json!({"fixture":"recovery"}),
+                &scope,
+            )
+            .await
+            .unwrap()
+        else {
+            panic!("fresh recovery command");
+        };
+        assert!(matches!(
+            recovery.reconcile_claim(&claim, true).await,
+            Err(DatabaseError::Conflict)
+        ));
+        drop(recovery);
+    }
+    sqlx::query("UPDATE ironloom.external_mutations SET state='applied' WHERE mutation_id='fixture-mutation'").execute(&pool).await.unwrap();
+    let Operation::Write(mut recovery) = store
+        .begin(
+            &alice,
+            &CommandId::new("reconciled-dispatch").unwrap(),
+            &json!({"fixture":"reconciled"}),
+            &scope,
+        )
+        .await
+        .unwrap()
+    else {
+        panic!("fresh recovery");
+    };
+    recovery.reconcile_claim(&claim, true).await.unwrap();
+    (*recovery)
+        .commit(&json!({"reconciled":true}))
+        .await
+        .unwrap();
+    let replacement = store
+        .claim_next(&node, &instance_b, lease_duration)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(replacement.fence.get(), 2);
+    assert!(matches!(
+        store.uncertain_claim(&claim).await,
+        Err(DatabaseError::Conflict)
+    ));
+    let Operation::Write(mut stale) = store
+        .begin(
+            &alice,
+            &CommandId::new("stale-fenced-write").unwrap(),
+            &json!({"fixture":"stale"}),
+            &scope,
+        )
+        .await
+        .unwrap()
+    else {
+        panic!("fresh stale attempt");
+    };
+    assert!(matches!(
+        stale.require_claim(&claim).await,
+        Err(DatabaseError::Conflict)
+    ));
+    drop(stale);
+    let Operation::Write(mut finished) = store
+        .begin(
+            &alice,
+            &CommandId::new("finish-fenced-dispatch").unwrap(),
+            &json!({"fixture":"finish"}),
+            &scope,
+        )
+        .await
+        .unwrap()
+    else {
+        panic!("fresh finish");
+    };
+    finished.finish_claim(&replacement).await.unwrap();
+    (*finished).commit(&json!({"finished":true})).await.unwrap();
+    assert!(
+        store
+            .claim_next(&node, &instance_a, lease_duration)
+            .await
+            .unwrap()
+            .is_none()
+    );
     store.close().await;
     sqlx::raw_sql(sqlx::AssertSqlSafe(format!("DROP DATABASE {database}")))
         .execute(&admin)

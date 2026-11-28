@@ -269,6 +269,7 @@ impl FactoryBackend {
         if snapshot.session.conversation_id != conversation
             || Some(&snapshot.session.project_id) != record.project.as_ref()
             || snapshot.revision.get() != record.revision
+            || record.assignment.is_some()
         {
             return Err(ServiceError::Unavailable);
         }

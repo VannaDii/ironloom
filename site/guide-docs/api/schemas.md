@@ -55,3 +55,6 @@ Worker delegation is assignment/resource scoped, and record CAS preserves projec
 
 
 History paging now requires an explicit forward/backward direction, accepts an optional turn filter, and keeps each page oldest first at the requested event watermark. Session discovery requires `order=created_at` for native clients or `order=human_interaction` for dashboards. Empty, disabled or disjoint local device placements block execution readiness. Configuration/instruction and conversation catalog/snapshot/history HTTP routes use the shared authenticated backend; full runtime composition remains in progress.
+
+
+`CommandReceipt.cursor` is absent for event-free resource mutations. Shared lesson management must not require access to its private source conversation or reveal that cursor. Conversation commands retain real stream cursors. Configuration rejects duplicate role IDs; no extra entry-role setup requirement is added.

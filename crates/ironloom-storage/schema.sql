@@ -162,16 +162,24 @@ CREATE TABLE ironloom.authorization_outbox (
     body jsonb NOT NULL,
     completed_at timestamptz
 );
+CREATE INDEX authorization_outbox_pending ON ironloom.authorization_outbox(operation_id COLLATE "C") WHERE completed_at IS NULL;
 CREATE TABLE ironloom.dispatch (
     assignment_id text PRIMARY KEY,
     project_id text NOT NULL REFERENCES ironloom.projects,
     owner_node_id text NOT NULL REFERENCES ironloom.nodes,
     claim_node_id text,
-    fence bigint NOT NULL DEFAULT 0,
+    claim_instance text,
+    fence bigint NOT NULL DEFAULT 0 CHECK (fence >= 0),
     lease_expires_at timestamptz,
-    state text NOT NULL,
+    state text NOT NULL CHECK (state IN ('queued','claimed','finished')),
     requires_reconciliation boolean NOT NULL DEFAULT false,
-    body jsonb NOT NULL
+    queued_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+    body jsonb NOT NULL CHECK (jsonb_typeof(body)='object'),
+    CHECK ((claim_node_id IS NULL)=(claim_instance IS NULL)),
+    CHECK ((claim_node_id IS NULL)=(lease_expires_at IS NULL)),
+    CHECK (claim_node_id IS NULL OR claim_node_id=owner_node_id),
+    CHECK (state<>'queued' OR claim_node_id IS NULL),
+    CHECK (state<>'claimed' OR claim_node_id IS NOT NULL)
 );
 CREATE TABLE ironloom.processes (
     process_id text PRIMARY KEY,
@@ -183,6 +191,17 @@ CREATE TABLE ironloom.processes (
     state text NOT NULL,
     body jsonb NOT NULL
 );
+CREATE INDEX dispatch_ready ON ironloom.dispatch(owner_node_id,queued_at,assignment_id) WHERE state='queued' AND NOT requires_reconciliation;
+CREATE INDEX processes_assignment ON ironloom.processes(assignment_id,state);
+CREATE TABLE ironloom.external_mutations (
+    mutation_id text PRIMARY KEY,
+    assignment_id text NOT NULL REFERENCES ironloom.dispatch,
+    fence bigint NOT NULL CHECK (fence > 0),
+    operation text NOT NULL,
+    state text NOT NULL CHECK (state IN ('pending','uncertain','applied','not_applied')),
+    body jsonb NOT NULL CHECK (jsonb_typeof(body)='object')
+);
+CREATE INDEX external_mutations_assignment ON ironloom.external_mutations(assignment_id,state);
 CREATE TABLE ironloom.file_owners (
     assignment_id text NOT NULL REFERENCES ironloom.dispatch,
     relative_path text NOT NULL,

@@ -55,3 +55,6 @@ La delegación del trabajador se limita a su asignación y recurso; CAS conserva
 
 
 La paginación del historial requiere una dirección explícita, permite filtrar por turno y conserva el orden cronológico dentro de cada página en la secuencia de eventos solicitada. La búsqueda de conversaciones requiere `order=created_at` para clientes nativos u `order=human_interaction` para el panel. Las ubicaciones locales vacías, desactivadas o sin intersección impiden la ejecución. Las rutas HTTP de configuración, instrucciones e historial usan el servicio autenticado compartido; la composición completa sigue en desarrollo.
+
+
+`CommandReceipt.cursor` no aparece en cambios de recursos sin eventos. Gestionar una lección compartida no requiere acceso a su conversación privada de origen ni revela su cursor. Los comandos de conversación conservan cursores reales. La configuración rechaza roles duplicados y no añade una selección inicial obligatoria.

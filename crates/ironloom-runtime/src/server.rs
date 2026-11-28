@@ -146,6 +146,7 @@ pub async fn serve(bind: &str) -> Result<(), StartupError> {
     let listener = tokio::net::TcpListener::bind(bind)
         .await
         .map_err(|_| StartupError)?;
+    let maintenance = backend.start_maintenance();
     let result = axum::serve(listener, app)
         .with_graceful_shutdown(async move {
             shutdown().await;
@@ -153,6 +154,8 @@ pub async fn serve(bind: &str) -> Result<(), StartupError> {
         })
         .await
         .map_err(|_| StartupError);
+    maintenance.abort();
+    let _ = maintenance.await;
     store.close().await;
     result
 }

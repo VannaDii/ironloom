@@ -197,7 +197,7 @@ ServiceEvent, ServiceEventData {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum CommandDisposition {
-    /// New command and initial event committed atomically.
+    /// New command and outcome committed atomically, including an event when conversation-scoped.
     Accepted,
     /// Same actor/key/payload returns existing receipt without dispatch.
     Replayed,
@@ -211,8 +211,9 @@ CommandReceipt, CommandReceiptData {
     command_id: CommandId,
     /// Duplicate/conflict result.
     disposition: CommandDisposition,
-    /// First committed event or current replay position.
-    cursor: ReplayCursor,
+    /// First committed event/current replay position for conversation commands. Event-free
+    /// resource mutations have no source cursor and never require private conversation access.
+    cursor: Option<ReplayCursor>,
 } |value| {
     let _ = value;
     Ok(())
@@ -612,7 +613,9 @@ pub trait FactoryService: Send + Sync {
         session: AuthenticatedSession,
         after: ReplayCursor,
     ) -> BoxFuture<'_, Result<EventSubscription, ServiceError>>;
-    /// Persists actor/key/payload identity and initial event in one transaction; replay never dispatches.
+    /// Persists actor/key/payload identity and outcome in one transaction; conversation mutations
+    /// also persist their event. Event-free resource mutations expose no private source cursor.
+    /// Replay never dispatches new work.
     fn command(
         &self,
         session: AuthenticatedSession,
@@ -964,6 +967,8 @@ ConfigurationSnapshot, ConfigurationSnapshotData {
     if model_ids.len() != value.models.len() {
         return Err(ValidationErrors::field("models", "duplicate_profile"));
     }
+    let roles=value.roles.iter().map(|role|&role.role_id).collect::<std::collections::BTreeSet<_>>();
+    if roles.len()!=value.roles.len() {return Err(ValidationErrors::field("roles","duplicate_role"));}
     if value.roles.iter().any(|role| {
         role.enabled
             && role

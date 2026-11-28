@@ -4473,6 +4473,71 @@
         "order": "created_at"
       },
       "expected_errors": []
+    },
+    {
+      "name": "event-free-lesson-command-has-no-source-cursor",
+      "contract": "command_receipt",
+      "input": {
+        "command_id": "command-1",
+        "disposition": "accepted",
+        "cursor": null
+      },
+      "expected_errors": []
+    },
+    {
+      "name": "conversation-command-has-durable-stream-cursor",
+      "contract": "command_receipt",
+      "input": {
+        "command_id": "command-1",
+        "disposition": "accepted",
+        "cursor": {
+          "conversation_id": "conversation-1",
+          "sequence": "1"
+        }
+      },
+      "expected_errors": []
+    },
+    {
+      "name": "duplicate-role-identities-conflict",
+      "contract": "configuration_snapshot",
+      "input": {
+        "project_id": null,
+        "revision": "1",
+        "setup": null,
+        "roles": [
+          {
+            "role_id": "same-role",
+            "enabled": false,
+            "model_profile_id": null,
+            "reasoning_applicable": false,
+            "reasoning_effort": null,
+            "device_bindings": [],
+            "instructions_id": "instructions"
+          },
+          {
+            "role_id": "same-role",
+            "enabled": false,
+            "model_profile_id": null,
+            "reasoning_applicable": false,
+            "reasoning_effort": null,
+            "device_bindings": [],
+            "instructions_id": "instructions"
+          }
+        ],
+        "models": [],
+        "device_preferences": [],
+        "discovered_devices": [],
+        "execution_ready": false,
+        "unmet_prerequisites": [
+          "lesson_handling"
+        ]
+      },
+      "expected_errors": [
+        {
+          "field": "roles",
+          "code": "duplicate_role"
+        }
+      ]
     }
   ]
 }

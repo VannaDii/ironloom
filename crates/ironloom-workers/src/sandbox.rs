@@ -94,6 +94,7 @@ impl Launch {
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Request {
+    parent_pid: u32,
     bwrap: PathBuf,
     launch: Launch,
 }
@@ -115,6 +116,7 @@ impl Runner {
     pub async fn spawn(&self, launch: Launch) -> Result<tokio::process::Child, SandboxError> {
         launch.validate()?;
         let bytes = serde_json::to_vec(&Request {
+            parent_pid: std::process::id(),
             bwrap: self.bwrap.clone(),
             launch,
         })
@@ -134,6 +136,7 @@ impl Runner {
         let mut input = child.stdin.take().ok_or(SandboxError)?;
         input.write_all(&bytes).await.map_err(|_| SandboxError)?;
         input.shutdown().await.map_err(|_| SandboxError)?;
+        drop(input);
         Ok(child)
     }
 }
@@ -175,6 +178,10 @@ fn beneath(base: &OwnedFd, path: &str) -> Result<OwnedFd, SandboxError> {
 /// Runs only in the dedicated single-threaded child before any Tokio runtime starts.
 /// Mounts immutable descriptor targets, installs seccomp and replaces itself with bubblewrap.
 pub fn child_main() -> Result<(), SandboxError> {
+    // Install containment before reading a possibly slow parent pipe. The expected-parent check
+    // rejects orphan helpers if the service died before this handler could install PDEATHSIG.
+    nix::sys::prctl::set_pdeathsig(nix::sys::signal::Signal::SIGKILL).map_err(|_| SandboxError)?;
+    nix::sys::prctl::set_no_new_privs().map_err(|_| SandboxError)?;
     let mut bytes = Vec::new();
     std::io::stdin()
         .take((MAX_REQUEST_BYTES + 1) as u64)
@@ -184,6 +191,9 @@ pub fn child_main() -> Result<(), SandboxError> {
         return Err(SandboxError);
     }
     let request: Request = serde_json::from_slice(&bytes).map_err(|_| SandboxError)?;
+    if nix::unistd::getppid().as_raw() as u32 != request.parent_pid {
+        return Err(SandboxError);
+    }
     request.launch.validate()?;
     if !request.bwrap.is_absolute() {
         return Err(SandboxError);

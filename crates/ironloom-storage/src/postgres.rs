@@ -10,6 +10,8 @@ const CONNECTIONS: u32 = 16;
 const ACQUIRE_TIMEOUT: Duration = Duration::from_secs(10);
 const UNIQUE_VIOLATION: &str = "23505";
 const CREDENTIAL_EXISTS_SQL: &str = "SELECT EXISTS(SELECT 1 FROM ironloom.credentials WHERE credential_id=$1 AND deleted_at IS NULL)";
+/// Durable dispatch claims and explicit recovery fencing.
+pub mod dispatch;
 
 /// Redacted durable storage failures; callers never receive SQL or connection secrets.
 #[derive(Debug, Error)]
@@ -46,6 +48,8 @@ pub struct Record {
     pub revision: u64,
     /// Owning project; absent for installation configuration.
     pub project: Option<ProjectId>,
+    /// Immutable assignment scope, independently checked against decoded owning-crate payloads.
+    pub assignment: Option<ironloom_core::AssignmentId>,
     /// Serialized owning-crate model; decode and validate independently before domain use.
     pub body: Value,
 }
@@ -352,7 +356,7 @@ impl Store {
     }
     /// Reads a current record. Decode using the owning crate's validated type before use.
     pub async fn get(&self, kind: &str, id: &ActorId) -> Result<Option<Record>, DatabaseError> {
-        let row=sqlx::query("SELECT revision::text,project_id,body FROM ironloom.records WHERE kind=$1 AND record_id=$2")
+        let row=sqlx::query("SELECT revision::text,project_id,assignment_id,body FROM ironloom.records WHERE kind=$1 AND record_id=$2")
             .bind(kind).bind(id.as_str()).fetch_optional(&self.pool).await?;
         row.map(record).transpose()
     }
@@ -366,7 +370,7 @@ impl Store {
             .iter()
             .map(|id| id.as_str().to_owned())
             .collect::<Vec<_>>();
-        let rows=sqlx::query("SELECT record_id,revision::text,project_id,body FROM ironloom.records WHERE kind=$1 AND record_id=ANY($2)")
+        let rows=sqlx::query("SELECT record_id,revision::text,project_id,assignment_id,body FROM ironloom.records WHERE kind=$1 AND record_id=ANY($2)")
             .bind(kind).bind(keys).fetch_all(&self.pool).await?;
         rows.into_iter()
             .map(|row| {
@@ -407,8 +411,37 @@ impl Store {
         after: Option<&ironloom_core::InstructionId>,
         limit: i64,
     ) -> Result<Vec<(ActorId, Record)>, DatabaseError> {
-        let rows=sqlx::query("SELECT record_id,revision::text,project_id,body FROM ironloom.records WHERE kind='instruction' AND (project_id IS NULL OR project_id=$1) AND ($2::text IS NULL OR record_id COLLATE \"C\">$2 COLLATE \"C\") ORDER BY record_id COLLATE \"C\" LIMIT $3")
+        let rows=sqlx::query("SELECT record_id,revision::text,project_id,assignment_id,body FROM ironloom.records WHERE kind='instruction' AND (project_id IS NULL OR project_id=$1) AND ($2::text IS NULL OR record_id COLLATE \"C\">$2 COLLATE \"C\") ORDER BY record_id COLLATE \"C\" LIMIT $3")
             .bind(project.map(ProjectId::as_str)).bind(after.map(ironloom_core::InstructionId::as_str)).bind(limit.clamp(1,101)).fetch_all(&self.pool).await?;
+        rows.into_iter()
+            .map(|row| {
+                let id = ActorId::new(row.get::<String, _>("record_id"))
+                    .map_err(|_| DatabaseError::Corrupt)?;
+                Ok((id, record(row)?))
+            })
+            .collect()
+    }
+    /// Reads lesson metadata/content candidates in one project context, including installation
+    /// sharing but without granting source access. The service checks each current lesson grant.
+    pub async fn lesson_rows(
+        &self,
+        project: &ProjectId,
+        assignment: Option<&ironloom_core::AssignmentId>,
+        scope: Option<&crate::factory::RecordScope>,
+        after: Option<&ironloom_core::LessonId>,
+        limit: u32,
+    ) -> Result<Vec<(ActorId, Record)>, DatabaseError> {
+        const MAX_LESSON_ROWS: u32 = 101;
+        if limit == 0 || limit > MAX_LESSON_ROWS {
+            return Err(DatabaseError::Conflict);
+        }
+        let scope = scope.map(|scope| match scope {
+            crate::factory::RecordScope::Assignment => "assignment",
+            crate::factory::RecordScope::Project => "project",
+            crate::factory::RecordScope::Installation => "installation",
+        });
+        let rows=sqlx::query("SELECT record_id,revision::text,project_id,assignment_id,body FROM ironloom.records WHERE kind='lesson' AND (project_id=$1 OR body->>'scope'='installation') AND ($2::text IS NULL OR body->>'scope'<>'assignment' OR assignment_id=$2) AND ($3::text IS NULL OR body->>'scope'=$3) AND ($4::text IS NULL OR record_id COLLATE \"C\">$4 COLLATE \"C\") ORDER BY record_id COLLATE \"C\" LIMIT $5")
+            .bind(project.as_str()).bind(assignment.map(ironloom_core::AssignmentId::as_str)).bind(scope).bind(after.map(ironloom_core::LessonId::as_str)).bind(i64::from(limit)).fetch_all(&self.pool).await?;
         rows.into_iter()
             .map(|row| {
                 let id = ActorId::new(row.get::<String, _>("record_id"))
@@ -425,7 +458,7 @@ impl Store {
         after: Option<&ActorId>,
         limit: i64,
     ) -> Result<Vec<(ActorId, Record)>, DatabaseError> {
-        let rows=sqlx::query("SELECT record_id,revision::text,project_id,body FROM ironloom.records WHERE kind=$1 AND ($2::text IS NULL OR project_id=$2) AND ($3::text IS NULL OR record_id>$3) ORDER BY record_id LIMIT $4")
+        let rows=sqlx::query("SELECT record_id,revision::text,project_id,assignment_id,body FROM ironloom.records WHERE kind=$1 AND ($2::text IS NULL OR project_id=$2) AND ($3::text IS NULL OR record_id>$3) ORDER BY record_id LIMIT $4")
             .bind(kind).bind(project.map(ProjectId::as_str)).bind(after.map(ActorId::as_str)).bind(limit.clamp(1,100)).fetch_all(&self.pool).await?;
         rows.into_iter()
             .map(|row| {
@@ -554,9 +587,12 @@ impl Store {
         .transpose()
     }
     /// Returns pending already-audited grant intents for retry after a cross-service interruption.
-    pub async fn grant_intents(&self) -> Result<Vec<(ActorId, Value)>, DatabaseError> {
-        let rows=sqlx::query("SELECT operation_id,body FROM ironloom.authorization_outbox WHERE completed_at IS NULL ORDER BY operation_id LIMIT 100")
-            .fetch_all(&self.pool).await?;
+    pub async fn grant_intents(
+        &self,
+        after: Option<&ActorId>,
+    ) -> Result<Vec<(ActorId, Value)>, DatabaseError> {
+        let rows=sqlx::query("SELECT operation_id,body FROM ironloom.authorization_outbox WHERE completed_at IS NULL AND ($1::text IS NULL OR operation_id COLLATE \"C\">$1 COLLATE \"C\") ORDER BY operation_id COLLATE \"C\" LIMIT 100")
+            .bind(after.map(ActorId::as_str)).fetch_all(&self.pool).await?;
         rows.into_iter()
             .map(|row| {
                 Ok((
@@ -576,6 +612,27 @@ impl Store {
         .execute(&self.pool)
         .await?;
         Ok(())
+    }
+    /// Locks current resource metadata and its content-free deletion marker while applying
+    /// live grant projections. The same scope lock is used by resource mutation commands.
+    pub async fn resource_grants(
+        &self,
+        kind: &str,
+        id: &ActorId,
+    ) -> Result<ResourceGrants, DatabaseError> {
+        let mut tx = self.pool.begin().await?;
+        scope_lock(&mut tx, &format!("{kind}:{}", id.as_str())).await?;
+        let current=sqlx::query("SELECT revision::text,project_id,assignment_id,body FROM ironloom.records WHERE kind=$1 AND record_id=$2 FOR UPDATE")
+            .bind(kind).bind(id.as_str()).fetch_optional(&mut *tx).await?.map(record).transpose()?;
+        let deleted=sqlx::query("SELECT revision::text,project_id,assignment_id,body FROM ironloom.records WHERE kind=$1 AND record_id=$2 FOR UPDATE")
+            .bind(format!("{kind}_deleted")).bind(id.as_str()).fetch_optional(&mut *tx).await?.map(record).transpose()?;
+        Ok(ResourceGrants {
+            tx,
+            kind: kind.to_owned(),
+            id: id.clone(),
+            current,
+            deleted,
+        })
     }
     /// Locks the installation's initial-grant operation across nodes. The completion recheck,
     /// external idempotent grant write and ready update must occur while this guard is held.
@@ -619,6 +676,32 @@ pub enum Operation {
     /// New command transaction; dropping it rolls back all effects.
     Write(Box<Batch>),
 }
+/// Cross-node current-resource guard for an OpenFGA projection; never applies a stale revision
+/// merely because a delayed caller retained an older desired grant set.
+pub struct ResourceGrants {
+    tx: Transaction<'static, Postgres>,
+    kind: String,
+    id: ActorId,
+    current: Option<Record>,
+    deleted: Option<Record>,
+}
+impl ResourceGrants {
+    /// Current stored owning-crate payload; validate its immutable scope before projecting grants.
+    pub fn current(&self) -> Option<&Record> {
+        self.current.as_ref()
+    }
+    /// Content-free current deletion marker when the resource has been removed.
+    pub fn deleted(&self) -> Option<&Record> {
+        self.deleted.as_ref()
+    }
+    /// Marks this resource's coalesced grant intents applied only while its current state is locked.
+    pub async fn complete(mut self) -> Result<(), DatabaseError> {
+        sqlx::query("UPDATE ironloom.authorization_outbox SET completed_at=clock_timestamp() WHERE completed_at IS NULL AND body->>'resource_kind'=$1 AND body->>'resource_id'=$2")
+            .bind(&self.kind).bind(self.id.as_str()).execute(&mut *self.tx).await?;
+        self.tx.commit().await?;
+        Ok(())
+    }
+}
 /// One locked durable mutation; raw SQL and connection ownership remain in storage.
 pub struct Batch {
     tx: Transaction<'static, Postgres>,
@@ -628,7 +711,7 @@ pub struct Batch {
 impl Batch {
     /// Reads and locks a record in this transaction.
     pub async fn get(&mut self, kind: &str, id: &ActorId) -> Result<Option<Record>, DatabaseError> {
-        sqlx::query("SELECT revision::text,project_id,body FROM ironloom.records WHERE kind=$1 AND record_id=$2 FOR UPDATE")
+        sqlx::query("SELECT revision::text,project_id,assignment_id,body FROM ironloom.records WHERE kind=$1 AND record_id=$2 FOR UPDATE")
             .bind(kind).bind(id.as_str()).fetch_optional(&mut *self.tx).await?.map(record).transpose()
     }
     /// Tests credential availability within the mutation's existing transaction.
@@ -660,7 +743,7 @@ impl Batch {
         after: Option<&ActorId>,
         limit: i64,
     ) -> Result<Vec<(ActorId, Record)>, DatabaseError> {
-        let rows=sqlx::query("SELECT record_id,revision::text,project_id,body FROM ironloom.records WHERE kind=$1 AND ($2::text IS NULL OR record_id>$2) ORDER BY record_id LIMIT $3")
+        let rows=sqlx::query("SELECT record_id,revision::text,project_id,assignment_id,body FROM ironloom.records WHERE kind=$1 AND ($2::text IS NULL OR record_id>$2) ORDER BY record_id LIMIT $3")
             .bind(kind).bind(after.map(ActorId::as_str)).bind(limit.clamp(1,100)).fetch_all(&mut *self.tx).await?;
         rows.into_iter()
             .map(|row| {
@@ -678,7 +761,7 @@ impl Batch {
         after: Option<&ActorId>,
         limit: i64,
     ) -> Result<Vec<(ActorId, Record)>, DatabaseError> {
-        let rows=sqlx::query("SELECT record_id,revision::text,project_id,body FROM ironloom.records WHERE kind=$1 AND assignment_id=$2 AND ($3::text IS NULL OR record_id>$3) ORDER BY record_id LIMIT $4 FOR UPDATE")
+        let rows=sqlx::query("SELECT record_id,revision::text,project_id,assignment_id,body FROM ironloom.records WHERE kind=$1 AND assignment_id=$2 AND ($3::text IS NULL OR record_id>$3) ORDER BY record_id LIMIT $4 FOR UPDATE")
             .bind(kind).bind(assignment.as_str()).bind(after.map(ActorId::as_str)).bind(limit.clamp(1,100)).fetch_all(&mut *self.tx).await?;
         rows.into_iter()
             .map(|row| {
@@ -950,10 +1033,15 @@ impl Batch {
 fn record(row: sqlx::postgres::PgRow) -> Result<Record, DatabaseError> {
     let revision: String = row.get("revision");
     let project: Option<String> = row.get("project_id");
+    let assignment: Option<String> = row.get("assignment_id");
     Ok(Record {
         revision: revision.parse().map_err(|_| DatabaseError::Corrupt)?,
         project: project
             .map(ProjectId::new)
+            .transpose()
+            .map_err(|_| DatabaseError::Corrupt)?,
+        assignment: assignment
+            .map(ironloom_core::AssignmentId::new)
             .transpose()
             .map_err(|_| DatabaseError::Corrupt)?,
         body: row.get("body"),
@@ -1054,10 +1142,10 @@ impl crate::factory::FactoryStore for Store {
             let revision = lesson.revision.get();
             let body =
                 serde_json::to_value(&lesson).map_err(|_| crate::factory::StoreFailure::Corrupt)?;
-            let changed = sqlx::query("INSERT INTO ironloom.records(kind,record_id,project_id,assignment_id,revision,body) SELECT 'lesson',$1,$2,$3,1,$4 WHERE $5::text::numeric=1 ON CONFLICT(kind,record_id) DO NOTHING")
+            let changed = sqlx::query("INSERT INTO ironloom.records(kind,record_id,project_id,assignment_id,revision,body) SELECT 'lesson',$1,$2,$3,1,$4 WHERE $5::text::numeric=1 AND NOT EXISTS(SELECT 1 FROM ironloom.records WHERE kind='lesson_deleted' AND record_id=$1) ON CONFLICT(kind,record_id) DO NOTHING")
                 .bind(lesson.lesson_id.as_str()).bind(lesson.origin_project.as_str()).bind(lesson.origin_assignment.as_str()).bind(&body).bind(revision.to_string()).execute(&mut *tx).await.map_err(DatabaseError::from)?.rows_affected();
             if changed == 0 {
-                let changed = sqlx::query("UPDATE ironloom.records SET body=$1,revision=$2::text::numeric,updated_at=now() WHERE kind='lesson' AND record_id=$3 AND revision=$2::text::numeric-1 AND project_id=$4 AND assignment_id=$5")
+                let changed = sqlx::query("UPDATE ironloom.records SET body=$1,revision=$2::text::numeric,updated_at=now() WHERE kind='lesson' AND record_id=$3 AND revision=$2::text::numeric-1 AND project_id=$4 AND assignment_id=$5 AND NOT EXISTS(SELECT 1 FROM ironloom.records removed WHERE removed.kind='lesson_deleted' AND removed.record_id=$3)")
                     .bind(&body).bind(revision.to_string()).bind(lesson.lesson_id.as_str()).bind(lesson.origin_project.as_str()).bind(lesson.origin_assignment.as_str()).execute(&mut *tx).await.map_err(DatabaseError::from)?.rows_affected();
                 if changed != 1 {
                     return Err(crate::factory::StoreFailure::Conflict);

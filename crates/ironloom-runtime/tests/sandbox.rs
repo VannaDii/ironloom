@@ -3,7 +3,7 @@ use ironloom_core::{AssignmentId, WorkerId};
 use ironloom_workers::sandbox::{Launch, Runner};
 use ironloom_worktrees::factory::{WorkerPaths, WorkerPathsData};
 use std::path::Path;
-use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
 fn paths() -> WorkerPaths {
     WorkerPaths::new(WorkerPathsData {
@@ -151,6 +151,43 @@ fn stopped(pid: u32) -> bool {
     };
     stat.rsplit_once(')')
         .is_some_and(|(_, tail)| tail.trim_start().starts_with('Z'))
+}
+#[tokio::test]
+async fn orphan_helper_rejects_a_parent_identity_that_changed_before_containment() {
+    let root = tempfile::tempdir().unwrap();
+    roots(root.path());
+    let launch = Launch::new(
+        root.path().join("workspace"),
+        root.path().join("artifacts"),
+        paths(),
+        command("echo orphan > src/orphan"),
+    )
+    .unwrap();
+    let mut child = tokio::process::Command::new(env!("CARGO_BIN_EXE_ironloom"))
+        .arg("sandbox-child")
+        .env_clear()
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .kill_on_drop(true)
+        .spawn()
+        .unwrap();
+    let mut input = child.stdin.take().unwrap();
+    input
+        .write_all(
+            &serde_json::to_vec(
+                &serde_json::json!({"parent_pid":0,"bwrap":"/usr/bin/bwrap","launch":launch}),
+            )
+            .unwrap(),
+        )
+        .await
+        .unwrap();
+    input.shutdown().await.unwrap();
+    drop(input);
+    let output = child.wait_with_output().await.unwrap();
+    assert!(!output.status.success());
+    assert!(!root.path().join("workspace/src/orphan").exists());
+    assert!(!String::from_utf8_lossy(&output.stderr).contains(root.path().to_str().unwrap()));
 }
 #[tokio::test]
 async fn killing_owned_sandbox_stops_background_descendants_in_its_pid_namespace() {

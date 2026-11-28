@@ -8,7 +8,7 @@
       "description": "Durable duplicate handling contract.",
       "oneOf": [
         {
-          "description": "New command and initial event committed atomically.",
+          "description": "New command and outcome committed atomically, including an event when conversation-scoped.",
           "type": "string",
           "const": "accepted"
         },
@@ -40,8 +40,15 @@
           "$ref": "#/$defs/CommandId"
         },
         "cursor": {
-          "description": "First committed event or current replay position.",
-          "$ref": "#/$defs/Validated"
+          "description": "First committed event/current replay position for conversation commands. Event-free\nresource mutations have no source cursor and never require private conversation access.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Validated"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "disposition": {
           "description": "Duplicate/conflict result.",
@@ -51,8 +58,7 @@
       "additionalProperties": false,
       "required": [
         "command_id",
-        "disposition",
-        "cursor"
+        "disposition"
       ]
     },
     "ConversationId": {
