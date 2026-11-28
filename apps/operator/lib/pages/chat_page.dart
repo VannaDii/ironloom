@@ -17,12 +17,15 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
+  List<ProjectSummary> projects = [];
   List<SessionSummary> sessions = [];
-  ConversationId? after;
-  bool more = false;
+  ActorId? after;
   String? error;
   bool busy = true;
-  final project = TextEditingController();
+  final name = TextEditingController(),
+      repository = TextEditingController(),
+      credential = TextEditingController(),
+      privateProject = TextEditingController();
   @override
   void initState() {
     super.initState();
@@ -31,26 +34,33 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   void dispose() {
-    project.dispose();
+    for (final field in [name, repository, credential, privateProject]) {
+      field.dispose();
+    }
     super.dispose();
   }
 
   Future<void> load({bool next = false}) async {
     try {
-      final page = await widget.client.sessions(
-        SessionQuery(
-          after: next ? after : null,
-          limit: Counter('100'),
-          archived: false,
-        ),
+      final projectFuture = widget.client.projects(
+        ProjectQuery(after: next ? after : null, limit: Counter('50')),
       );
+      final sessionsFuture = widget.client.sessions(
+        SessionQuery(limit: Counter('100'), archived: false),
+      );
+      final results = await Future.wait<Object>([
+        projectFuture,
+        sessionsFuture,
+      ]);
+      final page = results[0] as ProjectPage;
+      final conversations = results[1] as List<SessionSummary>;
       if (mounted) {
         setState(() {
-          sessions = next ? [...sessions, ...page] : page;
-          after = page.lastOrNull?.conversationId;
-          more = page.length == 100;
-          error = null;
+          projects = next ? [...projects, ...page.projects] : page.projects;
+          sessions = conversations;
+          after = page.nextAfter;
           busy = false;
+          error = null;
         });
       }
     } on Object catch (e) {
@@ -74,103 +84,146 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final projects = <String, List<SessionSummary>>{};
-    for (final session in sessions) {
-      projects.putIfAbsent(session.projectId.value, () => []).add(session);
-    }
-    final ordered = projects.entries.toList()
-      ..sort((a, b) {
-        Counter latest(List<SessionSummary> list) => list
-            .map((s) => s.lastHumanInteractionMs)
-            .reduce((a, b) => a > b ? a : b);
-        return latest(b.value).compareTo(latest(a.value));
-      });
-    return PageBody(
-      title: 'Projects',
-      actions: [
-        IconButton(
-          onPressed: load,
-          tooltip: 'Refresh projects',
-          icon: const Icon(Icons.refresh),
+  Widget build(BuildContext context) => PageBody(
+    title: 'Projects',
+    actions: [
+      IconButton(
+        onPressed: load,
+        tooltip: 'Refresh projects',
+        icon: const Icon(Icons.refresh),
+      ),
+    ],
+    children: [
+      const Text('Most recent human interaction first'),
+      const SizedBox(height: 16),
+      if (busy) const LinearProgressIndicator(),
+      if (error != null) Notice(error!, error: true),
+      if (!busy && projects.isEmpty && error == null)
+        const Notice(
+          'No projects are visible to this account. Create a project or request membership.',
         ),
-      ],
-      children: [
-        const Text('Most recent human interaction first'),
-        const SizedBox(height: 16),
-        if (busy) const LinearProgressIndicator(),
-        if (error != null) Notice(error!, error: true),
-        if (!busy && sessions.isEmpty && error == null)
-          const Notice(
-            'No conversations are visible to this account. Project access is assigned separately from sign-in.',
-          ),
-        for (final entry in ordered)
-          Section(
-            'Project ${entry.key}',
-            children: [
-              for (final session in entry.value)
-                ListTile(
-                  leading: const Icon(Icons.chat_bubble_outline),
-                  title: Text(session.conversationId.value),
-                  subtitle: Text(
-                    session.activeTurnId == null
-                        ? 'Ready for conversation'
-                        : 'Active turn ${session.activeTurnId!.value}',
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => open(session.conversationId),
-                ),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: AsyncAction(
-                  label: 'New conversation',
-                  icon: Icons.add_comment_outlined,
-                  action: () async {
-                    final state = await widget.client.createConversation(
-                      CreateConversation(
-                        commandId: CommandId(const Uuid().v4()),
-                        projectId: ProjectId(entry.key),
-                      ),
-                    );
-                    await open(state.session.conversationId);
-                  },
-                ),
-              ),
-            ],
-          ),
-        if (more)
-          AsyncAction(
-            label: 'Load more projects & conversations',
-            action: () => load(next: true),
-          ),
+      for (final project in projects)
         Section(
-          'Start in an existing project',
+          project.name,
           children: [
-            TextField(
-              controller: project,
-              decoration: const InputDecoration(
-                labelText: 'Authorized project ID',
-              ),
+            Text(
+              'Project ${project.projectId.value} · Node ${project.ownerNode.value}',
             ),
-            const SizedBox(height: 12),
+            if (project.storage == ProjectStorageState.unavailable)
+              const Notice(
+                'Workspace storage is unavailable. Project metadata and conversation history are retained.',
+              ),
+            for (final session in sessions.where(
+              (s) => s.projectId.value == project.projectId.value,
+            ))
+              ListTile(
+                leading: const Icon(Icons.chat_bubble_outline),
+                title: Text(session.conversationId.value),
+                subtitle: Text(
+                  session.activeTurnId == null
+                      ? 'Ready for conversation'
+                      : 'Active turn ${session.activeTurnId!.value}',
+                ),
+                onTap: () => open(session.conversationId),
+              ),
             AsyncAction(
-              label: 'Create empty conversation',
-              icon: Icons.add,
-              action: () async {
-                final state = await widget.client.createConversation(
-                  CreateConversation(
-                    commandId: CommandId(const Uuid().v4()),
-                    projectId: ProjectId(project.text.trim()),
-                  ),
-                );
-                await open(state.session.conversationId);
-              },
+              label: 'New conversation',
+              icon: Icons.add_comment_outlined,
+              action: !project.permissions.contains(Permission.operate)
+                  ? null
+                  : () async {
+                      final state = await widget.client.createConversation(
+                        CreateConversation(
+                          commandId: CommandId(const Uuid().v4()),
+                          projectId: project.projectId,
+                        ),
+                      );
+                      await open(state.session.conversationId);
+                    },
             ),
           ],
         ),
-      ],
-    );
-  }
+      if (after != null)
+        AsyncAction(
+          label: 'Load more projects',
+          action: () => load(next: true),
+        ),
+      Section(
+        'Create a project',
+        children: [
+          TextField(
+            controller: name,
+            decoration: const InputDecoration(labelText: 'Project name'),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: repository,
+            decoration: const InputDecoration(
+              labelText: 'GitHub owner/repository (optional)',
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: credential,
+            decoration: const InputDecoration(
+              labelText: 'Source credential reference (optional)',
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'The service assigns a stable project identity and uses configured project storage.',
+          ),
+          const SizedBox(height: 12),
+          AsyncAction(
+            label: 'Create project',
+            icon: Icons.add,
+            action: () async {
+              await widget.client.createProject(
+                CreateProject(
+                  commandId: CommandId(const Uuid().v4()),
+                  name: name.text.trim(),
+                  repository: repository.text.trim().isEmpty
+                      ? null
+                      : RepositorySlug(repository.text.trim()),
+                  sourceCredentialId: credential.text.trim().isEmpty
+                      ? null
+                      : CredentialId(credential.text.trim()),
+                ),
+              );
+              name.clear();
+              repository.clear();
+              credential.clear();
+              await load();
+            },
+          ),
+        ],
+      ),
+      Section(
+        'Administrator private-project access',
+        children: [
+          const Text(
+            'An administrator must explicitly grant themselves access before viewing a private project. The service records this grant.',
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: privateProject,
+            decoration: const InputDecoration(labelText: 'Private project ID'),
+          ),
+          const SizedBox(height: 12),
+          AsyncAction(
+            label: 'Record access grant',
+            action: () async {
+              await widget.client.selfGrant(
+                ProjectId(privateProject.text.trim()),
+                CommandId(const Uuid().v4()),
+              );
+              await load();
+            },
+          ),
+        ],
+      ),
+    ],
+  );
 }
 
 class ChatPage extends StatefulWidget {
@@ -231,8 +284,7 @@ class _ChatPageState extends State<ChatPage> {
           items = chat.history!.items;
           before = chat.history!.nextBefore;
           execution = chat.snapshot!.executionState;
-          assignment =
-              chat.snapshot!.pendingQuestions.firstOrNull?.assignmentId;
+          assignment = chat.snapshot!.activeAssignmentId;
           loading = false;
           error = null;
           final budget = chat.snapshot!.budget;
@@ -270,6 +322,19 @@ class _ChatPageState extends State<ChatPage> {
         );
       } else if (value.text.isNotEmpty) {
         output[value.itemId.value] = value.text;
+      }
+      // Keep live rendering bounded; full output remains in durable service history.
+      for (final key in output.keys.toList()) {
+        final text = output[key]!;
+        if (text.length > 65536) {
+          output[key] =
+              '… earlier output in history …\n${text.substring(text.length - 65536)}';
+        }
+      }
+      while (output.length > 100) {
+        final key = output.keys.first;
+        output.remove(key);
+        kinds.remove(key);
       }
       if (value.state != null) execution = value.state;
     });

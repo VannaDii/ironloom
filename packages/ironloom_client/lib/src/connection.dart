@@ -31,10 +31,12 @@ final class ServerConnection {
   final Map<String, String> headers;
   Uri endpoint(String path, [Map<String, String?> query = const {}]) {
     final url = base.resolve(path.replaceFirst(RegExp(r'^/'), ''));
-    final values = {for (final e in query.entries) if (e.value != null) e.key: e.value!};
+    final values = {
+      for (final e in query.entries)
+        if (e.value != null) e.key: e.value!,
+    };
     return values.isEmpty ? url : url.replace(queryParameters: values);
   }
-
 }
 
 /// A safe service failure independent of decoding and transport interruption.
@@ -210,6 +212,65 @@ final class IronloomClient {
   );
   Future<CommandReceipt> command(Command request) =>
       _model('POST', 'api/v1/commands', CommandReceipt.fromJson, body: request);
+
+  Future<ProjectPage> projects(ProjectQuery query) => _model(
+    'GET',
+    'api/v1/projects',
+    ProjectPage.fromJson,
+    query: {'after': query.after?.value, 'limit': query.limit.toJson()},
+  );
+  Future<ProjectSummary> createProject(CreateProject request) =>
+      _model('POST', 'api/v1/projects', ProjectSummary.fromJson, body: request);
+  Future<ProjectSummary> selfGrant(ProjectId project, CommandId command) =>
+      _model(
+        'POST',
+        'api/v1/projects/${Uri.encodeComponent(project.value)}/self-grant',
+        ProjectSummary.fromJson,
+        body: command,
+      );
+  Future<List<CredentialSummary>> credentials() =>
+      _model('GET', 'api/v1/credentials', (json) {
+        if (json is! List<Object?>) throw ApiFailure(502, null);
+        return List.unmodifiable(json.map(CredentialSummary.fromJson));
+      });
+  Future<CredentialSummary?> credential(CredentialCommand request) => _model(
+    'POST',
+    'api/v1/credentials',
+    (json) => json == null ? null : CredentialSummary.fromJson(json),
+    body: request,
+  );
+  Future<NativeConnectionState> nativeConnection(NodeId node) => _model(
+    'GET',
+    'api/v1/native/connections/${Uri.encodeComponent(node.value)}',
+    NativeConnectionState.fromJson,
+  );
+  Future<NativeConnectionState> configureNative(
+    NativeConnectionCommand request,
+  ) => _model(
+    'POST',
+    'api/v1/native/connections',
+    NativeConnectionState.fromJson,
+    body: request,
+  );
+  Future<SourcePage> searchModels(SourceQuery request, {ProjectId? project}) =>
+      _model(
+        'POST',
+        'api/v1/models/search',
+        SourcePage.fromJson,
+        body: request,
+        query: {'project_id': project?.value},
+      );
+  Future<DownloadProgress> download(DownloadCommand request) => _model(
+    'POST',
+    'api/v1/models/downloads',
+    DownloadProgress.fromJson,
+    body: request,
+  );
+  Future<DownloadProgress> downloadProgress(ActorId id) => _model(
+    'GET',
+    'api/v1/models/downloads/${Uri.encodeComponent(id.value)}',
+    DownloadProgress.fromJson,
+  );
 
   /// Emits validated events after a durable cursor. The caller owns reconnect policy.
   Stream<ServiceEvent> events(ReplayCursor cursor) async* {

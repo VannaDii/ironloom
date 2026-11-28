@@ -9,6 +9,9 @@ publish.workspace = true
 description = "Ironloom model, engine, source and device adapter contracts."
 
 [dependencies]
+base64.workspace = true
+sha2.workspace = true
+hex.workspace = true
 ironloom-queue = { path = "../ironloom-queue", version = "0.1.0" }
 futures-util.workspace = true
 reqwest.workspace = true

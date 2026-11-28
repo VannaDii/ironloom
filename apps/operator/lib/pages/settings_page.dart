@@ -426,6 +426,9 @@ class _ModelEditorState extends State<ModelEditor> {
     super.initState();
     final m = widget.model;
     final values = {
+      'tokens': m?.generationControls.maxOutputTokens.toJson(),
+      'duration': m?.generationControls.maxDurationMs.toJson(),
+      'repetition': m?.generationControls.repetitionWindow.toJson(),
       'profile': m?.profileId.value,
       'provider': m?.provider.value,
       'model': m?.modelId.value,
@@ -465,7 +468,15 @@ class _ModelEditorState extends State<ModelEditor> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            for (final key in ['profile', 'provider', 'model', 'credential'])
+            for (final key in [
+              'profile',
+              'provider',
+              'model',
+              'credential',
+              'tokens',
+              'duration',
+              'repetition',
+            ])
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: TextField(
@@ -476,6 +487,9 @@ class _ModelEditorState extends State<ModelEditor> {
                       'profile' => 'Profile ID',
                       'provider' => 'Provider',
                       'model' => 'Model ID',
+                      'tokens' => 'Maximum output tokens',
+                      'duration' => 'Maximum generation duration (ms)',
+                      'repetition' => 'Repetition monitoring window',
                       _ => 'Credential reference (optional)',
                     },
                   ),
@@ -531,6 +545,11 @@ class _ModelEditorState extends State<ModelEditor> {
                         profileId: ModelProfileId(value('profile')),
                         provider: ActorId(value('provider')),
                         modelId: ActorId(value('model')),
+                        generationControls: GenerationControls(
+                          maxOutputTokens: Counter(value('tokens')),
+                          maxDurationMs: Counter(value('duration')),
+                          repetitionWindow: Counter(value('repetition')),
+                        ),
                         credentialId: value('credential').isEmpty
                             ? null
                             : CredentialId(value('credential')),

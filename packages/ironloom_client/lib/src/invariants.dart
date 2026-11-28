@@ -354,6 +354,18 @@ void _validateModel(WireModel model) {
         _fail('choices', 'duplicate_choice');
       }
     case ConversationSnapshot v:
+      if (v.executionState != null &&
+          !{
+            ExecutionState.completed,
+            ExecutionState.failed,
+            ExecutionState.terminated,
+          }.contains(v.executionState) &&
+          v.activeAssignmentId == null) {
+        _fail('active_assignment_id', 'execution_binding_required');
+      }
+      if (v.activeAssignmentId != null && v.executionState == null) {
+        _fail('execution_state', 'assignment_state_required');
+      }
       if (v.session.conversationId.value != v.cursor.conversationId.value) {
         _fail('cursor.conversation_id', 'conversation_mismatch');
       }
@@ -435,6 +447,69 @@ void _validateModel(WireModel model) {
       if (v.lessons.map((l) => l.lessonId.value).toSet().length !=
           v.lessons.length) {
         _fail('lessons', 'duplicate_lesson');
+      }
+    case ProjectQuery v:
+      _pageLimit(v.limit);
+    case ProjectPage v:
+      if (v.projects.length > 100) {
+        _fail('projects', 'page_too_large');
+      }
+    case CredentialCommand v:
+      final create = v.operation == CredentialOperation.create;
+      if (create != (v.credentialId == null) ||
+          create != v.expectedRevision.isZero) {
+        _fail('credential_id', 'credential_identity_mismatch');
+      }
+      if (create && v.label == null) {
+        _fail('label', 'required');
+      }
+      final secret = {
+        CredentialOperation.create,
+        CredentialOperation.replace,
+      }.contains(v.operation);
+      if (secret != (v.secret != null)) {
+        _fail('secret', 'secret_operation_mismatch');
+      }
+      final share = v.operation == CredentialOperation.share;
+      if (share != (v.grantee != null) ||
+          share == v.permissions.isEmpty ||
+          (!share && v.revoke)) {
+        _fail('grantee', 'share_operation_mismatch');
+      }
+      if (v.permissions.any(
+        (p) => !{
+          Permission.view,
+          Permission.useCredential,
+          Permission.replaceCredential,
+          Permission.share,
+          Permission.deleteCredential,
+        }.contains(p),
+      )) {
+        _fail('permissions', 'credential_permissions_required');
+      }
+    case NativeConnectionCommand v:
+      if ((v.operation == NativeConnectionOperation.import) !=
+          (v.protectedRegistration != null)) {
+        _fail('protected_registration', 'import_registration_required_only');
+      }
+      if ((v.operation == NativeConnectionOperation.setEnabled) !=
+          (v.enabled != null)) {
+        _fail('enabled', 'preference_required_only');
+      }
+    case NativeConnectionState v:
+      if (v.status == NativeConnectionStatus.connected &&
+          v.enrollment == null) {
+        _fail('enrollment', 'connected_enrollment_required');
+      }
+      if (v.enrollment != null &&
+          (v.enrollment!.nodeId.value != v.nodeId.value ||
+              v.enrollment!.authenticationGeneration.compareTo(v.generation) !=
+                  0)) {
+        _fail('enrollment', 'connection_binding_mismatch');
+      }
+    case DownloadCommand v:
+      if ((v.operation == DownloadOperation.start) != (v.downloadId == null)) {
+        _fail('download_id', 'download_identity_mismatch');
       }
     default:
       break;

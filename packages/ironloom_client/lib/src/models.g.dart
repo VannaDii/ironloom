@@ -998,6 +998,92 @@ enum LessonOperation implements WireModel {
   void validate() {}
 }
 
+enum ProjectStorageState implements WireModel {
+  available('available'),
+  unavailable('unavailable');
+
+  const ProjectStorageState(this.value);
+  final String value;
+  static ProjectStorageState fromJson(Object? json) => values.firstWhere(
+    (v) => v.value == json,
+    orElse: () => _fail(r'$', 'invalid_structure'),
+  );
+  @override
+  String toJson() => value;
+  @override
+  void validate() {}
+}
+
+enum CredentialOperation implements WireModel {
+  create('create'),
+  replace('replace'),
+  share('share'),
+  delete('delete');
+
+  const CredentialOperation(this.value);
+  final String value;
+  static CredentialOperation fromJson(Object? json) => values.firstWhere(
+    (v) => v.value == json,
+    orElse: () => _fail(r'$', 'invalid_structure'),
+  );
+  @override
+  String toJson() => value;
+  @override
+  void validate() {}
+}
+
+enum NativeConnectionOperation implements WireModel {
+  import('import'),
+  setEnabled('set_enabled'),
+  delete('delete');
+
+  const NativeConnectionOperation(this.value);
+  final String value;
+  static NativeConnectionOperation fromJson(Object? json) => values.firstWhere(
+    (v) => v.value == json,
+    orElse: () => _fail(r'$', 'invalid_structure'),
+  );
+  @override
+  String toJson() => value;
+  @override
+  void validate() {}
+}
+
+enum NativeConnectionStatus implements WireModel {
+  disconnected('disconnected'),
+  connecting('connecting'),
+  connected('connected'),
+  failed('failed');
+
+  const NativeConnectionStatus(this.value);
+  final String value;
+  static NativeConnectionStatus fromJson(Object? json) => values.firstWhere(
+    (v) => v.value == json,
+    orElse: () => _fail(r'$', 'invalid_structure'),
+  );
+  @override
+  String toJson() => value;
+  @override
+  void validate() {}
+}
+
+enum DownloadOperation implements WireModel {
+  start('start'),
+  resume('resume'),
+  cancel('cancel');
+
+  const DownloadOperation(this.value);
+  final String value;
+  static DownloadOperation fromJson(Object? json) => values.firstWhere(
+    (v) => v.value == json,
+    orElse: () => _fail(r'$', 'invalid_structure'),
+  );
+  @override
+  String toJson() => value;
+  @override
+  void validate() {}
+}
+
 enum RecordScope implements WireModel {
   assignment('assignment'),
   project('project'),
@@ -1348,6 +1434,7 @@ final class ModelProfileConfiguration implements WireModel {
     required ModelProfileId profileId,
     required ActorId provider,
     required ActorId modelId,
+    required GenerationControls generationControls,
     CredentialId? credentialId,
     required BillingMode billing,
     EngineIdentity? engine,
@@ -1356,6 +1443,7 @@ final class ModelProfileConfiguration implements WireModel {
     'profile_id': _json(profileId),
     'provider': _json(provider),
     'model_id': _json(modelId),
+    'generation_controls': _json(generationControls),
     'credential_id': _json(credentialId),
     'billing': _json(billing),
     'engine': _json(engine),
@@ -1365,6 +1453,7 @@ final class ModelProfileConfiguration implements WireModel {
     this.profileId,
     this.provider,
     this.modelId,
+    this.generationControls,
     this.credentialId,
     this.billing,
     this.engine,
@@ -1375,6 +1464,7 @@ final class ModelProfileConfiguration implements WireModel {
       "profile_id",
       "provider",
       "model_id",
+      "generation_controls",
       "credential_id",
       "billing",
       "engine",
@@ -1384,6 +1474,7 @@ final class ModelProfileConfiguration implements WireModel {
       r.read('profile_id', ModelProfileId.fromJson),
       r.read('provider', ActorId.fromJson),
       r.read('model_id', ActorId.fromJson),
+      r.read('generation_controls', GenerationControls.fromJson),
       r.optional('credential_id', CredentialId.fromJson),
       r.read('billing', BillingMode.fromJson),
       r.optional('engine', EngineIdentity.fromJson),
@@ -1395,6 +1486,7 @@ final class ModelProfileConfiguration implements WireModel {
   final ModelProfileId profileId;
   final ActorId provider;
   final ActorId modelId;
+  final GenerationControls generationControls;
   final CredentialId? credentialId;
   final BillingMode billing;
   final EngineIdentity? engine;
@@ -1409,6 +1501,7 @@ final class ModelProfileConfiguration implements WireModel {
     'profile_id': _json(profileId),
     'provider': _json(provider),
     'model_id': _json(modelId),
+    'generation_controls': _json(generationControls),
     'credential_id': _json(credentialId),
     'billing': _json(billing),
     'engine': _json(engine),
@@ -2974,278 +3067,6 @@ final class EngineObservation implements WireModel {
   };
 }
 
-final class RelayCursor implements WireModel {
-  factory RelayCursor({
-    required ActorId clientId,
-    required ActorId streamId,
-    required Counter acknowledgedSequence,
-    Counter? acknowledgedSegment,
-    ActorId? subscriptionCursor,
-  }) => RelayCursor.fromJson({
-    'client_id': _json(clientId),
-    'stream_id': _json(streamId),
-    'acknowledged_sequence': _json(acknowledgedSequence),
-    'acknowledged_segment': _json(acknowledgedSegment),
-    'subscription_cursor': _json(subscriptionCursor),
-  });
-  RelayCursor._(
-    this.clientId,
-    this.streamId,
-    this.acknowledgedSequence,
-    this.acknowledgedSegment,
-    this.subscriptionCursor,
-  );
-  factory RelayCursor.fromJson(Object? json) {
-    final r = _Reader(json, [
-      "client_id",
-      "stream_id",
-      "acknowledged_sequence",
-      "acknowledged_segment",
-      "subscription_cursor",
-    ]);
-    final value = RelayCursor._(
-      r.read('client_id', ActorId.fromJson),
-      r.read('stream_id', ActorId.fromJson),
-      r.read('acknowledged_sequence', Counter.fromJson),
-      r.optional('acknowledged_segment', Counter.fromJson),
-      r.optional('subscription_cursor', ActorId.fromJson),
-    );
-    value.validate();
-    return value;
-  }
-  final ActorId clientId;
-  final ActorId streamId;
-  final Counter acknowledgedSequence;
-  final Counter? acknowledgedSegment;
-  final ActorId? subscriptionCursor;
-  @override
-  void validate() {
-    _validateModel(this);
-  }
-
-  @override
-  Map<String, Object?> toJson() => {
-    'client_id': _json(clientId),
-    'stream_id': _json(streamId),
-    'acknowledged_sequence': _json(acknowledgedSequence),
-    'acknowledged_segment': _json(acknowledgedSegment),
-    'subscription_cursor': _json(subscriptionCursor),
-  };
-}
-
-final class NativeEnrollment implements WireModel {
-  factory NativeEnrollment({
-    required InstallationId installationId,
-    required NodeId nodeId,
-    required ServerId serverId,
-    required EnvironmentId environmentId,
-    required RelayTarget relayTarget,
-    required NativePersistenceKey persistenceKey,
-    required ActorId externalAccountId,
-    required OperatorId operatorId,
-    required bool enabled,
-    required Counter authenticationGeneration,
-    required CredentialId controlRegistrationRef,
-    CredentialId? inferenceCredentialRef,
-  }) => NativeEnrollment.fromJson({
-    'installation_id': _json(installationId),
-    'node_id': _json(nodeId),
-    'server_id': _json(serverId),
-    'environment_id': _json(environmentId),
-    'relay_target': _json(relayTarget),
-    'persistence_key': _json(persistenceKey),
-    'external_account_id': _json(externalAccountId),
-    'operator_id': _json(operatorId),
-    'enabled': _json(enabled),
-    'authentication_generation': _json(authenticationGeneration),
-    'control_registration_ref': _json(controlRegistrationRef),
-    'inference_credential_ref': _json(inferenceCredentialRef),
-  });
-  NativeEnrollment._(
-    this.installationId,
-    this.nodeId,
-    this.serverId,
-    this.environmentId,
-    this.relayTarget,
-    this.persistenceKey,
-    this.externalAccountId,
-    this.operatorId,
-    this.enabled,
-    this.authenticationGeneration,
-    this.controlRegistrationRef,
-    this.inferenceCredentialRef,
-  );
-  factory NativeEnrollment.fromJson(Object? json) {
-    final r = _Reader(json, [
-      "installation_id",
-      "node_id",
-      "server_id",
-      "environment_id",
-      "relay_target",
-      "persistence_key",
-      "external_account_id",
-      "operator_id",
-      "enabled",
-      "authentication_generation",
-      "control_registration_ref",
-      "inference_credential_ref",
-    ]);
-    final value = NativeEnrollment._(
-      r.read('installation_id', InstallationId.fromJson),
-      r.read('node_id', NodeId.fromJson),
-      r.read('server_id', ServerId.fromJson),
-      r.read('environment_id', EnvironmentId.fromJson),
-      r.read('relay_target', RelayTarget.fromJson),
-      r.read('persistence_key', NativePersistenceKey.fromJson),
-      r.read('external_account_id', ActorId.fromJson),
-      r.read('operator_id', OperatorId.fromJson),
-      r.read('enabled', _boolean),
-      r.read('authentication_generation', Counter.fromJson),
-      r.read('control_registration_ref', CredentialId.fromJson),
-      r.optional('inference_credential_ref', CredentialId.fromJson),
-    );
-    value.validate();
-    return value;
-  }
-  final InstallationId installationId;
-  final NodeId nodeId;
-  final ServerId serverId;
-  final EnvironmentId environmentId;
-  final RelayTarget relayTarget;
-  final NativePersistenceKey persistenceKey;
-  final ActorId externalAccountId;
-  final OperatorId operatorId;
-  final bool enabled;
-  final Counter authenticationGeneration;
-  final CredentialId controlRegistrationRef;
-  final CredentialId? inferenceCredentialRef;
-  @override
-  void validate() {
-    _positive('authentication_generation', authenticationGeneration);
-    _validateModel(this);
-  }
-
-  @override
-  Map<String, Object?> toJson() => {
-    'installation_id': _json(installationId),
-    'node_id': _json(nodeId),
-    'server_id': _json(serverId),
-    'environment_id': _json(environmentId),
-    'relay_target': _json(relayTarget),
-    'persistence_key': _json(persistenceKey),
-    'external_account_id': _json(externalAccountId),
-    'operator_id': _json(operatorId),
-    'enabled': _json(enabled),
-    'authentication_generation': _json(authenticationGeneration),
-    'control_registration_ref': _json(controlRegistrationRef),
-    'inference_credential_ref': _json(inferenceCredentialRef),
-  };
-}
-
-final class RelayTarget implements WireModel {
-  factory RelayTarget({
-    required String websocketUrl,
-    required String enrollUrl,
-    required String refreshUrl,
-    required String pairUrl,
-    required String pairStatusUrl,
-  }) => RelayTarget.fromJson({
-    'websocket_url': _json(websocketUrl),
-    'enroll_url': _json(enrollUrl),
-    'refresh_url': _json(refreshUrl),
-    'pair_url': _json(pairUrl),
-    'pair_status_url': _json(pairStatusUrl),
-  });
-  RelayTarget._(
-    this.websocketUrl,
-    this.enrollUrl,
-    this.refreshUrl,
-    this.pairUrl,
-    this.pairStatusUrl,
-  );
-  factory RelayTarget.fromJson(Object? json) {
-    final r = _Reader(json, [
-      "websocket_url",
-      "enroll_url",
-      "refresh_url",
-      "pair_url",
-      "pair_status_url",
-    ]);
-    final value = RelayTarget._(
-      r.read('websocket_url', _string),
-      r.read('enroll_url', _string),
-      r.read('refresh_url', _string),
-      r.read('pair_url', _string),
-      r.read('pair_status_url', _string),
-    );
-    value.validate();
-    return value;
-  }
-  final String websocketUrl;
-  final String enrollUrl;
-  final String refreshUrl;
-  final String pairUrl;
-  final String pairStatusUrl;
-  @override
-  void validate() {
-    _validateModel(this);
-  }
-
-  @override
-  Map<String, Object?> toJson() => {
-    'websocket_url': _json(websocketUrl),
-    'enroll_url': _json(enrollUrl),
-    'refresh_url': _json(refreshUrl),
-    'pair_url': _json(pairUrl),
-    'pair_status_url': _json(pairStatusUrl),
-  };
-}
-
-final class NativePersistenceKey implements WireModel {
-  factory NativePersistenceKey({
-    required String websocketUrl,
-    required ActorId externalAccountId,
-    ActorId? clientName,
-  }) => NativePersistenceKey.fromJson({
-    'websocket_url': _json(websocketUrl),
-    'external_account_id': _json(externalAccountId),
-    'client_name': _json(clientName),
-  });
-  NativePersistenceKey._(
-    this.websocketUrl,
-    this.externalAccountId,
-    this.clientName,
-  );
-  factory NativePersistenceKey.fromJson(Object? json) {
-    final r = _Reader(json, [
-      "websocket_url",
-      "external_account_id",
-      "client_name",
-    ]);
-    final value = NativePersistenceKey._(
-      r.read('websocket_url', _string),
-      r.read('external_account_id', ActorId.fromJson),
-      r.optional('client_name', ActorId.fromJson),
-    );
-    value.validate();
-    return value;
-  }
-  final String websocketUrl;
-  final ActorId externalAccountId;
-  final ActorId? clientName;
-  @override
-  void validate() {
-    _validateModel(this);
-  }
-
-  @override
-  Map<String, Object?> toJson() => {
-    'websocket_url': _json(websocketUrl),
-    'external_account_id': _json(externalAccountId),
-    'client_name': _json(clientName),
-  };
-}
-
 final class Usage implements WireModel {
   factory Usage({
     required InferenceId inferenceId,
@@ -4481,6 +4302,7 @@ final class ConversationSnapshot implements WireModel {
     required SessionSummary session,
     required ReplayCursor cursor,
     required Counter revision,
+    AssignmentId? activeAssignmentId,
     ExecutionState? executionState,
     PlanRevision? plan,
     PlanApproval? approval,
@@ -4490,6 +4312,7 @@ final class ConversationSnapshot implements WireModel {
     'session': _json(session),
     'cursor': _json(cursor),
     'revision': _json(revision),
+    'active_assignment_id': _json(activeAssignmentId),
     'execution_state': _json(executionState),
     'plan': _json(plan),
     'approval': _json(approval),
@@ -4500,6 +4323,7 @@ final class ConversationSnapshot implements WireModel {
     this.session,
     this.cursor,
     this.revision,
+    this.activeAssignmentId,
     this.executionState,
     this.plan,
     this.approval,
@@ -4511,6 +4335,7 @@ final class ConversationSnapshot implements WireModel {
       "session",
       "cursor",
       "revision",
+      "active_assignment_id",
       "execution_state",
       "plan",
       "approval",
@@ -4521,6 +4346,7 @@ final class ConversationSnapshot implements WireModel {
       r.read('session', SessionSummary.fromJson),
       r.read('cursor', ReplayCursor.fromJson),
       r.read('revision', Counter.fromJson),
+      r.optional('active_assignment_id', AssignmentId.fromJson),
       r.optional('execution_state', ExecutionState.fromJson),
       r.optional('plan', PlanRevision.fromJson),
       r.optional('approval', PlanApproval.fromJson),
@@ -4533,6 +4359,7 @@ final class ConversationSnapshot implements WireModel {
   final SessionSummary session;
   final ReplayCursor cursor;
   final Counter revision;
+  final AssignmentId? activeAssignmentId;
   final ExecutionState? executionState;
   final PlanRevision? plan;
   final PlanApproval? approval;
@@ -4549,6 +4376,7 @@ final class ConversationSnapshot implements WireModel {
     'session': _json(session),
     'cursor': _json(cursor),
     'revision': _json(revision),
+    'active_assignment_id': _json(activeAssignmentId),
     'execution_state': _json(executionState),
     'plan': _json(plan),
     'approval': _json(approval),
@@ -5049,6 +4877,791 @@ final class CreateConversation implements WireModel {
   Map<String, Object?> toJson() => {
     'command_id': _json(commandId),
     'project_id': _json(projectId),
+  };
+}
+
+final class RelayCursor implements WireModel {
+  factory RelayCursor({
+    required ActorId clientId,
+    required ActorId streamId,
+    required Counter acknowledgedSequence,
+    Counter? acknowledgedSegment,
+    ActorId? subscriptionCursor,
+  }) => RelayCursor.fromJson({
+    'client_id': _json(clientId),
+    'stream_id': _json(streamId),
+    'acknowledged_sequence': _json(acknowledgedSequence),
+    'acknowledged_segment': _json(acknowledgedSegment),
+    'subscription_cursor': _json(subscriptionCursor),
+  });
+  RelayCursor._(
+    this.clientId,
+    this.streamId,
+    this.acknowledgedSequence,
+    this.acknowledgedSegment,
+    this.subscriptionCursor,
+  );
+  factory RelayCursor.fromJson(Object? json) {
+    final r = _Reader(json, [
+      "client_id",
+      "stream_id",
+      "acknowledged_sequence",
+      "acknowledged_segment",
+      "subscription_cursor",
+    ]);
+    final value = RelayCursor._(
+      r.read('client_id', ActorId.fromJson),
+      r.read('stream_id', ActorId.fromJson),
+      r.read('acknowledged_sequence', Counter.fromJson),
+      r.optional('acknowledged_segment', Counter.fromJson),
+      r.optional('subscription_cursor', ActorId.fromJson),
+    );
+    value.validate();
+    return value;
+  }
+  final ActorId clientId;
+  final ActorId streamId;
+  final Counter acknowledgedSequence;
+  final Counter? acknowledgedSegment;
+  final ActorId? subscriptionCursor;
+  @override
+  void validate() {
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'client_id': _json(clientId),
+    'stream_id': _json(streamId),
+    'acknowledged_sequence': _json(acknowledgedSequence),
+    'acknowledged_segment': _json(acknowledgedSegment),
+    'subscription_cursor': _json(subscriptionCursor),
+  };
+}
+
+final class NativeEnrollment implements WireModel {
+  factory NativeEnrollment({
+    required InstallationId installationId,
+    required NodeId nodeId,
+    required ServerId serverId,
+    required EnvironmentId environmentId,
+    required RelayTarget relayTarget,
+    required NativePersistenceKey persistenceKey,
+    required ActorId externalAccountId,
+    required OperatorId operatorId,
+    required bool enabled,
+    required Counter authenticationGeneration,
+    required CredentialId controlRegistrationRef,
+    CredentialId? inferenceCredentialRef,
+  }) => NativeEnrollment.fromJson({
+    'installation_id': _json(installationId),
+    'node_id': _json(nodeId),
+    'server_id': _json(serverId),
+    'environment_id': _json(environmentId),
+    'relay_target': _json(relayTarget),
+    'persistence_key': _json(persistenceKey),
+    'external_account_id': _json(externalAccountId),
+    'operator_id': _json(operatorId),
+    'enabled': _json(enabled),
+    'authentication_generation': _json(authenticationGeneration),
+    'control_registration_ref': _json(controlRegistrationRef),
+    'inference_credential_ref': _json(inferenceCredentialRef),
+  });
+  NativeEnrollment._(
+    this.installationId,
+    this.nodeId,
+    this.serverId,
+    this.environmentId,
+    this.relayTarget,
+    this.persistenceKey,
+    this.externalAccountId,
+    this.operatorId,
+    this.enabled,
+    this.authenticationGeneration,
+    this.controlRegistrationRef,
+    this.inferenceCredentialRef,
+  );
+  factory NativeEnrollment.fromJson(Object? json) {
+    final r = _Reader(json, [
+      "installation_id",
+      "node_id",
+      "server_id",
+      "environment_id",
+      "relay_target",
+      "persistence_key",
+      "external_account_id",
+      "operator_id",
+      "enabled",
+      "authentication_generation",
+      "control_registration_ref",
+      "inference_credential_ref",
+    ]);
+    final value = NativeEnrollment._(
+      r.read('installation_id', InstallationId.fromJson),
+      r.read('node_id', NodeId.fromJson),
+      r.read('server_id', ServerId.fromJson),
+      r.read('environment_id', EnvironmentId.fromJson),
+      r.read('relay_target', RelayTarget.fromJson),
+      r.read('persistence_key', NativePersistenceKey.fromJson),
+      r.read('external_account_id', ActorId.fromJson),
+      r.read('operator_id', OperatorId.fromJson),
+      r.read('enabled', _boolean),
+      r.read('authentication_generation', Counter.fromJson),
+      r.read('control_registration_ref', CredentialId.fromJson),
+      r.optional('inference_credential_ref', CredentialId.fromJson),
+    );
+    value.validate();
+    return value;
+  }
+  final InstallationId installationId;
+  final NodeId nodeId;
+  final ServerId serverId;
+  final EnvironmentId environmentId;
+  final RelayTarget relayTarget;
+  final NativePersistenceKey persistenceKey;
+  final ActorId externalAccountId;
+  final OperatorId operatorId;
+  final bool enabled;
+  final Counter authenticationGeneration;
+  final CredentialId controlRegistrationRef;
+  final CredentialId? inferenceCredentialRef;
+  @override
+  void validate() {
+    _positive('authentication_generation', authenticationGeneration);
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'installation_id': _json(installationId),
+    'node_id': _json(nodeId),
+    'server_id': _json(serverId),
+    'environment_id': _json(environmentId),
+    'relay_target': _json(relayTarget),
+    'persistence_key': _json(persistenceKey),
+    'external_account_id': _json(externalAccountId),
+    'operator_id': _json(operatorId),
+    'enabled': _json(enabled),
+    'authentication_generation': _json(authenticationGeneration),
+    'control_registration_ref': _json(controlRegistrationRef),
+    'inference_credential_ref': _json(inferenceCredentialRef),
+  };
+}
+
+final class RelayTarget implements WireModel {
+  factory RelayTarget({
+    required String websocketUrl,
+    required String enrollUrl,
+    required String refreshUrl,
+    required String pairUrl,
+    required String pairStatusUrl,
+  }) => RelayTarget.fromJson({
+    'websocket_url': _json(websocketUrl),
+    'enroll_url': _json(enrollUrl),
+    'refresh_url': _json(refreshUrl),
+    'pair_url': _json(pairUrl),
+    'pair_status_url': _json(pairStatusUrl),
+  });
+  RelayTarget._(
+    this.websocketUrl,
+    this.enrollUrl,
+    this.refreshUrl,
+    this.pairUrl,
+    this.pairStatusUrl,
+  );
+  factory RelayTarget.fromJson(Object? json) {
+    final r = _Reader(json, [
+      "websocket_url",
+      "enroll_url",
+      "refresh_url",
+      "pair_url",
+      "pair_status_url",
+    ]);
+    final value = RelayTarget._(
+      r.read('websocket_url', _string),
+      r.read('enroll_url', _string),
+      r.read('refresh_url', _string),
+      r.read('pair_url', _string),
+      r.read('pair_status_url', _string),
+    );
+    value.validate();
+    return value;
+  }
+  final String websocketUrl;
+  final String enrollUrl;
+  final String refreshUrl;
+  final String pairUrl;
+  final String pairStatusUrl;
+  @override
+  void validate() {
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'websocket_url': _json(websocketUrl),
+    'enroll_url': _json(enrollUrl),
+    'refresh_url': _json(refreshUrl),
+    'pair_url': _json(pairUrl),
+    'pair_status_url': _json(pairStatusUrl),
+  };
+}
+
+final class NativePersistenceKey implements WireModel {
+  factory NativePersistenceKey({
+    required String websocketUrl,
+    required ActorId externalAccountId,
+    ActorId? clientName,
+  }) => NativePersistenceKey.fromJson({
+    'websocket_url': _json(websocketUrl),
+    'external_account_id': _json(externalAccountId),
+    'client_name': _json(clientName),
+  });
+  NativePersistenceKey._(
+    this.websocketUrl,
+    this.externalAccountId,
+    this.clientName,
+  );
+  factory NativePersistenceKey.fromJson(Object? json) {
+    final r = _Reader(json, [
+      "websocket_url",
+      "external_account_id",
+      "client_name",
+    ]);
+    final value = NativePersistenceKey._(
+      r.read('websocket_url', _string),
+      r.read('external_account_id', ActorId.fromJson),
+      r.optional('client_name', ActorId.fromJson),
+    );
+    value.validate();
+    return value;
+  }
+  final String websocketUrl;
+  final ActorId externalAccountId;
+  final ActorId? clientName;
+  @override
+  void validate() {
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'websocket_url': _json(websocketUrl),
+    'external_account_id': _json(externalAccountId),
+    'client_name': _json(clientName),
+  };
+}
+
+final class ProjectQuery implements WireModel {
+  factory ProjectQuery({ActorId? after, required Counter limit}) =>
+      ProjectQuery.fromJson({'after': _json(after), 'limit': _json(limit)});
+  ProjectQuery._(this.after, this.limit);
+  factory ProjectQuery.fromJson(Object? json) {
+    final r = _Reader(json, ["after", "limit"]);
+    final value = ProjectQuery._(
+      r.optional('after', ActorId.fromJson),
+      r.read('limit', Counter.fromJson),
+    );
+    value.validate();
+    return value;
+  }
+  final ActorId? after;
+  final Counter limit;
+  @override
+  void validate() {
+    _positive('limit', limit);
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'after': _json(after),
+    'limit': _json(limit),
+  };
+}
+
+final class ProjectSummary implements WireModel {
+  factory ProjectSummary({
+    required ProjectId projectId,
+    required String name,
+    required OperatorId owner,
+    required NodeId ownerNode,
+    required ProjectStorageState storage,
+    required Counter lastHumanInteractionMs,
+    required List<Permission> permissions,
+  }) => ProjectSummary.fromJson({
+    'project_id': _json(projectId),
+    'name': _json(name),
+    'owner': _json(owner),
+    'owner_node': _json(ownerNode),
+    'storage': _json(storage),
+    'last_human_interaction_ms': _json(lastHumanInteractionMs),
+    'permissions': _json(permissions),
+  });
+  ProjectSummary._(
+    this.projectId,
+    this.name,
+    this.owner,
+    this.ownerNode,
+    this.storage,
+    this.lastHumanInteractionMs,
+    this.permissions,
+  );
+  factory ProjectSummary.fromJson(Object? json) {
+    final r = _Reader(json, [
+      "project_id",
+      "name",
+      "owner",
+      "owner_node",
+      "storage",
+      "last_human_interaction_ms",
+      "permissions",
+    ]);
+    final value = ProjectSummary._(
+      r.read('project_id', ProjectId.fromJson),
+      r.read('name', _string),
+      r.read('owner', OperatorId.fromJson),
+      r.read('owner_node', NodeId.fromJson),
+      r.read('storage', ProjectStorageState.fromJson),
+      r.read('last_human_interaction_ms', Counter.fromJson),
+      r.read('permissions', (v) => _list(v, Permission.fromJson)),
+    );
+    value.validate();
+    return value;
+  }
+  final ProjectId projectId;
+  final String name;
+  final OperatorId owner;
+  final NodeId ownerNode;
+  final ProjectStorageState storage;
+  final Counter lastHumanInteractionMs;
+  final List<Permission> permissions;
+  @override
+  void validate() {
+    _required('name', name);
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'project_id': _json(projectId),
+    'name': _json(name),
+    'owner': _json(owner),
+    'owner_node': _json(ownerNode),
+    'storage': _json(storage),
+    'last_human_interaction_ms': _json(lastHumanInteractionMs),
+    'permissions': _json(permissions),
+  };
+}
+
+final class ProjectPage implements WireModel {
+  factory ProjectPage({
+    required List<ProjectSummary> projects,
+    ActorId? nextAfter,
+  }) => ProjectPage.fromJson({
+    'projects': _json(projects),
+    'next_after': _json(nextAfter),
+  });
+  ProjectPage._(this.projects, this.nextAfter);
+  factory ProjectPage.fromJson(Object? json) {
+    final r = _Reader(json, ["projects", "next_after"]);
+    final value = ProjectPage._(
+      r.read('projects', (v) => _list(v, ProjectSummary.fromJson)),
+      r.optional('next_after', ActorId.fromJson),
+    );
+    value.validate();
+    return value;
+  }
+  final List<ProjectSummary> projects;
+  final ActorId? nextAfter;
+  @override
+  void validate() {
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'projects': _json(projects),
+    'next_after': _json(nextAfter),
+  };
+}
+
+final class CreateProject implements WireModel {
+  factory CreateProject({
+    required CommandId commandId,
+    required String name,
+    RepositorySlug? repository,
+    CredentialId? sourceCredentialId,
+  }) => CreateProject.fromJson({
+    'command_id': _json(commandId),
+    'name': _json(name),
+    'repository': _json(repository),
+    'source_credential_id': _json(sourceCredentialId),
+  });
+  CreateProject._(
+    this.commandId,
+    this.name,
+    this.repository,
+    this.sourceCredentialId,
+  );
+  factory CreateProject.fromJson(Object? json) {
+    final r = _Reader(json, [
+      "command_id",
+      "name",
+      "repository",
+      "source_credential_id",
+    ]);
+    final value = CreateProject._(
+      r.read('command_id', CommandId.fromJson),
+      r.read('name', _string),
+      r.optional('repository', RepositorySlug.fromJson),
+      r.optional('source_credential_id', CredentialId.fromJson),
+    );
+    value.validate();
+    return value;
+  }
+  final CommandId commandId;
+  final String name;
+  final RepositorySlug? repository;
+  final CredentialId? sourceCredentialId;
+  @override
+  void validate() {
+    _required('name', name);
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'command_id': _json(commandId),
+    'name': _json(name),
+    'repository': _json(repository),
+    'source_credential_id': _json(sourceCredentialId),
+  };
+}
+
+final class CredentialSummary implements WireModel {
+  factory CredentialSummary({
+    required CredentialId credentialId,
+    required OperatorId owner,
+    required ActorId label,
+    required Counter revision,
+    required List<Permission> permissions,
+  }) => CredentialSummary.fromJson({
+    'credential_id': _json(credentialId),
+    'owner': _json(owner),
+    'label': _json(label),
+    'revision': _json(revision),
+    'permissions': _json(permissions),
+  });
+  CredentialSummary._(
+    this.credentialId,
+    this.owner,
+    this.label,
+    this.revision,
+    this.permissions,
+  );
+  factory CredentialSummary.fromJson(Object? json) {
+    final r = _Reader(json, [
+      "credential_id",
+      "owner",
+      "label",
+      "revision",
+      "permissions",
+    ]);
+    final value = CredentialSummary._(
+      r.read('credential_id', CredentialId.fromJson),
+      r.read('owner', OperatorId.fromJson),
+      r.read('label', ActorId.fromJson),
+      r.read('revision', Counter.fromJson),
+      r.read('permissions', (v) => _list(v, Permission.fromJson)),
+    );
+    value.validate();
+    return value;
+  }
+  final CredentialId credentialId;
+  final OperatorId owner;
+  final ActorId label;
+  final Counter revision;
+  final List<Permission> permissions;
+  @override
+  void validate() {
+    _positive('revision', revision);
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'credential_id': _json(credentialId),
+    'owner': _json(owner),
+    'label': _json(label),
+    'revision': _json(revision),
+    'permissions': _json(permissions),
+  };
+}
+
+final class CredentialCommand implements WireModel {
+  factory CredentialCommand({
+    required CommandId commandId,
+    CredentialId? credentialId,
+    required Counter expectedRevision,
+    required CredentialOperation operation,
+    ActorId? label,
+    SecretInput? secret,
+    OperatorId? grantee,
+    required List<Permission> permissions,
+    required bool revoke,
+  }) => CredentialCommand.fromJson({
+    'command_id': _json(commandId),
+    'credential_id': _json(credentialId),
+    'expected_revision': _json(expectedRevision),
+    'operation': _json(operation),
+    'label': _json(label),
+    'secret': _json(secret),
+    'grantee': _json(grantee),
+    'permissions': _json(permissions),
+    'revoke': _json(revoke),
+  });
+  CredentialCommand._(
+    this.commandId,
+    this.credentialId,
+    this.expectedRevision,
+    this.operation,
+    this.label,
+    this.secret,
+    this.grantee,
+    this.permissions,
+    this.revoke,
+  );
+  factory CredentialCommand.fromJson(Object? json) {
+    final r = _Reader(json, [
+      "command_id",
+      "credential_id",
+      "expected_revision",
+      "operation",
+      "label",
+      "secret",
+      "grantee",
+      "permissions",
+      "revoke",
+    ]);
+    final value = CredentialCommand._(
+      r.read('command_id', CommandId.fromJson),
+      r.optional('credential_id', CredentialId.fromJson),
+      r.read('expected_revision', Counter.fromJson),
+      r.read('operation', CredentialOperation.fromJson),
+      r.optional('label', ActorId.fromJson),
+      r.optional('secret', SecretInput.fromJson),
+      r.optional('grantee', OperatorId.fromJson),
+      r.read('permissions', (v) => _list(v, Permission.fromJson)),
+      r.read('revoke', _boolean),
+    );
+    value.validate();
+    return value;
+  }
+  final CommandId commandId;
+  final CredentialId? credentialId;
+  final Counter expectedRevision;
+  final CredentialOperation operation;
+  final ActorId? label;
+  final SecretInput? secret;
+  final OperatorId? grantee;
+  final List<Permission> permissions;
+  final bool revoke;
+  @override
+  void validate() {
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'command_id': _json(commandId),
+    'credential_id': _json(credentialId),
+    'expected_revision': _json(expectedRevision),
+    'operation': _json(operation),
+    'label': _json(label),
+    'secret': _json(secret),
+    'grantee': _json(grantee),
+    'permissions': _json(permissions),
+    'revoke': _json(revoke),
+  };
+}
+
+final class NativeConnectionCommand implements WireModel {
+  factory NativeConnectionCommand({
+    required CommandId commandId,
+    required NodeId nodeId,
+    required Counter expectedGeneration,
+    required NativeConnectionOperation operation,
+    SecretInput? protectedRegistration,
+    bool? enabled,
+  }) => NativeConnectionCommand.fromJson({
+    'command_id': _json(commandId),
+    'node_id': _json(nodeId),
+    'expected_generation': _json(expectedGeneration),
+    'operation': _json(operation),
+    'protected_registration': _json(protectedRegistration),
+    'enabled': _json(enabled),
+  });
+  NativeConnectionCommand._(
+    this.commandId,
+    this.nodeId,
+    this.expectedGeneration,
+    this.operation,
+    this.protectedRegistration,
+    this.enabled,
+  );
+  factory NativeConnectionCommand.fromJson(Object? json) {
+    final r = _Reader(json, [
+      "command_id",
+      "node_id",
+      "expected_generation",
+      "operation",
+      "protected_registration",
+      "enabled",
+    ]);
+    final value = NativeConnectionCommand._(
+      r.read('command_id', CommandId.fromJson),
+      r.read('node_id', NodeId.fromJson),
+      r.read('expected_generation', Counter.fromJson),
+      r.read('operation', NativeConnectionOperation.fromJson),
+      r.optional('protected_registration', SecretInput.fromJson),
+      r.optional('enabled', _boolean),
+    );
+    value.validate();
+    return value;
+  }
+  final CommandId commandId;
+  final NodeId nodeId;
+  final Counter expectedGeneration;
+  final NativeConnectionOperation operation;
+  final SecretInput? protectedRegistration;
+  final bool? enabled;
+  @override
+  void validate() {
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'command_id': _json(commandId),
+    'node_id': _json(nodeId),
+    'expected_generation': _json(expectedGeneration),
+    'operation': _json(operation),
+    'protected_registration': _json(protectedRegistration),
+    'enabled': _json(enabled),
+  };
+}
+
+final class NativeConnectionState implements WireModel {
+  factory NativeConnectionState({
+    required NodeId nodeId,
+    required Counter generation,
+    required NativeConnectionStatus status,
+    NativeEnrollment? enrollment,
+  }) => NativeConnectionState.fromJson({
+    'node_id': _json(nodeId),
+    'generation': _json(generation),
+    'status': _json(status),
+    'enrollment': _json(enrollment),
+  });
+  NativeConnectionState._(
+    this.nodeId,
+    this.generation,
+    this.status,
+    this.enrollment,
+  );
+  factory NativeConnectionState.fromJson(Object? json) {
+    final r = _Reader(json, ["node_id", "generation", "status", "enrollment"]);
+    final value = NativeConnectionState._(
+      r.read('node_id', NodeId.fromJson),
+      r.read('generation', Counter.fromJson),
+      r.read('status', NativeConnectionStatus.fromJson),
+      r.optional('enrollment', NativeEnrollment.fromJson),
+    );
+    value.validate();
+    return value;
+  }
+  final NodeId nodeId;
+  final Counter generation;
+  final NativeConnectionStatus status;
+  final NativeEnrollment? enrollment;
+  @override
+  void validate() {
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'node_id': _json(nodeId),
+    'generation': _json(generation),
+    'status': _json(status),
+    'enrollment': _json(enrollment),
+  };
+}
+
+final class DownloadCommand implements WireModel {
+  factory DownloadCommand({
+    required CommandId commandId,
+    ProjectId? projectId,
+    required ActorId repositoryId,
+    required ActorId revision,
+    ActorId? downloadId,
+    required DownloadOperation operation,
+  }) => DownloadCommand.fromJson({
+    'command_id': _json(commandId),
+    'project_id': _json(projectId),
+    'repository_id': _json(repositoryId),
+    'revision': _json(revision),
+    'download_id': _json(downloadId),
+    'operation': _json(operation),
+  });
+  DownloadCommand._(
+    this.commandId,
+    this.projectId,
+    this.repositoryId,
+    this.revision,
+    this.downloadId,
+    this.operation,
+  );
+  factory DownloadCommand.fromJson(Object? json) {
+    final r = _Reader(json, [
+      "command_id",
+      "project_id",
+      "repository_id",
+      "revision",
+      "download_id",
+      "operation",
+    ]);
+    final value = DownloadCommand._(
+      r.read('command_id', CommandId.fromJson),
+      r.optional('project_id', ProjectId.fromJson),
+      r.read('repository_id', ActorId.fromJson),
+      r.read('revision', ActorId.fromJson),
+      r.optional('download_id', ActorId.fromJson),
+      r.read('operation', DownloadOperation.fromJson),
+    );
+    value.validate();
+    return value;
+  }
+  final CommandId commandId;
+  final ProjectId? projectId;
+  final ActorId repositoryId;
+  final ActorId revision;
+  final ActorId? downloadId;
+  final DownloadOperation operation;
+  @override
+  void validate() {
+    _validateModel(this);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'command_id': _json(commandId),
+    'project_id': _json(projectId),
+    'repository_id': _json(repositoryId),
+    'revision': _json(revision),
+    'download_id': _json(downloadId),
+    'operation': _json(operation),
   };
 }
 

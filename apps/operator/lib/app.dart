@@ -5,6 +5,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'pages/chat_page.dart';
 import 'pages/settings_page.dart';
 import 'pages/lessons_page.dart';
+import 'pages/access_page.dart';
+import 'pages/models_page.dart';
 import 'widgets.dart';
 import 'platform/journal.dart';
 
@@ -86,6 +88,8 @@ class _OperatorShellState extends State<OperatorShell> {
     final destinations = [
       (Icons.space_dashboard_outlined, 'Projects'),
       (Icons.tune, 'Setup & team'),
+      (Icons.inventory_2_outlined, 'Models & sources'),
+      (Icons.key_outlined, 'Access'),
       (Icons.auto_stories_outlined, 'Lessons'),
     ];
     final body = switch (page) {
@@ -98,6 +102,8 @@ class _OperatorShellState extends State<OperatorShell> {
         },
         reload: load,
       ),
+      2 => ModelsPage(client: widget.client),
+      3 => AccessPage(client: widget.client),
       _ => LessonsPage(client: widget.client),
     };
     return LayoutBuilder(
@@ -205,15 +211,28 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
+  bool signingIn = false;
+  String? loginError;
   Future<void> login() async {
-    final session = await widget.client.local(
-      LoginRequest(
-        username: ActorId(username.text),
-        password: SecretInput(password.text),
-      ),
-    );
-    password.clear();
-    await widget.onSignedIn(session);
+    if (signingIn) return;
+    setState(() {
+      signingIn = true;
+      loginError = null;
+    });
+    try {
+      final session = await widget.client.local(
+        LoginRequest(
+          username: ActorId(username.text),
+          password: SecretInput(password.text),
+        ),
+      );
+      password.clear();
+      await widget.onSignedIn(session);
+    } on Object catch (e) {
+      if (mounted) setState(() => loginError = displayError(e));
+    } finally {
+      if (mounted) setState(() => signingIn = false);
+    }
   }
 
   @override
@@ -244,7 +263,11 @@ class _LoginPageState extends State<LoginPage> {
               onSubmitted: (_) => login(),
             ),
             const SizedBox(height: 16),
-            AsyncAction(label: 'Sign in', action: login),
+            if (loginError != null) Notice(loginError!, error: true),
+            AsyncAction(
+              label: signingIn ? 'Signing in…' : 'Sign in',
+              action: signingIn ? null : login,
+            ),
             const Divider(height: 40),
             TextField(
               controller: connection,

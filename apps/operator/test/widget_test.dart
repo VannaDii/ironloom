@@ -35,6 +35,9 @@ void main() {
             200,
           );
         }
+        if (request.url.path.endsWith('/projects')) {
+          return http.Response('{"projects":[]}', 200);
+        }
         if (request.url.path.endsWith('/sessions')) {
           return http.Response('[]', 200);
         }
@@ -85,7 +88,11 @@ void main() {
   testWidgets('setup choices are never implicitly confirmed', (tester) async {
     final client = api(
       (request) async => http.Response(
-        '{"revision":"1","roles":[],"models":[],"device_preferences":[],"discovered_devices":[],"execution_ready":false,"unmet_prerequisites":["lesson_handling"]}',
+        request.url.path.endsWith('/sessions')
+            ? '[]'
+            : request.url.path.endsWith('/projects')
+            ? '{"projects":[]}'
+            : '{"revision":"1","roles":[],"models":[],"device_preferences":[],"discovered_devices":[],"execution_ready":false,"unmet_prerequisites":["lesson_handling"]}',
         200,
       ),
     );

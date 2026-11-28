@@ -19,3 +19,10 @@ pub trait Sources: Send + Sync {
     /// Requests transfer cancellation; returned progress distinguishes request/confirmation.
     fn cancel(&self, download: ActorId) -> BoxFuture<'_, Result<DownloadProgress, AdapterError>>;
 }
+
+/// Metadata-driven engine filters; estimates never qualify hardware or allocate capacity.
+pub mod compatibility;
+/// Resumable service-owned files and checksum verification, independent of inference.
+pub mod downloads;
+/// Direct official hub APIs and publisher distribution metadata.
+pub mod hubs;
