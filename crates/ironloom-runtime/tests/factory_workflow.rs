@@ -169,7 +169,7 @@ async fn human_input_atomically_creates_owned_queue_history_and_instruction_copi
         )
         .await
         .unwrap();
-    let configuration:ConfigurationCommand=serde_json::from_value(json!({"command_id":"setup-workflow","project_id":null,"expected_revision":"1","changes":{"setup":{"lesson_handling":"project_only","delivery_confirmed":true,"publish_branch":false,"merge":false,"deploy":false},"source_accounts":[{"host":"huggingface","access":{"type":"anonymous"}}],"endpoints":[{"provider":"fixture","base":"http://127.0.0.1:8099/","dialect":"responses","billing":"api_key","streaming":true,"tools":true,"stream_usage":true,"reasoning_efforts":[]}],"models":[{"profile_id":"fixture-profile","provider":"fixture","model_id":"scripted","generation_controls":{"max_output_tokens":"128","max_duration_ms":"1000","repetition_window":"16"},"credential_id":credential,"billing":"api_key","engine":null,"device_bindings":[]}],"roles":[{"role_id":"product-manager","enabled":true,"model_profile_id":"fixture-profile","reasoning_applicable":false,"reasoning_effort":null,"device_bindings":[],"instructions_id":"product-manager"}]}})).unwrap();
+    let configuration:ConfigurationCommand=serde_json::from_value(json!({"command_id":"setup-workflow","project_id":null,"expected_revision":"1","changes":{"setup":{"lesson_handling":"project_only","delivery_confirmed":true,"publish_branch":false,"merge":false,"deploy":false},"source_accounts":[{"host":"huggingface","access":{"type":"credential","credential_id":credential}}],"endpoints":[{"provider":"fixture","base":"http://127.0.0.1:8099/","dialect":"responses","billing":"api_key","streaming":true,"tools":true,"stream_usage":true,"reasoning_efforts":[]}],"models":[{"profile_id":"fixture-profile","provider":"fixture","model_id":"scripted","generation_controls":{"max_output_tokens":"128","max_duration_ms":"1000","repetition_window":"16"},"credential_id":credential,"billing":"api_key","engine":null,"device_bindings":[]}],"roles":[{"role_id":"product-manager","enabled":true,"model_profile_id":"fixture-profile","reasoning_applicable":false,"reasoning_effort":null,"device_bindings":[],"instructions_id":"product-manager"}]}})).unwrap();
     let config = backend
         .configure(alice.session.clone(), configuration)
         .await
@@ -210,6 +210,131 @@ async fn human_input_atomically_creates_owned_queue_history_and_instruction_copi
         .unwrap();
     assert!(restored.execution_ready);
     assert_eq!(restored.endpoints, config.endpoints);
+    let bob_user = format!("operator:{}", bob.session.operator_id.as_str());
+    let alice_user = format!("operator:{}", alice.session.operator_id.as_str());
+    let credential_object = format!("credential:{}", credential.as_str());
+    authority
+        .write(
+            vec![
+                Relationship::new(
+                    &bob_user,
+                    "manager",
+                    format!("project:{}", project.as_str()),
+                )
+                .unwrap(),
+                Relationship::new(&bob_user, "user", &credential_object).unwrap(),
+            ],
+            vec![],
+        )
+        .await
+        .unwrap();
+    let mut redirected = serde_json::to_value(&config.endpoints).unwrap();
+    redirected[0]["base"] = json!("https://unapproved.example.test/");
+    assert!(matches!(
+        backend
+            .configure(
+                bob.session.clone(),
+                project_override("use-only-cannot-redirect", 3, redirected.clone())
+            )
+            .await,
+        Err(ServiceError::Authentication(AuthenticationError::Forbidden))
+    ));
+    let unchanged:ConfigurationCommand=serde_json::from_value(json!({"command_id":"use-existing-source-binding","project_id":project,"expected_revision":"3","changes":{"source_accounts":config.source_accounts}})).unwrap();
+    let preserved = backend
+        .configure(bob.session.clone(), unchanged)
+        .await
+        .unwrap();
+    assert_eq!(preserved.endpoints, config.endpoints);
+    let source_redirect:ConfigurationCommand=serde_json::from_value(json!({"command_id":"use-only-cannot-change-source-host","project_id":project,"expected_revision":"4","changes":{"source_accounts":[{"host":"different-source-host","access":{"type":"credential","credential_id":credential}}]}})).unwrap();
+    assert!(matches!(
+        backend
+            .configure(bob.session.clone(), source_redirect)
+            .await,
+        Err(ServiceError::Authentication(AuthenticationError::Forbidden))
+    ));
+    assert_eq!(
+        backend
+            .configuration(bob.session.clone(), Some(project.clone()))
+            .await
+            .unwrap()
+            .revision
+            .get(),
+        4
+    );
+    // A global endpoint change also checks credentials present only in private project overrides.
+    let private_project = ProjectId::new("private-credential-binding").unwrap();
+    let Operation::Write(mut seed) = store
+        .begin(
+            &bob.session.operator_id,
+            &CommandId::new("seed-private-binding-project").unwrap(),
+            &json!({}),
+            &id("binding-fixture"),
+        )
+        .await
+        .unwrap()
+    else {
+        panic!("new private fixture")
+    };
+    seed.create_project(
+        &private_project,
+        "Private binding",
+        Some(&id(node.as_str())),
+    )
+    .await
+    .unwrap();
+    (*seed).commit(&json!({"created":true})).await.unwrap();
+    authority
+        .write(
+            vec![
+                Relationship::new(
+                    &bob_user,
+                    "owner",
+                    format!("project:{}", private_project.as_str()),
+                )
+                .unwrap(),
+            ],
+            vec![],
+        )
+        .await
+        .unwrap();
+    backend.configure(bob.session.clone(),serde_json::from_value(json!({"command_id":"retain-private-model-selection","project_id":private_project,"expected_revision":"1","changes":{"roles":config.roles,"models":config.models}})).unwrap()).await.unwrap();
+    backend.configure(alice.session.clone(),serde_json::from_value(json!({"command_id":"clear-global-model-selection","project_id":null,"expected_revision":"2","changes":{"roles":[],"models":[]}})).unwrap()).await.unwrap();
+    authority
+        .write(
+            vec![Relationship::new(&alice_user, "user", &credential_object).unwrap()],
+            vec![Relationship::new(&alice_user, "owner", &credential_object).unwrap()],
+        )
+        .await
+        .unwrap();
+    assert!(matches!(
+        backend
+            .configuration(alice.session.clone(), Some(private_project))
+            .await,
+        Err(ServiceError::Authentication(AuthenticationError::Forbidden))
+    ));
+    assert!(matches!(backend.configure(alice.session.clone(),serde_json::from_value(json!({"command_id":"global-admin-cannot-redirect-private-credential","project_id":null,"expected_revision":"3","changes":{"endpoints":redirected}})).unwrap()).await,Err(ServiceError::Authentication(AuthenticationError::Forbidden))));
+    let unchanged = backend
+        .configuration(alice.session.clone(), None)
+        .await
+        .unwrap();
+    assert_eq!(unchanged.revision.get(), 3);
+    assert_eq!(unchanged.endpoints, config.endpoints);
+    authority
+        .write(
+            vec![Relationship::new(&alice_user, "owner", &credential_object).unwrap()],
+            vec![
+                Relationship::new(&alice_user, "user", &credential_object).unwrap(),
+                Relationship::new(
+                    &bob_user,
+                    "manager",
+                    format!("project:{}", project.as_str()),
+                )
+                .unwrap(),
+            ],
+        )
+        .await
+        .unwrap();
+    backend.configure(alice.session.clone(),serde_json::from_value(json!({"command_id":"restore-global-model-selection","project_id":null,"expected_revision":"3","changes":{"roles":config.roles,"models":config.models}})).unwrap()).await.unwrap();
 
     let initial = backend
         .create_conversation(
@@ -659,7 +784,7 @@ async fn human_input_atomically_creates_owned_queue_history_and_instruction_copi
         "replay must precede mutable active-turn checks"
     );
     // Accepted command replay is independent from later editable model/team configuration.
-    backend.configure(alice.session.clone(),serde_json::from_value(json!({"command_id":"disable-team","project_id":null,"expected_revision":"2","changes":{"roles":[],"models":[]}})).unwrap()).await.unwrap();
+    backend.configure(alice.session.clone(),serde_json::from_value(json!({"command_id":"disable-team","project_id":null,"expected_revision":"4","changes":{"roles":[],"models":[]}})).unwrap()).await.unwrap();
     let replay = backend
         .command(alice.session.clone(), command)
         .await

@@ -18,7 +18,7 @@
       "type": "string",
       "minLength": 1
     },
-    "SourceAccess": {
+    "SourceAccountAccess": {
       "description": "Exactly one explicit source access choice. Absence is not anonymous consent.",
       "oneOf": [
         {
@@ -61,7 +61,7 @@
       "properties": {
         "access": {
           "description": "Explicit anonymous or credential reference choice.",
-          "$ref": "#/$defs/SourceAccess"
+          "$ref": "#/$defs/SourceAccountAccess"
         },
         "host": {
           "description": "Stable adapter host identity, not a browser-supplied credential endpoint.",

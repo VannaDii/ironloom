@@ -62,7 +62,7 @@ ProviderEndpoint, ProviderEndpointData {
     rename_all = "snake_case",
     deny_unknown_fields
 )]
-pub enum SourceAccess {
+pub enum SourceAccountAccess {
     /// Explicit anonymous access, supported only where the selected source permits it.
     Anonymous,
     /// Live-authorized credential use, resolved only inside trusted service wiring.
@@ -74,7 +74,7 @@ SourceAccountBinding, SourceAccountBindingData {
     /// Stable adapter host identity, not a browser-supplied credential endpoint.
     host: ActorId,
     /// Explicit anonymous or credential reference choice.
-    access: SourceAccess,
+    access: SourceAccountAccess,
 } |value| { let _=value; Ok(()) }
 }
 /// Required explicit setup choice; no implicit default.

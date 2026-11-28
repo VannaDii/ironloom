@@ -31,6 +31,7 @@ const CONFIGURATION_SCOPE: &str = "configuration";
 mod assignments;
 mod boundaries;
 mod commands;
+mod configuration_bindings;
 mod controls;
 mod conversations;
 mod lessons;
@@ -468,6 +469,23 @@ impl FactoryBackend {
         } else {
             (Some(&state), None)
         };
+        let before = self
+            .effective_configuration(
+                &session,
+                request.project_id.as_ref(),
+                if request.project_id.is_some() {
+                    global
+                } else {
+                    previous.as_ref()
+                },
+                if request.project_id.is_some() {
+                    previous.as_ref()
+                } else {
+                    None
+                },
+                Some(&mut batch),
+            )
+            .await?;
         let snapshot = self
             .effective_configuration(
                 &session,
@@ -476,6 +494,8 @@ impl FactoryBackend {
                 local,
                 Some(&mut batch),
             )
+            .await?;
+        self.authorize_destination_changes(&session.operator_id, &before, &snapshot)
             .await?;
         if request.project_id.is_none() {
             let mut after = None;
@@ -503,23 +523,33 @@ impl FactoryBackend {
                         return Err(ServiceError::Unavailable);
                     }
                     let local = configuration_record(record, Some(&project))?;
-                    if effective_snapshot(
-                        Some(project),
+                    let candidate = effective_snapshot(
+                        Some(project.clone()),
                         local.revision,
                         Some(&snapshot),
                         Some(&local.changes),
                         vec![],
                         &facts,
                     )
-                    .is_err()
-                    {
-                        return Err(ServiceError::Validation(
+                    .map_err(|_| {
+                        ServiceError::Validation(
                             ironloom_core::validation::ValidationErrors::field(
                                 "changes",
                                 "incompatible_project_configuration",
                             ),
-                        ));
-                    }
+                        )
+                    })?;
+                    let previous = effective_snapshot(
+                        Some(project),
+                        local.revision,
+                        Some(&before),
+                        Some(&local.changes),
+                        vec![],
+                        &facts,
+                    )
+                    .map_err(|_| ServiceError::Unavailable)?;
+                    self.authorize_destination_changes(&session.operator_id, &previous, &candidate)
+                        .await?;
                 }
             }
         }

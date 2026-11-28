@@ -64,3 +64,5 @@ Linux 文件权限区分精确文件 `write_files` 与目录子树 `write_direct
 `ConversationSnapshot.pause_requested`：`null` 表示没有活动任务；`false` 表示没有待处理的暂停请求；`true` 表示等待在安全边界确认暂停。
 
 配置新增 `endpoints`（提供商、API 基址、明确的协议和计费方式、流式输出、工具和用量支持及推理强度标签）与 `source_accounts`（主机及明确的匿名访问或凭据引用选择）。两者沿用 `/api/v1/configuration`，按作用域继承；仅替换显式提交的列表，空列表表示清空。端点 URL 拒绝内嵌凭据、查询参数、片段及远程明文 HTTP。端点缺失、计费不匹配或所选强度不受支持时，远程配置不具备执行条件；不会进行推理探测。下载私下保留所选源账户绑定；运行时回调集成仍在进行。
+
+更改凭据的有效目标需要 `ReplaceCredential` 权限，包括受安装级配置更改影响的项目继承配置。正常执行检查 `UseCredential`；仅有使用权限不能将共享密钥转发到其他提供商 URL 或源主机。
