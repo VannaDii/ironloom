@@ -37,3 +37,13 @@ pub trait Engine: Provider {
     /// Observes resource use; restart/failure must reconcile active requests before reclaiming.
     fn observe(&self, resident: ResidentModelId) -> BoxFuture<'_, Result<Residency, AdapterError>>;
 }
+
+/// Shared embedded/helper lifecycle; central policy remains the only admission/LRU authority.
+pub mod runtime;
+
+/// Service-owned private llama.cpp helper integration.
+pub mod llama;
+
+/// Embedded mistral.rs integration with an isolated private runner.
+#[cfg(feature = "embedded-mistral")]
+pub mod mistral;

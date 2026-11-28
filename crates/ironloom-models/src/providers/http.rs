@@ -191,7 +191,8 @@ impl HttpProvider {
         }
         serde_json::from_slice(&bytes).map_err(|_| AdapterError::Unavailable)
     }
-    fn check(&self, request: &InferenceRequest) -> Result<(), AdapterError> {
+    /// Checks explicit endpoint capability/billing selection before any dispatch.
+    pub(crate) fn check(&self, request: &InferenceRequest) -> Result<(), AdapterError> {
         validate_request(&self.endpoint, request)
     }
 }
@@ -448,6 +449,9 @@ pub fn request_body(
             }
             body["messages"] = messages.into();
             body["max_tokens"] = request.controls.max_output_tokens.get().into();
+            if endpoint.billing == BillingMode::LocalEstimate {
+                body["cache_prompt"] = false.into();
+            }
             if !request.tools.is_empty() {
                 body["tools"]=request.tools.iter().map(|t|json!({"type":"function","function":{"name":t.name.as_str(),"description":t.description,"parameters":t.input_schema}})).collect::<Vec<_>>().into();
             }
@@ -477,7 +481,8 @@ struct PendingTool {
     arguments: String,
     emitted: bool,
 }
-struct Normalizer {
+/// Shared bounded response normalization for HTTP and the embedded SDK.
+pub(crate) struct Normalizer {
     request: InferenceRequest,
     dialect: Dialect,
     tools: BTreeMap<String, PendingTool>,
@@ -489,7 +494,8 @@ struct Normalizer {
     anthropic_stop: Option<String>,
 }
 impl Normalizer {
-    fn new(request: InferenceRequest, dialect: Dialect) -> Self {
+    /// Creates inert normalization state for one validated inference identity.
+    pub(crate) fn new(request: InferenceRequest, dialect: Dialect) -> Self {
         Self {
             request,
             dialect,
@@ -502,7 +508,8 @@ impl Normalizer {
             anthropic_stop: None,
         }
     }
-    fn event(
+    /// Builds one correlated normalized worker event.
+    pub(crate) fn event(
         &self,
         kind: StreamKind,
         text: String,
@@ -526,7 +533,8 @@ impl Normalizer {
         })
         .expect("normalized event has consistent kind/identity")
     }
-    fn frame(&mut self, frame: &str) -> Result<Vec<WorkerEvent>, AdapterError> {
+    /// Consumes one complete provider frame with bounded aggregate tool metadata.
+    pub(crate) fn frame(&mut self, frame: &str) -> Result<Vec<WorkerEvent>, AdapterError> {
         if frame == "[DONE]" {
             return if self.dialect == Dialect::ChatCompletions && self.finish_seen {
                 self.finish()
@@ -696,7 +704,8 @@ impl Normalizer {
         }
         Ok(events)
     }
-    fn nonstream(&mut self, value: Value) -> Result<Vec<WorkerEvent>, AdapterError> {
+    /// Normalizes a confirmed complete JSON response.
+    pub(crate) fn nonstream(&mut self, value: Value) -> Result<Vec<WorkerEvent>, AdapterError> {
         let mut events = Vec::new();
         let (content, usage) = match self.dialect {
             Dialect::Responses => {
@@ -835,7 +844,8 @@ impl Normalizer {
             self.event(StreamKind::Completed, String::new(), None),
         ])
     }
-    fn accounting_event(&self) -> Result<WorkerEvent, AdapterError> {
+    /// Returns known or explicitly uncertain usage without another provider call.
+    pub(crate) fn accounting_event(&self) -> Result<WorkerEvent, AdapterError> {
         let basis = if self.input.is_some() || self.output.is_some() || self.cached.is_some() {
             UsageBasis::Reported
         } else {
