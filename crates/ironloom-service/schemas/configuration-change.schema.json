@@ -1,0 +1,759 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/ConfigurationChangeData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "BillingMode": {
+      "description": "Explicit cost basis; no silent billing fallback.",
+      "oneOf": [
+        {
+          "description": "API key billing.",
+          "type": "string",
+          "const": "api_key"
+        },
+        {
+          "description": "Account-backed OAuth usage; not API-key charges.",
+          "type": "string",
+          "const": "account"
+        },
+        {
+          "description": "Configured local compute cost estimate.",
+          "type": "string",
+          "const": "local_estimate"
+        }
+      ]
+    },
+    "ConfigurationChangeData": {
+      "description": "Unchecked construction draft for `ConfigurationChange`; validate before use.",
+      "type": "object",
+      "properties": {
+        "device_preferences": {
+          "description": "Explicit enable/disable choices; never accept client-supplied discovery facts.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/$defs/Validated10"
+          }
+        },
+        "endpoints": {
+          "description": "Replace explicit provider endpoints in the chosen scope; no secrets or inference probes.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/$defs/Validated11"
+          }
+        },
+        "models": {
+          "description": "Replace explicitly selected provider/model/engine/billing profiles.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/$defs/Validated3"
+          }
+        },
+        "roles": {
+          "description": "Replace enabled/custom team settings in the chosen scope.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/$defs/Validated2"
+          }
+        },
+        "setup": {
+          "description": "Explicit installation setup handling/delivery confirmation.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Validated"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_accounts": {
+          "description": "Replace explicit host/account choices; omission inherits, an empty list clears the scope.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/$defs/Validated12"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "ContextCacheData": {
+      "description": "Unchecked construction draft for `ContextCache`; validate before use.",
+      "type": "object",
+      "properties": {
+        "cache_id": {
+          "description": "Request/session-scoped cache identity, separate from resident weights.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "capacity_bytes": {
+          "description": "Configured bound if known.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Counter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "conversation_id": {
+          "description": "Authorized conversation boundary; sharing weights does not share this context.",
+          "$ref": "#/$defs/ConversationId"
+        },
+        "owner": {
+          "description": "Authorized human scope; resolve independently at dispatch.",
+          "$ref": "#/$defs/OperatorId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "cache_id",
+        "conversation_id",
+        "owner"
+      ]
+    },
+    "ConversationId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ConversationId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Counter": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Canonical decimal u64; semantic validation also enforces u64 maximum.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "CredentialId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom CredentialId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "DeviceId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom DeviceId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "DevicePreferenceData": {
+      "description": "Unchecked construction draft for `DevicePreference`; validate before use.",
+      "type": "object",
+      "properties": {
+        "device_id": {
+          "description": "Desired canonical device, resolved against service discovery records.",
+          "$ref": "#/$defs/DeviceId"
+        },
+        "enabled": {
+          "description": "Explicit operator enable/disable choice; never capacity authority.",
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "device_id",
+        "enabled"
+      ]
+    },
+    "DraftModelData": {
+      "description": "Unchecked construction draft for `DraftModel`; validate before use.",
+      "type": "object",
+      "properties": {
+        "checkpoint_hash": {
+          "description": "Verified draft manifest hash.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "model_id": {
+          "description": "Explicit optional draft checkpoint, never a fallback target.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "quantization": {
+          "description": "Draft quantization where applicable.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "revision": {
+          "description": "Exact draft revision.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "weight_bytes": {
+          "description": "Draft memory estimate; unknown is not zero.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Counter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "model_id",
+        "revision",
+        "checkpoint_hash"
+      ]
+    },
+    "EngineIdentityData": {
+      "description": "Unchecked construction draft for `EngineIdentity`; validate before use.",
+      "type": "object",
+      "properties": {
+        "backend": {
+          "description": "Selected accelerator backend.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "configuration_hash": {
+          "description": "Engine configuration identity.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "name": {
+          "description": "Explicit selected engine, never silently substituted.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "version": {
+          "description": "Pinned version.",
+          "$ref": "#/$defs/ActorId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version",
+        "backend",
+        "configuration_hash"
+      ]
+    },
+    "EngineLoadOptionsData": {
+      "description": "Unchecked construction draft for `EngineLoadOptions`; validate before use.",
+      "type": "object",
+      "properties": {
+        "accelerators": {
+          "description": "Explicit additional accelerators; engine may report unsupported.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ActorId"
+          }
+        },
+        "cache": {
+          "description": "Optional isolated context cache; absence does not imply cross-session reuse.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Validated9"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "concurrency": {
+          "description": "Configured concurrent demand.",
+          "$ref": "#/$defs/Counter"
+        },
+        "context_tokens": {
+          "description": "Configured context demand for estimates/admission.",
+          "$ref": "#/$defs/Counter"
+        },
+        "draft": {
+          "description": "Explicit optional draft model.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Validated8"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "context_tokens",
+        "concurrency",
+        "accelerators"
+      ]
+    },
+    "FactorySetupData": {
+      "description": "Unchecked construction draft for `FactorySetup`; validate before use.",
+      "type": "object",
+      "properties": {
+        "delivery_confirmed": {
+          "description": "Human explicitly confirmed delivery authority.",
+          "type": "boolean"
+        },
+        "deploy": {
+          "description": "Explicit deployment authority.",
+          "type": "boolean"
+        },
+        "lesson_handling": {
+          "description": "Explicitly saved lesson handling choice.",
+          "$ref": "#/$defs/LessonHandling"
+        },
+        "merge": {
+          "description": "Explicit merge authority.",
+          "type": "boolean"
+        },
+        "publish_branch": {
+          "description": "Confirmed permission to publish a branch and PR.",
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "lesson_handling",
+        "delivery_confirmed",
+        "publish_branch",
+        "merge",
+        "deploy"
+      ]
+    },
+    "GenerationControlsData": {
+      "description": "Unchecked construction draft for `GenerationControls`; validate before use.",
+      "type": "object",
+      "properties": {
+        "max_duration_ms": {
+          "description": "Runaway bound.",
+          "$ref": "#/$defs/Counter"
+        },
+        "max_output_tokens": {
+          "description": "Generation bound independent of monetary budget.",
+          "$ref": "#/$defs/Counter"
+        },
+        "repetition_window": {
+          "description": "Incremental monitoring window; unavailable on nonstreaming engines.",
+          "$ref": "#/$defs/Counter"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "max_output_tokens",
+        "max_duration_ms",
+        "repetition_window"
+      ]
+    },
+    "InstructionId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom InstructionId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "LessonHandling": {
+      "description": "Required explicit setup choice; no implicit default.",
+      "oneOf": [
+        {
+          "description": "Share new lessons only with sufficient share authority.",
+          "type": "string",
+          "const": "share_across_projects"
+        },
+        {
+          "description": "Apply immediately in origin project; no broader sharing.",
+          "type": "string",
+          "const": "project_only"
+        },
+        {
+          "description": "Apply immediately in origin; retain for later promotion or pruning.",
+          "type": "string",
+          "const": "track_for_review"
+        }
+      ]
+    },
+    "LocalModelBindingData": {
+      "description": "Unchecked construction draft for `LocalModelBinding`; validate before use.",
+      "type": "object",
+      "properties": {
+        "inventory_id": {
+          "description": "Service-owned pinned inventory identity; runtime rechecks integrity and source access.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "options": {
+          "description": "Explicit context/concurrency/draft/cache/accelerator settings; unsupported remains visible.",
+          "$ref": "#/$defs/Validated7"
+        },
+        "template": {
+          "description": "Explicit template, or None when embedded/not applicable.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tokenizer": {
+          "description": "Explicit tokenizer, or None when embedded/not applicable.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "weights": {
+          "description": "Exact weight files relative to that installation root, including every selected shard.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "inventory_id",
+        "weights",
+        "options"
+      ]
+    },
+    "ModelProfileConfigurationData": {
+      "description": "Unchecked construction draft for `ModelProfileConfiguration`; validate before use.",
+      "type": "object",
+      "properties": {
+        "billing": {
+          "description": "Explicit account/API/local estimate billing choice.",
+          "$ref": "#/$defs/BillingMode"
+        },
+        "credential_id": {
+          "description": "Private credential reference; separate use/share/replace/delete grants.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CredentialId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "device_bindings": {
+          "description": "Desired configured local devices; discovery and admission recheck identity.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DeviceId"
+          }
+        },
+        "engine": {
+          "description": "Explicit local engine/version/backend; no default engine fallback.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Validated5"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "generation_controls": {
+          "description": "Explicit generation bounds, independent of optional monetary budgets.",
+          "$ref": "#/$defs/Validated4"
+        },
+        "local_binding": {
+          "description": "Explicit verified installation/file/options selection for local execution. None retains\nincomplete configuration and blocks local readiness; no first-file selection is inferred.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Validated6"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "model_id": {
+          "description": "Configured provider model/checkpoint.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "profile_id": {
+          "description": "Stable human-selected profile identity.",
+          "$ref": "#/$defs/ModelProfileId"
+        },
+        "provider": {
+          "description": "Explicit provider; no silent substitute.",
+          "$ref": "#/$defs/ActorId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "profile_id",
+        "provider",
+        "model_id",
+        "generation_controls",
+        "billing",
+        "device_bindings"
+      ]
+    },
+    "ModelProfileId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ModelProfileId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "OperatorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom OperatorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ProviderDialect": {
+      "description": "Explicit HTTP protocol selection; a failed request never selects another dialect.",
+      "oneOf": [
+        {
+          "description": "Responses streaming API, including explicitly selected eligible account inference.",
+          "type": "string",
+          "const": "responses"
+        },
+        {
+          "description": "Anthropic Messages API.",
+          "type": "string",
+          "const": "anthropic"
+        },
+        {
+          "description": "Explicitly configured OpenAI-compatible Chat Completions API.",
+          "type": "string",
+          "const": "chat_completions"
+        }
+      ]
+    },
+    "ProviderEndpointData": {
+      "description": "Unchecked construction draft for `ProviderEndpoint`; validate before use.",
+      "type": "object",
+      "properties": {
+        "base": {
+          "description": "API base without embedded credentials, query or fragment.",
+          "type": "string"
+        },
+        "billing": {
+          "description": "Authorized account/API billing choice; local engines are configured separately.",
+          "$ref": "#/$defs/BillingMode"
+        },
+        "dialect": {
+          "description": "Explicit wire dialect, independent from billing.",
+          "$ref": "#/$defs/ProviderDialect"
+        },
+        "provider": {
+          "description": "Unique provider identity matched by model profiles and every dispatched request.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "reasoning_efforts": {
+          "description": "Supported explicit reasoning effort labels; empty means unsupported.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ActorId"
+          }
+        },
+        "stream_usage": {
+          "description": "Declared support for reported usage in the stream.",
+          "type": "boolean"
+        },
+        "streaming": {
+          "description": "Declared streaming support, without a capability probe.",
+          "type": "boolean"
+        },
+        "tools": {
+          "description": "Declared tool-call support; adapters do not execute tools.",
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "base",
+        "dialect",
+        "billing",
+        "streaming",
+        "tools",
+        "stream_usage",
+        "reasoning_efforts"
+      ]
+    },
+    "RoleConfigurationData": {
+      "description": "Unchecked construction draft for `RoleConfiguration`; validate before use.",
+      "type": "object",
+      "properties": {
+        "device_bindings": {
+          "description": "Optional role device restrictions, intersected with its model profile placement.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DeviceId"
+          }
+        },
+        "enabled": {
+          "description": "Disabled roles do not dispatch.",
+          "type": "boolean"
+        },
+        "instructions_id": {
+          "description": "Template copied into assignments.",
+          "$ref": "#/$defs/InstructionId"
+        },
+        "model_profile_id": {
+          "description": "Explicit human-selected model; no implicit default.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ModelProfileId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning_applicable": {
+          "description": "Selected model supports reasoning effort.",
+          "type": "boolean"
+        },
+        "reasoning_effort": {
+          "description": "Explicit human choice where applicable.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "role_id": {
+          "description": "Editable standard or custom role identity.",
+          "$ref": "#/$defs/ActorId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "role_id",
+        "enabled",
+        "reasoning_applicable",
+        "device_bindings",
+        "instructions_id"
+      ]
+    },
+    "SourceAccountAccess": {
+      "description": "Exactly one explicit source access choice. Absence is not anonymous consent.",
+      "oneOf": [
+        {
+          "description": "Explicit anonymous access, supported only where the selected source permits it.",
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "anonymous"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "description": "Live-authorized credential use, resolved only inside trusted service wiring.",
+          "type": "object",
+          "properties": {
+            "credential_id": {
+              "$ref": "#/$defs/CredentialId"
+            },
+            "type": {
+              "type": "string",
+              "const": "credential"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "credential_id"
+          ]
+        }
+      ]
+    },
+    "SourceAccountBindingData": {
+      "description": "Unchecked construction draft for `SourceAccountBinding`; validate before use.",
+      "type": "object",
+      "properties": {
+        "access": {
+          "description": "Explicit anonymous or credential reference choice.",
+          "$ref": "#/$defs/SourceAccountAccess"
+        },
+        "host": {
+          "description": "Stable adapter host identity, not a browser-supplied credential endpoint.",
+          "$ref": "#/$defs/ActorId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "host",
+        "access"
+      ]
+    },
+    "Validated": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/FactorySetupData"
+    },
+    "Validated10": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/DevicePreferenceData"
+    },
+    "Validated11": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/ProviderEndpointData"
+    },
+    "Validated12": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/SourceAccountBindingData"
+    },
+    "Validated2": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/RoleConfigurationData"
+    },
+    "Validated3": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/ModelProfileConfigurationData"
+    },
+    "Validated4": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/GenerationControlsData"
+    },
+    "Validated5": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/EngineIdentityData"
+    },
+    "Validated6": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/LocalModelBindingData"
+    },
+    "Validated7": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/EngineLoadOptionsData"
+    },
+    "Validated8": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/DraftModelData"
+    },
+    "Validated9": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/ContextCacheData"
+    }
+  }
+}

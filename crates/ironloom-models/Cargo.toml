@@ -9,6 +9,8 @@ publish.workspace = true
 description = "Ironloom model, engine, source and device adapter contracts."
 
 [dependencies]
+futures-util.workspace = true
+reqwest.workspace = true
 ironloom-observability = { path = "../ironloom-observability", version = "0.1.0" }
 url.workspace = true
 tokio.workspace = true

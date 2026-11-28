@@ -34,3 +34,39 @@ The same revision defines authorized setup/team/model/device query and mutation 
 Ironloom is unreleased: fresh-schema initialization only, with no old-version compatibility, conversion/backfills, upgrade files or migration history. Obsolete foundation paths are retired during initial build-out.
 
 `FactoryService::create_conversation` persists an empty authorized conversation before native turn/start, with durable command identity and a zero-cursor snapshot. It submits no input or inference; user input remains nonblank.
+
+Shared service and native enrollment contracts now live in `ironloom-service::factory`; runtime and native adapters depend on this common crate, without old import re-exports. Snapshots include the active assignment for reconnect controls. Project, credential, native-connection and source/download API records are explicit; model profiles save generation controls through configuration.
+
+`POST /api/v1/models/assessments` returns typed engine/version/backend and canonical device placement assessments, with requirement assumptions, memory fit and actual qualification separate. Missing information stays unknown; assessment never loads or runs a model.
+
+`GET /api/v1/models/inventory` exposes authorized provenance, transfer completion, independent checksum/manifest verification and current file availability. Complete bytes remain unverified until the trusted installation pipeline confirms integrity; missing files retain metadata and block use.
+
+Installation configuration commands persist before any project exists. Empty conversations atomically retain their snapshot and retry receipt with cursor zero and no dispatch event. `DownloadProgress.repository_id` binds authorized resume/cancel operations to the original repository.
+
+Infrastructure download ceilings are required: `IRONLOOM_DOWNLOAD_MAX_FILE_BYTES` and `IRONLOOM_DOWNLOAD_MAX_TRANSFER_BYTES`. Both must be positive decimal byte counts; optional publisher sizes never override them. Helm supplies explicit editable values.
+
+Editable instruction templates use `GET/POST /api/v1/instructions`; changes explicitly preserve active copies or select authorized assignments for updates and acknowledgment. Budget commands carry `{conversation_id, budget}` to target the correct durable stream.
+
+A `ServiceEvent` contains exactly one worker event or conversation snapshot update. Snapshot cursor/project must match the outer event, so non-worker state updates need no invented execution identity.
+
+The shipped standard team starts disabled, with editable instructions and no inferred model. Pure readiness rules preserve project inheritance and allow configured remote-only operation without a GPU. Durable instruction/configuration handlers are still being implemented.
+
+Worker delegation is assignment/resource scoped, and record CAS preserves project/assignment ownership. Readiness checks PostgreSQL and the actual OpenFGA binding independently from team/model setup. Memory-fit estimates require all five demand components and checked addition; missing/overflowed totals remain unknown.
+
+
+History paging now requires an explicit forward/backward direction, accepts an optional turn filter, and keeps each page oldest first at the requested event watermark. Session discovery requires `order=created_at` for native clients or `order=human_interaction` for dashboards. Empty, disabled or disjoint local device placements block execution readiness. Configuration/instruction and conversation catalog/snapshot/history HTTP routes use the shared authenticated backend; full runtime composition remains in progress.
+
+
+`CommandReceipt.cursor` is absent for event-free resource mutations. Shared lesson management must not require access to its private source conversation or reveal that cursor. Conversation commands retain real stream cursors. Configuration rejects duplicate role IDs; no extra entry-role setup requirement is added.
+
+Linux file grants distinguish exact `write_files` from `write_directories` subtrees. Exact create/edit/remove/move uses native filesystem tools; commands receive only explicit directory mounts. Writable trees reject hard-link aliases and seccomp blocks new hard links. Durable path ownership remains until confirmed stop/reconciliation, including after lease expiry. Full runtime gateway composition is still in progress.
+
+`ConversationSnapshot.pause_requested`: `null` → no active assignment; `false` → no pending pause; `true` → pending safe-boundary confirmation.
+
+Configuration adds `endpoints` (provider, API base, explicit dialect/billing, streaming/tools/usage support and effort labels) and `source_accounts` (host plus exactly one anonymous choice or credential reference). Both use `/api/v1/configuration`, inherit by scope, and replace the selected list only when supplied; an empty list clears it. Endpoint URLs reject embedded credentials, query strings, fragments and remote plaintext HTTP. Missing endpoints, incompatible billing or unsupported selected effort block remote-profile readiness without probing a provider. Downloads retain their selected source binding privately; runtime source/engine callback integration remains in progress.
+
+Changing an effective credential destination requires `ReplaceCredential`, including inherited project profiles affected by an installation change. Ordinary execution checks `UseCredential`; a use-only grant cannot redirect a shared secret to another provider URL or source host.
+
+Local profiles persist `local_binding`: immutable `inventory_id`, exact relative `weights`, optional `tokenizer`/`template`, and `options: EngineLoadOptions`. Missing local binding blocks readiness; runtime provenance comes from the selected verified inventory. No first-file, quantization, model, engine or placement fallback is permitted. `ModelFilesQuery` selects either an inventory ID or a complete host/repository/revision, with bounded metadata pages. The agreed `GET /api/v1/models/files` transport/source binding is still being implemented; its public result contains file paths, optional byte counts, SHA-256 and checksum provenance, never transfer URLs. Kaggle archive weight choices come from extracted inventory.
+
+Turn rollout positions and lifecycle outcomes now persist at their actual service event watermarks. Storage supports both directions, inclusive reverse anchors and exact bounded item-ID lookup in stored order; foreign, missing and future anchors fail. Assignment parent grants are projected before input/replay returns, retaining the durable recovery intent on failure. API-key endpoint readiness accepts declared nonstreaming normalization; eligible account endpoints still require streaming. Native callback composition remains pending.

@@ -9,6 +9,7 @@ publish.workspace = true
 description = "Ironloom gate runner contracts and command execution."
 
 [dependencies]
+nix.workspace = true
 ironloom-artifacts = { path = "../ironloom-artifacts", version = "0.1.0" }
 ironloom-core = { path = "../ironloom-core", version = "0.1.0" }
 schemars.workspace = true

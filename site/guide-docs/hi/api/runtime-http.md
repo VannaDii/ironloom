@@ -1,47 +1,54 @@
-# Runtime HTTP API
+# रनटाइम HTTP API
 
-Ironloom existing runtime HTTP port पर setup, health और readiness serve करता है।
+प्रमाणित सेवा Tokio/Axum और निर्धारित परिनियोजन आधार पथ का उपयोग करती है। `ironloom serve` चयनित मौजूदा PostgreSQL स्थापना खोलता है। `ironloom initialize` स्पष्ट रूप से नया स्कीमा और एकबारगी प्रारंभिक टोकन स्थिति बनाता है; मौजूदा स्कीमा अस्वीकार होता है। त्रुटि या पुनः आरंभ पर प्रतिस्थापन डेटा नहीं बनता।
 
-## `GET /healthz`
+सेवा लॉगिन प्रदाता की पहचान संबंधी गोपनीय जानकारी से अलग है। लॉगिन `AuthenticatedSession` लौटाता है, HttpOnly `ironloom_session` कुकी सेट करता है और CSRF प्रमाण `ironloom_csrf` तथा `x-ironloom-csrf` प्रतिक्रिया हेडर में देता है। बदलाव वाले अनुरोध में यह हेडर अनिवार्य है। कुकी में आधार पथ, SameSite=Lax और HTTPS पर Secure लागू होते हैं। अन्य मूल से अनुरोध अस्वीकार होते हैं। OIDC कॉलबैक के लिए ब्राउज़र से जुड़ी एकबारगी प्रवाह कुकी भी अनिवार्य है।
 
-HTTP server alive होने पर `200 ok` लौटाता है।
+| Method | Path | Contract / transport |
+| --- | --- | --- |
+| POST | `/api/v1/auth/register` | `LoginRequest`; initial `x-ironloom-setup-token`, later current administrator + CSRF |
+| POST | `/api/v1/auth/local` | `LoginRequest` → `AuthenticatedSession` + cookies |
+| GET | `/api/v1/auth/session` | Current `AuthenticatedSession`; no-store |
+| POST | `/api/v1/auth/oidc/start` | `OidcStart` → authorization URL JSON + HttpOnly flow cookie |
+| POST | `/api/v1/auth/oidc/callback` | `OidcCallback` → `AuthenticatedSession` + cookies |
+| POST | `/api/v1/auth/bootstrap` | `BootstrapRedeem` → fixed `BootstrapState`; CSRF |
+| POST | `/api/v1/auth/logout` | Revoke current session and clear cookies; CSRF |
+| GET | `/healthz` | Process liveness, root path |
+| GET | `/readyz` | Selected PostgreSQL and OpenFGA binding reachable; separate from execution setup, root path |
 
-## `GET /readyz`
+अनिवार्य सेटिंग: `IRONLOOM_DATABASE_URL`, `IRONLOOM_OPENFGA_URL`, `IRONLOOM_CONFIG_KEY` (base64, 32 बाइट), `IRONLOOM_PUBLIC_URL` और दोनों डाउनलोड सीमाएँ। केवल स्पष्ट आरंभीकरण `IRONLOOM_INSTALLER_TOKEN` पढ़ता है। `IRONLOOM_OPENFGA_TOKEN` तथा `IRONLOOM_OIDC_CONNECTIONS` वैकल्पिक हैं; दूसरा `{id, issuer, client_id, client_secret, redirects}` वाली JSON सरणी है, जिसके कॉलबैक URL अनुमति सूची से ठीक मिलते हैं। ईमेल पहचान का अधिकार नहीं देता।
 
-केवल तब `200 ok` लौटाता है जब required runtime configuration environment values या encrypted local setup से resolve हो जाती है। Setup incomplete होने पर `503 setup required` लौटाता है।
+भूमिका निष्पादन, मॉडल और स्रोत संयोजन तथा ऑपरेटर संसाधनों पर काम जारी है। ये प्रमाणीकरण मार्ग लागू हैं; पूरी फ़ैक्टरी अभी पूर्ण नहीं है।
 
-## `GET /`
 
-Setup page लौटाता है।
+इतिहास पृष्ठों में आगे या पीछे की दिशा स्पष्ट देना आवश्यक है। वैकल्पिक टर्न फ़िल्टर के साथ हर पृष्ठ अनुरोधित घटना क्रम तक पुराने से नए क्रम में रहता है। नेटिव सूची में `order=created_at` और डैशबोर्ड में `order=human_interaction` आवश्यक है। खाली, अक्षम या असंगत स्थानीय डिवाइस चयन निष्पादन की तैयारी रोकते हैं। कॉन्फ़िगरेशन, निर्देश और वार्तालाप HTTP मार्ग साझा प्रमाणित सेवा का उपयोग करते हैं; पूर्ण रनटाइम संयोजन अभी जारी है।
 
-## `GET /setup`
 
-Setup page लौटाता है।
+सेवा अब सार्वजनिक पथ पर कॉन्फ़िगरेशन, निर्देश, वार्तालाप इतिहास और पुनः चल सकने वाला SSE प्रदान करती है। SSE के लिए `Last-Event-ID` आवश्यक है; बफ़र भरने पर `ironloom.error` पुनः समन्वयन बताता है। कनेक्शन बंद होना निष्पादन रद्द नहीं करता। स्थिर `IRONLOOM_NODE_ID` और अलग पूर्ण पथ `IRONLOOM_PROJECTS_ROOT` / `IRONLOOM_MODELS_ROOT` दें; Helm अलग स्थायी वॉल्यूम देता है। अडैप्टर, सैंडबॉक्स, प्रबंधित निर्भरताएँ और पूर्ण निष्पादन अभी जारी हैं।
 
-अगर `IRONLOOM_CONFIG_KEY` missing या invalid है, page key instructions दिखाता है और setup input fields नहीं दिखाता।
 
-अगर `IRONLOOM_INSTALLER_TOKEN` missing है, page installer-token instructions दिखाता है।
+Linux कमांड अलगाव अब अलग सहायक प्रक्रिया, bubblewrap नेमस्पेस, स्पष्ट लेखन पथ और seccomp का उपयोग करता है। अलगाव विफल होने पर कमांड नहीं चलता। नेटिव परीक्षण अलगाव, सिमलिंक अस्वीकृति और चाइल्ड प्रक्रिया सफ़ाई जाँचते हैं। कंटेनर में bubblewrap/Git और UID/GID 1000 हैं। पूर्ण वर्कफ़्लो, Alpine निष्पादन सत्यापन और Mac/GPU कार्य अभी अधूरे हैं।
 
-जब setup prerequisites मौजूद हों, page config form render करता है। Environment-backed fields locked रहते हैं और secret values display नहीं होतीं।
 
-## `POST /setup`
+डिस्पैच लीज़ में स्वामी नोड, सटीक सेवा इंस्टेंस और बढ़ता स्वामित्व फ़ेंस शामिल हैं। समाप्त लीज़ अपने आप नवीनीकृत या पुनः निष्पादित नहीं होती; अनसुलझी प्रक्रियाएँ या बाहरी बदलाव स्पष्ट रिकवरी रोकते हैं। सहायक प्रक्रिया शुरुआत से पैरेंट समाप्ति की जाँच करती है। नेटिव परीक्षण पास हैं, लेकिन इस होस्ट की डिफ़ॉल्ट Docker नीति नेमस्पेस बनाना रोकती है; कंटेनर वर्कर सुरक्षित रूप से निष्पादन रोकते हैं। पूर्ण वर्कफ़्लो अभी जारी है।
 
-Submitted installer token के `IRONLOOM_INSTALLER_TOKEN` से match होने के बाद setup form values accept करता है।
 
-Successful submissions encrypted setup configuration को `IRONLOOM_STATE_ROOT` के अंतर्गत लिखती हैं और `200 setup saved` लौटाती हैं।
+सीख के HTTP पठन और संपादन, स्कोप तथा हटाने के कमांड वर्तमान प्रबंधन और शेयर अनुमतियाँ जाँचते हैं; निजी स्रोत एक्सेस आवश्यक नहीं है। हटाने पर सामग्री मिटती है और अधिकृत पुनः प्रयास के लिए केवल सामग्री रहित पहचान रहती है। बैकग्राउंड रिकवरी वर्तमान स्थिति उपयोग करती है, पुरानी साझेदारी बहाल नहीं करती। वर्कफ़्लो कमांड निष्पादन अभी जारी है।
 
-Invalid installer tokens `403 setup rejected` लौटाते हैं।
+`GET /api/v1/projects?limit=100` वर्तमान अनुमति वाले परियोजना मेटाडेटा को मानव गतिविधि के क्रम में, अपारदर्शी `after` कर्सर के साथ लौटाता है। अनुपलब्ध माउंट और दूरस्थ स्वामी नोड `storage: unavailable` के साथ दिखाई देते रहते हैं; कैटलॉग पढ़ना वैकल्पिक निर्देशिकाएँ नहीं बनाता। Git उपलब्धता हुक या इन्फ़रेंस चलाए बिना जाँची जाती है। परियोजना निर्माण और स्रोत प्रावधान अभी लागू किए जा रहे हैं।
 
-## `POST /setup/openai/oauth/start`
+`POST /api/v1/commands` अब पाठ प्रबंधन के साथ स्थायी बजट संपादन का समर्थन करता है। योजना स्वीकृति से स्वतंत्र रूप से बजट सीमा बदल या बंद की जा सकती है। लेखांकन काउंटर और अज्ञात उपयोग स्थिति केवल पढ़ने योग्य हैं; बकाया लेखांकन जोखिम होने पर मुद्रा बदलना अस्वीकार होता है। स्वीकृत संपादन स्नैपशॉट घटना और उपयोगकर्ता रसीद को परमाणु रूप से सहेजता है; दोहराने से नई घटना नहीं बनती। अन्य निष्पादन कमांड अभी लागू किए जा रहे हैं।
 
-Config page द्वारा उपयोग किए जाने वाले OpenAI OAuth setup instructions लौटाता है। Resulting OAuth session reference setup form से save किया जा सकता है या `IRONLOOM_OPENAI_OAUTH_SESSION` से bind किया जा सकता है।
+मानव इनपुट, टर्न निर्देशन और असाइनमेंट नियंत्रण स्थायी कमांड मार्ग का उपयोग करते हैं। नया इनपुट अपने मूल इतिहास, टर्न, असाइनमेंट, निर्देश प्रतियों और स्वामी नोड की कतार को परमाणु रूप से सहेजता है। दोहराया कमांड बदलते टर्न की जाँच से पहले मूल परिणाम बनाए रखता है। समन्वय सक्षम ऑर्केस्ट्रेशन भूमिका या मानक उत्पाद प्रबंधक का उपयोग करता है; कोई नया प्रवेश-बिंदु चयन या वैश्विक तैयारी शर्त नहीं जोड़ी गई है।
 
-## `POST /setup/discord/oauth/start`
+स्नैपशॉट में वैकल्पिक `pause_requested` है: सक्रिय असाइनमेंट न होने पर अनुपस्थित, लंबित विराम न होने पर असत्य और सुरक्षित सीमा की प्रतीक्षा में सत्य। विराम और समापन की पुष्टि के लिए स्थायी अनुरोध, प्रक्रिया, परिवर्तन और पथ रिकॉर्ड निष्क्रिय होने चाहिए। पट्टे की अवधि समाप्त होना, स्ट्रीम EOF या रद्दीकरण स्वीकार होना समापन का प्रमाण नहीं है। पृष्ठभूमि पुष्टि मानव गतिविधि क्रम नहीं बदलती।
 
-Configured application ID के लिए Discord authorization page लौटाता है। Generated URL `bot` और `applications.commands` scopes उपयोग करता है, ताकि Discord server administrator Ironloom को target server में install कर सके।
+`GET /api/v1/assignments/{id}/instructions` कार्यक्षेत्र अनुपलब्ध होने पर भी अधिकृत निर्देश प्रतियाँ और लागू/स्वीकृत संशोधन देता है। टेम्पलेट संपादन सक्रिय प्रतियों का स्पष्ट विकल्प बनाए रखता है। भूमिका इन्फ़रेंस, प्रश्न/योजना स्वीकृति, उपकरण/वर्कट्री निष्पादन और अंतिम रनटाइम संयोजन अभी जारी हैं।
 
-## `POST /discord/interactions`
+कॉन्फ़िगरेशन में `endpoints` (प्रदाता, API आधार, स्पष्ट प्रोटोकॉल और बिलिंग, स्ट्रीमिंग/टूल/उपयोग समर्थन और प्रयास स्तर) तथा `source_accounts` (होस्ट के साथ स्पष्ट अनाम पहुँच या क्रेडेंशियल संदर्भ) जुड़ते हैं। दोनों `/api/v1/configuration` का उपयोग करते हैं और दायरे के अनुसार विरासत लेते हैं; केवल भेजी गई सूची बदली जाती है, जबकि खाली सूची उसे साफ करती है। URL में क्रेडेंशियल, क्वेरी, फ़्रैगमेंट और दूरस्थ असुरक्षित HTTP अस्वीकार होते हैं। अनुपस्थित एंडपॉइंट, असंगत बिलिंग या असमर्थित प्रयास दूरस्थ प्रोफ़ाइल की तैयारी रोकते हैं; कोई इन्फ़रेंस जाँच नहीं होती। डाउनलोड चयनित स्रोत खाते को निजी रूप से रखते हैं; कॉलबैक एकीकरण जारी है।
 
-`X-Signature-Ed25519` और `X-Signature-Timestamp` से signed Discord interaction webhooks accept करता है।
+क्रेडेंशियल का प्रभावी गंतव्य बदलने के लिए `ReplaceCredential` आवश्यक है; इसमें इंस्टॉलेशन परिवर्तन से प्रभावित विरासत वाले प्रोजेक्ट प्रोफ़ाइल भी शामिल हैं। सामान्य निष्पादन `UseCredential` जाँचता है; केवल उपयोग की अनुमति साझा रहस्य को दूसरे प्रदाता URL या स्रोत होस्ट पर भेजने की अनुमति नहीं देती।
 
-Ping interactions Discord pong payload लौटाते हैं। Application command interactions Discord channel को operator thread की तरह resolve करते हैं, exactly one persisted work-item binding require करते हैं, selected gate worker को supervisor के माध्यम से dispatch करते हैं, artifact लिखते हैं और channel message response लौटाते हैं। Invalid signatures किसी work के run होने से पहले `401` लौटाती हैं।
+स्थानीय प्रोफ़ाइल `local_binding` सहेजती है: अपरिवर्तनीय `inventory_id`, स्पष्ट सापेक्ष `weights`, वैकल्पिक `tokenizer`/`template` और `options: EngineLoadOptions`। बाइंडिंग अनुपस्थित होने पर तैयारी रुकती है; पहला फ़ाइल, मॉडल, इंजन या डिवाइस अपने-आप नहीं चुना जाता। `ModelFilesQuery` इन्वेंटरी या पूरा होस्ट/रिपॉज़िटरी/रिविज़न चुनता है और सीमित मेटाडेटा पृष्ठ देता है। `GET /api/v1/models/files` का एकीकरण जारी है; परिणाम में पथ, वैकल्पिक आकार, SHA-256 और चेकसम का स्रोत होता है, डाउनलोड URL नहीं। Kaggle आर्काइव के वज़न निकाली गई इन्वेंटरी से चुने जाते हैं।
+
+टर्न का क्रम और परिणाम उनके वास्तविक सेवा इवेंट वॉटरमार्क पर सहेजे जाते हैं। स्टोरेज दोनों दिशाएँ, समावेशी उलटे एंकर और संग्रहीत क्रम में सीमित आइटम-ID खोज समर्थित करता है; गलत दायरे, अनुपस्थित या भविष्य के एंकर अस्वीकार होते हैं। इनपुट या रीप्ले लौटने से पहले असाइनमेंट का प्रोजेक्ट संबंध स्थापित होता है; विफलता पर रिकवरी इरादा रहता है। API-कुंजी प्रोफ़ाइल बिना स्ट्रीमिंग के भी तैयार हो सकती है; पात्र खाता एंडपॉइंट में स्ट्रीमिंग आवश्यक है। नेटिव कॉलबैक एकीकरण बाकी है।

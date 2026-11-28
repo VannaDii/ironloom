@@ -1,0 +1,19 @@
+{{- range $purpose := list "projects" "models" }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "ironloom.fullname" $ }}-{{ $purpose }}
+  labels:
+    {{- include "ironloom.labels" $ | nindent 4 }}
+    ironloom.dev/purpose: {{ $purpose }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ required (printf "storage.%sSize is required" $purpose) (index $.Values.storage (printf "%sSize" $purpose)) | quote }}
+  {{- if $.Values.storage.storageClassName }}
+  storageClassName: {{ $.Values.storage.storageClassName | quote }}
+  {{- end }}
+{{- end }}

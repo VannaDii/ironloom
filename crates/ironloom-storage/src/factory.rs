@@ -176,7 +176,7 @@ pub trait FactoryStore: Send + Sync {
     fn enroll_node(&self, enrollment: NodeEnrollment) -> BoxFuture<'_, Result<(), StoreFailure>>;
     /// Saves a lesson revision and outbox notification in one transaction; local use is immediate.
     fn save_lesson(&self, lesson: Lesson) -> BoxFuture<'_, Result<(), StoreFailure>>;
-    /// Atomically commits actor/key/hash, receipt and initial durable event. Existing keys
+    /// Atomically commits actor/key/hash, receipt and optional first durable event. Existing keys
     /// return Existing or Conflict without dispatch or a second event. The service dispatches
     /// only from the committed outbox, not from this method's in-memory result.
     fn commit_command(
@@ -215,17 +215,30 @@ StoredCommand, StoredCommandData {
     /// Client-persisted command identity.
     command_id: CommandId,
     /// Authorized event stream.
-    conversation_id: ConversationId,
-    /// Project authority scope.
-    project_id: ProjectId,
+    conversation_id: Option<ConversationId>,
+    /// Project authority scope; absent for installation commands before any project exists.
+    project_id: Option<ProjectId>,
     /// Canonical validated request fingerprint.
     payload_hash: ActorId,
     /// Validated service receipt serialized by composition.
     receipt: serde_json::Value,
-    /// Validated first event committed with command and outbox.
-    first_event: serde_json::Value,
+    /// Optional validated first event. Empty conversations retain cursor zero and dispatch nothing.
+    first_event: Option<serde_json::Value>,
 } |value| {
-    let _ = value;
+    if !value.receipt.is_object() {
+        return Err(ValidationErrors::field("receipt", "object_required"));
+    }
+    if value.conversation_id.is_some() && value.project_id.is_none() {
+        return Err(ValidationErrors::field("project_id", "conversation_requires_project"));
+    }
+    if let Some(event) = &value.first_event {
+        if value.conversation_id.is_none() {
+            return Err(ValidationErrors::field("conversation_id", "event_requires_conversation"));
+        }
+        if !event.is_object() {
+            return Err(ValidationErrors::field("first_event", "object_required"));
+        }
+    }
     Ok(())
 }
 }

@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/DownloadLimitsData",
+  "$defs": {
+    "Counter": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Canonical decimal u64; semantic validation also enforces u64 maximum.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "DownloadLimitsData": {
+      "description": "Unchecked construction draft for `DownloadLimits`; validate before use.",
+      "type": "object",
+      "properties": {
+        "per_file_bytes": {
+          "description": "Maximum bytes for one file, including an unknown-length streaming response.",
+          "$ref": "#/$defs/Counter"
+        },
+        "per_transfer_bytes": {
+          "description": "Maximum aggregate bytes for one transfer across all its files.",
+          "$ref": "#/$defs/Counter"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "per_file_bytes",
+        "per_transfer_bytes"
+      ]
+    }
+  }
+}

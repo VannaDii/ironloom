@@ -1,47 +1,54 @@
 # Runtime HTTP API
 
-Ironloom serves setup, health, and readiness on the existing runtime HTTP port.
+The authenticated service uses Tokio/Axum and the configured deployment base path. `ironloom serve` opens the selected existing PostgreSQL installation. `ironloom initialize` explicitly creates a fresh schema and one-time bootstrap token state; it rejects an existing schema. Neither storage errors nor restarts initialize replacement data.
 
-## `GET /healthz`
+Service login is separate from provider credentials. Login responses contain `AuthenticatedSession` JSON, set an HttpOnly `ironloom_session` cookie, and provide CSRF proof through `ironloom_csrf` and the `x-ironloom-csrf` response header. Authenticated mutations require that proof in the request header. Cookies use the deployment path, SameSite=Lax, and Secure on HTTPS. Cross-origin requests fail closed. OIDC callbacks additionally require the browser-bound one-time flow cookie.
 
-Returns `200 ok` when the HTTP server is alive.
+| Method | Path | Contract / transport |
+| --- | --- | --- |
+| POST | `/api/v1/auth/register` | `LoginRequest`; initial `x-ironloom-setup-token`, later current administrator + CSRF |
+| POST | `/api/v1/auth/local` | `LoginRequest` → `AuthenticatedSession` + cookies |
+| GET | `/api/v1/auth/session` | Current `AuthenticatedSession`; no-store |
+| POST | `/api/v1/auth/oidc/start` | `OidcStart` → authorization URL JSON + HttpOnly flow cookie |
+| POST | `/api/v1/auth/oidc/callback` | `OidcCallback` → `AuthenticatedSession` + cookies |
+| POST | `/api/v1/auth/bootstrap` | `BootstrapRedeem` → fixed `BootstrapState`; CSRF |
+| POST | `/api/v1/auth/logout` | Revoke current session and clear cookies; CSRF |
+| GET | `/healthz` | Process liveness, root path |
+| GET | `/readyz` | Selected PostgreSQL and OpenFGA binding reachable; separate from execution setup, root path |
 
-## `GET /readyz`
+Required infrastructure: `IRONLOOM_DATABASE_URL`, `IRONLOOM_OPENFGA_URL`, `IRONLOOM_CONFIG_KEY` (base64, 32 bytes), `IRONLOOM_PUBLIC_URL`, and both download byte ceilings. `IRONLOOM_INSTALLER_TOKEN` is read only by explicit initialization. Optional `IRONLOOM_OPENFGA_TOKEN` protects the authorization endpoint. Optional `IRONLOOM_OIDC_CONNECTIONS` is a JSON array of `{id, issuer, client_id, client_secret, redirects}`; redirect IDs map to exact allowlisted callback URLs. No identity is inferred from email.
 
-Returns `200 ok` only when required runtime configuration resolves from environment values or encrypted local setup. Returns `503 setup required` while setup remains incomplete.
+Role execution, model/source wiring and operator assets are still under implementation in the service lane. These auth routes are implemented; they are not a completed factory.
 
-## `GET /`
 
-Returns the setup page.
+History paging now requires an explicit forward/backward direction, accepts an optional turn filter, and keeps each page oldest first at the requested event watermark. Session discovery requires `order=created_at` for native clients or `order=human_interaction` for dashboards. Empty, disabled or disjoint local device placements block execution readiness. Configuration/instruction and conversation catalog/snapshot/history HTTP routes use the shared authenticated backend; full runtime composition remains in progress.
 
-## `GET /setup`
 
-Returns the setup page.
+The service now mounts configuration, instructions, conversation state/history and replayable SSE beneath the public deployment path. SSE requires `Last-Event-ID`; reader overflow emits `ironloom.error` and requires resynchronization. Disconnects and transport shutdown do not cancel execution. Set the stable `IRONLOOM_NODE_ID` and separate absolute `IRONLOOM_PROJECTS_ROOT` / `IRONLOOM_MODELS_ROOT`; Helm provides separate persistent claims. Adapter/sandbox registration, bundled dependency lifecycle and complete execution remain in progress.
 
-If `IRONLOOM_CONFIG_KEY` is missing or invalid, the page shows key instructions and no setup input fields.
 
-If `IRONLOOM_INSTALLER_TOKEN` is missing, the page shows installer-token instructions.
+Linux command containment now uses a dedicated helper, bubblewrap namespaces, explicit descriptor-bound writable paths and seccomp. Host paths and Git/service metadata are not writable; enforcement failures never run the command. Native Linux functional tests cover isolation, symlink rejection and descendant cleanup. The container installs bubblewrap/Git with UID/GID 1000. Full fenced workflow wiring, Alpine execution qualification and Mac/GPU work remain separate and unfinished.
 
-When setup prerequisites are present, the page renders the config form. Environment-backed fields are locked and secret values are not displayed.
 
-## `POST /setup`
+Dispatch claims now bind the owning node, exact service instance and monotonic fence. Expired leases cannot renew or retry automatically; unresolved owned processes or external mutations block explicit recovery. The sandbox helper guards parent death before startup. Native tests pass, while this host’s default Docker policy denies namespace creation; container workers fail closed and remain unqualified. Full scheduler/workflow wiring is still in progress.
 
-Accepts setup form values after the submitted installer token matches `IRONLOOM_INSTALLER_TOKEN`.
 
-Successful submissions write encrypted setup configuration under `IRONLOOM_STATE_ROOT` and return `200 setup saved`.
+Lesson HTTP reads and edit/scope/delete commands now enforce current manage/share grants independently from source access. Deletion removes lesson content; authorized retries retain only a content-free identity marker. Current-state outbox recovery repairs interrupted grant publication without restoring older visibility. Workflow command execution remains in progress.
 
-Invalid installer tokens return `403 setup rejected`.
+`GET /api/v1/projects?limit=100` returns live-authorized project metadata in human-interaction order, with an opaque `after` cursor. Unavailable mounts and remote owner nodes remain visible with `storage: unavailable`; catalog reads never create replacement directories. Git accessibility is checked without running hooks or inference. Project creation/source provisioning is still being implemented.
 
-## `POST /setup/openai/oauth/start`
+`POST /api/v1/commands` now supports durable budget edits as well as lesson management. Budget limits can be changed or disabled independently of plan approval. Accounting counters and unknown-usage state are read-only; currency changes are rejected while accounting exposure remains. Accepted budget edits atomically persist a snapshot event and actor-scoped receipt; replay does not create another event. Other execution commands remain under implementation.
 
-Returns the OpenAI OAuth setup instructions used by the config page. The resulting OAuth session reference can be saved through the setup form or bound through `IRONLOOM_OPENAI_OAUTH_SESSION`.
+Human input, steering and assignment controls now use the durable command route. A new input stores its original history item, turn, assignment, copied instructions and owning-node queue entry atomically. Replayed commands retain their original outcomes before mutable turn checks. Configured coordination uses the enabled orchestration role or the standard product manager; this adds no entrypoint setting or global readiness gate.
 
-## `POST /setup/discord/oauth/start`
+Snapshots expose nullable `pause_requested`: absent for no active assignment, false for no pending pause, true while a safe boundary is still pending. Pause confirmation and cancellation termination require quiescent persisted request/process/mutation/path records. Lease expiry, stream EOF and cancellation acceptance do not establish termination. Background confirmations preserve human-interaction ordering.
 
-Returns a Discord authorization page for the configured application ID. The generated URL uses the `bot` and `applications.commands` scopes so a Discord server administrator can install Ironloom into the target server.
+`GET /api/v1/assignments/{id}/instructions` returns authorized copied instructions and their applied/acknowledged revisions, independently of workspace availability. Template edits retain the explicit active-copy choice. Role inference, questions/approval execution, full tool/worktree dispatch and final runtime composition are still in progress.
 
-## `POST /discord/interactions`
+Configuration adds `endpoints` (provider, API base, explicit dialect/billing, streaming/tools/usage support and effort labels) and `source_accounts` (host plus exactly one anonymous choice or credential reference). Both use `/api/v1/configuration`, inherit by scope, and replace the selected list only when supplied; an empty list clears it. Endpoint URLs reject embedded credentials, query strings, fragments and remote plaintext HTTP. Missing endpoints, incompatible billing or unsupported selected effort block remote-profile readiness without probing a provider. Downloads retain their selected source binding privately; runtime source/engine callback integration remains in progress.
 
-Accepts Discord interaction webhooks signed with `X-Signature-Ed25519` and `X-Signature-Timestamp`.
+Changing an effective credential destination requires `ReplaceCredential`, including inherited project profiles affected by an installation change. Ordinary execution checks `UseCredential`; a use-only grant cannot redirect a shared secret to another provider URL or source host.
 
-Ping interactions return the Discord pong payload. Application command interactions resolve the Discord channel as the operator thread, require exactly one persisted work-item binding, dispatch the selected gate worker through the supervisor, write an artifact, and return a channel message response. Invalid signatures return `401` before any work runs.
+Local profiles persist `local_binding`: immutable `inventory_id`, exact relative `weights`, optional `tokenizer`/`template`, and `options: EngineLoadOptions`. Missing local binding blocks readiness; runtime provenance comes from the selected verified inventory. No first-file, quantization, model, engine or placement fallback is permitted. `ModelFilesQuery` selects either an inventory ID or a complete host/repository/revision, with bounded metadata pages. The agreed `GET /api/v1/models/files` transport/source binding is still being implemented; its public result contains file paths, optional byte counts, SHA-256 and checksum provenance, never transfer URLs. Kaggle archive weight choices come from extracted inventory.
+
+Turn rollout positions and lifecycle outcomes now persist at their actual service event watermarks. Storage supports both directions, inclusive reverse anchors and exact bounded item-ID lookup in stored order; foreign, missing and future anchors fail. Assignment parent grants are projected before input/replay returns, retaining the durable recovery intent on failure. API-key endpoint readiness accepts declared nonstreaming normalization; eligible account endpoints still require streaming. Native callback composition remains pending.

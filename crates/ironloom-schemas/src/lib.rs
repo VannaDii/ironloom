@@ -80,8 +80,62 @@ pub fn check_schema_files(root: &Path) -> SchemaResult<()> {
 
 fn schema_files() -> SchemaResult<Vec<SchemaFile>> {
     Ok(vec![
-        schema::<ironloom_runtime::factory::CreateConversation>(
-            "crates/ironloom-runtime/schemas/create-conversation.schema.json",
+        schema::<ironloom_service::factory::ModelInventoryQuery>(
+            "crates/ironloom-service/schemas/model-inventory-query.schema.json",
+        )?,
+        schema::<ironloom_service::factory::ModelFilesQuery>(
+            "crates/ironloom-service/schemas/model-files-query.schema.json",
+        )?,
+        schema::<ironloom_service::factory::ModelFilesPage>(
+            "crates/ironloom-service/schemas/model-files-page.schema.json",
+        )?,
+        schema::<ironloom_models::factory::ModelFileMetadata>(
+            "crates/ironloom-models/schemas/model-file-metadata.schema.json",
+        )?,
+        schema::<ironloom_config::factory::LocalModelBinding>(
+            "crates/ironloom-config/schemas/local-model-binding.schema.json",
+        )?,
+        schema::<ironloom_service::factory::ModelInventoryItem>(
+            "crates/ironloom-service/schemas/model-inventory-item.schema.json",
+        )?,
+        schema::<ironloom_service::factory::ModelInventoryPage>(
+            "crates/ironloom-service/schemas/model-inventory-page.schema.json",
+        )?,
+        schema::<ironloom_service::factory::ModelAssessmentQuery>(
+            "crates/ironloom-service/schemas/model-assessment-query.schema.json",
+        )?,
+        schema::<ironloom_service::factory::EngineAssessment>(
+            "crates/ironloom-service/schemas/engine-assessment.schema.json",
+        )?,
+        schema::<ironloom_service::factory::ProjectQuery>(
+            "crates/ironloom-service/schemas/project-query.schema.json",
+        )?,
+        schema::<ironloom_service::factory::ProjectSummary>(
+            "crates/ironloom-service/schemas/project-summary.schema.json",
+        )?,
+        schema::<ironloom_service::factory::ProjectPage>(
+            "crates/ironloom-service/schemas/project-page.schema.json",
+        )?,
+        schema::<ironloom_service::factory::CreateProject>(
+            "crates/ironloom-service/schemas/create-project.schema.json",
+        )?,
+        schema::<ironloom_service::factory::CredentialSummary>(
+            "crates/ironloom-service/schemas/credential-summary.schema.json",
+        )?,
+        schema::<ironloom_service::factory::CredentialCommand>(
+            "crates/ironloom-service/schemas/credential-command.schema.json",
+        )?,
+        schema::<ironloom_service::factory::NativeConnectionCommand>(
+            "crates/ironloom-service/schemas/native-connection-command.schema.json",
+        )?,
+        schema::<ironloom_service::factory::NativeConnectionState>(
+            "crates/ironloom-service/schemas/native-connection-state.schema.json",
+        )?,
+        schema::<ironloom_service::factory::DownloadCommand>(
+            "crates/ironloom-service/schemas/download-command.schema.json",
+        )?,
+        schema::<ironloom_service::factory::CreateConversation>(
+            "crates/ironloom-service/schemas/create-conversation.schema.json",
         )?,
         schema::<ironloom_config::factory::ModelProfileConfiguration>(
             "crates/ironloom-config/schemas/model-profile-configuration.schema.json",
@@ -89,23 +143,29 @@ fn schema_files() -> SchemaResult<Vec<SchemaFile>> {
         schema::<ironloom_config::factory::DevicePreference>(
             "crates/ironloom-config/schemas/device-preference.schema.json",
         )?,
-        schema::<ironloom_runtime::factory::ConfigurationChange>(
-            "crates/ironloom-runtime/schemas/configuration-change.schema.json",
+        schema::<ironloom_config::factory::ProviderEndpoint>(
+            "crates/ironloom-config/schemas/provider-endpoint.schema.json",
         )?,
-        schema::<ironloom_runtime::factory::ConfigurationCommand>(
-            "crates/ironloom-runtime/schemas/configuration-command.schema.json",
+        schema::<ironloom_config::factory::SourceAccountBinding>(
+            "crates/ironloom-config/schemas/source-account-binding.schema.json",
         )?,
-        schema::<ironloom_runtime::factory::ConfigurationSnapshot>(
-            "crates/ironloom-runtime/schemas/configuration-snapshot.schema.json",
+        schema::<ironloom_service::factory::ConfigurationChange>(
+            "crates/ironloom-service/schemas/configuration-change.schema.json",
         )?,
-        schema::<ironloom_runtime::factory::LessonMutation>(
-            "crates/ironloom-runtime/schemas/lesson-mutation.schema.json",
+        schema::<ironloom_service::factory::ConfigurationCommand>(
+            "crates/ironloom-service/schemas/configuration-command.schema.json",
         )?,
-        schema::<ironloom_runtime::factory::LessonQuery>(
-            "crates/ironloom-runtime/schemas/lesson-query.schema.json",
+        schema::<ironloom_service::factory::ConfigurationSnapshot>(
+            "crates/ironloom-service/schemas/configuration-snapshot.schema.json",
         )?,
-        schema::<ironloom_runtime::factory::LessonPage>(
-            "crates/ironloom-runtime/schemas/lesson-page.schema.json",
+        schema::<ironloom_service::factory::LessonMutation>(
+            "crates/ironloom-service/schemas/lesson-mutation.schema.json",
+        )?,
+        schema::<ironloom_service::factory::LessonQuery>(
+            "crates/ironloom-service/schemas/lesson-query.schema.json",
+        )?,
+        schema::<ironloom_service::factory::LessonPage>(
+            "crates/ironloom-service/schemas/lesson-page.schema.json",
         )?,
         schema::<ironloom_models::factory::SourceQuery>(
             "crates/ironloom-models/schemas/source-query.schema.json",
@@ -149,23 +209,26 @@ fn schema_files() -> SchemaResult<Vec<SchemaFile>> {
         schema::<ironloom_models::factory::InferenceMessage>(
             "crates/ironloom-models/schemas/inference-message.schema.json",
         )?,
-        schema::<ironloom_runtime::factory::ConversationSnapshot>(
-            "crates/ironloom-runtime/schemas/conversation-snapshot.schema.json",
+        schema::<ironloom_service::factory::ConversationSnapshot>(
+            "crates/ironloom-service/schemas/conversation-snapshot.schema.json",
         )?,
-        schema::<ironloom_runtime::factory::HistoryQuery>(
-            "crates/ironloom-runtime/schemas/history-query.schema.json",
+        schema::<ironloom_service::factory::HistoryDirection>(
+            "crates/ironloom-service/schemas/history-direction.schema.json",
         )?,
-        schema::<ironloom_runtime::factory::HistoryItem>(
-            "crates/ironloom-runtime/schemas/history-item.schema.json",
+        schema::<ironloom_service::factory::HistoryQuery>(
+            "crates/ironloom-service/schemas/history-query.schema.json",
         )?,
-        schema::<ironloom_runtime::factory::HistoryPage>(
-            "crates/ironloom-runtime/schemas/history-page.schema.json",
+        schema::<ironloom_service::factory::HistoryItem>(
+            "crates/ironloom-service/schemas/history-item.schema.json",
         )?,
-        schema::<ironloom_native::factory::RelayTarget>(
-            "crates/ironloom-native/schemas/relay-target.schema.json",
+        schema::<ironloom_service::factory::HistoryPage>(
+            "crates/ironloom-service/schemas/history-page.schema.json",
         )?,
-        schema::<ironloom_native::factory::NativePersistenceKey>(
-            "crates/ironloom-native/schemas/native-persistence-key.schema.json",
+        schema::<ironloom_service::factory::RelayTarget>(
+            "crates/ironloom-service/schemas/relay-target.schema.json",
+        )?,
+        schema::<ironloom_service::factory::NativePersistenceKey>(
+            "crates/ironloom-service/schemas/native-persistence-key.schema.json",
         )?,
         schema::<ironloom_config::factory::RoleConfiguration>(
             "crates/ironloom-config/schemas/role-configuration.schema.json",
@@ -179,6 +242,24 @@ fn schema_files() -> SchemaResult<Vec<SchemaFile>> {
         )?,
         schema::<ironloom_workers::factory::PendingQuestion>(
             "crates/ironloom-workers/schemas/pending-question.schema.json",
+        )?,
+        schema::<ironloom_service::factory::BudgetCommand>(
+            "crates/ironloom-service/schemas/budget-command.schema.json",
+        )?,
+        schema::<ironloom_service::factory::InstructionTemplate>(
+            "crates/ironloom-service/schemas/instruction-template.schema.json",
+        )?,
+        schema::<ironloom_service::factory::InstructionQuery>(
+            "crates/ironloom-service/schemas/instruction-query.schema.json",
+        )?,
+        schema::<ironloom_service::factory::InstructionPage>(
+            "crates/ironloom-service/schemas/instruction-page.schema.json",
+        )?,
+        schema::<ironloom_service::factory::InstructionCommand>(
+            "crates/ironloom-service/schemas/instruction-command.schema.json",
+        )?,
+        schema::<ironloom_config::factory::DownloadLimits>(
+            "crates/ironloom-config/schemas/download-limits.schema.json",
         )?,
         schema::<ironloom_storage::factory::StoredCommand>(
             "crates/ironloom-storage/schemas/stored-command.schema.json",
@@ -213,38 +294,41 @@ fn schema_files() -> SchemaResult<Vec<SchemaFile>> {
         schema::<ironloom_models::factory::ModelFit>(
             "crates/ironloom-models/schemas/model-fit.schema.json",
         )?,
-        schema::<ironloom_native::factory::RelayCursor>(
-            "crates/ironloom-native/schemas/relay-cursor.schema.json",
+        schema::<ironloom_service::factory::RelayCursor>(
+            "crates/ironloom-service/schemas/relay-cursor.schema.json",
         )?,
-        schema::<ironloom_native::factory::NativeEnrollment>(
-            "crates/ironloom-native/schemas/native-enrollment.schema.json",
+        schema::<ironloom_service::factory::NativeEnrollment>(
+            "crates/ironloom-service/schemas/native-enrollment.schema.json",
         )?,
-        schema::<ironloom_runtime::factory::LoginRequest>(
-            "crates/ironloom-runtime/schemas/login-request.schema.json",
+        schema::<ironloom_service::factory::LoginRequest>(
+            "crates/ironloom-service/schemas/login-request.schema.json",
         )?,
-        schema::<ironloom_runtime::factory::OidcStart>(
-            "crates/ironloom-runtime/schemas/oidc-start.schema.json",
+        schema::<ironloom_service::factory::OidcStart>(
+            "crates/ironloom-service/schemas/oidc-start.schema.json",
         )?,
-        schema::<ironloom_runtime::factory::OidcCallback>(
-            "crates/ironloom-runtime/schemas/oidc-callback.schema.json",
+        schema::<ironloom_service::factory::OidcCallback>(
+            "crates/ironloom-service/schemas/oidc-callback.schema.json",
         )?,
-        schema::<ironloom_runtime::factory::BootstrapRedeem>(
-            "crates/ironloom-runtime/schemas/bootstrap-redeem.schema.json",
+        schema::<ironloom_service::factory::BootstrapRedeem>(
+            "crates/ironloom-service/schemas/bootstrap-redeem.schema.json",
         )?,
-        schema::<ironloom_runtime::factory::SteeringInput>(
-            "crates/ironloom-runtime/schemas/steering-input.schema.json",
+        schema::<ironloom_service::factory::SteeringInput>(
+            "crates/ironloom-service/schemas/steering-input.schema.json",
         )?,
-        schema::<ironloom_runtime::factory::QuestionAnswer>(
-            "crates/ironloom-runtime/schemas/question-answer.schema.json",
+        schema::<ironloom_service::factory::QuestionAnswer>(
+            "crates/ironloom-service/schemas/question-answer.schema.json",
         )?,
-        schema::<ironloom_runtime::factory::SessionQuery>(
-            "crates/ironloom-runtime/schemas/session-query.schema.json",
+        schema::<ironloom_service::factory::SessionOrder>(
+            "crates/ironloom-service/schemas/session-order.schema.json",
         )?,
-        schema::<ironloom_runtime::factory::SessionSummary>(
-            "crates/ironloom-runtime/schemas/session-summary.schema.json",
+        schema::<ironloom_service::factory::SessionQuery>(
+            "crates/ironloom-service/schemas/session-query.schema.json",
         )?,
-        schema::<ironloom_runtime::factory::ServiceError>(
-            "crates/ironloom-runtime/schemas/service-error.schema.json",
+        schema::<ironloom_service::factory::SessionSummary>(
+            "crates/ironloom-service/schemas/session-summary.schema.json",
+        )?,
+        schema::<ironloom_service::factory::ServiceError>(
+            "crates/ironloom-service/schemas/service-error.schema.json",
         )?,
         schema::<ironloom_policy::factory::Resource>(
             "crates/ironloom-policy/schemas/resource.schema.json",
@@ -318,20 +402,20 @@ fn schema_files() -> SchemaResult<Vec<SchemaFile>> {
         schema::<ironloom_storage::factory::BootstrapState>(
             "crates/ironloom-storage/schemas/bootstrap-state.schema.json",
         )?,
-        schema::<ironloom_runtime::factory::Command>(
-            "crates/ironloom-runtime/schemas/command.schema.json",
+        schema::<ironloom_service::factory::Command>(
+            "crates/ironloom-service/schemas/command.schema.json",
         )?,
-        schema::<ironloom_runtime::factory::ReplayCursor>(
-            "crates/ironloom-runtime/schemas/replay-cursor.schema.json",
+        schema::<ironloom_service::factory::ReplayCursor>(
+            "crates/ironloom-service/schemas/replay-cursor.schema.json",
         )?,
-        schema::<ironloom_runtime::factory::ServiceEvent>(
-            "crates/ironloom-runtime/schemas/service-event.schema.json",
+        schema::<ironloom_service::factory::ServiceEvent>(
+            "crates/ironloom-service/schemas/service-event.schema.json",
         )?,
-        schema::<ironloom_runtime::factory::CommandReceipt>(
-            "crates/ironloom-runtime/schemas/command-receipt.schema.json",
+        schema::<ironloom_service::factory::CommandReceipt>(
+            "crates/ironloom-service/schemas/command-receipt.schema.json",
         )?,
-        schema::<ironloom_runtime::factory::AuthenticatedSession>(
-            "crates/ironloom-runtime/schemas/authenticated-session.schema.json",
+        schema::<ironloom_service::factory::AuthenticatedSession>(
+            "crates/ironloom-service/schemas/authenticated-session.schema.json",
         )?,
         schema::<ActorId>("crates/ironloom-core/schemas/actor-id.schema.json")?,
         schema::<ArtifactId>("crates/ironloom-core/schemas/artifact-id.schema.json")?,

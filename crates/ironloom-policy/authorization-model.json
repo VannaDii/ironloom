@@ -1,0 +1,794 @@
+{
+  "schema_version": "1.1",
+  "type_definitions": [
+    {
+      "type": "operator",
+      "relations": {},
+      "metadata": null
+    },
+    {
+      "type": "worker",
+      "relations": {},
+      "metadata": null
+    },
+    {
+      "type": "installation",
+      "relations": {
+        "administrator": {
+          "this": {}
+        },
+        "enroll_node": {
+          "computedUserset": {
+            "relation": "administrator"
+          }
+        },
+        "viewer": {
+          "this": {}
+        },
+        "operator": {
+          "this": {}
+        },
+        "view": {
+          "union": {
+            "child": [
+              {
+                "computedUserset": {
+                  "relation": "administrator"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "viewer"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "operator"
+                }
+              }
+            ]
+          }
+        },
+        "operate": {
+          "union": {
+            "child": [
+              {
+                "computedUserset": {
+                  "relation": "administrator"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "operator"
+                }
+              }
+            ]
+          }
+        },
+        "manage": {
+          "computedUserset": {
+            "relation": "administrator"
+          }
+        },
+        "share": {
+          "computedUserset": {
+            "relation": "administrator"
+          }
+        }
+      },
+      "metadata": {
+        "relations": {
+          "administrator": {
+            "directly_related_user_types": [
+              {
+                "type": "operator"
+              }
+            ]
+          },
+          "enroll_node": {
+            "directly_related_user_types": []
+          },
+          "viewer": {
+            "directly_related_user_types": [
+              {
+                "type": "operator"
+              }
+            ]
+          },
+          "operator": {
+            "directly_related_user_types": [
+              {
+                "type": "operator"
+              }
+            ]
+          },
+          "view": {
+            "directly_related_user_types": []
+          },
+          "operate": {
+            "directly_related_user_types": []
+          },
+          "manage": {
+            "directly_related_user_types": []
+          },
+          "share": {
+            "directly_related_user_types": []
+          }
+        }
+      }
+    },
+    {
+      "type": "project",
+      "relations": {
+        "installation": {
+          "this": {}
+        },
+        "self_grant": {
+          "tupleToUserset": {
+            "computedUserset": {
+              "relation": "administrator"
+            },
+            "tupleset": {
+              "relation": "installation"
+            }
+          }
+        },
+        "owner": {
+          "this": {}
+        },
+        "viewer": {
+          "this": {}
+        },
+        "operator": {
+          "this": {}
+        },
+        "approver": {
+          "this": {}
+        },
+        "manager": {
+          "this": {}
+        },
+        "view": {
+          "union": {
+            "child": [
+              {
+                "computedUserset": {
+                  "relation": "owner"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "viewer"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "operator"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "approver"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "manager"
+                }
+              }
+            ]
+          }
+        },
+        "operate": {
+          "union": {
+            "child": [
+              {
+                "computedUserset": {
+                  "relation": "owner"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "operator"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "manager"
+                }
+              }
+            ]
+          }
+        },
+        "approve": {
+          "union": {
+            "child": [
+              {
+                "computedUserset": {
+                  "relation": "owner"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "approver"
+                }
+              }
+            ]
+          }
+        },
+        "manage": {
+          "union": {
+            "child": [
+              {
+                "computedUserset": {
+                  "relation": "owner"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "manager"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "metadata": {
+        "relations": {
+          "installation": {
+            "directly_related_user_types": [
+              {
+                "type": "installation"
+              }
+            ]
+          },
+          "self_grant": {
+            "directly_related_user_types": []
+          },
+          "owner": {
+            "directly_related_user_types": [
+              {
+                "type": "operator"
+              }
+            ]
+          },
+          "viewer": {
+            "directly_related_user_types": [
+              {
+                "type": "operator"
+              }
+            ]
+          },
+          "operator": {
+            "directly_related_user_types": [
+              {
+                "type": "operator"
+              }
+            ]
+          },
+          "approver": {
+            "directly_related_user_types": [
+              {
+                "type": "operator"
+              }
+            ]
+          },
+          "manager": {
+            "directly_related_user_types": [
+              {
+                "type": "operator"
+              }
+            ]
+          },
+          "view": {
+            "directly_related_user_types": []
+          },
+          "operate": {
+            "directly_related_user_types": []
+          },
+          "approve": {
+            "directly_related_user_types": []
+          },
+          "manage": {
+            "directly_related_user_types": []
+          }
+        }
+      }
+    },
+    {
+      "type": "assignment",
+      "relations": {
+        "project": {
+          "this": {}
+        },
+        "delegated": {
+          "this": {}
+        },
+        "view": {
+          "tupleToUserset": {
+            "computedUserset": {
+              "relation": "view"
+            },
+            "tupleset": {
+              "relation": "project"
+            }
+          }
+        },
+        "operate": {
+          "tupleToUserset": {
+            "computedUserset": {
+              "relation": "operate"
+            },
+            "tupleset": {
+              "relation": "project"
+            }
+          }
+        },
+        "approve": {
+          "tupleToUserset": {
+            "computedUserset": {
+              "relation": "approve"
+            },
+            "tupleset": {
+              "relation": "project"
+            }
+          }
+        },
+        "manage": {
+          "tupleToUserset": {
+            "computedUserset": {
+              "relation": "manage"
+            },
+            "tupleset": {
+              "relation": "project"
+            }
+          }
+        }
+      },
+      "metadata": {
+        "relations": {
+          "project": {
+            "directly_related_user_types": [
+              {
+                "type": "project"
+              }
+            ]
+          },
+          "delegated": {
+            "directly_related_user_types": [
+              {
+                "type": "worker"
+              }
+            ]
+          },
+          "view": {
+            "directly_related_user_types": []
+          },
+          "operate": {
+            "directly_related_user_types": []
+          },
+          "approve": {
+            "directly_related_user_types": []
+          },
+          "manage": {
+            "directly_related_user_types": []
+          }
+        }
+      }
+    },
+    {
+      "type": "conversation",
+      "relations": {
+        "project": {
+          "this": {}
+        },
+        "view": {
+          "tupleToUserset": {
+            "computedUserset": {
+              "relation": "view"
+            },
+            "tupleset": {
+              "relation": "project"
+            }
+          }
+        },
+        "operate": {
+          "tupleToUserset": {
+            "computedUserset": {
+              "relation": "operate"
+            },
+            "tupleset": {
+              "relation": "project"
+            }
+          }
+        }
+      },
+      "metadata": {
+        "relations": {
+          "project": {
+            "directly_related_user_types": [
+              {
+                "type": "project"
+              }
+            ]
+          },
+          "view": {
+            "directly_related_user_types": []
+          },
+          "operate": {
+            "directly_related_user_types": []
+          }
+        }
+      }
+    },
+    {
+      "type": "file",
+      "relations": {
+        "assignment": {
+          "this": {}
+        },
+        "view": {
+          "tupleToUserset": {
+            "computedUserset": {
+              "relation": "view"
+            },
+            "tupleset": {
+              "relation": "assignment"
+            }
+          }
+        },
+        "operate": {
+          "tupleToUserset": {
+            "computedUserset": {
+              "relation": "operate"
+            },
+            "tupleset": {
+              "relation": "assignment"
+            }
+          }
+        }
+      },
+      "metadata": {
+        "relations": {
+          "assignment": {
+            "directly_related_user_types": [
+              {
+                "type": "assignment"
+              }
+            ]
+          },
+          "view": {
+            "directly_related_user_types": []
+          },
+          "operate": {
+            "directly_related_user_types": []
+          }
+        }
+      }
+    },
+    {
+      "type": "credential",
+      "relations": {
+        "owner": {
+          "this": {}
+        },
+        "user": {
+          "this": {}
+        },
+        "replacer": {
+          "this": {}
+        },
+        "sharer": {
+          "this": {}
+        },
+        "deleter": {
+          "this": {}
+        },
+        "view": {
+          "computedUserset": {
+            "relation": "owner"
+          }
+        },
+        "use_credential": {
+          "union": {
+            "child": [
+              {
+                "computedUserset": {
+                  "relation": "owner"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "user"
+                }
+              }
+            ]
+          }
+        },
+        "replace_credential": {
+          "union": {
+            "child": [
+              {
+                "computedUserset": {
+                  "relation": "owner"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "replacer"
+                }
+              }
+            ]
+          }
+        },
+        "share": {
+          "union": {
+            "child": [
+              {
+                "computedUserset": {
+                  "relation": "owner"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "sharer"
+                }
+              }
+            ]
+          }
+        },
+        "delete_credential": {
+          "union": {
+            "child": [
+              {
+                "computedUserset": {
+                  "relation": "owner"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "deleter"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "metadata": {
+        "relations": {
+          "owner": {
+            "directly_related_user_types": [
+              {
+                "type": "operator"
+              }
+            ]
+          },
+          "user": {
+            "directly_related_user_types": [
+              {
+                "type": "operator"
+              }
+            ]
+          },
+          "replacer": {
+            "directly_related_user_types": [
+              {
+                "type": "operator"
+              }
+            ]
+          },
+          "sharer": {
+            "directly_related_user_types": [
+              {
+                "type": "operator"
+              }
+            ]
+          },
+          "deleter": {
+            "directly_related_user_types": [
+              {
+                "type": "operator"
+              }
+            ]
+          },
+          "view": {
+            "directly_related_user_types": []
+          },
+          "use_credential": {
+            "directly_related_user_types": []
+          },
+          "replace_credential": {
+            "directly_related_user_types": []
+          },
+          "share": {
+            "directly_related_user_types": []
+          },
+          "delete_credential": {
+            "directly_related_user_types": []
+          }
+        }
+      }
+    },
+    {
+      "type": "lesson",
+      "relations": {
+        "project": {
+          "this": {}
+        },
+        "assignment": {
+          "this": {}
+        },
+        "viewer": {
+          "this": {}
+        },
+        "manager": {
+          "this": {}
+        },
+        "sharer": {
+          "this": {}
+        },
+        "view": {
+          "union": {
+            "child": [
+              {
+                "computedUserset": {
+                  "relation": "viewer"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "manager"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "sharer"
+                }
+              },
+              {
+                "tupleToUserset": {
+                  "computedUserset": {
+                    "relation": "view"
+                  },
+                  "tupleset": {
+                    "relation": "project"
+                  }
+                }
+              },
+              {
+                "tupleToUserset": {
+                  "computedUserset": {
+                    "relation": "view"
+                  },
+                  "tupleset": {
+                    "relation": "assignment"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "manage": {
+          "union": {
+            "child": [
+              {
+                "computedUserset": {
+                  "relation": "manager"
+                }
+              },
+              {
+                "tupleToUserset": {
+                  "computedUserset": {
+                    "relation": "manage"
+                  },
+                  "tupleset": {
+                    "relation": "project"
+                  }
+                }
+              },
+              {
+                "tupleToUserset": {
+                  "computedUserset": {
+                    "relation": "manage"
+                  },
+                  "tupleset": {
+                    "relation": "assignment"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "share": {
+          "computedUserset": {
+            "relation": "sharer"
+          }
+        }
+      },
+      "metadata": {
+        "relations": {
+          "project": {
+            "directly_related_user_types": [
+              {
+                "type": "project"
+              }
+            ]
+          },
+          "assignment": {
+            "directly_related_user_types": [
+              {
+                "type": "assignment"
+              }
+            ]
+          },
+          "viewer": {
+            "directly_related_user_types": [
+              {
+                "type": "operator"
+              },
+              {
+                "type": "operator",
+                "wildcard": {}
+              }
+            ]
+          },
+          "manager": {
+            "directly_related_user_types": [
+              {
+                "type": "operator"
+              }
+            ]
+          },
+          "sharer": {
+            "directly_related_user_types": [
+              {
+                "type": "operator"
+              }
+            ]
+          },
+          "view": {
+            "directly_related_user_types": []
+          },
+          "manage": {
+            "directly_related_user_types": []
+          },
+          "share": {
+            "directly_related_user_types": []
+          }
+        }
+      }
+    },
+    {
+      "type": "node",
+      "relations": {
+        "installation": {
+          "this": {}
+        },
+        "manage": {
+          "tupleToUserset": {
+            "computedUserset": {
+              "relation": "enroll_node"
+            },
+            "tupleset": {
+              "relation": "installation"
+            }
+          }
+        }
+      },
+      "metadata": {
+        "relations": {
+          "installation": {
+            "directly_related_user_types": [
+              {
+                "type": "installation"
+              }
+            ]
+          },
+          "manage": {
+            "directly_related_user_types": []
+          }
+        }
+      }
+    }
+  ]
+}

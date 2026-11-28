@@ -165,3 +165,6 @@ where
 
 /// Software factory contracts for the unreleased application.
 pub mod factory;
+
+/// Pure configured-team routing, without choosing a replacement role/model.
+pub mod routing;

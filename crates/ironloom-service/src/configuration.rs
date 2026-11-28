@@ -1,0 +1,254 @@
+//! Pure effective-configuration composition. Runtime supplies current authorized adapter/storage facts.
+use crate::factory::{ConfigurationChange, ConfigurationSnapshot, ConfigurationSnapshotData};
+use ironloom_config::{
+    factory::RoleConfiguration,
+    team::{ReadinessFacts, standard_team, unmet_prerequisites},
+};
+use ironloom_core::{Counter, ProjectId, validation::ValidationErrors};
+use ironloom_models::factory::DeviceIdentity;
+
+/// Builds the effective snapshot without mutating templates, copied instructions or active selections.
+/// Project changes inherit unmodified installation fields; the setup choice remains installation-wide.
+pub fn effective_snapshot(
+    project: Option<ProjectId>,
+    revision: Counter,
+    base: Option<&ConfigurationSnapshot>,
+    changes: Option<&ConfigurationChange>,
+    devices: Vec<DeviceIdentity>,
+    facts: &ReadinessFacts<'_>,
+) -> Result<ConfigurationSnapshot, ValidationErrors> {
+    let setup = changes
+        .and_then(|change| change.setup.clone())
+        .or_else(|| base.and_then(|base| base.setup.clone()));
+    let roles = changes
+        .and_then(|change| change.roles.clone())
+        .or_else(|| base.map(|base| base.roles.clone()))
+        .unwrap_or_else(|| {
+            standard_team()
+                .iter()
+                .map(|role| role.unconfigured())
+                .collect::<Vec<RoleConfiguration>>()
+        });
+    let models = changes
+        .and_then(|change| change.models.clone())
+        .or_else(|| base.map(|base| base.models.clone()))
+        .unwrap_or_default();
+    let device_preferences = changes
+        .and_then(|change| change.device_preferences.clone())
+        .or_else(|| base.map(|base| base.device_preferences.clone()))
+        .unwrap_or_default();
+    let blockers = unmet_prerequisites(
+        setup.as_ref(),
+        &roles,
+        &models,
+        &device_preferences,
+        &devices,
+        facts,
+    );
+    let endpoints = changes
+        .and_then(|change| change.endpoints.clone())
+        .or_else(|| base.map(|base| base.endpoints.clone()))
+        .unwrap_or_default();
+    let source_accounts = changes
+        .and_then(|change| change.source_accounts.clone())
+        .or_else(|| base.map(|base| base.source_accounts.clone()))
+        .unwrap_or_default();
+    ConfigurationSnapshot::new(ConfigurationSnapshotData {
+        project_id: project,
+        revision,
+        setup,
+        roles,
+        models,
+        device_preferences,
+        endpoints,
+        source_accounts,
+        discovered_devices: devices,
+        execution_ready: blockers.is_empty(),
+        unmet_prerequisites: blockers,
+    })
+}
+/// Combines only explicitly changed override fields. Missing project fields keep inheritance live.
+pub fn merge_overrides(
+    previous: Option<&ConfigurationChange>,
+    change: &ConfigurationChange,
+) -> Result<ConfigurationChange, ValidationErrors> {
+    use crate::factory::ConfigurationChangeData;
+    ConfigurationChange::new(ConfigurationChangeData {
+        setup: change
+            .setup
+            .clone()
+            .or_else(|| previous.and_then(|value| value.setup.clone())),
+        roles: change
+            .roles
+            .clone()
+            .or_else(|| previous.and_then(|value| value.roles.clone())),
+        models: change
+            .models
+            .clone()
+            .or_else(|| previous.and_then(|value| value.models.clone())),
+        device_preferences: change
+            .device_preferences
+            .clone()
+            .or_else(|| previous.and_then(|value| value.device_preferences.clone())),
+        endpoints: change
+            .endpoints
+            .clone()
+            .or_else(|| previous.and_then(|value| value.endpoints.clone())),
+        source_accounts: change
+            .source_accounts
+            .clone()
+            .or_else(|| previous.and_then(|value| value.source_accounts.clone())),
+    })
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::factory::{ConfigurationChangeData, ConfigurationSnapshot};
+    use ironloom_core::ModelProfileId;
+    use std::collections::BTreeSet;
+    #[test]
+    fn remote_only_explicit_team_is_ready_without_any_gpu() {
+        let profile = ModelProfileId::new("remote-profile").unwrap();
+        let available = BTreeSet::from([profile]);
+        let facts = ReadinessFacts {
+            usable_profiles: &available,
+            workspace_available: true,
+            sandbox_available: true,
+            node_enrolled: true,
+        };
+        let base:ConfigurationSnapshot=serde_json::from_value(serde_json::json!({
+            "project_id":null,"revision":"1","setup":{"lesson_handling":"project_only","delivery_confirmed":true,"publish_branch":true,"merge":false,"deploy":false},
+            "roles":[{"role_id":"planner","enabled":true,"model_profile_id":"remote-profile","reasoning_applicable":true,"reasoning_effort":"medium","device_bindings":[],"instructions_id":"planner"}],
+            "models":[{"profile_id":"remote-profile","provider":"fixture-provider","model_id":"explicit-model","generation_controls":{"max_output_tokens":"100","max_duration_ms":"1000","repetition_window":"20"},"credential_id":null,"billing":"api_key","engine":null,"device_bindings":[]}],
+            "device_preferences":[],"endpoints":[],"source_accounts":[],"discovered_devices":[],"execution_ready":true,"unmet_prerequisites":[]
+        })).unwrap();
+        let change = ConfigurationChange::new(ConfigurationChangeData {
+            setup: None,
+            roles: None,
+            models: None,
+            device_preferences: Some(vec![]),
+            endpoints: None,
+            source_accounts: None,
+        })
+        .unwrap();
+        let project = effective_snapshot(
+            Some(ProjectId::new("project").unwrap()),
+            Counter::new(2),
+            Some(&base),
+            Some(&change),
+            vec![],
+            &facts,
+        )
+        .unwrap();
+        assert!(project.execution_ready);
+        assert!(project.discovered_devices.is_empty());
+        assert_eq!(project.roles, base.roles);
+        assert_eq!(project.models, base.models);
+        let merged = merge_overrides(None, &change).unwrap();
+        assert!(merged.roles.is_none());
+        assert!(merged.models.is_none());
+    }
+    #[test]
+    fn missing_enforcement_blocks_execution_without_blocking_setup_snapshot() {
+        let available = BTreeSet::new();
+        let snapshot = effective_snapshot(
+            None,
+            Counter::new(1),
+            None,
+            None,
+            vec![],
+            &ReadinessFacts {
+                usable_profiles: &available,
+                workspace_available: true,
+                sandbox_available: false,
+                node_enrolled: false,
+            },
+        )
+        .unwrap();
+        assert!(!snapshot.execution_ready);
+        assert_eq!(snapshot.roles.len(), 7);
+        assert!(
+            snapshot
+                .unmet_prerequisites
+                .iter()
+                .any(|reason| reason.as_str() == "sandbox_unavailable")
+        );
+        assert!(snapshot.setup.is_none());
+    }
+    #[test]
+    fn local_readiness_obeys_effective_profile_role_and_device_restrictions() {
+        let base:ConfigurationSnapshot=serde_json::from_value(serde_json::json!({
+            "project_id":null,"revision":"1","setup":{"lesson_handling":"project_only","delivery_confirmed":true,"publish_branch":true,"merge":false,"deploy":false},
+            "roles":[{"role_id":"planner","enabled":true,"model_profile_id":"local-profile","reasoning_applicable":false,"reasoning_effort":null,"device_bindings":[],"instructions_id":"planner"}],
+            "models":[{"profile_id":"local-profile","provider":"local","model_id":"verified-fixture","generation_controls":{"max_output_tokens":"100","max_duration_ms":"1000","repetition_window":"20"},"credential_id":null,"billing":"local_estimate","engine":{"name":"fixture","version":"1","backend":"simulated","configuration_hash":"fixture"},"device_bindings":["device-a"]}],
+            "device_preferences":[],"endpoints":[],"source_accounts":[],"discovered_devices":[],"execution_ready":true,"unmet_prerequisites":[]
+        })).unwrap();
+        let devices=vec![serde_json::from_value(serde_json::json!({"device_id":"device-a","host_id":"fixture-host","parent_id":null,"hardware_key":"fixture-a","reconciled":true})).unwrap()];
+        let available = BTreeSet::from([ModelProfileId::new("local-profile").unwrap()]);
+        let facts = ReadinessFacts {
+            usable_profiles: &available,
+            workspace_available: true,
+            sandbox_available: true,
+            node_enrolled: true,
+        };
+        assert!(
+            effective_snapshot(
+                None,
+                base.revision,
+                Some(&base),
+                None,
+                devices.clone(),
+                &facts
+            )
+            .unwrap()
+            .execution_ready
+        );
+        for (name, field, changed) in [
+            (
+                "disabled device",
+                "device_preferences",
+                serde_json::json!([{"device_id":"device-a","enabled":false}]),
+            ),
+            ("empty profile placement", "models", {
+                let mut values = serde_json::to_value(&base.models).unwrap();
+                values[0]["device_bindings"] = serde_json::json!([]);
+                values
+            }),
+            ("disjoint role placement", "roles", {
+                let mut values = serde_json::to_value(&base.roles).unwrap();
+                values[0]["device_bindings"] = serde_json::json!(["device-b"]);
+                values
+            }),
+        ] {
+            let change: ConfigurationChange =
+                serde_json::from_value(serde_json::json!({field:changed})).unwrap();
+            let state = effective_snapshot(
+                None,
+                base.revision,
+                Some(&base),
+                Some(&change),
+                devices.clone(),
+                &facts,
+            )
+            .unwrap();
+            assert!(!state.execution_ready, "{name}");
+            assert!(
+                state
+                    .unmet_prerequisites
+                    .iter()
+                    .any(|reason| reason.as_str() == "role:planner:placement_unavailable"),
+                "{name}"
+            );
+            assert!(
+                ironloom_config::team::permitted_devices(
+                    &state.models[0],
+                    Some(&state.roles[0]),
+                    &state.device_preferences,
+                    &devices
+                )
+                .is_empty(),
+                "{name}"
+            );
+        }
+    }
+}

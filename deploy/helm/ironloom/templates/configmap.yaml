@@ -19,3 +19,9 @@ data:
 {{ if .Values.sonarcloud.projectKey }}
   IRONLOOM_SONARCLOUD_PROJECT_KEY: {{ .Values.sonarcloud.projectKey | quote }}
 {{ end }}
+  IRONLOOM_DOWNLOAD_MAX_FILE_BYTES: {{ required "download.maxFileBytes is required" .Values.download.maxFileBytes | quote }}
+  IRONLOOM_DOWNLOAD_MAX_TRANSFER_BYTES: {{ required "download.maxTransferBytes is required" .Values.download.maxTransferBytes | quote }}
+  IRONLOOM_OPENFGA_URL: {{ required "openfga.url is required" .Values.openfga.url | quote }}
+  IRONLOOM_NODE_ID: {{ required "runtime.nodeId is required" .Values.runtime.nodeId | quote }}
+  IRONLOOM_PROJECTS_ROOT: {{ required "runtime.projectsMountPath is required" .Values.runtime.projectsMountPath | quote }}
+  IRONLOOM_MODELS_ROOT: {{ required "runtime.modelsMountPath is required" .Values.runtime.modelsMountPath | quote }}

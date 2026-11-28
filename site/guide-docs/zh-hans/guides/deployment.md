@@ -1,135 +1,32 @@
 # 部署
 
-除非注册表所有者发生变化，否则运行时镜像是 `ghcr.io/vannadii/ironloom`。Helm chart 部署 `ironloom` 二进制，并使用 PVC 支持的 `.ironloom` 状态、设置时加密的本地配置、Discord、GitHub、SonarCloud 和 OpenAI 凭据的可选密钥引用，以及健康和就绪探针。
+当前服务打开已配置的现有 PostgreSQL 安装和 OpenFGA 端点。故障时不会创建替代数据库。随附数据库服务和本地托管生命周期仍在实现中；本次连接配置并未完成整个部署计划。
 
-使用 `deploy/helm/ironloom` 下的 Helm chart 进行 k3s 部署。
-
-## 部署流程
+启动 Deployment 前，准备选定的全新 PostgreSQL 数据库和当前 OpenFGA 服务，使用 `IRONLOOM_DATABASE_URL` 和 `IRONLOOM_INSTALLER_TOKEN` 运行一次 `ironloom initialize`。它仅创建全新的 Ironloom 模式并拒绝已有模式。正常重启使用 `ironloom serve` 打开同一安装。初始授权恢复仅限已记录的同一管理员，不会替换账户，也不会在完成后恢复被明确撤销的授权。
 
 ```mermaid
 flowchart LR
-  operator[操作员] --> secret[创建设置和运行时密钥]
-  secret --> helm[helm upgrade --install]
-  helm --> deployment[ironloom Deployment]
-  deployment --> pvc[(PVC 支持的 .ironloom 状态)]
-  deployment --> probes[健康和就绪探针]
-  probes --> health[/GET /healthz/]
-  probes --> ready[/GET /readyz/]
-  deployment --> setup[/运行时端口上的设置页面/]
-  setup --> encrypted[加密本地设置]
-  encrypted --> pvc
-  ready --> service[服务就绪]
-  service --> rollback[Helm 历史和回滚保留 PVC]
+  DB[(Fresh PostgreSQL)] --> Init[ironloom initialize]
+  Init --> Service[ironloom serve]
+  FGA[Configured OpenFGA] --> Service
+  Service --> Account[Register and authenticate]
+  Account --> Bootstrap[One-time bootstrap]
+  Bootstrap --> Ready[Recover same-user initial grants]
 ```
 
-## 运行时密钥
+Chart 从 `database.existingSecret` / `database.urlKey` 读取 `IRONLOOM_DATABASE_URL`（默认为 `ironloom-database` / `database-url`）。将 `openfga.url` 设置为实际获准端点，可通过 `openfga.existingSecret` / `openfga.tokenKey` 提供服务令牌。默认端点名称需要配置，目前尚未随附 OpenFGA 部署。连接保持私有，远程连接必须保护传输。
 
-安装 chart 前，请在目标命名空间中创建设置密钥。`IRONLOOM_CONFIG_KEY` 必须是 Base64 编码的 32 字节密钥材料。`IRONLOOM_INSTALLER_TOKEN` 授权首次运行设置表单提交。
+通过现有配置 Secret 提供 `IRONLOOM_CONFIG_KEY`，值为 base64 编码的 32 字节密钥。安装令牌在首次认证引导时消耗，不是可重复使用的管理员密码。普通账户通过认证注册路由创建。配置包含部署基础路径的 `runtime.publicUrl`，以及明确的正数 `download.maxFileBytes` / `download.maxTransferBytes`。
 
-```sh
-kubectl create namespace ironloom
-kubectl -n ironloom create secret generic ironloom-setup \
-  --from-literal=config-key="$(openssl rand -base64 32)" \
-  --from-literal=installer-token="$(openssl rand -base64 32)"
-```
+渲染 Chart 不会部署服务或验证推理。项目、模型和数据库的持久化根目录及所有者保持独立。不要通过删除 PVC 或重置安装来绕过连接或认证失败。
 
-运行时凭据可以通过 Kubernetes secrets、设置页面或两者同时提供。环境绑定的密钥优先于加密本地设置值。
 
-```sh
-kubectl -n ironloom create secret generic ironloom-discord \
-  --from-literal=application-id="${IRONLOOM_DISCORD_APPLICATION_ID}" \
-  --from-literal=token="${IRONLOOM_DISCORD_TOKEN}" \
-  --from-literal=public-key="${IRONLOOM_DISCORD_PUBLIC_KEY}"
-kubectl -n ironloom create secret generic ironloom-github \
-  --from-literal=token="${IRONLOOM_GITHUB_TOKEN}"
-kubectl -n ironloom create secret generic ironloom-sonarcloud \
-  --from-literal=token="${IRONLOOM_SONARCLOUD_TOKEN}"
-kubectl -n ironloom create secret generic ironloom-openai \
-  --from-literal=api-key="${IRONLOOM_OPENAI_API_KEY}"
-```
+服务现在在公开部署路径下提供配置、指令、会话状态、历史和可重放 SSE。SSE 要求 `Last-Event-ID`；缓冲区溢出时发送 `ironloom.error` 并要求重新同步。断开连接或关闭传输不会取消执行。请配置稳定的 `IRONLOOM_NODE_ID` 和独立的绝对路径 `IRONLOOM_PROJECTS_ROOT` / `IRONLOOM_MODELS_ROOT`；Helm 提供独立持久卷。适配器、沙箱、托管依赖和完整执行仍在开发中。
 
-对于 Discord 授权，请通过 `application-id` 密钥键或 Helm 值 `--set-string discord.applicationId=...` 提供 `IRONLOOM_DISCORD_APPLICATION_ID`。对于 OpenAI 身份验证，请提供 `IRONLOOM_OPENAI_API_KEY` 或 `IRONLOOM_OPENAI_OAUTH_SESSION`。设置页面也支持两种模式。
 
-## k3s 预演
+Linux 命令隔离使用独立辅助进程、bubblewrap 命名空间、通过文件描述符固定的写入路径和 seccomp。隔离失败时绝不执行命令。原生 Linux 功能测试覆盖文件系统隔离、符号链接拒绝和后代进程清理。容器包含 bubblewrap/Git，使用 UID/GID 1000。完整工作流、Alpine 执行验证及 Mac/GPU 工作仍未完成。
 
-更改集群前运行服务器端预演。
 
-```sh
-helm upgrade --install ironloom deploy/helm/ironloom \
-  --namespace ironloom \
-  --create-namespace \
-  --dry-run=server
-```
+调度租约绑定所属节点、确切服务实例和单调递增的所有权令牌。租约过期不会自动续租或重试；未停止的进程和未确认的外部变更会阻止显式恢复。沙箱辅助进程从启动阶段保护父进程终止。原生测试通过，但此主机默认 Docker 策略禁止创建命名空间，因此容器工作进程拒绝执行，尚未获得验证。完整调度工作流仍在开发中。
 
-## 本地 k3s 验收
-
-发布或提升 chart 变更前，运行一次性本地验收配方。
-
-```sh
-just k3s-acceptance
-```
-
-该配方会构建 `ironloom:local`，启动由 Docker 支持的一次性 k3s 集群，创建 setup 和 runtime secrets，安装 Helm chart，通过 `/discord/interactions` 验证签名的 Discord ping 和命令处理，并重启 Deployment 以证明 PVC 支持的 thread 工件索引会保留。运行时默认转发到 `127.0.0.1:18081`；该端口不可用时请设置 `IRONLOOM_K3S_HTTP_PORT`。本地镜像构建默认使用 host networking；如需使用 Docker 默认构建网络，请设置 `IRONLOOM_DOCKER_BUILD_NETWORK=default`。
-
-## 实时 Discord Endpoint 验收
-
-绑定真实 Discord 应用 ID、bot token 和 public key 后，运行 Discord endpoint 验证证明。
-
-```sh
-just discord-endpoint-acceptance
-```
-
-该配方会启动本地 runtime，通过 `ngrok` 发布它，更新应用的 Interactions Endpoint URL，等待 Discord 发送签名验证 `PING`，确认 Discord 已保存该 URL，并恢复之前的 endpoint。设置 `IRONLOOM_DISCORD_ACCEPTANCE_ENDPOINT_URL` 可验证已经部署的公开 `/discord/interactions` endpoint，而不启动 Docker 和 `ngrok`。
-
-## 实时外部探测
-
-绑定真实运行时凭据后，运行外部探测以验证 GitHub 事实源读取和 SonarCloud 质量门轮询。
-
-```sh
-IRONLOOM_GITHUB_REPOSITORY=VannaDii/ironloom just external-probe
-```
-
-该命令使用与服务相同的 `IRONLOOM_*` 运行时环境值，并打印脱敏 JSON 摘要，其中包含 GitHub 仓库投影、SonarCloud 质量门状态和未解决问题数量。设置 `IRONLOOM_GITHUB_PULL_REQUEST_NUMBER` 和 `IRONLOOM_GITHUB_CHECK_REF` 可在摘要中包含实时拉取请求合并状态和 check-run 读取结果。
-
-## 安装或升级
-
-验证期间从本地 chart 安装，发布完成后也可以从已发布的 OCI chart 安装。
-
-```sh
-helm upgrade --install ironloom deploy/helm/ironloom \
-  --namespace ironloom \
-  --create-namespace \
-  --set image.repository=ghcr.io/vannadii/ironloom \
-  --set image.tag=0.1.0
-```
-
-```sh
-helm upgrade --install ironloom oci://ghcr.io/vannadii/charts/ironloom \
-  --namespace ironloom \
-  --create-namespace \
-  --version 0.1.0
-```
-
-## 冒烟检查
-
-```sh
-kubectl -n ironloom rollout status deployment/ironloom
-kubectl -n ironloom port-forward service/ironloom 8080:8080
-curl -fsS http://127.0.0.1:8080/healthz
-curl -fsS http://127.0.0.1:8080/readyz
-cargo test -p ironloom-runtime --test vertical_slice
-```
-
-## 回滚
-
-除非操作员明确批准破坏性清理，否则保留 PVC。
-
-```sh
-helm -n ironloom history ironloom
-helm -n ironloom rollback ironloom <revision>
-kubectl -n ironloom rollout status deployment/ironloom
-```
-
-## 站点发布
-
-`.github/workflows/docs-deploy.yml` 会在 `main` 上将 VitePress 站点发布到 GitHub Pages 的 `https://ironloom.dev`。
+Linux 文件权限区分精确文件 `write_files` 与目录子树 `write_directories`。精确文件的创建、编辑、删除和移动通过原生文件工具完成；命令仅获得明确授权的目录挂载。可写目录拒绝硬链接，seccomp 禁止创建新硬链接。持久化路径所有权会保留至确认终止或完成协调，即使租约已经过期。完整运行时网关集成仍在进行。

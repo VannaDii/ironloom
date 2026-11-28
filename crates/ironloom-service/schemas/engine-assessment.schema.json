@@ -1,0 +1,309 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/EngineAssessmentData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "BackendQualification": {
+      "description": "Separate from compatibility and estimated fit.",
+      "oneOf": [
+        {
+          "description": "No hardware execution qualification.",
+          "type": "string",
+          "const": "unqualified"
+        },
+        {
+          "description": "Qualified only on recorded hardware/backend/version.",
+          "type": "string",
+          "const": "qualified"
+        }
+      ]
+    },
+    "Compatibility": {
+      "description": "Static engine compatibility independent of memory estimates.",
+      "oneOf": [
+        {
+          "description": "Engine/version/model requirements match.",
+          "type": "string",
+          "const": "supported"
+        },
+        {
+          "description": "Known incompatibility with explanation.",
+          "type": "string",
+          "const": "unsupported"
+        },
+        {
+          "description": "Metadata insufficient; no inference probe.",
+          "type": "string",
+          "const": "unknown"
+        }
+      ]
+    },
+    "Counter": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Canonical decimal u64; semantic validation also enforces u64 maximum.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "DeviceId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom DeviceId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "DeviceResourceObservationData": {
+      "description": "Unchecked construction draft for `DeviceResourceObservation`; validate before use.",
+      "type": "object",
+      "properties": {
+        "device_id": {
+          "description": "Canonical device identity, not container ordinal.",
+          "$ref": "#/$defs/DeviceId"
+        },
+        "external_used_bytes": {
+          "description": "External pressure if separately known.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Counter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "observed_at_ms": {
+          "description": "Observation timestamp; not a reservation or lease.",
+          "$ref": "#/$defs/Counter"
+        },
+        "total_bytes": {
+          "description": "Observed capacity; absence is unknown.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Counter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "used_bytes": {
+          "description": "Observed total pressure, including external consumers.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Counter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "device_id",
+        "observed_at_ms"
+      ]
+    },
+    "EngineAssessmentData": {
+      "description": "Unchecked construction draft for `EngineAssessment`; validate before use.",
+      "type": "object",
+      "properties": {
+        "devices": {
+          "description": "Canonical matching device/group observations; no ordinal-based duplicate pools.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Validated2"
+          }
+        },
+        "engine": {
+          "description": "Exact candidate engine/version/backend/configuration identity.",
+          "$ref": "#/$defs/Validated"
+        },
+        "fit": {
+          "description": "Compatibility, full demand estimate, fit after safe idle eviction and actual backend qualification remain distinct.",
+          "$ref": "#/$defs/Validated4"
+        },
+        "requirements": {
+          "description": "Compatibility constraints, demand components and estimation assumptions.",
+          "$ref": "#/$defs/Validated3"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "engine",
+        "devices",
+        "requirements",
+        "fit"
+      ]
+    },
+    "EngineIdentityData": {
+      "description": "Unchecked construction draft for `EngineIdentity`; validate before use.",
+      "type": "object",
+      "properties": {
+        "backend": {
+          "description": "Selected accelerator backend.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "configuration_hash": {
+          "description": "Engine configuration identity.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "name": {
+          "description": "Explicit selected engine, never silently substituted.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "version": {
+          "description": "Pinned version.",
+          "$ref": "#/$defs/ActorId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version",
+        "backend",
+        "configuration_hash"
+      ]
+    },
+    "EngineRequirementsData": {
+      "description": "Unchecked construction draft for `EngineRequirements`; validate before use.",
+      "type": "object",
+      "properties": {
+        "accelerator_bytes": {
+          "description": "Additional accelerator demand, when known.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Counter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cache_bytes": {
+          "description": "Context/KV cache estimate.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Counter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "compatibility": {
+          "description": "Explicit supported/unsupported/unknown result, without inference probing.",
+          "$ref": "#/$defs/Compatibility"
+        },
+        "draft_weight_bytes": {
+          "description": "Draft weights estimate; unknown is not zero.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Counter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "description": "Compatibility constraints and estimate assumptions.",
+          "type": "string"
+        },
+        "runtime_overhead_bytes": {
+          "description": "Engine overhead and concurrency demand.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Counter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "target_weight_bytes": {
+          "description": "Target weights estimate.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Counter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "compatibility",
+        "reason"
+      ]
+    },
+    "ModelFitData": {
+      "description": "Unchecked construction draft for `ModelFit`; validate before use.",
+      "type": "object",
+      "properties": {
+        "compatibility": {
+          "description": "Engine/model compatibility.",
+          "$ref": "#/$defs/Compatibility"
+        },
+        "estimated_bytes": {
+          "description": "Weights, KV/cache, draft, overhead and concurrency assumptions.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Counter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fits_after_idle_eviction": {
+          "description": "None means unknown; no automatic model change.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "qualification": {
+          "description": "Hardware qualification separate from estimates.",
+          "$ref": "#/$defs/BackendQualification"
+        },
+        "reason": {
+          "description": "Visible constraints and estimate assumptions.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "compatibility",
+        "qualification",
+        "reason"
+      ]
+    },
+    "Validated": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/EngineIdentityData"
+    },
+    "Validated2": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/DeviceResourceObservationData"
+    },
+    "Validated3": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/EngineRequirementsData"
+    },
+    "Validated4": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/ModelFitData"
+    }
+  }
+}

@@ -1,0 +1,532 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/ConversationSnapshotData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "AnswerId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom AnswerId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "AssignmentId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom AssignmentId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "BudgetData": {
+      "description": "Unchecked construction draft for `Budget`; validate before use.",
+      "type": "object",
+      "properties": {
+        "currency": {
+          "description": "Budget currency.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "incurred_micros": {
+          "description": "Already accounted charges.",
+          "$ref": "#/$defs/Counter"
+        },
+        "limit_micros": {
+          "description": "None disables budget, not usage accounting.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Counter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reserved_micros": {
+          "description": "Concurrent in-flight exposure.",
+          "$ref": "#/$defs/Counter"
+        },
+        "revision": {
+          "description": "Editable without changing plan approval.",
+          "$ref": "#/$defs/Counter"
+        },
+        "uncertain_usage": {
+          "description": "Unknown usage remains visible and constrains admission.",
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "revision",
+        "currency",
+        "incurred_micros",
+        "reserved_micros",
+        "uncertain_usage"
+      ]
+    },
+    "ConversationId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ConversationId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ConversationSnapshotData": {
+      "description": "Unchecked construction draft for `ConversationSnapshot`; validate before use.",
+      "type": "object",
+      "properties": {
+        "active_assignment_id": {
+          "description": "Current assignment binding for reconnect controls; absent for an empty/idle conversation.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AssignmentId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "approval": {
+          "description": "Approval only for the exact visible plan, if approved.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Validated4"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "budget": {
+          "description": "Current budget independent of plan approval.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Validated6"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cursor": {
+          "description": "Durable watermark of this consistent snapshot.",
+          "$ref": "#/$defs/Validated2"
+        },
+        "execution_state": {
+          "description": "Current execution state; absence means no active assignment.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExecutionState"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "pause_requested": {
+          "description": "Present for an active assignment; true requests a pause still awaiting a safe boundary.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "pending_questions": {
+          "description": "Unresolved questions as of the same watermark.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Validated5"
+          }
+        },
+        "plan": {
+          "description": "Current visible plan revision.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Validated3"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "revision": {
+          "description": "Optimistic command revision at the watermark.",
+          "$ref": "#/$defs/Counter"
+        },
+        "session": {
+          "description": "Authorized session metadata.",
+          "$ref": "#/$defs/Validated"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "session",
+        "cursor",
+        "revision",
+        "pending_questions"
+      ]
+    },
+    "Counter": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Canonical decimal u64; semantic validation also enforces u64 maximum.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "ExecutionState": {
+      "description": "Assignment and worker streaming lifecycle; disconnect is not a transition.",
+      "oneOf": [
+        {
+          "description": "Waiting for a fenced dispatch claim.",
+          "type": "string",
+          "const": "queued"
+        },
+        {
+          "description": "Actively executing.",
+          "type": "string",
+          "const": "running"
+        },
+        {
+          "description": "Durable question or approval is pending.",
+          "type": "string",
+          "const": "waiting_for_human"
+        },
+        {
+          "description": "Capacity unavailable; no model fallback.",
+          "type": "string",
+          "const": "waiting_for_resources"
+        },
+        {
+          "description": "Paused at a controllable boundary.",
+          "type": "string",
+          "const": "paused"
+        },
+        {
+          "description": "Stop requested; execution may still be active.",
+          "type": "string",
+          "const": "cancellation_requested"
+        },
+        {
+          "description": "Owned execution confirmed stopped.",
+          "type": "string",
+          "const": "terminated"
+        },
+        {
+          "description": "Successful operation completion persisted.",
+          "type": "string",
+          "const": "completed"
+        },
+        {
+          "description": "Failure recorded; surviving work must be reconciled.",
+          "type": "string",
+          "const": "failed"
+        }
+      ]
+    },
+    "ItemId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ItemId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ModelProfileId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ModelProfileId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "OperatorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom OperatorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "PendingQuestionData": {
+      "description": "Unchecked construction draft for `PendingQuestion`; validate before use.",
+      "type": "object",
+      "properties": {
+        "allow_multiple": {
+          "description": "True permits more than one selected choice.",
+          "type": "boolean"
+        },
+        "allow_text": {
+          "description": "True permits a nonblank free-text response, with or without selected choices.",
+          "type": "boolean"
+        },
+        "assignment_id": {
+          "description": "Original assignment.",
+          "$ref": "#/$defs/AssignmentId"
+        },
+        "choices": {
+          "description": "Allowed persisted choices.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ActorId"
+          }
+        },
+        "conversation_id": {
+          "description": "Source authorized conversation.",
+          "$ref": "#/$defs/ConversationId"
+        },
+        "item_id": {
+          "description": "Owning item.",
+          "$ref": "#/$defs/ItemId"
+        },
+        "question_id": {
+          "description": "Stable pending request identity.",
+          "$ref": "#/$defs/QuestionId"
+        },
+        "resolved_by": {
+          "description": "Durable resolution, absent while pending.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AnswerId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "revision": {
+          "description": "Reject stale answers.",
+          "$ref": "#/$defs/Counter"
+        },
+        "text": {
+          "description": "Original operator question wording.",
+          "type": "string"
+        },
+        "turn_id": {
+          "description": "Owning turn.",
+          "$ref": "#/$defs/TurnId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "question_id",
+        "assignment_id",
+        "conversation_id",
+        "turn_id",
+        "item_id",
+        "revision",
+        "text",
+        "choices",
+        "allow_multiple",
+        "allow_text"
+      ]
+    },
+    "PlanApprovalData": {
+      "description": "Unchecked construction draft for `PlanApproval`; validate before use.",
+      "type": "object",
+      "properties": {
+        "approved_by": {
+          "description": "Authenticated approver; recheck grant on dispatch.",
+          "$ref": "#/$defs/OperatorId"
+        },
+        "content_hash": {
+          "description": "Hash of approved scope and permissions.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "plan_id": {
+          "description": "Approved plan.",
+          "$ref": "#/$defs/PlanId"
+        },
+        "revision": {
+          "description": "Exact revision.",
+          "$ref": "#/$defs/Counter"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "plan_id",
+        "revision",
+        "content_hash",
+        "approved_by"
+      ]
+    },
+    "PlanId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom PlanId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "PlanRevisionData": {
+      "description": "Unchecked construction draft for `PlanRevision`; validate before use.",
+      "type": "object",
+      "properties": {
+        "acceptance_criteria": {
+          "description": "Content-specific validation expectations.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "allowed_permissions": {
+          "description": "Explicit versioned operation scope, checked by policy.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ActorId"
+          }
+        },
+        "assumptions": {
+          "description": "Visible unanswered assumptions.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "content_hash": {
+          "description": "Canonical hash including model assignments and permissions.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "model_assignments": {
+          "description": "Human-selected configured role profiles.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ModelProfileId"
+          }
+        },
+        "plan_id": {
+          "description": "Stable plan identity.",
+          "$ref": "#/$defs/PlanId"
+        },
+        "project_id": {
+          "description": "Authority scope.",
+          "$ref": "#/$defs/ProjectId"
+        },
+        "revision": {
+          "description": "Specific immutable revision.",
+          "$ref": "#/$defs/Counter"
+        },
+        "scope": {
+          "description": "Human-readable approved work scope.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "plan_id",
+        "revision",
+        "project_id",
+        "scope",
+        "assumptions",
+        "acceptance_criteria",
+        "content_hash",
+        "model_assignments",
+        "allowed_permissions"
+      ]
+    },
+    "ProjectId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ProjectId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "QuestionId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom QuestionId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ReplayCursorData": {
+      "description": "Unchecked construction draft for `ReplayCursor`; validate before use.",
+      "type": "object",
+      "properties": {
+        "conversation_id": {
+          "description": "Stream scope; cursor cannot grant access.",
+          "$ref": "#/$defs/ConversationId"
+        },
+        "sequence": {
+          "description": "Persisted monotonically increasing sequence; zero requests from start.",
+          "$ref": "#/$defs/Counter"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "conversation_id",
+        "sequence"
+      ]
+    },
+    "SessionSummaryData": {
+      "description": "Unchecked construction draft for `SessionSummary`; validate before use.",
+      "type": "object",
+      "properties": {
+        "active_turn_id": {
+          "description": "Current turn for steering.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TurnId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "archived": {
+          "description": "Archive state.",
+          "type": "boolean"
+        },
+        "conversation_id": {
+          "description": "Stable conversation identity.",
+          "$ref": "#/$defs/ConversationId"
+        },
+        "last_human_interaction_ms": {
+          "description": "Background work does not reorder dashboard.",
+          "$ref": "#/$defs/Counter"
+        },
+        "project_id": {
+          "description": "Current access scope.",
+          "$ref": "#/$defs/ProjectId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "conversation_id",
+        "project_id",
+        "archived",
+        "last_human_interaction_ms"
+      ]
+    },
+    "TurnId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom TurnId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Validated": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/SessionSummaryData"
+    },
+    "Validated2": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/ReplayCursorData"
+    },
+    "Validated3": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/PlanRevisionData"
+    },
+    "Validated4": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/PlanApprovalData"
+    },
+    "Validated5": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/PendingQuestionData"
+    },
+    "Validated6": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/BudgetData"
+    }
+  }
+}

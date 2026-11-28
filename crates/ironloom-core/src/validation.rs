@@ -65,7 +65,7 @@ impl<T> Deref for Validated<T> {
 impl<'de, T: Deserialize<'de> + Validate> Deserialize<'de> for Validated<T> {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let data = serde_path_to_error::deserialize(deserializer).map_err(|error| {
-            serde::de::Error::custom(nested_error(
+            serde::de::Error::custom(nested_failure(
                 &error.path().to_string(),
                 &error.inner().to_string(),
             ))
@@ -125,32 +125,106 @@ macro_rules! contract {
     }
 }
 
+// Internal serde error transport records the path already applied by an inner validated
+// wrapper. Outer serde_path_to_error trackers also observe that traversal; do not apply it twice.
+#[derive(Serialize, Deserialize)]
+struct DecodeFailure {
+    error: ValidationErrors,
+    traversed: String,
+}
+impl fmt::Display for DecodeFailure {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "ironloom-nested-validation:{}",
+            serde_json::to_string(self).map_err(|_| fmt::Error)?
+        )
+    }
+}
 fn nested_error(path: &str, message: &str) -> ValidationErrors {
+    nested_failure(path, message).error
+}
+fn nested_failure(path: &str, message: &str) -> DecodeFailure {
     let canonical_path = path.replace('[', ".").replace(']', "");
-    let path = canonical_path.as_str();
-    if let Some(json) = message.strip_prefix("ironloom-validation:") {
-        let mut stream = serde_json::Deserializer::from_str(json).into_iter::<ValidationErrors>();
-        if let Some(Ok(mut errors)) = stream.next() {
-            for error in &mut errors.fields {
-                if !path.is_empty() && path != "." {
-                    error.field = if error.field == "$" {
-                        path.to_owned()
-                    } else {
-                        format!("{path}.{}", error.field)
-                    };
-                }
-            }
-            return errors;
+    let path = canonical_path.trim_matches('.');
+    let nested = message
+        .strip_prefix("ironloom-nested-validation:")
+        .and_then(|json| {
+            serde_json::Deserializer::from_str(json)
+                .into_iter::<DecodeFailure>()
+                .next()?
+                .ok()
+        });
+    let raw = message
+        .strip_prefix("ironloom-validation:")
+        .and_then(|json| {
+            serde_json::Deserializer::from_str(json)
+                .into_iter::<ValidationErrors>()
+                .next()?
+                .ok()
+        });
+    let (mut errors, applied) = if let Some(nested) = nested {
+        (nested.error, nested.traversed)
+    } else if let Some(raw) = raw {
+        (raw, String::new())
+    } else {
+        return DecodeFailure {
+            error: ValidationErrors::field(
+                if path.is_empty() { "$" } else { path },
+                "invalid_structure",
+            ),
+            traversed: path.to_owned(),
+        };
+    };
+    let prefix = if applied.is_empty() {
+        path
+    } else if path == applied {
+        ""
+    } else {
+        path.strip_suffix(&format!(".{applied}")).unwrap_or(path)
+    };
+    for error in &mut errors.fields {
+        if !prefix.is_empty() {
+            error.field = if error.field == "$" {
+                prefix.to_owned()
+            } else {
+                format!("{prefix}.{}", error.field)
+            };
         }
     }
-    ValidationErrors::field(
-        if path.is_empty() || path == "." {
-            "$"
-        } else {
-            path
-        },
-        "invalid_structure",
-    )
+    DecodeFailure {
+        error: errors,
+        traversed: path.to_owned(),
+    }
+}
+
+#[cfg(test)]
+mod nested_tests {
+    use super::*;
+    crate::contract! { Leaf, LeafData { text: String } |value| { required("text", &value.text) } }
+    crate::contract! { Branch, BranchData { children: Vec<Leaf> } |value| { let _=value; Ok(()) } }
+    crate::contract! { Root, RootData { children: Vec<Branch> } |value| { let _=value; Ok(()) } }
+    #[test]
+    fn repeated_nested_names_and_structural_errors_have_one_exact_path() {
+        let expected = ValidationErrors::field("children.0.children.0.text", "required");
+        let value = serde_json::json!({"children":[{"children":[{"text":" "}]}]});
+        assert_eq!(
+            decode::<Root>(&serde_json::to_vec(&value).unwrap()).unwrap_err(),
+            expected
+        );
+        let error = serde_json::from_value::<Root>(value)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("children.0.children.0.text"));
+        assert!(!error.contains("children.0.children.0.children"));
+        assert_eq!(
+            decode::<Root>(br#"{"children":[{"children":[{"text":17}]}]}"#).unwrap_err(),
+            ValidationErrors::field("children.0.children.0.text", "invalid_structure")
+        );
+        assert!(Leaf::new(LeafData { text: " ".into() }).is_err());
+        assert!(Branch::new(BranchData { children: vec![] }).is_ok());
+        assert!(Root::new(RootData { children: vec![] }).is_ok());
+    }
 }
 /// Canonical unsigned decimal string. JSON numbers are refused to prevent web precision loss.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]

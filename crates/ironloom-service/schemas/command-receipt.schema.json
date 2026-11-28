@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/CommandReceiptData",
+  "$defs": {
+    "CommandDisposition": {
+      "description": "Durable duplicate handling contract.",
+      "oneOf": [
+        {
+          "description": "New command and outcome committed atomically, including an event when conversation-scoped.",
+          "type": "string",
+          "const": "accepted"
+        },
+        {
+          "description": "Same actor/key/payload returns existing receipt without dispatch.",
+          "type": "string",
+          "const": "replayed"
+        },
+        {
+          "description": "Same key with changed payload or revision mismatch; no dispatch.",
+          "type": "string",
+          "const": "conflict"
+        }
+      ]
+    },
+    "CommandId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom CommandId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "CommandReceiptData": {
+      "description": "Unchecked construction draft for `CommandReceipt`; validate before use.",
+      "type": "object",
+      "properties": {
+        "command_id": {
+          "description": "Original command ID.",
+          "$ref": "#/$defs/CommandId"
+        },
+        "cursor": {
+          "description": "First committed event/current replay position for conversation commands. Event-free\nresource mutations have no source cursor and never require private conversation access.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Validated"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "disposition": {
+          "description": "Duplicate/conflict result.",
+          "$ref": "#/$defs/CommandDisposition"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "command_id",
+        "disposition"
+      ]
+    },
+    "ConversationId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ConversationId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Counter": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Canonical decimal u64; semantic validation also enforces u64 maximum.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "ReplayCursorData": {
+      "description": "Unchecked construction draft for `ReplayCursor`; validate before use.",
+      "type": "object",
+      "properties": {
+        "conversation_id": {
+          "description": "Stream scope; cursor cannot grant access.",
+          "$ref": "#/$defs/ConversationId"
+        },
+        "sequence": {
+          "description": "Persisted monotonically increasing sequence; zero requests from start.",
+          "$ref": "#/$defs/Counter"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "conversation_id",
+        "sequence"
+      ]
+    },
+    "Validated": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/ReplayCursorData"
+    }
+  }
+}

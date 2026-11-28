@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/ProviderEndpointData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "BillingMode": {
+      "description": "Explicit cost basis; no silent billing fallback.",
+      "oneOf": [
+        {
+          "description": "API key billing.",
+          "type": "string",
+          "const": "api_key"
+        },
+        {
+          "description": "Account-backed OAuth usage; not API-key charges.",
+          "type": "string",
+          "const": "account"
+        },
+        {
+          "description": "Configured local compute cost estimate.",
+          "type": "string",
+          "const": "local_estimate"
+        }
+      ]
+    },
+    "ProviderDialect": {
+      "description": "Explicit HTTP protocol selection; a failed request never selects another dialect.",
+      "oneOf": [
+        {
+          "description": "Responses streaming API, including explicitly selected eligible account inference.",
+          "type": "string",
+          "const": "responses"
+        },
+        {
+          "description": "Anthropic Messages API.",
+          "type": "string",
+          "const": "anthropic"
+        },
+        {
+          "description": "Explicitly configured OpenAI-compatible Chat Completions API.",
+          "type": "string",
+          "const": "chat_completions"
+        }
+      ]
+    },
+    "ProviderEndpointData": {
+      "description": "Unchecked construction draft for `ProviderEndpoint`; validate before use.",
+      "type": "object",
+      "properties": {
+        "base": {
+          "description": "API base without embedded credentials, query or fragment.",
+          "type": "string"
+        },
+        "billing": {
+          "description": "Authorized account/API billing choice; local engines are configured separately.",
+          "$ref": "#/$defs/BillingMode"
+        },
+        "dialect": {
+          "description": "Explicit wire dialect, independent from billing.",
+          "$ref": "#/$defs/ProviderDialect"
+        },
+        "provider": {
+          "description": "Unique provider identity matched by model profiles and every dispatched request.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "reasoning_efforts": {
+          "description": "Supported explicit reasoning effort labels; empty means unsupported.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ActorId"
+          }
+        },
+        "stream_usage": {
+          "description": "Declared support for reported usage in the stream.",
+          "type": "boolean"
+        },
+        "streaming": {
+          "description": "Declared streaming support, without a capability probe.",
+          "type": "boolean"
+        },
+        "tools": {
+          "description": "Declared tool-call support; adapters do not execute tools.",
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "base",
+        "dialect",
+        "billing",
+        "streaming",
+        "tools",
+        "stream_usage",
+        "reasoning_efforts"
+      ]
+    }
+  }
+}

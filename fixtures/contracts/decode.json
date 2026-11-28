@@ -760,10 +760,11 @@
       "input": {
         "assignment_id": "assignment-1",
         "worker_id": "worker-1",
-        "write_paths": [
+        "artifact_area": "role/worker-1",
+        "write_files": [
           "src/file.rs"
         ],
-        "artifact_area": "role/worker-1"
+        "write_directories": []
       },
       "expected_errors": []
     },
@@ -773,14 +774,15 @@
       "input": {
         "assignment_id": "assignment-1",
         "worker_id": "worker-1",
-        "write_paths": [
+        "artifact_area": "role/worker-1",
+        "write_files": [
           "../secrets"
         ],
-        "artifact_area": "role/worker-1"
+        "write_directories": []
       },
       "expected_errors": [
         {
-          "field": "write_paths",
+          "field": "write_files",
           "code": "relative_normal_path_required"
         }
       ]
@@ -1866,7 +1868,9 @@
             "resolved_by": null
           }
         ],
-        "budget": null
+        "budget": null,
+        "active_assignment_id": "assignment-1",
+        "pause_requested": false
       },
       "expected_errors": []
     },
@@ -1907,7 +1911,9 @@
             "resolved_by": null
           }
         ],
-        "budget": null
+        "budget": null,
+        "active_assignment_id": "assignment-1",
+        "pause_requested": false
       },
       "expected_errors": [
         {
@@ -1953,7 +1959,9 @@
             "resolved_by": "answer-1"
           }
         ],
-        "budget": null
+        "budget": null,
+        "active_assignment_id": "assignment-1",
+        "pause_requested": false
       },
       "expected_errors": [
         {
@@ -1971,7 +1979,8 @@
           "sequence": "9"
         },
         "before": null,
-        "limit": "20"
+        "limit": "20",
+        "direction": "backward"
       },
       "expected_errors": []
     },
@@ -1984,7 +1993,8 @@
           "sequence": "9"
         },
         "before": null,
-        "limit": "101"
+        "limit": "101",
+        "direction": "backward"
       },
       "expected_errors": [
         {
@@ -2014,7 +2024,8 @@
             }
           }
         ],
-        "next_before": "item-1"
+        "next_before": "item-1",
+        "direction": "backward"
       },
       "expected_errors": []
     },
@@ -2050,7 +2061,8 @@
             }
           }
         ],
-        "next_before": "item-1"
+        "next_before": "item-1",
+        "direction": "backward"
       },
       "expected_errors": [
         {
@@ -2080,7 +2092,8 @@
             }
           }
         ],
-        "next_before": "item-1"
+        "next_before": "item-1",
+        "direction": "backward"
       },
       "expected_errors": [
         {
@@ -2110,7 +2123,8 @@
             }
           }
         ],
-        "next_before": "missing-item"
+        "next_before": "missing-item",
+        "direction": "backward"
       },
       "expected_errors": [
         {
@@ -2877,7 +2891,9 @@
         "execution_ready": false,
         "unmet_prerequisites": [
           "lesson_handling"
-        ]
+        ],
+        "endpoints": [],
+        "source_accounts": []
       },
       "expected_errors": []
     },
@@ -2895,7 +2911,9 @@
         "execution_ready": true,
         "unmet_prerequisites": [
           "lesson_handling"
-        ]
+        ],
+        "endpoints": [],
+        "source_accounts": []
       },
       "expected_errors": [
         {
@@ -3008,10 +3026,11 @@
       "input": {
         "assignment_id": "assignment-1",
         "worker_id": "worker-1",
-        "write_paths": [
+        "artifact_area": " ",
+        "write_files": [
           "src/file.rs"
         ],
-        "artifact_area": " "
+        "write_directories": []
       },
       "expected_errors": [
         {
@@ -3026,10 +3045,11 @@
       "input": {
         "assignment_id": "assignment-1",
         "worker_id": "worker-1",
-        "write_paths": [
+        "artifact_area": "../private",
+        "write_files": [
           "src/file.rs"
         ],
-        "artifact_area": "../private"
+        "write_directories": []
       },
       "expected_errors": [
         {
@@ -3095,9 +3115,2644 @@
         "plan": null,
         "approval": null,
         "pending_questions": [],
-        "budget": null
+        "budget": null,
+        "active_assignment_id": null,
+        "pause_requested": null
       },
       "expected_errors": []
+    },
+    {
+      "contract": "project_query",
+      "name": "bounded-project-catalog",
+      "input": {
+        "after": null,
+        "limit": "20"
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "project_query",
+      "name": "project-page-limit",
+      "input": {
+        "after": null,
+        "limit": "0"
+      },
+      "expected_errors": [
+        {
+          "field": "limit",
+          "code": "must_be_positive"
+        }
+      ]
+    },
+    {
+      "contract": "create_project",
+      "name": "create-infrastructure-owned-project",
+      "input": {
+        "command_id": "create-project-1",
+        "name": "Factory project",
+        "repository": null,
+        "source_credential_id": null
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "create_project",
+      "name": "empty-project-name",
+      "input": {
+        "command_id": "create-project-1",
+        "name": " ",
+        "repository": null,
+        "source_credential_id": null
+      },
+      "expected_errors": [
+        {
+          "field": "name",
+          "code": "required"
+        }
+      ]
+    },
+    {
+      "contract": "credential_command",
+      "name": "private-credential-create",
+      "input": {
+        "command_id": "credential-command-1",
+        "credential_id": null,
+        "expected_revision": "0",
+        "operation": "create",
+        "label": "source-account",
+        "secret": "fixture-secret-only",
+        "grantee": null,
+        "permissions": [],
+        "revoke": false
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "credential_command",
+      "name": "credential-secret-not-on-delete",
+      "input": {
+        "command_id": "credential-command-1",
+        "credential_id": "credential-1",
+        "expected_revision": "1",
+        "operation": "delete",
+        "label": "source-account",
+        "secret": "fixture-secret-only",
+        "grantee": null,
+        "permissions": [],
+        "revoke": false
+      },
+      "expected_errors": [
+        {
+          "field": "secret",
+          "code": "secret_operation_mismatch"
+        }
+      ]
+    },
+    {
+      "contract": "credential_command",
+      "name": "separate-credential-sharing",
+      "input": {
+        "command_id": "credential-command-1",
+        "credential_id": "credential-1",
+        "expected_revision": "1",
+        "operation": "share",
+        "label": "source-account",
+        "secret": null,
+        "grantee": "operator-2",
+        "permissions": [
+          "use_credential"
+        ],
+        "revoke": false
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "native_connection_command",
+      "name": "protected-control-registration-import",
+      "input": {
+        "command_id": "connect-1",
+        "node_id": "node-1",
+        "expected_generation": "0",
+        "operation": "import",
+        "protected_registration": "protected-fixture-bundle",
+        "enabled": null
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "native_connection_command",
+      "name": "preference-not-import",
+      "input": {
+        "command_id": "connect-1",
+        "node_id": "node-1",
+        "expected_generation": "1",
+        "operation": "set_enabled",
+        "protected_registration": null,
+        "enabled": true
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "download_command",
+      "name": "pinned-model-download",
+      "input": {
+        "command_id": "download-1",
+        "project_id": null,
+        "repository_id": "repo-1",
+        "revision": "exact-revision",
+        "download_id": null,
+        "operation": "start"
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "download_command",
+      "name": "resume-needs-download-id",
+      "input": {
+        "command_id": "download-1",
+        "project_id": null,
+        "repository_id": "repo-1",
+        "revision": "exact-revision",
+        "download_id": null,
+        "operation": "resume"
+      },
+      "expected_errors": [
+        {
+          "field": "download_id",
+          "code": "download_identity_mismatch"
+        }
+      ]
+    },
+    {
+      "contract": "conversation_snapshot",
+      "name": "reconnect-needs-assignment-binding",
+      "input": {
+        "session": {
+          "conversation_id": "conversation-1",
+          "active_turn_id": "turn-1",
+          "project_id": "project-1",
+          "archived": false,
+          "last_human_interaction_ms": "1"
+        },
+        "cursor": {
+          "conversation_id": "conversation-1",
+          "sequence": "9"
+        },
+        "revision": "3",
+        "execution_state": "waiting_for_human",
+        "plan": null,
+        "approval": null,
+        "pending_questions": [
+          {
+            "question_id": "question-1",
+            "assignment_id": "assignment-1",
+            "conversation_id": "conversation-1",
+            "turn_id": "turn-1",
+            "item_id": "item-1",
+            "revision": "1",
+            "text": "What should the fixture cover?",
+            "choices": [
+              "a",
+              "b"
+            ],
+            "allow_multiple": true,
+            "allow_text": true,
+            "resolved_by": null
+          }
+        ],
+        "budget": null,
+        "active_assignment_id": null,
+        "pause_requested": null
+      },
+      "expected_errors": [
+        {
+          "field": "active_assignment_id",
+          "code": "execution_binding_required"
+        }
+      ]
+    },
+    {
+      "contract": "model_assessment_query",
+      "name": "explicit-fit-assumptions",
+      "input": {
+        "project_id": null,
+        "repository_id": "repo-1",
+        "revision": "revision-1",
+        "profile_id": null,
+        "engine": null,
+        "context_tokens": "4096",
+        "concurrency": "1"
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "model_assessment_query",
+      "name": "zero-context-is-not-an-estimate",
+      "input": {
+        "project_id": null,
+        "repository_id": "repo-1",
+        "revision": "revision-1",
+        "profile_id": null,
+        "engine": null,
+        "context_tokens": "0",
+        "concurrency": "1"
+      },
+      "expected_errors": [
+        {
+          "field": "context_tokens",
+          "code": "must_be_positive"
+        }
+      ]
+    },
+    {
+      "contract": "engine_assessment",
+      "name": "unknown-is-not-unsupported-or-qualified",
+      "input": {
+        "engine": {
+          "name": "fixture-engine",
+          "version": "1",
+          "backend": "simulated",
+          "configuration_hash": "engine-config-1"
+        },
+        "devices": [],
+        "requirements": {
+          "compatibility": "unknown",
+          "reason": "Cache/runtime metadata or device authority unavailable.",
+          "target_weight_bytes": null,
+          "draft_weight_bytes": null,
+          "cache_bytes": null,
+          "runtime_overhead_bytes": null,
+          "accelerator_bytes": null
+        },
+        "fit": {
+          "compatibility": "unknown",
+          "estimated_bytes": null,
+          "fits_after_idle_eviction": null,
+          "qualification": "unqualified",
+          "reason": "Missing facts stay unknown; capability metadata is not qualification."
+        }
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "engine_assessment",
+      "name": "assessment-does-not-invent-compatibility",
+      "input": {
+        "engine": {
+          "name": "fixture-engine",
+          "version": "1",
+          "backend": "simulated",
+          "configuration_hash": "engine-config-1"
+        },
+        "devices": [],
+        "requirements": {
+          "compatibility": "unknown",
+          "reason": "Cache/runtime metadata or device authority unavailable.",
+          "target_weight_bytes": null,
+          "draft_weight_bytes": null,
+          "cache_bytes": null,
+          "runtime_overhead_bytes": null,
+          "accelerator_bytes": null
+        },
+        "fit": {
+          "compatibility": "supported",
+          "estimated_bytes": null,
+          "fits_after_idle_eviction": null,
+          "qualification": "unqualified",
+          "reason": "Missing facts stay unknown; capability metadata is not qualification."
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "fit.compatibility",
+          "code": "assessment_compatibility_mismatch"
+        }
+      ]
+    },
+    {
+      "contract": "engine_assessment",
+      "name": "fit-needs-device-and-complete-demand",
+      "input": {
+        "engine": {
+          "name": "fixture-engine",
+          "version": "1",
+          "backend": "simulated",
+          "configuration_hash": "engine-config-1"
+        },
+        "devices": [],
+        "requirements": {
+          "compatibility": "unknown",
+          "reason": "Cache/runtime metadata or device authority unavailable.",
+          "target_weight_bytes": null,
+          "draft_weight_bytes": null,
+          "cache_bytes": null,
+          "runtime_overhead_bytes": null,
+          "accelerator_bytes": null
+        },
+        "fit": {
+          "compatibility": "unknown",
+          "estimated_bytes": null,
+          "fits_after_idle_eviction": true,
+          "qualification": "unqualified",
+          "reason": "Missing facts stay unknown; capability metadata is not qualification."
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "fit.fits_after_idle_eviction",
+          "code": "device_and_demand_required"
+        }
+      ]
+    },
+    {
+      "contract": "model_inventory_item",
+      "name": "complete-bytes-remain-unverified",
+      "input": {
+        "inventory_id": "inventory-1",
+        "model": {
+          "repository_id": "repo-1",
+          "model_id": "model-1",
+          "source": {
+            "publisher": "publisher-1",
+            "host": "hub-1",
+            "repository_url": "https://example.org/models/model-1",
+            "revision": "revision-1",
+            "checksum": null,
+            "access": "accessible",
+            "license": "license-1"
+          },
+          "architecture": null,
+          "format": null,
+          "quantization": null,
+          "weight_bytes": null,
+          "context_tokens": null
+        },
+        "download_id": "download-1",
+        "transfer_complete": true,
+        "verification": "pending",
+        "verified_manifest_hash": null,
+        "verified_at_ms": null,
+        "storage_available": true
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "model_inventory_item",
+      "name": "verified-checkpoint-provenance",
+      "input": {
+        "inventory_id": "inventory-1",
+        "model": {
+          "repository_id": "repo-1",
+          "model_id": "model-1",
+          "source": {
+            "publisher": "publisher-1",
+            "host": "hub-1",
+            "repository_url": "https://example.org/models/model-1",
+            "revision": "revision-1",
+            "checksum": null,
+            "access": "accessible",
+            "license": "license-1"
+          },
+          "architecture": null,
+          "format": null,
+          "quantization": null,
+          "weight_bytes": null,
+          "context_tokens": null
+        },
+        "download_id": "download-1",
+        "transfer_complete": true,
+        "verification": "verified",
+        "verified_manifest_hash": "checkpoint-manifest-hash",
+        "verified_at_ms": "10",
+        "storage_available": true
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "model_inventory_item",
+      "name": "missing-storage-keeps-provenance",
+      "input": {
+        "inventory_id": "inventory-1",
+        "model": {
+          "repository_id": "repo-1",
+          "model_id": "model-1",
+          "source": {
+            "publisher": "publisher-1",
+            "host": "hub-1",
+            "repository_url": "https://example.org/models/model-1",
+            "revision": "revision-1",
+            "checksum": null,
+            "access": "accessible",
+            "license": "license-1"
+          },
+          "architecture": null,
+          "format": null,
+          "quantization": null,
+          "weight_bytes": null,
+          "context_tokens": null
+        },
+        "download_id": "download-1",
+        "transfer_complete": true,
+        "verification": "verified",
+        "verified_manifest_hash": "checkpoint-manifest-hash",
+        "verified_at_ms": "10",
+        "storage_available": false
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "model_inventory_item",
+      "name": "verification-needs-manifest",
+      "input": {
+        "inventory_id": "inventory-1",
+        "model": {
+          "repository_id": "repo-1",
+          "model_id": "model-1",
+          "source": {
+            "publisher": "publisher-1",
+            "host": "hub-1",
+            "repository_url": "https://example.org/models/model-1",
+            "revision": "revision-1",
+            "checksum": null,
+            "access": "accessible",
+            "license": "license-1"
+          },
+          "architecture": null,
+          "format": null,
+          "quantization": null,
+          "weight_bytes": null,
+          "context_tokens": null
+        },
+        "download_id": "download-1",
+        "transfer_complete": true,
+        "verification": "verified",
+        "verified_manifest_hash": null,
+        "verified_at_ms": null,
+        "storage_available": true
+      },
+      "expected_errors": [
+        {
+          "field": "verified_manifest_hash",
+          "code": "verification_manifest_required_only"
+        }
+      ]
+    },
+    {
+      "contract": "model_inventory_item",
+      "name": "verification-is-not-partial-transfer",
+      "input": {
+        "inventory_id": "inventory-1",
+        "model": {
+          "repository_id": "repo-1",
+          "model_id": "model-1",
+          "source": {
+            "publisher": "publisher-1",
+            "host": "hub-1",
+            "repository_url": "https://example.org/models/model-1",
+            "revision": "revision-1",
+            "checksum": null,
+            "access": "accessible",
+            "license": "license-1"
+          },
+          "architecture": null,
+          "format": null,
+          "quantization": null,
+          "weight_bytes": null,
+          "context_tokens": null
+        },
+        "download_id": "download-1",
+        "transfer_complete": false,
+        "verification": "verified",
+        "verified_manifest_hash": "checkpoint-manifest-hash",
+        "verified_at_ms": "10",
+        "storage_available": true
+      },
+      "expected_errors": [
+        {
+          "field": "transfer_complete",
+          "code": "verification_requires_completed_transfer"
+        }
+      ]
+    },
+    {
+      "contract": "stored_command",
+      "name": "installation-before-project",
+      "input": {
+        "operator_id": "alice",
+        "command_id": "setup",
+        "conversation_id": null,
+        "project_id": null,
+        "payload_hash": "fingerprint",
+        "receipt": {
+          "revision": "1"
+        },
+        "first_event": null
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "stored_command",
+      "name": "empty-conversation-without-event",
+      "input": {
+        "operator_id": "alice",
+        "command_id": "setup",
+        "conversation_id": "empty-conversation",
+        "project_id": "project",
+        "payload_hash": "fingerprint",
+        "receipt": {
+          "cursor": "0"
+        },
+        "first_event": null
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "stored_command",
+      "name": "event-requires-conversation",
+      "input": {
+        "operator_id": "alice",
+        "command_id": "setup",
+        "conversation_id": null,
+        "project_id": "project",
+        "payload_hash": "fingerprint",
+        "receipt": {
+          "cursor": "0"
+        },
+        "first_event": {}
+      },
+      "expected_errors": [
+        {
+          "field": "conversation_id",
+          "code": "event_requires_conversation"
+        }
+      ]
+    },
+    {
+      "contract": "stored_command",
+      "name": "conversation-requires-project",
+      "input": {
+        "operator_id": "alice",
+        "command_id": "setup",
+        "conversation_id": "empty-conversation",
+        "project_id": null,
+        "payload_hash": "fingerprint",
+        "receipt": {
+          "cursor": "0"
+        },
+        "first_event": null
+      },
+      "expected_errors": [
+        {
+          "field": "project_id",
+          "code": "conversation_requires_project"
+        }
+      ]
+    },
+    {
+      "contract": "download_progress",
+      "name": "download-retains-repository-binding",
+      "input": {
+        "source": {
+          "publisher": "fixture-publisher",
+          "host": "fixture-host",
+          "repository_url": "https://example.com/model",
+          "revision": "pinned-revision",
+          "checksum": null,
+          "access": "accessible",
+          "license": null
+        },
+        "repository_id": "fixture-repository",
+        "download_id": "download",
+        "received_bytes": "0",
+        "total_bytes": null,
+        "resume_token_ref": null,
+        "cancel_requested": false,
+        "terminated": false
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "download_limits",
+      "name": "required-independent-transfer-limits",
+      "input": {
+        "per_file_bytes": "100",
+        "per_transfer_bytes": "200"
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "download_limits",
+      "name": "zero-file-limit",
+      "input": {
+        "per_file_bytes": "0",
+        "per_transfer_bytes": "200"
+      },
+      "expected_errors": [
+        {
+          "field": "per_file_bytes",
+          "code": "must_be_positive"
+        }
+      ]
+    },
+    {
+      "contract": "download_limits",
+      "name": "zero-transfer-limit",
+      "input": {
+        "per_file_bytes": "100",
+        "per_transfer_bytes": "0"
+      },
+      "expected_errors": [
+        {
+          "field": "per_transfer_bytes",
+          "code": "must_be_positive"
+        }
+      ]
+    },
+    {
+      "contract": "instruction_command",
+      "name": "preserve-active-copies",
+      "input": {
+        "command_id": "edit-instructions",
+        "project_id": null,
+        "instruction_id": "planner",
+        "expected_revision": "1",
+        "content": "Plan only within approved authority.",
+        "active_update": "preserve_copies",
+        "assignments": []
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "instruction_command",
+      "name": "selected-active-copies",
+      "input": {
+        "command_id": "edit-instructions",
+        "project_id": null,
+        "instruction_id": "planner",
+        "expected_revision": "1",
+        "content": "Plan only within approved authority.",
+        "active_update": "update_selected_copies",
+        "assignments": [
+          "assignment-1"
+        ]
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "instruction_command",
+      "name": "copy-update-requires-selection",
+      "input": {
+        "command_id": "edit-instructions",
+        "project_id": null,
+        "instruction_id": "planner",
+        "expected_revision": "1",
+        "content": "Plan only within approved authority.",
+        "active_update": "update_selected_copies",
+        "assignments": []
+      },
+      "expected_errors": [
+        {
+          "field": "assignments",
+          "code": "active_update_selection_mismatch"
+        }
+      ]
+    },
+    {
+      "contract": "instruction_command",
+      "name": "preserved-copies-forbid-selection",
+      "input": {
+        "command_id": "edit-instructions",
+        "project_id": null,
+        "instruction_id": "planner",
+        "expected_revision": "1",
+        "content": "Plan only within approved authority.",
+        "active_update": "preserve_copies",
+        "assignments": [
+          "assignment-1"
+        ]
+      },
+      "expected_errors": [
+        {
+          "field": "assignments",
+          "code": "active_update_selection_mismatch"
+        }
+      ]
+    },
+    {
+      "contract": "budget_command",
+      "name": "explicit-budget-stream-target",
+      "input": {
+        "conversation_id": "conversation-1",
+        "budget": {
+          "revision": "1",
+          "limit_micros": null,
+          "currency": "USD",
+          "incurred_micros": "0",
+          "reserved_micros": "0",
+          "uncertain_usage": false
+        }
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "service_event",
+      "name": "snapshot-update-without-worker-identity",
+      "input": {
+        "cursor": {
+          "conversation_id": "conversation-1",
+          "sequence": "9"
+        },
+        "command_id": "update-budget",
+        "project_id": "project-1",
+        "event": null,
+        "snapshot": {
+          "session": {
+            "conversation_id": "conversation-1",
+            "active_turn_id": "turn-1",
+            "project_id": "project-1",
+            "archived": false,
+            "last_human_interaction_ms": "1"
+          },
+          "cursor": {
+            "conversation_id": "conversation-1",
+            "sequence": "9"
+          },
+          "revision": "3",
+          "execution_state": "waiting_for_human",
+          "plan": null,
+          "approval": null,
+          "pending_questions": [
+            {
+              "question_id": "question-1",
+              "assignment_id": "assignment-1",
+              "conversation_id": "conversation-1",
+              "turn_id": "turn-1",
+              "item_id": "item-1",
+              "revision": "1",
+              "text": "What should the fixture cover?",
+              "choices": [
+                "a",
+                "b"
+              ],
+              "allow_multiple": true,
+              "allow_text": true,
+              "resolved_by": null
+            }
+          ],
+          "budget": null,
+          "active_assignment_id": "assignment-1",
+          "pause_requested": false
+        }
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "service_event",
+      "name": "empty-service-event-rejected",
+      "input": {
+        "cursor": {
+          "conversation_id": "conversation-1",
+          "sequence": "9"
+        },
+        "command_id": "update-budget",
+        "project_id": "project-1",
+        "event": null,
+        "snapshot": null
+      },
+      "expected_errors": [
+        {
+          "field": "event",
+          "code": "exactly_one_event_or_snapshot"
+        }
+      ]
+    },
+    {
+      "contract": "service_event",
+      "name": "snapshot-update-watermark-must-match",
+      "input": {
+        "cursor": {
+          "conversation_id": "conversation-1",
+          "sequence": "9"
+        },
+        "command_id": "update-budget",
+        "project_id": "project-1",
+        "event": null,
+        "snapshot": {
+          "session": {
+            "conversation_id": "conversation-1",
+            "active_turn_id": "turn-1",
+            "project_id": "project-1",
+            "archived": false,
+            "last_human_interaction_ms": "1"
+          },
+          "cursor": {
+            "conversation_id": "conversation-1",
+            "sequence": "8"
+          },
+          "revision": "3",
+          "execution_state": "waiting_for_human",
+          "plan": null,
+          "approval": null,
+          "pending_questions": [
+            {
+              "question_id": "question-1",
+              "assignment_id": "assignment-1",
+              "conversation_id": "conversation-1",
+              "turn_id": "turn-1",
+              "item_id": "item-1",
+              "revision": "1",
+              "text": "What should the fixture cover?",
+              "choices": [
+                "a",
+                "b"
+              ],
+              "allow_multiple": true,
+              "allow_text": true,
+              "resolved_by": null
+            }
+          ],
+          "budget": null,
+          "active_assignment_id": "assignment-1",
+          "pause_requested": false
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "snapshot.cursor",
+          "code": "watermark_mismatch"
+        }
+      ]
+    },
+    {
+      "contract": "service_event",
+      "name": "worker-event-retains-typed-output",
+      "input": {
+        "cursor": {
+          "conversation_id": "conversation-1",
+          "sequence": "9"
+        },
+        "command_id": "update-budget",
+        "project_id": "project-1",
+        "event": {
+          "worker_id": "worker-1",
+          "assignment_id": "assignment-1",
+          "turn_id": "turn-1",
+          "item_id": "item-1",
+          "usage": null,
+          "inference_id": null,
+          "tool_call_id": null,
+          "kind": "state_changed",
+          "text": "",
+          "state": "cancellation_requested"
+        },
+        "snapshot": null
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "service_event",
+      "name": "worker-and-snapshot-payloads-are-exclusive",
+      "input": {
+        "cursor": {
+          "conversation_id": "conversation-1",
+          "sequence": "9"
+        },
+        "command_id": "update-budget",
+        "project_id": "project-1",
+        "event": {
+          "worker_id": "worker-1",
+          "assignment_id": "assignment-1",
+          "turn_id": "turn-1",
+          "item_id": "item-1",
+          "usage": null,
+          "inference_id": null,
+          "tool_call_id": null,
+          "kind": "state_changed",
+          "text": "",
+          "state": "cancellation_requested"
+        },
+        "snapshot": {
+          "session": {
+            "conversation_id": "conversation-1",
+            "active_turn_id": "turn-1",
+            "project_id": "project-1",
+            "archived": false,
+            "last_human_interaction_ms": "1"
+          },
+          "cursor": {
+            "conversation_id": "conversation-1",
+            "sequence": "9"
+          },
+          "revision": "3",
+          "execution_state": "waiting_for_human",
+          "plan": null,
+          "approval": null,
+          "pending_questions": [
+            {
+              "question_id": "question-1",
+              "assignment_id": "assignment-1",
+              "conversation_id": "conversation-1",
+              "turn_id": "turn-1",
+              "item_id": "item-1",
+              "revision": "1",
+              "text": "What should the fixture cover?",
+              "choices": [
+                "a",
+                "b"
+              ],
+              "allow_multiple": true,
+              "allow_text": true,
+              "resolved_by": null
+            }
+          ],
+          "budget": null,
+          "active_assignment_id": "assignment-1",
+          "pause_requested": false
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "event",
+          "code": "exactly_one_event_or_snapshot"
+        }
+      ]
+    },
+    {
+      "contract": "engine_assessment",
+      "name": "complete-memory-demand-is-checked",
+      "input": {
+        "engine": {
+          "name": "fixture-engine",
+          "version": "1",
+          "backend": "simulated",
+          "configuration_hash": "engine-config-1"
+        },
+        "devices": [
+          {
+            "device_id": "simulated-device",
+            "total_bytes": "1000",
+            "used_bytes": "0",
+            "external_used_bytes": "0",
+            "observed_at_ms": "1"
+          }
+        ],
+        "requirements": {
+          "compatibility": "unknown",
+          "reason": "Cache/runtime metadata or device authority unavailable.",
+          "target_weight_bytes": "100",
+          "draft_weight_bytes": "0",
+          "cache_bytes": "20",
+          "runtime_overhead_bytes": "30",
+          "accelerator_bytes": "0"
+        },
+        "fit": {
+          "compatibility": "unknown",
+          "estimated_bytes": "150",
+          "fits_after_idle_eviction": true,
+          "qualification": "unqualified",
+          "reason": "Missing facts stay unknown; capability metadata is not qualification."
+        }
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "engine_assessment",
+      "name": "partial-demand-cannot-claim-known-fit",
+      "input": {
+        "engine": {
+          "name": "fixture-engine",
+          "version": "1",
+          "backend": "simulated",
+          "configuration_hash": "engine-config-1"
+        },
+        "devices": [
+          {
+            "device_id": "simulated-device",
+            "total_bytes": "1000",
+            "used_bytes": "0",
+            "external_used_bytes": "0",
+            "observed_at_ms": "1"
+          }
+        ],
+        "requirements": {
+          "compatibility": "unknown",
+          "reason": "Cache/runtime metadata or device authority unavailable.",
+          "target_weight_bytes": "100",
+          "draft_weight_bytes": "0",
+          "cache_bytes": null,
+          "runtime_overhead_bytes": "30",
+          "accelerator_bytes": "0"
+        },
+        "fit": {
+          "compatibility": "unknown",
+          "estimated_bytes": "150",
+          "fits_after_idle_eviction": true,
+          "qualification": "unqualified",
+          "reason": "Missing facts stay unknown; capability metadata is not qualification."
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "fit.estimated_bytes",
+          "code": "complete_demand_mismatch"
+        }
+      ]
+    },
+    {
+      "contract": "engine_assessment",
+      "name": "known-memory-demand-must-match-sum",
+      "input": {
+        "engine": {
+          "name": "fixture-engine",
+          "version": "1",
+          "backend": "simulated",
+          "configuration_hash": "engine-config-1"
+        },
+        "devices": [
+          {
+            "device_id": "simulated-device",
+            "total_bytes": "1000",
+            "used_bytes": "0",
+            "external_used_bytes": "0",
+            "observed_at_ms": "1"
+          }
+        ],
+        "requirements": {
+          "compatibility": "unknown",
+          "reason": "Cache/runtime metadata or device authority unavailable.",
+          "target_weight_bytes": "100",
+          "draft_weight_bytes": "0",
+          "cache_bytes": "20",
+          "runtime_overhead_bytes": "30",
+          "accelerator_bytes": "0"
+        },
+        "fit": {
+          "compatibility": "unknown",
+          "estimated_bytes": "149",
+          "fits_after_idle_eviction": true,
+          "qualification": "unqualified",
+          "reason": "Missing facts stay unknown; capability metadata is not qualification."
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "fit.estimated_bytes",
+          "code": "complete_demand_mismatch"
+        }
+      ]
+    },
+    {
+      "contract": "engine_assessment",
+      "name": "known-components-cannot-hide-demand-total",
+      "input": {
+        "engine": {
+          "name": "fixture-engine",
+          "version": "1",
+          "backend": "simulated",
+          "configuration_hash": "engine-config-1"
+        },
+        "devices": [
+          {
+            "device_id": "simulated-device",
+            "total_bytes": "1000",
+            "used_bytes": "0",
+            "external_used_bytes": "0",
+            "observed_at_ms": "1"
+          }
+        ],
+        "requirements": {
+          "compatibility": "unknown",
+          "reason": "Cache/runtime metadata or device authority unavailable.",
+          "target_weight_bytes": "100",
+          "draft_weight_bytes": "0",
+          "cache_bytes": "20",
+          "runtime_overhead_bytes": "30",
+          "accelerator_bytes": "0"
+        },
+        "fit": {
+          "compatibility": "unknown",
+          "estimated_bytes": null,
+          "fits_after_idle_eviction": null,
+          "qualification": "unqualified",
+          "reason": "Missing facts stay unknown; capability metadata is not qualification."
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "fit.estimated_bytes",
+          "code": "complete_demand_mismatch"
+        }
+      ]
+    },
+    {
+      "contract": "engine_assessment",
+      "name": "overflowed-memory-demand-remains-unknown",
+      "input": {
+        "engine": {
+          "name": "fixture-engine",
+          "version": "1",
+          "backend": "simulated",
+          "configuration_hash": "engine-config-1"
+        },
+        "devices": [
+          {
+            "device_id": "simulated-device",
+            "total_bytes": "1000",
+            "used_bytes": "0",
+            "external_used_bytes": "0",
+            "observed_at_ms": "1"
+          }
+        ],
+        "requirements": {
+          "compatibility": "unknown",
+          "reason": "Cache/runtime metadata or device authority unavailable.",
+          "target_weight_bytes": "18446744073709551615",
+          "draft_weight_bytes": "1",
+          "cache_bytes": "0",
+          "runtime_overhead_bytes": "0",
+          "accelerator_bytes": "0"
+        },
+        "fit": {
+          "compatibility": "unknown",
+          "estimated_bytes": null,
+          "fits_after_idle_eviction": null,
+          "qualification": "unqualified",
+          "reason": "Missing facts stay unknown; capability metadata is not qualification."
+        }
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "engine_assessment",
+      "name": "overflowed-memory-demand-cannot-wrap-to-fit",
+      "input": {
+        "engine": {
+          "name": "fixture-engine",
+          "version": "1",
+          "backend": "simulated",
+          "configuration_hash": "engine-config-1"
+        },
+        "devices": [
+          {
+            "device_id": "simulated-device",
+            "total_bytes": "1000",
+            "used_bytes": "0",
+            "external_used_bytes": "0",
+            "observed_at_ms": "1"
+          }
+        ],
+        "requirements": {
+          "compatibility": "unknown",
+          "reason": "Cache/runtime metadata or device authority unavailable.",
+          "target_weight_bytes": "18446744073709551615",
+          "draft_weight_bytes": "1",
+          "cache_bytes": "0",
+          "runtime_overhead_bytes": "0",
+          "accelerator_bytes": "0"
+        },
+        "fit": {
+          "compatibility": "unknown",
+          "estimated_bytes": "0",
+          "fits_after_idle_eviction": true,
+          "qualification": "unqualified",
+          "reason": "Missing facts stay unknown; capability metadata is not qualification."
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "fit.estimated_bytes",
+          "code": "complete_demand_mismatch"
+        }
+      ]
+    },
+    {
+      "contract": "history_query",
+      "name": "forward-turn-history",
+      "input": {
+        "as_of": {
+          "conversation_id": "conversation-1",
+          "sequence": "9"
+        },
+        "before": null,
+        "limit": "20",
+        "direction": "forward",
+        "after": "item-1",
+        "turn_id": "turn-1"
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "history_query",
+      "name": "forward-rejects-before",
+      "input": {
+        "as_of": {
+          "conversation_id": "conversation-1",
+          "sequence": "9"
+        },
+        "before": "item-2",
+        "limit": "20",
+        "direction": "forward",
+        "after": "item-1",
+        "turn_id": "turn-1"
+      },
+      "expected_errors": [
+        {
+          "field": "before",
+          "code": "backward_direction_required"
+        }
+      ]
+    },
+    {
+      "contract": "history_query",
+      "name": "backward-rejects-after",
+      "input": {
+        "as_of": {
+          "conversation_id": "conversation-1",
+          "sequence": "9"
+        },
+        "before": null,
+        "limit": "20",
+        "direction": "backward",
+        "after": "item-1",
+        "turn_id": "turn-1"
+      },
+      "expected_errors": [
+        {
+          "field": "after",
+          "code": "forward_direction_required"
+        }
+      ]
+    },
+    {
+      "contract": "history_page",
+      "name": "forward-history-page",
+      "input": {
+        "as_of": {
+          "conversation_id": "conversation-1",
+          "sequence": "9"
+        },
+        "items": [
+          {
+            "conversation_id": "conversation-1",
+            "turn_id": "turn-1",
+            "item_id": "item-1",
+            "message": {
+              "role": "user",
+              "text": "Original human input.",
+              "tool_calls": [],
+              "tool_result": null
+            }
+          }
+        ],
+        "next_before": null,
+        "direction": "forward",
+        "turn_id": "turn-1",
+        "next_after": "item-1"
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "history_page",
+      "name": "forward-cursor-requires-last-item",
+      "input": {
+        "as_of": {
+          "conversation_id": "conversation-1",
+          "sequence": "9"
+        },
+        "items": [
+          {
+            "conversation_id": "conversation-1",
+            "turn_id": "turn-1",
+            "item_id": "item-1",
+            "message": {
+              "role": "user",
+              "text": "Original human input.",
+              "tool_calls": [],
+              "tool_result": null
+            }
+          }
+        ],
+        "next_before": null,
+        "direction": "forward",
+        "turn_id": "turn-1",
+        "next_after": "absent-item"
+      },
+      "expected_errors": [
+        {
+          "field": "next_after",
+          "code": "newest_item_required"
+        }
+      ]
+    },
+    {
+      "contract": "history_page",
+      "name": "history-rejects-other-turn",
+      "input": {
+        "as_of": {
+          "conversation_id": "conversation-1",
+          "sequence": "9"
+        },
+        "items": [
+          {
+            "conversation_id": "conversation-1",
+            "turn_id": "turn-1",
+            "item_id": "item-1",
+            "message": {
+              "role": "user",
+              "text": "Original human input.",
+              "tool_calls": [],
+              "tool_result": null
+            }
+          }
+        ],
+        "next_before": null,
+        "direction": "forward",
+        "turn_id": "other-turn",
+        "next_after": "item-1"
+      },
+      "expected_errors": [
+        {
+          "field": "items",
+          "code": "turn_mismatch"
+        }
+      ]
+    },
+    {
+      "name": "native-creation-order",
+      "contract": "session_query",
+      "input": {
+        "after": null,
+        "limit": "10",
+        "archived": false,
+        "provider": null,
+        "source": null,
+        "order": "created_at"
+      },
+      "expected_errors": []
+    },
+    {
+      "name": "event-free-lesson-command-has-no-source-cursor",
+      "contract": "command_receipt",
+      "input": {
+        "command_id": "command-1",
+        "disposition": "accepted",
+        "cursor": null
+      },
+      "expected_errors": []
+    },
+    {
+      "name": "conversation-command-has-durable-stream-cursor",
+      "contract": "command_receipt",
+      "input": {
+        "command_id": "command-1",
+        "disposition": "accepted",
+        "cursor": {
+          "conversation_id": "conversation-1",
+          "sequence": "1"
+        }
+      },
+      "expected_errors": []
+    },
+    {
+      "name": "duplicate-role-identities-conflict",
+      "contract": "configuration_snapshot",
+      "input": {
+        "project_id": null,
+        "revision": "1",
+        "setup": null,
+        "roles": [
+          {
+            "role_id": "same-role",
+            "enabled": false,
+            "model_profile_id": null,
+            "reasoning_applicable": false,
+            "reasoning_effort": null,
+            "device_bindings": [],
+            "instructions_id": "instructions"
+          },
+          {
+            "role_id": "same-role",
+            "enabled": false,
+            "model_profile_id": null,
+            "reasoning_applicable": false,
+            "reasoning_effort": null,
+            "device_bindings": [],
+            "instructions_id": "instructions"
+          }
+        ],
+        "models": [],
+        "device_preferences": [],
+        "discovered_devices": [],
+        "execution_ready": false,
+        "unmet_prerequisites": [
+          "lesson_handling"
+        ],
+        "endpoints": [],
+        "source_accounts": []
+      },
+      "expected_errors": [
+        {
+          "field": "roles",
+          "code": "duplicate_role"
+        }
+      ]
+    },
+    {
+      "contract": "worker_paths",
+      "name": "exact-file-and-directory",
+      "input": {
+        "assignment_id": "assignment-1",
+        "worker_id": "worker-1",
+        "write_files": [
+          "src/new"
+        ],
+        "write_directories": [
+          "tests"
+        ],
+        "artifact_area": "role/worker-1"
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "worker_paths",
+      "name": "overlapping-directories",
+      "input": {
+        "assignment_id": "assignment-1",
+        "worker_id": "worker-1",
+        "write_files": [
+          "src/new"
+        ],
+        "write_directories": [
+          "src",
+          "src/sub"
+        ],
+        "artifact_area": "role/worker-1"
+      },
+      "expected_errors": [
+        {
+          "field": "write_directories",
+          "code": "overlapping_paths"
+        }
+      ]
+    },
+    {
+      "contract": "worker_paths",
+      "name": "metadata-file-rejected",
+      "input": {
+        "assignment_id": "assignment-1",
+        "worker_id": "worker-1",
+        "write_files": [
+          ".git/config"
+        ],
+        "write_directories": [
+          "tests"
+        ],
+        "artifact_area": "role/worker-1"
+      },
+      "expected_errors": [
+        {
+          "field": "write_files",
+          "code": "relative_normal_path_required"
+        }
+      ]
+    },
+    {
+      "contract": "conversation_snapshot",
+      "name": "pending-pause",
+      "input": {
+        "session": {
+          "conversation_id": "conversation-1",
+          "active_turn_id": "turn-1",
+          "project_id": "project-1",
+          "archived": false,
+          "last_human_interaction_ms": "1"
+        },
+        "cursor": {
+          "conversation_id": "conversation-1",
+          "sequence": "9"
+        },
+        "revision": "3",
+        "execution_state": "running",
+        "plan": null,
+        "approval": null,
+        "pending_questions": [
+          {
+            "question_id": "question-1",
+            "assignment_id": "assignment-1",
+            "conversation_id": "conversation-1",
+            "turn_id": "turn-1",
+            "item_id": "item-1",
+            "revision": "1",
+            "text": "What should the fixture cover?",
+            "choices": [
+              "a",
+              "b"
+            ],
+            "allow_multiple": true,
+            "allow_text": true,
+            "resolved_by": null
+          }
+        ],
+        "budget": null,
+        "active_assignment_id": "assignment-1",
+        "pause_requested": true
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "conversation_snapshot",
+      "name": "confirmed-pause-is-not-pending",
+      "input": {
+        "session": {
+          "conversation_id": "conversation-1",
+          "active_turn_id": "turn-1",
+          "project_id": "project-1",
+          "archived": false,
+          "last_human_interaction_ms": "1"
+        },
+        "cursor": {
+          "conversation_id": "conversation-1",
+          "sequence": "9"
+        },
+        "revision": "3",
+        "execution_state": "paused",
+        "plan": null,
+        "approval": null,
+        "pending_questions": [
+          {
+            "question_id": "question-1",
+            "assignment_id": "assignment-1",
+            "conversation_id": "conversation-1",
+            "turn_id": "turn-1",
+            "item_id": "item-1",
+            "revision": "1",
+            "text": "What should the fixture cover?",
+            "choices": [
+              "a",
+              "b"
+            ],
+            "allow_multiple": true,
+            "allow_text": true,
+            "resolved_by": null
+          }
+        ],
+        "budget": null,
+        "active_assignment_id": "assignment-1",
+        "pause_requested": false
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "conversation_snapshot",
+      "name": "paused-cannot-still-be-pending",
+      "input": {
+        "session": {
+          "conversation_id": "conversation-1",
+          "active_turn_id": "turn-1",
+          "project_id": "project-1",
+          "archived": false,
+          "last_human_interaction_ms": "1"
+        },
+        "cursor": {
+          "conversation_id": "conversation-1",
+          "sequence": "9"
+        },
+        "revision": "3",
+        "execution_state": "paused",
+        "plan": null,
+        "approval": null,
+        "pending_questions": [
+          {
+            "question_id": "question-1",
+            "assignment_id": "assignment-1",
+            "conversation_id": "conversation-1",
+            "turn_id": "turn-1",
+            "item_id": "item-1",
+            "revision": "1",
+            "text": "What should the fixture cover?",
+            "choices": [
+              "a",
+              "b"
+            ],
+            "allow_multiple": true,
+            "allow_text": true,
+            "resolved_by": null
+          }
+        ],
+        "budget": null,
+        "active_assignment_id": "assignment-1",
+        "pause_requested": true
+      },
+      "expected_errors": [
+        {
+          "field": "pause_requested",
+          "code": "pending_pause_state_mismatch"
+        }
+      ]
+    },
+    {
+      "contract": "conversation_snapshot",
+      "name": "active-pause-state-required",
+      "input": {
+        "session": {
+          "conversation_id": "conversation-1",
+          "active_turn_id": "turn-1",
+          "project_id": "project-1",
+          "archived": false,
+          "last_human_interaction_ms": "1"
+        },
+        "cursor": {
+          "conversation_id": "conversation-1",
+          "sequence": "9"
+        },
+        "revision": "3",
+        "execution_state": "running",
+        "plan": null,
+        "approval": null,
+        "pending_questions": [
+          {
+            "question_id": "question-1",
+            "assignment_id": "assignment-1",
+            "conversation_id": "conversation-1",
+            "turn_id": "turn-1",
+            "item_id": "item-1",
+            "revision": "1",
+            "text": "What should the fixture cover?",
+            "choices": [
+              "a",
+              "b"
+            ],
+            "allow_multiple": true,
+            "allow_text": true,
+            "resolved_by": null
+          }
+        ],
+        "budget": null,
+        "active_assignment_id": "assignment-1",
+        "pause_requested": null
+      },
+      "expected_errors": [
+        {
+          "field": "pause_requested",
+          "code": "assignment_control_state_required"
+        }
+      ]
+    },
+    {
+      "contract": "configuration_command",
+      "name": "explicit-endpoint-and-source-access",
+      "input": {
+        "command_id": "configure-endpoints",
+        "project_id": null,
+        "expected_revision": "1",
+        "changes": {
+          "endpoints": [
+            {
+              "provider": "configured-provider",
+              "base": "https://api.example.test/v1/",
+              "dialect": "responses",
+              "billing": "api_key",
+              "streaming": true,
+              "tools": true,
+              "stream_usage": true,
+              "reasoning_efforts": [
+                "medium"
+              ]
+            }
+          ],
+          "source_accounts": [
+            {
+              "host": "huggingface",
+              "access": {
+                "type": "anonymous"
+              }
+            },
+            {
+              "host": "kaggle",
+              "access": {
+                "type": "credential",
+                "credential_id": "selected-source-account"
+              }
+            }
+          ]
+        }
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "configuration_command",
+      "name": "endpoint-userinfo",
+      "input": {
+        "command_id": "configure-endpoints",
+        "project_id": null,
+        "expected_revision": "1",
+        "changes": {
+          "endpoints": [
+            {
+              "provider": "configured-provider",
+              "base": "https://user:never-echo-this@api.example.test/",
+              "dialect": "responses",
+              "billing": "api_key",
+              "streaming": true,
+              "tools": true,
+              "stream_usage": true,
+              "reasoning_efforts": [
+                "medium"
+              ]
+            }
+          ]
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "changes.endpoints.0.base",
+          "code": "invalid_api_base"
+        }
+      ]
+    },
+    {
+      "contract": "configuration_command",
+      "name": "endpoint-query-secret",
+      "input": {
+        "command_id": "configure-endpoints",
+        "project_id": null,
+        "expected_revision": "1",
+        "changes": {
+          "endpoints": [
+            {
+              "provider": "configured-provider",
+              "base": "https://api.example.test/?token=never-echo-this",
+              "dialect": "responses",
+              "billing": "api_key",
+              "streaming": true,
+              "tools": true,
+              "stream_usage": true,
+              "reasoning_efforts": [
+                "medium"
+              ]
+            }
+          ]
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "changes.endpoints.0.base",
+          "code": "invalid_api_base"
+        }
+      ]
+    },
+    {
+      "contract": "configuration_command",
+      "name": "endpoint-remote-plaintext",
+      "input": {
+        "command_id": "configure-endpoints",
+        "project_id": null,
+        "expected_revision": "1",
+        "changes": {
+          "endpoints": [
+            {
+              "provider": "configured-provider",
+              "base": "http://api.example.test/",
+              "dialect": "responses",
+              "billing": "api_key",
+              "streaming": true,
+              "tools": true,
+              "stream_usage": true,
+              "reasoning_efforts": [
+                "medium"
+              ]
+            }
+          ]
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "changes.endpoints.0.base",
+          "code": "invalid_api_base"
+        }
+      ]
+    },
+    {
+      "contract": "configuration_command",
+      "name": "endpoint-local-billing",
+      "input": {
+        "command_id": "configure-endpoints",
+        "project_id": null,
+        "expected_revision": "1",
+        "changes": {
+          "endpoints": [
+            {
+              "provider": "configured-provider",
+              "base": "https://api.example.test/v1/",
+              "dialect": "responses",
+              "billing": "local_estimate",
+              "streaming": true,
+              "tools": true,
+              "stream_usage": true,
+              "reasoning_efforts": [
+                "medium"
+              ]
+            }
+          ]
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "changes.endpoints.0.billing",
+          "code": "unsupported_endpoint_billing"
+        }
+      ]
+    },
+    {
+      "contract": "configuration_command",
+      "name": "endpoint-account-wrong-host",
+      "input": {
+        "command_id": "configure-endpoints",
+        "project_id": null,
+        "expected_revision": "1",
+        "changes": {
+          "endpoints": [
+            {
+              "provider": "configured-provider",
+              "base": "https://api.example.test/v1/",
+              "dialect": "responses",
+              "billing": "account",
+              "streaming": true,
+              "tools": true,
+              "stream_usage": true,
+              "reasoning_efforts": [
+                "medium"
+              ]
+            }
+          ]
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "changes.endpoints.0.billing",
+          "code": "unsupported_account_endpoint"
+        }
+      ]
+    },
+    {
+      "contract": "configuration_command",
+      "name": "endpoint-duplicate-effort",
+      "input": {
+        "command_id": "configure-endpoints",
+        "project_id": null,
+        "expected_revision": "1",
+        "changes": {
+          "endpoints": [
+            {
+              "provider": "configured-provider",
+              "base": "https://api.example.test/v1/",
+              "dialect": "responses",
+              "billing": "api_key",
+              "streaming": true,
+              "tools": true,
+              "stream_usage": true,
+              "reasoning_efforts": [
+                "medium",
+                "medium"
+              ]
+            }
+          ]
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "changes.endpoints.0.reasoning_efforts",
+          "code": "duplicate_effort"
+        }
+      ]
+    },
+    {
+      "contract": "configuration_command",
+      "name": "duplicate-provider-endpoints",
+      "input": {
+        "command_id": "configure-endpoints",
+        "project_id": null,
+        "expected_revision": "1",
+        "changes": {
+          "endpoints": [
+            {
+              "provider": "configured-provider",
+              "base": "https://api.example.test/v1/",
+              "dialect": "responses",
+              "billing": "api_key",
+              "streaming": true,
+              "tools": true,
+              "stream_usage": true,
+              "reasoning_efforts": [
+                "medium"
+              ]
+            },
+            {
+              "provider": "configured-provider",
+              "base": "https://api.example.test/v1/",
+              "dialect": "responses",
+              "billing": "api_key",
+              "streaming": true,
+              "tools": true,
+              "stream_usage": true,
+              "reasoning_efforts": [
+                "medium"
+              ]
+            }
+          ]
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "changes.endpoints",
+          "code": "duplicate_provider"
+        }
+      ]
+    },
+    {
+      "contract": "configuration_command",
+      "name": "duplicate-source-host",
+      "input": {
+        "command_id": "configure-endpoints",
+        "project_id": null,
+        "expected_revision": "1",
+        "changes": {
+          "source_accounts": [
+            {
+              "host": "huggingface",
+              "access": {
+                "type": "anonymous"
+              }
+            },
+            {
+              "host": "huggingface",
+              "access": {
+                "type": "anonymous"
+              }
+            }
+          ]
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "changes.source_accounts",
+          "code": "duplicate_host"
+        }
+      ]
+    },
+    {
+      "contract": "configuration_command",
+      "name": "source-access-must-be-explicit",
+      "input": {
+        "command_id": "configure-endpoints",
+        "project_id": null,
+        "expected_revision": "1",
+        "changes": {
+          "source_accounts": [
+            {
+              "host": "huggingface"
+            }
+          ]
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "changes.source_accounts.0",
+          "code": "invalid_structure"
+        }
+      ]
+    },
+    {
+      "contract": "configuration_command",
+      "name": "source-credential-reference-required",
+      "input": {
+        "command_id": "configure-endpoints",
+        "project_id": null,
+        "expected_revision": "1",
+        "changes": {
+          "source_accounts": [
+            {
+              "host": "kaggle",
+              "access": {
+                "type": "credential"
+              }
+            }
+          ]
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "changes.source_accounts.0.access",
+          "code": "invalid_structure"
+        }
+      ]
+    },
+    {
+      "contract": "configuration_command",
+      "name": "loopback-fixture-endpoint",
+      "input": {
+        "command_id": "configure-endpoints",
+        "project_id": null,
+        "expected_revision": "1",
+        "changes": {
+          "endpoints": [
+            {
+              "provider": "configured-provider",
+              "base": "http://127.0.0.1:8099/",
+              "dialect": "responses",
+              "billing": "api_key",
+              "streaming": true,
+              "tools": true,
+              "stream_usage": true,
+              "reasoning_efforts": [
+                "medium"
+              ]
+            }
+          ]
+        }
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "configuration_command",
+      "name": "explicit-account-endpoint",
+      "input": {
+        "command_id": "configure-endpoints",
+        "project_id": null,
+        "expected_revision": "1",
+        "changes": {
+          "endpoints": [
+            {
+              "provider": "configured-provider",
+              "base": "https://chatgpt.com/backend-api/codex/",
+              "dialect": "responses",
+              "billing": "account",
+              "streaming": true,
+              "tools": true,
+              "stream_usage": true,
+              "reasoning_efforts": [
+                "medium"
+              ]
+            }
+          ]
+        }
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "configuration_command",
+      "name": "anonymous-cannot-carry-a-credential",
+      "input": {
+        "command_id": "config-ambiguous",
+        "project_id": null,
+        "expected_revision": "1",
+        "changes": {
+          "source_accounts": [
+            {
+              "host": "huggingface",
+              "access": {
+                "type": "anonymous",
+                "credential_id": "secret-reference"
+              }
+            }
+          ]
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "changes.source_accounts.0.access",
+          "code": "invalid_structure"
+        }
+      ]
+    },
+    {
+      "contract": "local_model_binding",
+      "name": "explicit-local-file-set-and-options",
+      "input": {
+        "inventory_id": "immutable-inventory",
+        "weights": [
+          "weights/model-q4.gguf"
+        ],
+        "tokenizer": null,
+        "template": null,
+        "options": {
+          "draft": null,
+          "cache": null,
+          "context_tokens": "8192",
+          "concurrency": "1",
+          "accelerators": []
+        }
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "local_model_binding",
+      "name": "no-weight-fallback",
+      "input": {
+        "inventory_id": "immutable-inventory",
+        "weights": [],
+        "tokenizer": null,
+        "template": null,
+        "options": {
+          "draft": null,
+          "cache": null,
+          "context_tokens": "8192",
+          "concurrency": "1",
+          "accelerators": []
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "weights",
+          "code": "weight_files_required"
+        }
+      ]
+    },
+    {
+      "contract": "local_model_binding",
+      "name": "duplicate-weight-selection",
+      "input": {
+        "inventory_id": "immutable-inventory",
+        "weights": [
+          "one.gguf",
+          "one.gguf"
+        ],
+        "tokenizer": null,
+        "template": null,
+        "options": {
+          "draft": null,
+          "cache": null,
+          "context_tokens": "8192",
+          "concurrency": "1",
+          "accelerators": []
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "weights",
+          "code": "duplicate_file"
+        }
+      ]
+    },
+    {
+      "contract": "local_model_binding",
+      "name": "weight-parent-escape",
+      "input": {
+        "inventory_id": "immutable-inventory",
+        "weights": [
+          "../outside.gguf"
+        ],
+        "tokenizer": null,
+        "template": null,
+        "options": {
+          "draft": null,
+          "cache": null,
+          "context_tokens": "8192",
+          "concurrency": "1",
+          "accelerators": []
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "weights.0",
+          "code": "relative_normal_path_required"
+        }
+      ]
+    },
+    {
+      "contract": "local_model_binding",
+      "name": "absolute-weight-path",
+      "input": {
+        "inventory_id": "immutable-inventory",
+        "weights": [
+          "/host/model.gguf"
+        ],
+        "tokenizer": null,
+        "template": null,
+        "options": {
+          "draft": null,
+          "cache": null,
+          "context_tokens": "8192",
+          "concurrency": "1",
+          "accelerators": []
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "weights.0",
+          "code": "relative_normal_path_required"
+        }
+      ]
+    },
+    {
+      "contract": "local_model_binding",
+      "name": "load-options-recursive-validation",
+      "input": {
+        "inventory_id": "immutable-inventory",
+        "weights": [
+          "weights/model-q4.gguf"
+        ],
+        "tokenizer": null,
+        "template": null,
+        "options": {
+          "draft": null,
+          "cache": null,
+          "context_tokens": "0",
+          "concurrency": "1",
+          "accelerators": []
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "options.context_tokens",
+          "code": "must_be_positive"
+        }
+      ]
+    },
+    {
+      "contract": "model_file_metadata",
+      "name": "unknown-file-facts-remain-unknown",
+      "input": {
+        "path": "weights/model-q4.gguf",
+        "bytes": null,
+        "sha256": null,
+        "checksum_provenance": "unknown"
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "model_file_metadata",
+      "name": "publisher-hash-is-not-local-verification",
+      "input": {
+        "path": "weights/model-q4.gguf",
+        "bytes": null,
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "checksum_provenance": "publisher"
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "model_file_metadata",
+      "name": "computed-hash-needs-measured-size",
+      "input": {
+        "path": "weights/model-q4.gguf",
+        "bytes": null,
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "checksum_provenance": "computed"
+      },
+      "expected_errors": [
+        {
+          "field": "bytes",
+          "code": "measured_size_required"
+        }
+      ]
+    },
+    {
+      "contract": "model_file_metadata",
+      "name": "metadata-file-url-is-not-a-path",
+      "input": {
+        "path": "https://signed.example.test/model?token=never-return-this",
+        "bytes": null,
+        "sha256": null,
+        "checksum_provenance": "unknown"
+      },
+      "expected_errors": [
+        {
+          "field": "path",
+          "code": "relative_normal_path_required"
+        }
+      ]
+    },
+    {
+      "contract": "model_file_metadata",
+      "name": "hash-must-be-sha256",
+      "input": {
+        "path": "weights/model-q4.gguf",
+        "bytes": null,
+        "sha256": "invalid-digest",
+        "checksum_provenance": "publisher"
+      },
+      "expected_errors": [
+        {
+          "field": "sha256",
+          "code": "invalid_sha256"
+        }
+      ]
+    },
+    {
+      "contract": "model_files_query",
+      "name": "inventory-file-selector",
+      "input": {
+        "project_id": null,
+        "inventory_id": "immutable-inventory",
+        "host": null,
+        "repository_id": null,
+        "revision": null,
+        "after": null,
+        "limit": "100"
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "model_files_query",
+      "name": "pinned-source-file-selector",
+      "input": {
+        "project_id": null,
+        "inventory_id": null,
+        "host": "huggingface",
+        "repository_id": "publisher/model",
+        "revision": "source-commit",
+        "after": null,
+        "limit": "100"
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "model_files_query",
+      "name": "file-source-must-be-pinned",
+      "input": {
+        "project_id": null,
+        "inventory_id": null,
+        "host": "huggingface",
+        "repository_id": "publisher/model",
+        "revision": null,
+        "after": null,
+        "limit": "100"
+      },
+      "expected_errors": [
+        {
+          "field": "host",
+          "code": "complete_pinned_source_required"
+        }
+      ]
+    },
+    {
+      "contract": "model_files_query",
+      "name": "inventory-cannot-mix-source-selector",
+      "input": {
+        "project_id": null,
+        "inventory_id": "immutable-inventory",
+        "host": "huggingface",
+        "repository_id": null,
+        "revision": null,
+        "after": null,
+        "limit": "100"
+      },
+      "expected_errors": [
+        {
+          "field": "inventory_id",
+          "code": "exclusive_file_selector_required"
+        }
+      ]
+    },
+    {
+      "contract": "configuration_command",
+      "name": "account-still-requires-streaming",
+      "input": {
+        "command_id": "account-nonstreaming",
+        "project_id": null,
+        "expected_revision": "1",
+        "changes": {
+          "endpoints": [
+            {
+              "provider": "account",
+              "base": "https://chatgpt.com/backend-api/codex/",
+              "dialect": "responses",
+              "billing": "account",
+              "streaming": false,
+              "tools": true,
+              "stream_usage": true,
+              "reasoning_efforts": []
+            }
+          ]
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "changes.endpoints.0.billing",
+          "code": "unsupported_account_endpoint"
+        }
+      ]
+    },
+    {
+      "contract": "model_files_page",
+      "name": "pinned-publisher-file-page",
+      "input": {
+        "source": {
+          "publisher": "publisher-1",
+          "host": "hub-1",
+          "repository_url": "https://example.org/models/model-1",
+          "revision": "revision-1",
+          "checksum": null,
+          "access": "accessible",
+          "license": "license-1"
+        },
+        "repository_id": "publisher/model",
+        "inventory_id": null,
+        "files": [
+          {
+            "path": "model-q4.gguf",
+            "bytes": null,
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "checksum_provenance": "publisher"
+          }
+        ],
+        "next_after": null
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "model_files_page",
+      "name": "duplicate-file-page",
+      "input": {
+        "source": {
+          "publisher": "publisher-1",
+          "host": "hub-1",
+          "repository_url": "https://example.org/models/model-1",
+          "revision": "revision-1",
+          "checksum": null,
+          "access": "accessible",
+          "license": "license-1"
+        },
+        "repository_id": "publisher/model",
+        "inventory_id": null,
+        "files": [
+          {
+            "path": "model-q4.gguf",
+            "bytes": null,
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "checksum_provenance": "publisher"
+          },
+          {
+            "path": "model-q4.gguf",
+            "bytes": null,
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "checksum_provenance": "publisher"
+          }
+        ],
+        "next_after": null
+      },
+      "expected_errors": [
+        {
+          "field": "files",
+          "code": "duplicate_path"
+        }
+      ]
+    },
+    {
+      "contract": "model_files_page",
+      "name": "source-metadata-cannot-claim-local-verification",
+      "input": {
+        "source": {
+          "publisher": "publisher-1",
+          "host": "hub-1",
+          "repository_url": "https://example.org/models/model-1",
+          "revision": "revision-1",
+          "checksum": null,
+          "access": "accessible",
+          "license": "license-1"
+        },
+        "repository_id": "publisher/model",
+        "inventory_id": null,
+        "files": [
+          {
+            "path": "model-q4.gguf",
+            "bytes": "64",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "checksum_provenance": "publisher_verified"
+          }
+        ],
+        "next_after": null
+      },
+      "expected_errors": [
+        {
+          "field": "files",
+          "code": "inventory_required_for_local_provenance"
+        }
+      ]
+    },
+    {
+      "contract": "model_files_page",
+      "name": "installed-file-verified-provenance",
+      "input": {
+        "source": {
+          "publisher": "publisher-1",
+          "host": "hub-1",
+          "repository_url": "https://example.org/models/model-1",
+          "revision": "revision-1",
+          "checksum": null,
+          "access": "accessible",
+          "license": "license-1"
+        },
+        "repository_id": "publisher/model",
+        "inventory_id": "inventory-1",
+        "files": [
+          {
+            "path": "model-q4.gguf",
+            "bytes": "64",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "checksum_provenance": "publisher_verified"
+          }
+        ],
+        "next_after": null
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "configuration_command",
+      "name": "explicit-local-profile-binding",
+      "input": {
+        "command_id": "persist-local-binding",
+        "project_id": null,
+        "expected_revision": "1",
+        "changes": {
+          "models": [
+            {
+              "profile_id": "explicit-local",
+              "provider": "local",
+              "model_id": "selected-model",
+              "generation_controls": {
+                "max_output_tokens": "100",
+                "max_duration_ms": "1000",
+                "repetition_window": "20"
+              },
+              "credential_id": null,
+              "billing": "local_estimate",
+              "engine": {
+                "name": "fixture",
+                "version": "1",
+                "backend": "simulated",
+                "configuration_hash": "fixture"
+              },
+              "device_bindings": [],
+              "local_binding": {
+                "inventory_id": "immutable-inventory",
+                "weights": [
+                  "weights/model-q4.gguf"
+                ],
+                "tokenizer": null,
+                "template": null,
+                "options": {
+                  "draft": null,
+                  "cache": null,
+                  "context_tokens": "8192",
+                  "concurrency": "1",
+                  "accelerators": []
+                }
+              }
+            }
+          ]
+        }
+      },
+      "expected_errors": []
+    },
+    {
+      "contract": "configuration_command",
+      "name": "remote-profile-cannot-use-local-file-binding",
+      "input": {
+        "command_id": "persist-local-binding",
+        "project_id": null,
+        "expected_revision": "1",
+        "changes": {
+          "models": [
+            {
+              "profile_id": "explicit-local",
+              "provider": "local",
+              "model_id": "selected-model",
+              "generation_controls": {
+                "max_output_tokens": "100",
+                "max_duration_ms": "1000",
+                "repetition_window": "20"
+              },
+              "credential_id": null,
+              "billing": "api_key",
+              "engine": null,
+              "device_bindings": [],
+              "local_binding": {
+                "inventory_id": "immutable-inventory",
+                "weights": [
+                  "weights/model-q4.gguf"
+                ],
+                "tokenizer": null,
+                "template": null,
+                "options": {
+                  "draft": null,
+                  "cache": null,
+                  "context_tokens": "8192",
+                  "concurrency": "1",
+                  "accelerators": []
+                }
+              }
+            }
+          ]
+        }
+      },
+      "expected_errors": [
+        {
+          "field": "changes.models.0.local_binding",
+          "code": "local_engine_required"
+        }
+      ]
     }
   ]
 }

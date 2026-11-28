@@ -1,47 +1,54 @@
-# API HTTP del runtime
+# API HTTP del servicio
 
-Ironloom sirve setup, health y readiness en el puerto HTTP existente del runtime.
+El servicio autenticado utiliza Tokio/Axum y la ruta base configurada. `ironloom serve` abre la instalación PostgreSQL existente. `ironloom initialize` crea explícitamente un esquema nuevo y el estado del token inicial; rechaza un esquema existente. Los errores y reinicios nunca crean datos de reemplazo.
 
-## `GET /healthz`
+El acceso al servicio es independiente de las credenciales del proveedor. El inicio de sesión devuelve `AuthenticatedSession`, establece la cookie HttpOnly `ironloom_session` y entrega la prueba CSRF en `ironloom_csrf` y la cabecera `x-ironloom-csrf`. Las mutaciones requieren esa cabecera. Las cookies respetan la ruta base, SameSite=Lax y Secure con HTTPS. Se rechazan solicitudes de otros orígenes. OIDC requiere además una cookie de flujo de un solo uso vinculada al navegador.
 
-Devuelve `200 ok` cuando el servidor HTTP está vivo.
+| Method | Path | Contract / transport |
+| --- | --- | --- |
+| POST | `/api/v1/auth/register` | `LoginRequest`; initial `x-ironloom-setup-token`, later current administrator + CSRF |
+| POST | `/api/v1/auth/local` | `LoginRequest` → `AuthenticatedSession` + cookies |
+| GET | `/api/v1/auth/session` | Current `AuthenticatedSession`; no-store |
+| POST | `/api/v1/auth/oidc/start` | `OidcStart` → authorization URL JSON + HttpOnly flow cookie |
+| POST | `/api/v1/auth/oidc/callback` | `OidcCallback` → `AuthenticatedSession` + cookies |
+| POST | `/api/v1/auth/bootstrap` | `BootstrapRedeem` → fixed `BootstrapState`; CSRF |
+| POST | `/api/v1/auth/logout` | Revoke current session and clear cookies; CSRF |
+| GET | `/healthz` | Process liveness, root path |
+| GET | `/readyz` | Selected PostgreSQL and OpenFGA binding reachable; separate from execution setup, root path |
 
-## `GET /readyz`
+Configuración obligatoria: `IRONLOOM_DATABASE_URL`, `IRONLOOM_OPENFGA_URL`, `IRONLOOM_CONFIG_KEY` (base64, 32 bytes), `IRONLOOM_PUBLIC_URL` y ambos límites de descarga. Solo la inicialización explícita lee `IRONLOOM_INSTALLER_TOKEN`. Son opcionales `IRONLOOM_OPENFGA_TOKEN` e `IRONLOOM_OIDC_CONNECTIONS`, un arreglo JSON con `{id, issuer, client_id, client_secret, redirects}` y URL de retorno exactas permitidas. El correo electrónico no determina la identidad.
 
-Devuelve `200 ok` solo cuando la configuración de runtime requerida se resuelve desde valores de entorno o configuración local cifrada. Devuelve `503 setup required` mientras la configuración siga incompleta.
+La ejecución de roles, los adaptadores y los recursos del operador siguen en implementación. Estas rutas de autenticación están implementadas; no constituyen una fábrica completa.
 
-## `GET /`
 
-Devuelve la página de configuración.
+La paginación del historial requiere una dirección explícita, permite filtrar por turno y conserva el orden cronológico dentro de cada página en la secuencia de eventos solicitada. La búsqueda de conversaciones requiere `order=created_at` para clientes nativos u `order=human_interaction` para el panel. Las ubicaciones locales vacías, desactivadas o sin intersección impiden la ejecución. Las rutas HTTP de configuración, instrucciones e historial usan el servicio autenticado compartido; la composición completa sigue en desarrollo.
 
-## `GET /setup`
 
-Devuelve la página de configuración.
+El servicio monta configuración, instrucciones, conversaciones y SSE bajo la ruta pública. SSE requiere `Last-Event-ID`; el desbordamiento emite `ironloom.error` y exige resincronización. Desconectar el transporte no cancela la ejecución. Configure `IRONLOOM_NODE_ID` estable y las rutas absolutas separadas `IRONLOOM_PROJECTS_ROOT` / `IRONLOOM_MODELS_ROOT`; Helm proporciona almacenamiento persistente separado. El registro de adaptadores, el aislamiento y la ejecución completa siguen en desarrollo.
 
-Si `IRONLOOM_CONFIG_KEY` falta o no es válido, la página muestra instrucciones de clave y ningún campo de entrada de configuración.
 
-Si `IRONLOOM_INSTALLER_TOKEN` falta, la página muestra instrucciones para el token de instalación.
+El aislamiento de comandos Linux usa un proceso auxiliar, espacios de nombres de bubblewrap, rutas de escritura explícitas y seccomp. Los fallos de aislamiento impiden ejecutar el comando. Las pruebas nativas cubren aislamiento, enlaces simbólicos y limpieza de descendientes. El contenedor incluye bubblewrap/Git con UID/GID 1000. El flujo completo, la validación de ejecución Alpine y el trabajo Mac/GPU siguen pendientes.
 
-Cuando los prerrequisitos de configuración están presentes, la página renderiza el formulario de configuración. Los campos respaldados por entorno quedan bloqueados y los valores secretos no se muestran.
 
-## `POST /setup`
+Las reservas de ejecución vinculan el nodo, la instancia exacta del servicio y un contador de propiedad monotónico. Una reserva caducada no se renueva ni se reintenta automáticamente; los procesos o cambios externos sin resolver impiden la recuperación explícita. El proceso auxiliar protege la terminación del padre desde el inicio. Las pruebas nativas pasan; la política Docker de este host impide crear espacios de nombres, por lo que los trabajadores del contenedor no se ejecutan. El flujo completo sigue en desarrollo.
 
-Acepta valores del formulario de configuración después de que el token de instalación enviado coincida con `IRONLOOM_INSTALLER_TOKEN`.
 
-Los envíos exitosos escriben configuración cifrada bajo `IRONLOOM_STATE_ROOT` y devuelven `200 setup saved`.
+Las lecturas y los comandos HTTP para editar, cambiar ámbito o eliminar lecciones verifican permisos actuales de gestión y uso compartido sin exigir acceso al origen. La eliminación borra el contenido y conserva solo identidad sin contenido para reintentos autorizados. La recuperación usa el estado actual, sin restaurar visibilidad anterior. La ejecución de flujos sigue en desarrollo.
 
-Los tokens de instalación inválidos devuelven `403 setup rejected`.
+`GET /api/v1/projects?limit=100` devuelve metadatos con autorización vigente, ordenados por interacción humana y con cursor opaco `after`. Los montajes no disponibles y los nodos propietarios remotos permanecen visibles con `storage: unavailable`; leer el catálogo nunca crea directorios sustitutos. Se comprueba Git sin ejecutar hooks ni inferencia. La creación de proyectos y el aprovisionamiento de fuentes siguen en desarrollo.
 
-## `POST /setup/openai/oauth/start`
+`POST /api/v1/commands` admite cambios persistentes de presupuesto además de gestionar lecciones. Los límites se pueden editar o desactivar independientemente de la aprobación del plan. Los contadores contables y el uso desconocido son de solo lectura; no se permite cambiar moneda con exposición pendiente. El cambio aceptado guarda atómicamente el evento y recibo del actor; repetirlo no crea otro evento. Los demás comandos de ejecución siguen en desarrollo.
 
-Devuelve las instrucciones de setup OAuth de OpenAI usadas por la página de configuración. La referencia de sesión OAuth resultante puede guardarse mediante el formulario o enlazarse mediante `IRONLOOM_OPENAI_OAUTH_SESSION`.
+La entrada humana, la orientación del turno y los controles de asignación usan la ruta persistente de comandos. Una entrada nueva guarda atómicamente su historial original, turno, asignación, instrucciones copiadas y cola del nodo propietario. La repetición conserva el resultado original antes de comprobar el turno mutable. La coordinación usa el rol de orquestación habilitado o el gestor de producto estándar, sin otra opción de entrada ni requisito global de preparación.
 
-## `POST /setup/discord/oauth/start`
+Las instantáneas exponen `pause_requested` anulable: ausente sin asignación activa, falso sin pausa pendiente y verdadero mientras se espera un límite seguro. Confirmar pausa o terminación exige registros persistentes de solicitudes, procesos, mutaciones y rutas sin actividad pendiente. El vencimiento del arrendamiento, el fin del flujo y aceptar cancelación no prueban terminación. Las confirmaciones en segundo plano conservan el orden de interacción humana.
 
-Devuelve una página de autorización de Discord para el ID de aplicación configurado. La URL generada usa los scopes `bot` y `applications.commands` para que un administrador del servidor pueda instalar Ironloom en el servidor objetivo.
+`GET /api/v1/assignments/{id}/instructions` devuelve copias autorizadas y revisiones aplicadas/confirmadas aunque el espacio de trabajo no esté disponible. Editar plantillas conserva la elección explícita sobre copias activas. La inferencia de roles, preguntas/aprobaciones, herramientas, árboles de trabajo e integración final siguen en desarrollo.
 
-## `POST /discord/interactions`
+La configuración añade `endpoints` (proveedor, base API, dialecto y facturación explícitos, soporte de streaming, herramientas, uso y niveles de razonamiento) y `source_accounts` (host y elección explícita entre acceso anónimo o referencia de credencial). Ambos usan `/api/v1/configuration`, heredan por ámbito y sustituyen solo la lista enviada; una lista vacía la borra. Las URL rechazan credenciales incrustadas, consultas, fragmentos y HTTP remoto sin cifrar. Un endpoint ausente, facturación incompatible o esfuerzo no admitido bloquea la disponibilidad del perfil remoto sin probar inferencia. Las descargas conservan su selección de cuenta en privado; la integración de callbacks sigue en curso.
 
-Acepta webhooks de interacciones de Discord firmados con `X-Signature-Ed25519` y `X-Signature-Timestamp`.
+Cambiar el destino efectivo de una credencial requiere `ReplaceCredential`, incluidos los perfiles de proyectos heredados afectados por un cambio global. La ejecución normal comprueba `UseCredential`; el permiso de uso no permite redirigir un secreto compartido a otra URL de proveedor o a otro host de origen.
 
-Las interacciones ping devuelven el payload pong de Discord. Las interacciones de comandos de aplicación resuelven el canal de Discord como hilo del operador, requieren exactamente un vínculo persistido a un work item, despachan el worker de control seleccionado mediante el supervisor, escriben un artefacto y devuelven una respuesta de mensaje de canal. Las firmas inválidas devuelven `401` antes de ejecutar trabajo.
+Los perfiles locales guardan `local_binding`: `inventory_id` inmutable, archivos relativos `weights` exactos, `tokenizer`/`template` opcionales y `options: EngineLoadOptions`. Sin enlace no hay disponibilidad; no se elige el primer archivo ni un modelo, motor o dispositivo alternativo. `ModelFilesQuery` selecciona un inventario o un host/repositorio/revisión completos, con páginas limitadas. La integración de `GET /api/v1/models/files` sigue en curso; devuelve rutas, tamaños opcionales, SHA-256 y procedencia, nunca URL de transferencia. Los pesos de archivos Kaggle se eligen del inventario extraído.
+
+El orden y los resultados de los turnos se guardan en sus cursores de eventos reales. El almacenamiento permite ambas direcciones, anclas inversas inclusivas y lectura acotada de ID de elementos en orden persistido; rechaza anclas ajenas, ausentes o futuras. La relación de asignación/proyecto se publica antes de devolver entrada o repetición, conservando la recuperación si falla. La disponibilidad con clave API admite respuestas sin streaming; las cuentas elegibles siguen requiriéndolo. La integración de callbacks nativos está pendiente.

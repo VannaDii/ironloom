@@ -34,3 +34,39 @@ La misma revisión define consultas y cambios autorizados de configuración, equ
 Ironloom aún no se ha publicado: solo se inicializan esquemas nuevos, sin compatibilidad con versiones antiguas, conversiones, rellenos de datos, archivos de actualización ni historial de migraciones. El código obsoleto se retira durante el desarrollo inicial.
 
 `FactoryService::create_conversation` guarda una conversación vacía autorizada antes de iniciar un turno nativo, con identidad de comando duradera e instantánea con cursor cero. No envía texto ni inicia inferencia; el texto del usuario sigue siendo obligatorio.
+
+Los contratos compartidos del servicio y del registro nativo ahora están en `ironloom-service::factory`; el runtime y los adaptadores nativos dependen de este crate común, sin alias de importación antiguos. Las instantáneas incluyen la asignación activa para reconectar. Hay registros explícitos para proyectos, credenciales, conexiones nativas y fuentes/descargas; los perfiles guardan controles de generación mediante la configuración.
+
+`POST /api/v1/models/assessments` devuelve evaluaciones tipadas por motor, versión, backend y dispositivos canónicos, separando supuestos, ajuste de memoria y validación real. Lo desconocido sigue siendo desconocido; la evaluación no carga ni ejecuta modelos.
+
+`GET /api/v1/models/inventory` muestra procedencia autorizada, finalización de transferencia, verificación independiente de integridad/manifiesto y disponibilidad actual. Los bytes completos no equivalen a instalación verificada; los archivos ausentes conservan metadatos y bloquean el uso.
+
+Los comandos de configuración de la instalación se guardan antes de crear proyectos. Las conversaciones vacías conservan atómicamente su estado y recibo de reintento con cursor cero, sin evento de ejecución. `DownloadProgress.repository_id` vincula reanudación y cancelación al repositorio autorizado original.
+
+Los límites de descarga de infraestructura son obligatorios: `IRONLOOM_DOWNLOAD_MAX_FILE_BYTES` y `IRONLOOM_DOWNLOAD_MAX_TRANSFER_BYTES`. Ambos deben ser cantidades decimales positivas de bytes; los tamaños del editor no los sustituyen. Helm proporciona valores explícitos editables.
+
+Las plantillas editables usan `GET/POST /api/v1/instructions`; los cambios conservan explícitamente las copias activas o seleccionan asignaciones autorizadas para actualización y confirmación. Los comandos de presupuesto incluyen `{conversation_id, budget}` para identificar el flujo persistente correcto.
+
+Un `ServiceEvent` contiene exactamente un evento de trabajador o una actualización de estado de conversación. El cursor y proyecto de la actualización deben coincidir con el evento exterior; no se inventan identidades de ejecución para cambios de estado.
+
+El equipo estándar comienza deshabilitado, con instrucciones editables y sin modelo inferido. Las reglas puras conservan la herencia por proyecto y permiten perfiles remotos configurados sin GPU. Los controladores persistentes de instrucciones y configuración siguen en implementación.
+
+La delegación del trabajador se limita a su asignación y recurso; CAS conserva el proyecto y la asignación propietarios. La disponibilidad comprueba PostgreSQL y el enlace OpenFGA real, independientemente de la configuración de modelos. La estimación de memoria exige los cinco componentes y suma sin desbordamiento; los datos incompletos siguen siendo desconocidos.
+
+
+La paginación del historial requiere una dirección explícita, permite filtrar por turno y conserva el orden cronológico dentro de cada página en la secuencia de eventos solicitada. La búsqueda de conversaciones requiere `order=created_at` para clientes nativos u `order=human_interaction` para el panel. Las ubicaciones locales vacías, desactivadas o sin intersección impiden la ejecución. Las rutas HTTP de configuración, instrucciones e historial usan el servicio autenticado compartido; la composición completa sigue en desarrollo.
+
+
+`CommandReceipt.cursor` no aparece en cambios de recursos sin eventos. Gestionar una lección compartida no requiere acceso a su conversación privada de origen ni revela su cursor. Los comandos de conversación conservan cursores reales. La configuración rechaza roles duplicados y no añade una selección inicial obligatoria.
+
+Los permisos de Linux distinguen archivos exactos `write_files` y subárboles `write_directories`. Crear, editar, eliminar y mover archivos exactos usa herramientas nativas; los comandos reciben solo montajes explícitos de directorios. Los árboles escribibles rechazan enlaces duros y seccomp bloquea enlaces nuevos. La propiedad persistente de rutas permanece hasta confirmar la detención o conciliación, incluso tras vencer el arrendamiento. La integración completa de la pasarela sigue en curso.
+
+`ConversationSnapshot.pause_requested`: `null` indica que no hay asignación activa; `false`, que no hay pausa pendiente; `true`, que se espera confirmación en un límite seguro.
+
+La configuración añade `endpoints` (proveedor, base API, dialecto y facturación explícitos, soporte de streaming, herramientas, uso y niveles de razonamiento) y `source_accounts` (host y elección explícita entre acceso anónimo o referencia de credencial). Ambos usan `/api/v1/configuration`, heredan por ámbito y sustituyen solo la lista enviada; una lista vacía la borra. Las URL rechazan credenciales incrustadas, consultas, fragmentos y HTTP remoto sin cifrar. Un endpoint ausente, facturación incompatible o esfuerzo no admitido bloquea la disponibilidad del perfil remoto sin probar inferencia. Las descargas conservan su selección de cuenta en privado; la integración de callbacks sigue en curso.
+
+Cambiar el destino efectivo de una credencial requiere `ReplaceCredential`, incluidos los perfiles de proyectos heredados afectados por un cambio global. La ejecución normal comprueba `UseCredential`; el permiso de uso no permite redirigir un secreto compartido a otra URL de proveedor o a otro host de origen.
+
+Los perfiles locales guardan `local_binding`: `inventory_id` inmutable, archivos relativos `weights` exactos, `tokenizer`/`template` opcionales y `options: EngineLoadOptions`. Sin enlace no hay disponibilidad; no se elige el primer archivo ni un modelo, motor o dispositivo alternativo. `ModelFilesQuery` selecciona un inventario o un host/repositorio/revisión completos, con páginas limitadas. La integración de `GET /api/v1/models/files` sigue en curso; devuelve rutas, tamaños opcionales, SHA-256 y procedencia, nunca URL de transferencia. Los pesos de archivos Kaggle se eligen del inventario extraído.
+
+El orden y los resultados de los turnos se guardan en sus cursores de eventos reales. El almacenamiento permite ambas direcciones, anclas inversas inclusivas y lectura acotada de ID de elementos en orden persistido; rechaza anclas ajenas, ausentes o futuras. La relación de asignación/proyecto se publica antes de devolver entrada o repetición, conservando la recuperación si falla. La disponibilidad con clave API admite respuestas sin streaming; las cuentas elegibles siguen requiriéndolo. La integración de callbacks nativos está pendiente.

@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/InstructionQueryData",
+  "$defs": {
+    "Counter": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Canonical decimal u64; semantic validation also enforces u64 maximum.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "InstructionId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom InstructionId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "InstructionQueryData": {
+      "description": "Unchecked construction draft for `InstructionQuery`; validate before use.",
+      "type": "object",
+      "properties": {
+        "after": {
+          "description": "Exclusive stable identity cursor.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InstructionId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "limit": {
+          "description": "Bounded page size.",
+          "$ref": "#/$defs/Counter"
+        },
+        "project_id": {
+          "description": "Requested installation/project scope.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProjectId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "limit"
+      ]
+    },
+    "ProjectId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ProjectId value.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

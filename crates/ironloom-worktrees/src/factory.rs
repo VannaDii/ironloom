@@ -28,29 +28,39 @@ WorkerPaths, WorkerPathsData {
     assignment_id: AssignmentId,
     /// Worker owner.
     worker_id: WorkerId,
-    /// Resolved relative paths; sandbox still handles symlinks and descendants.
-    write_paths: Vec<String>,
+    /// Exact files writable through the authorized filesystem gateway, never parent directory mounts.
+    write_files: Vec<String>,
+    /// Directory subtrees writable by contained commands and filesystem tools.
+    write_directories: Vec<String>,
     /// Managed sibling role area, excluding instructions.
     artifact_area: String,
 } |value| {
     let _ = value;
     for (field, path) in value
-        .write_paths
+        .write_files
         .iter()
-        .map(|path| ("write_paths", path))
+        .map(|path| ("write_files", path))
+        .chain(value.write_directories.iter().map(|path| ("write_directories", path)))
         .chain(std::iter::once(("artifact_area", &value.artifact_area)))
     {
         required(field, path)?;
-        let path = std::path::Path::new(path);
-        if path.is_absolute()
-            || path
-                .components()
-                .any(|part| !matches!(part, std::path::Component::Normal(_)))
-        {
+        if !crate::files::ordinary_path(path) {
             return Err(ValidationErrors::field(
                 field,
                 "relative_normal_path_required",
             ));
+        }
+    }
+    for (index,path) in value.write_files.iter().enumerate() {
+        if value.write_files[..index].contains(path) {
+            return Err(ValidationErrors::field("write_files","duplicate_path"));
+        }
+    }
+    for (index,path) in value.write_directories.iter().enumerate() {
+        if value.write_directories[..index].iter().any(|other| {
+            std::path::Path::new(path).starts_with(other) || std::path::Path::new(other).starts_with(path)
+        }) {
+            return Err(ValidationErrors::field("write_directories","overlapping_paths"));
         }
     }
     Ok(())

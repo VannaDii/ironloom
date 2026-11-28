@@ -1,135 +1,32 @@
-# Deployment
+# परिनियोजन
 
-Runtime image `ghcr.io/vannadii/ironloom` है, जब तक registry owner बदल न जाए। Helm chart `ironloom` binary deploy करता है, जिसमें PVC-backed `.ironloom` state, setup-time encrypted local configuration, Discord, GitHub, SonarCloud और OpenAI credentials के लिए optional secret references, और health/readiness probes शामिल हैं।
+वर्तमान सेवा चुनी गई मौजूदा PostgreSQL स्थापना और OpenFGA endpoint खोलती है। विफलता पर प्रतिस्थापन डेटाबेस नहीं बनता। शामिल सेवाएँ और प्रबंधित स्थानीय जीवनचक्र अभी लागू हो रहे हैं; यह कनेक्शन वायरिंग पूरी परिनियोजन योजना नहीं है।
 
-k3s deployments के लिए `deploy/helm/ironloom` के अंतर्गत Helm chart उपयोग करें।
-
-## Deployment Flow
+Deployment शुरू करने से पहले चुना गया नया PostgreSQL डेटाबेस और OpenFGA तैयार करें; फिर `IRONLOOM_DATABASE_URL` तथा `IRONLOOM_INSTALLER_TOKEN` के साथ एक बार `ironloom initialize` चलाएँ। यह केवल नया Ironloom स्कीमा बनाता है और मौजूदा स्कीमा अस्वीकार करता है। सामान्य पुनः आरंभ `ironloom serve` से वही स्थापना खोलता है। प्रारंभिक अनुमति की पुनर्प्राप्ति केवल उसी सहेजे हुए प्रशासक के लिए है; खाता नहीं बदलेगा और पूर्ण होने के बाद हटाई गई अनुमति वापस नहीं मिलेगी।
 
 ```mermaid
 flowchart LR
-  operator[Operator] --> secret[Setup और runtime secrets बनाएं]
-  secret --> helm[helm upgrade --install]
-  helm --> deployment[ironloom Deployment]
-  deployment --> pvc[(PVC-backed .ironloom state)]
-  deployment --> probes[Health और readiness probes]
-  probes --> health[/GET /healthz/]
-  probes --> ready[/GET /readyz/]
-  deployment --> setup[/Runtime port पर setup page/]
-  setup --> encrypted[Encrypted local setup]
-  encrypted --> pvc
-  ready --> service[Service ready]
-  service --> rollback[Helm history और rollback PVC preserve करते हैं]
+  DB[(Fresh PostgreSQL)] --> Init[ironloom initialize]
+  Init --> Service[ironloom serve]
+  FGA[Configured OpenFGA] --> Service
+  Service --> Account[Register and authenticate]
+  Account --> Bootstrap[One-time bootstrap]
+  Bootstrap --> Ready[Recover same-user initial grants]
 ```
 
-## Runtime Secrets
+Chart `database.existingSecret` / `database.urlKey` से `IRONLOOM_DATABASE_URL` लेता है (डिफ़ॉल्ट `ironloom-database` / `database-url`)। `openfga.url` को वास्तविक अधिकृत endpoint पर सेट करें; वैकल्पिक `openfga.existingSecret` / `openfga.tokenKey` उसका टोकन देते हैं। डिफ़ॉल्ट endpoint अभी शामिल OpenFGA सेवा नहीं है; उसे कॉन्फ़िगर करें। कनेक्शन निजी रखें और दूरस्थ परिवहन सुरक्षित करें।
 
-Chart install करने से पहले target namespace में setup secret बनाएं। `IRONLOOM_CONFIG_KEY` base64-encoded 32-byte key material होना चाहिए। `IRONLOOM_INSTALLER_TOKEN` first-run setup form submissions authorize करता है।
+मौजूदा setup secret में base64 में 32 बाइट का `IRONLOOM_CONFIG_KEY` दें। प्रारंभिक टोकन प्रमाणित bootstrap में एक बार खर्च होता है; यह पुनः उपयोग योग्य प्रशासक पासवर्ड नहीं है। खाते auth registration मार्ग से बनते हैं। आधार पथ वाला `runtime.publicUrl` और स्पष्ट धनात्मक `download.maxFileBytes` / `download.maxTransferBytes` सेट करें।
 
-```sh
-kubectl create namespace ironloom
-kubectl -n ironloom create secret generic ironloom-setup \
-  --from-literal=config-key="$(openssl rand -base64 32)" \
-  --from-literal=installer-token="$(openssl rand -base64 32)"
-```
+Chart रेंडर करने से परिनियोजन या inference qualification नहीं होती। स्थायी मूल और उनके मालिक अलग रखें। कनेक्शन या प्रमाणीकरण त्रुटि से बचने के लिए PVC न हटाएँ और स्थापना रीसेट न करें।
 
-Runtime credentials Kubernetes secrets, setup page, या दोनों से provide किए जा सकते हैं। Environment-bound secrets encrypted local setup values से precedence लेते हैं।
 
-```sh
-kubectl -n ironloom create secret generic ironloom-discord \
-  --from-literal=application-id="${IRONLOOM_DISCORD_APPLICATION_ID}" \
-  --from-literal=token="${IRONLOOM_DISCORD_TOKEN}" \
-  --from-literal=public-key="${IRONLOOM_DISCORD_PUBLIC_KEY}"
-kubectl -n ironloom create secret generic ironloom-github \
-  --from-literal=token="${IRONLOOM_GITHUB_TOKEN}"
-kubectl -n ironloom create secret generic ironloom-sonarcloud \
-  --from-literal=token="${IRONLOOM_SONARCLOUD_TOKEN}"
-kubectl -n ironloom create secret generic ironloom-openai \
-  --from-literal=api-key="${IRONLOOM_OPENAI_API_KEY}"
-```
+सेवा अब सार्वजनिक पथ पर कॉन्फ़िगरेशन, निर्देश, वार्तालाप इतिहास और पुनः चल सकने वाला SSE प्रदान करती है। SSE के लिए `Last-Event-ID` आवश्यक है; बफ़र भरने पर `ironloom.error` पुनः समन्वयन बताता है। कनेक्शन बंद होना निष्पादन रद्द नहीं करता। स्थिर `IRONLOOM_NODE_ID` और अलग पूर्ण पथ `IRONLOOM_PROJECTS_ROOT` / `IRONLOOM_MODELS_ROOT` दें; Helm अलग स्थायी वॉल्यूम देता है। अडैप्टर, सैंडबॉक्स, प्रबंधित निर्भरताएँ और पूर्ण निष्पादन अभी जारी हैं।
 
-Discord authorization के लिए `IRONLOOM_DISCORD_APPLICATION_ID` को `application-id` secret key या Helm value `--set-string discord.applicationId=...` से provide करें। OpenAI authentication के लिए `IRONLOOM_OPENAI_API_KEY` या `IRONLOOM_OPENAI_OAUTH_SESSION` provide करें। Setup page दोनों modes support करता है।
 
-## k3s Dry Run
+Linux कमांड अलगाव अब अलग सहायक प्रक्रिया, bubblewrap नेमस्पेस, स्पष्ट लेखन पथ और seccomp का उपयोग करता है। अलगाव विफल होने पर कमांड नहीं चलता। नेटिव परीक्षण अलगाव, सिमलिंक अस्वीकृति और चाइल्ड प्रक्रिया सफ़ाई जाँचते हैं। कंटेनर में bubblewrap/Git और UID/GID 1000 हैं। पूर्ण वर्कफ़्लो, Alpine निष्पादन सत्यापन और Mac/GPU कार्य अभी अधूरे हैं।
 
-Cluster बदलने से पहले server-side dry run चलाएं।
 
-```sh
-helm upgrade --install ironloom deploy/helm/ironloom \
-  --namespace ironloom \
-  --create-namespace \
-  --dry-run=server
-```
+डिस्पैच लीज़ में स्वामी नोड, सटीक सेवा इंस्टेंस और बढ़ता स्वामित्व फ़ेंस शामिल हैं। समाप्त लीज़ अपने आप नवीनीकृत या पुनः निष्पादित नहीं होती; अनसुलझी प्रक्रियाएँ या बाहरी बदलाव स्पष्ट रिकवरी रोकते हैं। सहायक प्रक्रिया शुरुआत से पैरेंट समाप्ति की जाँच करती है। नेटिव परीक्षण पास हैं, लेकिन इस होस्ट की डिफ़ॉल्ट Docker नीति नेमस्पेस बनाना रोकती है; कंटेनर वर्कर सुरक्षित रूप से निष्पादन रोकते हैं। पूर्ण वर्कफ़्लो अभी जारी है।
 
-## Local k3s Acceptance
-
-Chart changes publish या promote करने से पहले disposable local acceptance recipe चलाएं।
-
-```sh
-just k3s-acceptance
-```
-
-यह recipe `ironloom:local` build करती है, Docker-backed disposable k3s cluster start करती है, setup और runtime secrets बनाती है, Helm chart install करती है, `/discord/interactions` के माध्यम से signed Discord ping और command handling verify करती है, और Deployment restart करके prove करती है कि PVC-backed thread artifact index persist करता है। Runtime default रूप से `127.0.0.1:18081` पर forward होता है; यह port unavailable हो तो `IRONLOOM_K3S_HTTP_PORT` set करें। Local image builds default रूप से host networking use करती हैं; Docker के default build network के लिए `IRONLOOM_DOCKER_BUILD_NETWORK=default` set करें।
-
-## Live Discord Endpoint Acceptance
-
-Real Discord application ID, bot token, और public key bind करने के बाद Discord endpoint validation proof चलाएं।
-
-```sh
-just discord-endpoint-acceptance
-```
-
-यह recipe local runtime start करती है, उसे `ngrok` के माध्यम से publish करती है, application की Interactions Endpoint URL update करती है, Discord के signed validation `PING` का इंतजार करती है, verify करती है कि Discord ने URL persist किया, और previous endpoint restore करती है। Docker और `ngrok` start किए बिना already deployed public `/discord/interactions` endpoint validate करने के लिए `IRONLOOM_DISCORD_ACCEPTANCE_ENDPOINT_URL` set करें।
-
-## Live External Probe
-
-Real runtime credentials bind करने के बाद GitHub source-of-truth reads और SonarCloud quality gate polling verify करने के लिए external probe चलाएं।
-
-```sh
-IRONLOOM_GITHUB_REPOSITORY=VannaDii/ironloom just external-probe
-```
-
-यह command service जैसे ही `IRONLOOM_*` runtime environment values उपयोग करती है और GitHub repository projection, SonarCloud quality gate status, और unresolved issue count का redacted JSON summary print करती है। Summary में live pull request merge state और check-run reads शामिल करने के लिए `IRONLOOM_GITHUB_PULL_REQUEST_NUMBER` और `IRONLOOM_GITHUB_CHECK_REF` set करें।
-
-## Install Or Upgrade
-
-Validation के दौरान local chart से install करें, या release publication के बाद published OCI chart से install करें।
-
-```sh
-helm upgrade --install ironloom deploy/helm/ironloom \
-  --namespace ironloom \
-  --create-namespace \
-  --set image.repository=ghcr.io/vannadii/ironloom \
-  --set image.tag=0.1.0
-```
-
-```sh
-helm upgrade --install ironloom oci://ghcr.io/vannadii/charts/ironloom \
-  --namespace ironloom \
-  --create-namespace \
-  --version 0.1.0
-```
-
-## Smoke Checks
-
-```sh
-kubectl -n ironloom rollout status deployment/ironloom
-kubectl -n ironloom port-forward service/ironloom 8080:8080
-curl -fsS http://127.0.0.1:8080/healthz
-curl -fsS http://127.0.0.1:8080/readyz
-cargo test -p ironloom-runtime --test vertical_slice
-```
-
-## Rollback
-
-जब तक operator destructive cleanup स्पष्ट रूप से approve न करे, PVC रखें।
-
-```sh
-helm -n ironloom history ironloom
-helm -n ironloom rollback ironloom <revision>
-kubectl -n ironloom rollout status deployment/ironloom
-```
-
-## Site Publishing
-
-`.github/workflows/docs-deploy.yml` `main` पर VitePress site को GitHub Pages पर `https://ironloom.dev` में publish करता है।
+Linux में फ़ाइल अनुमतियाँ सटीक `write_files` और उपवृक्ष `write_directories` को अलग रखती हैं। सटीक फ़ाइल बनाना, संपादित करना, हटाना और स्थानांतरित करना मूल फ़ाइल उपकरणों से होता है; कमांड को केवल स्पष्ट निर्देशिका माउंट मिलते हैं। लिखने योग्य वृक्ष हार्ड लिंक अस्वीकार करते हैं और seccomp नए लिंक रोकता है। स्थायी पथ स्वामित्व पुष्टि किए गए समापन या समाधान तक रहता है, पट्टा समाप्त होने के बाद भी। पूर्ण रनटाइम गेटवे संयोजन अभी जारी है।

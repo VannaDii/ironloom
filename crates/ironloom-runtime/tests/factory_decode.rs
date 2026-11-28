@@ -32,7 +32,32 @@ fn rust_and_dart_shared_decode_fixtures() {
         serde_json::from_str(include_str!("../../../fixtures/contracts/decode.json")).unwrap();
     for case in &fixtures.cases {
         match case.contract.as_str() {
-            "create_conversation" => check::<ironloom_runtime::factory::CreateConversation>(case),
+            "model_files_query" => check::<ironloom_service::factory::ModelFilesQuery>(case),
+            "model_files_page" => check::<ironloom_service::factory::ModelFilesPage>(case),
+            "model_file_metadata" => check::<ironloom_models::factory::ModelFileMetadata>(case),
+            "local_model_binding" => check::<ironloom_config::factory::LocalModelBinding>(case),
+            "command_receipt" => check::<ironloom_service::factory::CommandReceipt>(case),
+            "session_query" => check::<ironloom_service::factory::SessionQuery>(case),
+            "service_event" => check::<ironloom_service::factory::ServiceEvent>(case),
+            "instruction_command" => check::<ironloom_service::factory::InstructionCommand>(case),
+            "budget_command" => check::<ironloom_service::factory::BudgetCommand>(case),
+            "download_limits" => check::<ironloom_config::factory::DownloadLimits>(case),
+            "stored_command" => check::<ironloom_storage::factory::StoredCommand>(case),
+            "download_progress" => check::<ironloom_models::factory::DownloadProgress>(case),
+            "model_inventory_item" => check::<ironloom_service::factory::ModelInventoryItem>(case),
+            "model_assessment_query" => {
+                check::<ironloom_service::factory::ModelAssessmentQuery>(case)
+            }
+            "engine_assessment" => check::<ironloom_service::factory::EngineAssessment>(case),
+            "project_query" => check::<ironloom_service::factory::ProjectQuery>(case),
+            "create_project" => check::<ironloom_service::factory::CreateProject>(case),
+            "credential_command" => check::<ironloom_service::factory::CredentialCommand>(case),
+            "native_connection_command" => {
+                check::<ironloom_service::factory::NativeConnectionCommand>(case)
+            }
+            "download_command" => check::<ironloom_service::factory::DownloadCommand>(case),
+
+            "create_conversation" => check::<ironloom_service::factory::CreateConversation>(case),
             "source_query" => check::<ironloom_models::factory::SourceQuery>(case),
             "source_page" => check::<ironloom_models::factory::SourcePage>(case),
             "engine_load_options" => check::<ironloom_models::factory::EngineLoadOptions>(case),
@@ -42,35 +67,35 @@ fn rust_and_dart_shared_decode_fixtures() {
                 check::<ironloom_models::factory::DeviceResourceObservation>(case)
             }
             "configuration_command" => {
-                check::<ironloom_runtime::factory::ConfigurationCommand>(case)
+                check::<ironloom_service::factory::ConfigurationCommand>(case)
             }
             "configuration_snapshot" => {
-                check::<ironloom_runtime::factory::ConfigurationSnapshot>(case)
+                check::<ironloom_service::factory::ConfigurationSnapshot>(case)
             }
-            "lesson_mutation" => check::<ironloom_runtime::factory::LessonMutation>(case),
+            "lesson_mutation" => check::<ironloom_service::factory::LessonMutation>(case),
 
-            "question_answer" => check::<ironloom_runtime::factory::QuestionAnswer>(case),
+            "question_answer" => check::<ironloom_service::factory::QuestionAnswer>(case),
             "pending_question" => check::<ironloom_workers::factory::PendingQuestion>(case),
             "inference_message" => check::<ironloom_models::factory::InferenceMessage>(case),
             "tool_definition" => check::<ironloom_models::factory::ToolDefinition>(case),
             "inference_request" => check::<ironloom_models::factory::InferenceRequest>(case),
             "conversation_snapshot" => {
-                check::<ironloom_runtime::factory::ConversationSnapshot>(case)
+                check::<ironloom_service::factory::ConversationSnapshot>(case)
             }
-            "history_query" => check::<ironloom_runtime::factory::HistoryQuery>(case),
-            "history_page" => check::<ironloom_runtime::factory::HistoryPage>(case),
-            "native_enrollment" => check::<ironloom_native::factory::NativeEnrollment>(case),
+            "history_query" => check::<ironloom_service::factory::HistoryQuery>(case),
+            "history_page" => check::<ironloom_service::factory::HistoryPage>(case),
+            "native_enrollment" => check::<ironloom_service::factory::NativeEnrollment>(case),
 
             "role_configuration" => check::<ironloom_config::factory::RoleConfiguration>(case),
             "factory_setup" => check::<ironloom_config::factory::FactorySetup>(case),
             "instruction_copy" => check::<ironloom_process_graph::factory::InstructionCopy>(case),
-            "command" => check::<ironloom_runtime::factory::Command>(case),
+            "command" => check::<ironloom_service::factory::Command>(case),
             "usage" => check::<ironloom_observability::factory::Usage>(case),
             "authority_check" => check::<ironloom_policy::factory::AuthorityCheck>(case),
             "lesson" => check::<ironloom_storage::factory::Lesson>(case),
-            "login_request" => check::<ironloom_runtime::factory::LoginRequest>(case),
-            "replay_cursor" => check::<ironloom_runtime::factory::ReplayCursor>(case),
-            "relay_cursor" => check::<ironloom_native::factory::RelayCursor>(case),
+            "login_request" => check::<ironloom_service::factory::LoginRequest>(case),
+            "replay_cursor" => check::<ironloom_service::factory::ReplayCursor>(case),
+            "relay_cursor" => check::<ironloom_service::factory::RelayCursor>(case),
             "model_selection" => check::<ironloom_models::factory::ModelSelection>(case),
             "residency" => check::<ironloom_models::factory::Residency>(case),
             "worker_event" => check::<ironloom_workers::factory::WorkerEvent>(case),
@@ -79,6 +104,25 @@ fn rust_and_dart_shared_decode_fixtures() {
             other => panic!("fixture contract is not exercised: {other}"),
         }
     }
+}
+
+#[test]
+fn endpoint_construction_and_decode_reject_the_same_redacted_secrets() {
+    use ironloom_config::factory::{ProviderEndpoint, ProviderEndpointData};
+    let draft = ProviderEndpointData {
+        provider: ironloom_core::ActorId::new("configured-provider").unwrap(),
+        base: "https://user:never-return-this@api.example.test/".into(),
+        dialect: ironloom_config::factory::ProviderDialect::Responses,
+        billing: ironloom_observability::factory::BillingMode::ApiKey,
+        streaming: true,
+        tools: true,
+        stream_usage: true,
+        reasoning_efforts: vec![],
+    };
+    let bytes = serde_json::to_vec(&draft).unwrap();
+    let constructor = ProviderEndpoint::new(draft).unwrap_err();
+    assert_eq!(constructor, decode::<ProviderEndpoint>(&bytes).unwrap_err());
+    assert!(!constructor.to_string().contains("never-return-this"));
 }
 #[test]
 fn instruction_constructor_and_deserializer_share_cross_field_invariants() {
@@ -104,7 +148,7 @@ fn instruction_constructor_and_deserializer_share_cross_field_invariants() {
 }
 #[test]
 fn secrets_never_appear_in_debug_or_decode_failures() {
-    use ironloom_runtime::factory::LoginRequest;
+    use ironloom_service::factory::LoginRequest;
     let login: LoginRequest =
         decode(br#"{"username":"operator-1","password":"fixture-secret"}"#).unwrap();
     assert!(!format!("{login:?}").contains("fixture-secret"));
@@ -145,7 +189,7 @@ fn cancellation_and_lru_use_confirmed_execution_not_worker_lifetime() {
 
 #[test]
 fn durable_sse_cursor_roundtrips_without_resubmitting_commands() {
-    use ironloom_runtime::factory::{ReplayCursor, decode_cursor, encode_cursor};
+    use ironloom_service::factory::{ReplayCursor, decode_cursor, encode_cursor};
     let cursor: ReplayCursor =
         decode(br#"{"conversation_id":"session:1","sequence":"9007199254740993"}"#).unwrap();
     let header = encode_cursor(&cursor).unwrap();
@@ -218,7 +262,7 @@ fn provider_message_constructor_and_serde_reject_the_same_invalid_tool_role() {
 #[test]
 fn native_refresh_is_bound_to_current_enabled_generation() {
     use ironloom_core::Counter;
-    use ironloom_native::factory::NativeEnrollment;
+    use ironloom_service::factory::NativeEnrollment;
     let fixture: Fixtures =
         serde_json::from_str(include_str!("../../../fixtures/contracts/decode.json")).unwrap();
     let data = &fixture

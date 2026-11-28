@@ -41,6 +41,10 @@
           "description": "Persisted verified byte progress.",
           "$ref": "#/$defs/Counter"
         },
+        "repository_id": {
+          "description": "Authorized repository binding for resumable transfer commands.",
+          "$ref": "#/$defs/ActorId"
+        },
         "resume_token_ref": {
           "description": "Protected resumable transport state, not a secret on wire.",
           "anyOf": [
@@ -75,6 +79,7 @@
       "additionalProperties": false,
       "required": [
         "source",
+        "repository_id",
         "download_id",
         "received_bytes",
         "cancel_requested",

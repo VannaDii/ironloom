@@ -106,3 +106,22 @@ fn output_value(output: &str, name: &str) -> String {
         .expect("output field should exist")
         .to_owned()
 }
+
+#[test]
+fn authenticated_service_and_explicit_initializer_require_selected_database() {
+    for operation in ["serve", "initialize"] {
+        let directory = tempfile::tempdir().unwrap();
+        let output = Command::new(env!("CARGO_BIN_EXE_ironloom"))
+            .arg(operation)
+            .env_remove("IRONLOOM_DATABASE_URL")
+            .env("IRONLOOM_INSTALLER_TOKEN", "must-not-appear-in-errors")
+            .current_dir(directory.path())
+            .output()
+            .unwrap();
+        assert!(!output.status.success());
+        let stderr = String::from_utf8(output.stderr).unwrap();
+        assert!(stderr.contains("configuration or dependency unavailable"));
+        assert!(!stderr.contains("must-not-appear-in-errors"));
+        assert_eq!(std::fs::read_dir(directory.path()).unwrap().count(), 0);
+    }
+}

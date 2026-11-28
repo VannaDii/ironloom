@@ -32,6 +32,18 @@ spec:
             - configMapRef:
                 name: {{ include "ironloom.fullname" . }}-config
           env:
+            - name: IRONLOOM_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "database.existingSecret is required" .Values.database.existingSecret }}
+                  key: {{ required "database.urlKey is required" .Values.database.urlKey }}
+{{- if .Values.openfga.existingSecret }}
+            - name: IRONLOOM_OPENFGA_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.openfga.existingSecret }}
+                  key: {{ .Values.openfga.tokenKey }}
+{{- end }}
             - name: IRONLOOM_CONFIG_KEY
               valueFrom:
                 secretKeyRef:
@@ -93,6 +105,10 @@ spec:
               mountPath: {{ .Values.runtime.stateMountPath }}
             - name: worktrees
               mountPath: {{ .Values.runtime.worktreeMountPath }}
+            - name: projects
+              mountPath: {{ .Values.runtime.projectsMountPath }}
+            - name: models
+              mountPath: {{ .Values.runtime.modelsMountPath }}
             - name: tmp
               mountPath: /tmp
           readinessProbe:
@@ -115,5 +131,11 @@ spec:
             claimName: {{ include "ironloom.fullname" . }}-state
         - name: worktrees
           emptyDir: {}
+        - name: projects
+          persistentVolumeClaim:
+            claimName: {{ include "ironloom.fullname" . }}-projects
+        - name: models
+          persistentVolumeClaim:
+            claimName: {{ include "ironloom.fullname" . }}-models
         - name: tmp
           emptyDir: {}

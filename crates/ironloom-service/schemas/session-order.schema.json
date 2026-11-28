@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SessionOrder",
+  "description": "Explicit newest-first conversation ordering, shared by dashboard and native discovery.",
+  "oneOf": [
+    {
+      "description": "Most recent authenticated human interaction; background events do not reorder it.",
+      "type": "string",
+      "const": "human_interaction"
+    },
+    {
+      "description": "Immutable creation time for native thread discovery.",
+      "type": "string",
+      "const": "created_at"
+    }
+  ]
+}

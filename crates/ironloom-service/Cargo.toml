@@ -1,0 +1,29 @@
+[package]
+name = "ironloom-service"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+publish.workspace = true
+description = "Shared Ironloom service ports and validated client/native contracts."
+
+[dependencies]
+base64.workspace = true
+tokio.workspace = true
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+url.workspace = true
+ironloom-core = { path = "../ironloom-core", version = "0.1.0" }
+ironloom-config = { path = "../ironloom-config", version = "0.1.0" }
+ironloom-storage = { path = "../ironloom-storage", version = "0.1.0" }
+ironloom-models = { path = "../ironloom-models", version = "0.1.0" }
+ironloom-observability = { path = "../ironloom-observability", version = "0.1.0" }
+ironloom-policy = { path = "../ironloom-policy", version = "0.1.0" }
+ironloom-process-graph = { path = "../ironloom-process-graph", version = "0.1.0" }
+ironloom-queue = { path = "../ironloom-queue", version = "0.1.0" }
+ironloom-workers = { path = "../ironloom-workers", version = "0.1.0" }
+
+[lints]
+workspace = true

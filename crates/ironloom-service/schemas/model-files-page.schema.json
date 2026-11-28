@@ -1,0 +1,231 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/ModelFilesPageData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Counter": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Canonical decimal u64; semantic validation also enforces u64 maximum.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "FileChecksumProvenance": {
+      "description": "Per-file checksum provenance, independent from whole-installation verification.",
+      "oneOf": [
+        {
+          "description": "A checksum or its provenance is unavailable.",
+          "type": "string",
+          "const": "unknown"
+        },
+        {
+          "description": "Publisher metadata reports this checksum; downloaded bytes are not thereby verified.",
+          "type": "string",
+          "const": "publisher"
+        },
+        {
+          "description": "The service computed the digest of the owned local file.",
+          "type": "string",
+          "const": "computed"
+        },
+        {
+          "description": "Owned local bytes were checked against the publisher's digest.",
+          "type": "string",
+          "const": "publisher_verified"
+        }
+      ]
+    },
+    "ModelFileMetadataData": {
+      "description": "Unchecked construction draft for `ModelFileMetadata`; validate before use.",
+      "type": "object",
+      "properties": {
+        "bytes": {
+          "description": "Publisher-reported or measured size; unavailable stays unknown.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Counter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "checksum_provenance": {
+          "description": "Distinguishes reported metadata from checked local bytes.",
+          "$ref": "#/$defs/FileChecksumProvenance"
+        },
+        "path": {
+          "description": "Normalized path relative to the pinned repository/installation root.",
+          "type": "string"
+        },
+        "sha256": {
+          "description": "Full SHA-256 when known; not a repository revision or manifest identity.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "checksum_provenance"
+      ]
+    },
+    "ModelFilesPageData": {
+      "description": "Unchecked construction draft for `ModelFilesPage`; validate before use.",
+      "type": "object",
+      "properties": {
+        "files": {
+          "description": "Nonsecret metadata only; computed provenance does not alone verify an installation.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Validated2"
+          }
+        },
+        "inventory_id": {
+          "description": "Present for an installed inventory query; absent for source discovery.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "next_after": {
+          "description": "Scoped continuation, absent at exhaustion.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "repository_id": {
+          "description": "Source repository identity, independent from publisher and host.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "source": {
+          "description": "Exact source provenance at which these names/sizes/checksums were obtained.",
+          "$ref": "#/$defs/Validated"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "repository_id",
+        "files"
+      ]
+    },
+    "ModelSourceData": {
+      "description": "Unchecked construction draft for `ModelSource`; validate before use.",
+      "type": "object",
+      "properties": {
+        "access": {
+          "description": "Current source-specific access.",
+          "$ref": "#/$defs/SourceAccess"
+        },
+        "checksum": {
+          "description": "Verified download/manifest hash.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "host": {
+          "description": "Hosting hub/distribution.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "license": {
+          "description": "License metadata; not automatic acceptance.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "publisher": {
+          "description": "Original publisher distinct from host.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "repository_url": {
+          "description": "Human access and license page.",
+          "type": "string"
+        },
+        "revision": {
+          "description": "Exact source revision.",
+          "$ref": "#/$defs/ActorId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "publisher",
+        "host",
+        "repository_url",
+        "revision",
+        "access"
+      ]
+    },
+    "SourceAccess": {
+      "description": "Source access distinct from compatibility/fit/qualification.",
+      "oneOf": [
+        {
+          "description": "Download permitted subject to current access recheck.",
+          "type": "string",
+          "const": "accessible"
+        },
+        {
+          "description": "Connect source account.",
+          "type": "string",
+          "const": "authentication_required"
+        },
+        {
+          "description": "Human follows repository link to request access.",
+          "type": "string",
+          "const": "terms_required"
+        },
+        {
+          "description": "Recheck access; download stays disabled.",
+          "type": "string",
+          "const": "awaiting_approval"
+        },
+        {
+          "description": "Access denied or revoked.",
+          "type": "string",
+          "const": "denied"
+        }
+      ]
+    },
+    "Validated": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/ModelSourceData"
+    },
+    "Validated2": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/ModelFileMetadataData"
+    }
+  }
+}

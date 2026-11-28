@@ -9,6 +9,7 @@ publish.workspace = true
 description = "Ironloom supervisor routing and worker dispatch."
 
 [dependencies]
+ironloom-config = { path = "../ironloom-config", version = "0.1.0" }
 ironloom-artifacts = { path = "../ironloom-artifacts", version = "0.1.0" }
 ironloom-core = { path = "../ironloom-core", version = "0.1.0" }
 ironloom-gates = { path = "../ironloom-gates", version = "0.1.0" }

@@ -215,3 +215,8 @@ impl JsonSchema for RepositorySlug {
 
 typed_id!(ServerId, "server_id");
 typed_id!(EnvironmentId, "environment_id");
+
+/// Shipped concept-refinement role; operators edit its instructions and select its model.
+pub const PRODUCT_MANAGER_ROLE_ID: &str = "product-manager";
+/// Optional explicitly configured coordination role.
+pub const ORCHESTRATOR_ROLE_ID: &str = "orchestrator";

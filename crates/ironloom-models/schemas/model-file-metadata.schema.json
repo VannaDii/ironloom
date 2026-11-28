@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/ModelFileMetadataData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Counter": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Canonical decimal u64; semantic validation also enforces u64 maximum.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "FileChecksumProvenance": {
+      "description": "Per-file checksum provenance, independent from whole-installation verification.",
+      "oneOf": [
+        {
+          "description": "A checksum or its provenance is unavailable.",
+          "type": "string",
+          "const": "unknown"
+        },
+        {
+          "description": "Publisher metadata reports this checksum; downloaded bytes are not thereby verified.",
+          "type": "string",
+          "const": "publisher"
+        },
+        {
+          "description": "The service computed the digest of the owned local file.",
+          "type": "string",
+          "const": "computed"
+        },
+        {
+          "description": "Owned local bytes were checked against the publisher's digest.",
+          "type": "string",
+          "const": "publisher_verified"
+        }
+      ]
+    },
+    "ModelFileMetadataData": {
+      "description": "Unchecked construction draft for `ModelFileMetadata`; validate before use.",
+      "type": "object",
+      "properties": {
+        "bytes": {
+          "description": "Publisher-reported or measured size; unavailable stays unknown.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Counter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "checksum_provenance": {
+          "description": "Distinguishes reported metadata from checked local bytes.",
+          "$ref": "#/$defs/FileChecksumProvenance"
+        },
+        "path": {
+          "description": "Normalized path relative to the pinned repository/installation root.",
+          "type": "string"
+        },
+        "sha256": {
+          "description": "Full SHA-256 when known; not a repository revision or manifest identity.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "checksum_provenance"
+      ]
+    }
+  }
+}

@@ -1,133 +1,32 @@
 # النشر
 
-صورة وقت التشغيل هي `ghcr.io/vannadii/ironloom` ما لم يتغير مالك السجل. ينشر Helm chart الملف الثنائي `ironloom` مع حالة `.ironloom` مدعومة بـ PVC، وتهيئة محلية مشفرة وقت الإعداد، ومراجع أسرار اختيارية لبيانات اعتماد Discord وGitHub وSonarCloud وOpenAI، ومجسات الصحة والجاهزية.
+تفتح الخدمة الحالية تثبيت PostgreSQL ونقطة OpenFGA الحاليين المحددين. لا تنشئ قاعدة بديلة عند الفشل. ما زالت الخدمات المضمنة والإدارة المحلية قيد التنفيذ؛ هذا الربط لا يكمل خطة النشر.
 
-استخدم Helm chart تحت `deploy/helm/ironloom` لنشر k3s.
-
-## تدفق النشر
+قبل بدء Deployment، جهز قاعدة PostgreSQL الجديدة المختارة وخدمة OpenFGA، ثم شغّل `ironloom initialize` مرة واحدة مع `IRONLOOM_DATABASE_URL` و`IRONLOOM_INSTALLER_TOKEN`. ينشئ مخطط Ironloom جديدًا فقط ويرفض الموجود. يستخدم التشغيل العادي `ironloom serve` مع التثبيت نفسه. يقتصر استرداد التهيئة على المسؤول المسجل نفسه ولا يستبدل الحساب أو يعيد منحة ألغيت بعد الاكتمال.
 
 ```mermaid
 flowchart LR
-  operator["المشغل"] --> secrets["ينشئ أسرار الإعداد"]
-  secrets --> helm["helm upgrade --install"]
-  helm --> deploy["Deployment ironloom"]
-  deploy --> pvc["PVC من أجل IRONLOOM_STATE_ROOT"]
-  deploy --> probes["مجسات healthz و readyz"]
-  deploy --> setup["صفحة /setup على منفذ HTTP الحالي"]
-  setup --> local["إعداد محلي مشفر"]
-  local --> pvc
-  probes --> ready["الخدمة جاهزة"]
-  deploy --> rollback["التراجع يحتفظ بـ PVC"]
+  DB[(Fresh PostgreSQL)] --> Init[ironloom initialize]
+  Init --> Service[ironloom serve]
+  FGA[Configured OpenFGA] --> Service
+  Service --> Account[Register and authenticate]
+  Account --> Bootstrap[One-time bootstrap]
+  Bootstrap --> Ready[Recover same-user initial grants]
 ```
 
-## أسرار وقت التشغيل
+يقرأ المخطط `IRONLOOM_DATABASE_URL` من `database.existingSecret` / `database.urlKey` (الافتراضي `ironloom-database` / `database-url`). اضبط `openfga.url` على النقطة الفعلية المصرح بها؛ يوفر `openfga.existingSecret` / `openfga.tokenKey` الرمز اختياريًا. العنوان الافتراضي اسم يحتاج إلى ضبط وليس خدمة OpenFGA مضمنة بعد. أبق الاتصالات خاصة واحم النقل البعيد.
 
-أنشئ سر الإعداد في مساحة الاسم الهدف قبل تثبيت chart. يجب أن يكون `IRONLOOM_CONFIG_KEY` مادة مفتاح 32 بايت بترميز Base64. يخول `IRONLOOM_INSTALLER_TOKEN` إرسالات نموذج إعداد التشغيل الأول.
+وفر `IRONLOOM_CONFIG_KEY` في سر الإعداد، وهو مفتاح 32 بايت بترميز base64. يُستهلك الرمز الأولي عند التهيئة المصادقة وليس كلمة مرور مسؤول قابلة لإعادة الاستخدام. يستخدم إنشاء الحساب مسار التسجيل. اضبط `runtime.publicUrl` مع مسار النشر وحدودًا موجبة صريحة في `download.maxFileBytes` / `download.maxTransferBytes`.
 
-```sh
-kubectl create namespace ironloom
-kubectl -n ironloom create secret generic ironloom-setup \
-  --from-literal=config-key="$(openssl rand -base64 32)" \
-  --from-literal=installer-token="$(openssl rand -base64 32)"
-```
+تصيير المخطط لا ينشر ولا يؤهل الاستدلال. افصل جذور الاستمرارية ومالكيها. لا تحذف PVC أو تعيد ضبط التثبيت لتجاوز أخطاء الاتصال أو المصادقة.
 
-يمكن توفير بيانات اعتماد وقت التشغيل عبر أسرار Kubernetes أو صفحة الإعداد أو كليهما. تتقدم الأسرار المربوطة بالبيئة على قيم الإعداد المحلي المشفرة.
 
-```sh
-kubectl -n ironloom create secret generic ironloom-discord \
-  --from-literal=application-id="${IRONLOOM_DISCORD_APPLICATION_ID}" \
-  --from-literal=token="${IRONLOOM_DISCORD_TOKEN}" \
-  --from-literal=public-key="${IRONLOOM_DISCORD_PUBLIC_KEY}"
-kubectl -n ironloom create secret generic ironloom-github \
-  --from-literal=token="${IRONLOOM_GITHUB_TOKEN}"
-kubectl -n ironloom create secret generic ironloom-sonarcloud \
-  --from-literal=token="${IRONLOOM_SONARCLOUD_TOKEN}"
-kubectl -n ironloom create secret generic ironloom-openai \
-  --from-literal=api-key="${IRONLOOM_OPENAI_API_KEY}"
-```
+يوفر المسار العام الآن الإعداد والتعليمات وحالة المحادثات وسجلها وSSE القابل للإعادة. يلزم `Last-Event-ID`؛ ويرسل تجاوز المخزن `ironloom.error` لإعادة المزامنة. لا يؤدي قطع النقل إلى إلغاء التنفيذ. اضبط هوية `IRONLOOM_NODE_ID` الثابتة وجذري `IRONLOOM_PROJECTS_ROOT` و`IRONLOOM_MODELS_ROOT` المطلقين والمنفصلين؛ يوفر Helm وحدات تخزين دائمة منفصلة. لا تزال المحولات والعزل والتبعيات المدارة والتنفيذ الكامل قيد التطوير.
 
-بالنسبة لتفويض Discord، وفر `IRONLOOM_DISCORD_APPLICATION_ID` من خلال مفتاح السر `application-id` أو قيمة Helm `--set-string discord.applicationId=...`. بالنسبة لمصادقة OpenAI، وفر `IRONLOOM_OPENAI_API_KEY` أو `IRONLOOM_OPENAI_OAUTH_SESSION`. تدعم صفحة الإعداد كلا النمطين أيضا.
 
-## تجربة k3s الجافة
+يستخدم عزل أوامر Linux عملية مساعدة ومساحات أسماء bubblewrap ومسارات كتابة صريحة وseccomp. لا تنفذ الأوامر عند فشل العزل. تغطي الاختبارات الأصلية العزل ورفض الروابط الرمزية وتنظيف العمليات التابعة. تتضمن الحاوية bubblewrap/Git بمعرف UID/GID 1000. لا يزال سير العمل الكامل والتحقق من تنفيذ Alpine وعمل Mac/GPU غير مكتمل.
 
-شغل تجربة جافة من جهة الخادم قبل تغيير العنقود.
 
-```sh
-helm upgrade --install ironloom deploy/helm/ironloom \
-  --namespace ironloom \
-  --create-namespace \
-  --dry-run=server
-```
+تربط مطالبات التنفيذ العقدة ونسخة الخدمة المحددة ورمز ملكية متزايدًا. لا تجدد المهلة المنتهية ولا تعيد المحاولة تلقائيًا؛ وتمنع العمليات أو التغييرات الخارجية غير المحسومة الاستعادة الصريحة. تحمي العملية المساعدة فقدان العملية الأم منذ البداية. نجحت الاختبارات الأصلية، لكن سياسة Docker الافتراضية لهذا المضيف تمنع إنشاء مساحات الأسماء، فتُرفض أوامر الحاوية. لا يزال سير العمل الكامل قيد التطوير.
 
-## قبول k3s المحلي
-
-شغل وصفة القبول المحلية المؤقتة قبل نشر تغييرات chart أو ترقيتها.
-
-```sh
-just k3s-acceptance
-```
-
-تبني الوصفة `ironloom:local`، وتشغل عنقود k3s مؤقتا مدعوما بـ Docker، وتنشئ أسرار setup وruntime، وتثبت Helm chart، وتتحقق من ping وأمر Discord الموقعين عبر `/discord/interactions`، ثم تعيد تشغيل Deployment لإثبات بقاء فهرس قطع thread الأثرية المدعوم بـ PVC. يعاد توجيه وقت التشغيل افتراضيا على `127.0.0.1:18081`؛ اضبط `IRONLOOM_K3S_HTTP_PORT` عندما يكون هذا المنفذ غير متاح. تستخدم builds المحلية للصورة host networking افتراضيا؛ اضبط `IRONLOOM_DOCKER_BUILD_NETWORK=default` لاستخدام شبكة build الافتراضية في Docker.
-
-## قبول endpoint Discord المباشر
-
-بعد ربط معرف تطبيق Discord حقيقي وbot token وpublic key، شغل إثبات تحقق endpoint الخاص بـ Discord.
-
-```sh
-just discord-endpoint-acceptance
-```
-
-تشغل الوصفة runtime محليا، وتنشره عبر `ngrok`، وتحدث Interactions Endpoint URL للتطبيق، وتنتظر `PING` تحقق موقعا من Discord، وتتحقق من أن Discord حفظ URL، ثم تعيد endpoint السابق. اضبط `IRONLOOM_DISCORD_ACCEPTANCE_ENDPOINT_URL` للتحقق من endpoint عام منشور مسبقا على `/discord/interactions` من دون تشغيل Docker أو `ngrok`.
-
-## probe خارجي مباشر
-
-بعد ربط بيانات اعتماد وقت التشغيل الحقيقية، شغل probe الخارجي للتحقق من قراءات GitHub كمصدر للحقيقة واستطلاع quality gate في SonarCloud.
-
-```sh
-IRONLOOM_GITHUB_REPOSITORY=VannaDii/ironloom just external-probe
-```
-
-يستخدم الأمر قيم بيئة وقت التشغيل `IRONLOOM_*` نفسها التي يستخدمها service، ويطبع ملخص JSON منقحا لإسقاط مستودع GitHub وحالة quality gate في SonarCloud وعدد المشكلات غير المحلولة. اضبط `IRONLOOM_GITHUB_PULL_REQUEST_NUMBER` و`IRONLOOM_GITHUB_CHECK_REF` لتضمين حالة merge لطلب السحب وقراءات check-runs المباشرة في الملخص.
-
-## التثبيت أو الترقية
-
-ثبت من chart المحلي أثناء التحقق، أو من OCI chart المنشور بعد نشر الإصدار.
-
-```sh
-helm upgrade --install ironloom deploy/helm/ironloom \
-  --namespace ironloom \
-  --create-namespace \
-  --set image.repository=ghcr.io/vannadii/ironloom \
-  --set image.tag=0.1.0
-```
-
-```sh
-helm upgrade --install ironloom oci://ghcr.io/vannadii/charts/ironloom \
-  --namespace ironloom \
-  --create-namespace \
-  --version 0.1.0
-```
-
-## فحوصات الدخان
-
-```sh
-kubectl -n ironloom rollout status deployment/ironloom
-kubectl -n ironloom port-forward service/ironloom 8080:8080
-curl -fsS http://127.0.0.1:8080/healthz
-curl -fsS http://127.0.0.1:8080/readyz
-cargo test -p ironloom-runtime --test vertical_slice
-```
-
-## التراجع
-
-احتفظ بـ PVC ما لم يوافق المشغل صراحة على تنظيف هدمي.
-
-```sh
-helm -n ironloom history ironloom
-helm -n ironloom rollback ironloom <revision>
-kubectl -n ironloom rollout status deployment/ironloom
-```
-
-## نشر الموقع
-
-ينشر `.github/workflows/docs-deploy.yml` موقع VitePress إلى GitHub Pages عند `https://ironloom.dev` على `main`.
+تميّز صلاحيات الملفات في Linux بين الملفات الدقيقة `write_files` والأشجار الفرعية `write_directories`. تستخدم عمليات الإنشاء والتعديل والحذف والنقل أدوات ملفات أصلية؛ ولا تحصل الأوامر إلا على ربط الأدلة المصرح بها. تُرفض الروابط الصلبة في الأشجار القابلة للكتابة ويمنع seccomp إنشاء روابط جديدة. تبقى ملكية المسارات الدائمة حتى تأكيد التوقف أو التسوية، حتى بعد انتهاء الإيجار. لا يزال ربط بوابة التنفيذ الكاملة قيد العمل.

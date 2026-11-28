@@ -1,5 +1,9 @@
 #![forbid(unsafe_code)]
 
+/// Native Linux command containment. No worker executes when required enforcement fails.
+#[cfg(target_os = "linux")]
+pub mod sandbox;
+
 use std::collections::BTreeMap;
 
 use ironloom_core::{CorrelationId, WorkItemId};
@@ -107,3 +111,7 @@ pub struct WorkerResponse {
 
 /// Software factory contracts for the unreleased application.
 pub mod factory;
+
+/// Descriptor-relative native filesystem tools for scope-checked gateway requests.
+#[cfg(target_os = "linux")]
+pub mod files;

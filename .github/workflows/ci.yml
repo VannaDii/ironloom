@@ -32,6 +32,9 @@ jobs:
       - name: Cache Cargo
         uses: Swatinem/rust-cache@v2
 
+      - name: Install Linux command containment
+        run: sudo apt-get update && sudo apt-get install -y bubblewrap
+
       - name: Format
         run: cargo fmt --check
 

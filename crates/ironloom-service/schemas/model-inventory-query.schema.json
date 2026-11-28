@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/ModelInventoryQueryData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Counter": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Canonical decimal u64; semantic validation also enforces u64 maximum.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "ModelInventoryQueryData": {
+      "description": "Unchecked construction draft for `ModelInventoryQuery`; validate before use.",
+      "type": "object",
+      "properties": {
+        "after": {
+          "description": "Opaque stable inventory continuation.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "host": {
+          "description": "Hosting/source filter.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "limit": {
+          "description": "Bounded page size.",
+          "$ref": "#/$defs/Counter"
+        },
+        "project_id": {
+          "description": "Optional authorized project context for private source access.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProjectId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "publisher": {
+          "description": "Original publisher filter.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "verification": {
+          "description": "Optional integrity-state filter, independent of byte completion.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ModelVerification"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "limit"
+      ]
+    },
+    "ModelVerification": {
+      "description": "Server-owned installation integrity result independent from transfer progress or engine qualification.",
+      "oneOf": [
+        {
+          "description": "Integrity has not been verified, even when transfer bytes are complete.",
+          "type": "string",
+          "const": "pending"
+        },
+        {
+          "description": "All required files were checked and bound to the persisted checkpoint manifest hash.",
+          "type": "string",
+          "const": "verified"
+        },
+        {
+          "description": "Integrity validation failed; the installation cannot be used.",
+          "type": "string",
+          "const": "failed"
+        }
+      ]
+    },
+    "ProjectId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ProjectId value.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

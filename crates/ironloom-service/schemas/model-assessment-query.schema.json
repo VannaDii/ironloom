@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validated",
+  "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+  "$ref": "#/$defs/ModelAssessmentQueryData",
+  "$defs": {
+    "ActorId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ActorId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Counter": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Canonical decimal u64; semantic validation also enforces u64 maximum.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "EngineIdentityData": {
+      "description": "Unchecked construction draft for `EngineIdentity`; validate before use.",
+      "type": "object",
+      "properties": {
+        "backend": {
+          "description": "Selected accelerator backend.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "configuration_hash": {
+          "description": "Engine configuration identity.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "name": {
+          "description": "Explicit selected engine, never silently substituted.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "version": {
+          "description": "Pinned version.",
+          "$ref": "#/$defs/ActorId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version",
+        "backend",
+        "configuration_hash"
+      ]
+    },
+    "ModelAssessmentQueryData": {
+      "description": "Unchecked construction draft for `ModelAssessmentQuery`; validate before use.",
+      "type": "object",
+      "properties": {
+        "concurrency": {
+          "description": "Explicit concurrent demand assumption.",
+          "$ref": "#/$defs/Counter"
+        },
+        "context_tokens": {
+          "description": "Explicit context assumption for cache/runtime memory estimates.",
+          "$ref": "#/$defs/Counter"
+        },
+        "engine": {
+          "description": "Optional explicit engine/version/backend filter; absence evaluates configured candidates.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Validated"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "profile_id": {
+          "description": "Optional human-selected profile; its bindings restrict placements.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ModelProfileId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "project_id": {
+          "description": "Optional authorized project context for profiles/source access.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProjectId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "repository_id": {
+          "description": "Selected source repository from the model card.",
+          "$ref": "#/$defs/ActorId"
+        },
+        "revision": {
+          "description": "Exact source revision, not an implicit latest selection.",
+          "$ref": "#/$defs/ActorId"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "repository_id",
+        "revision",
+        "context_tokens",
+        "concurrency"
+      ]
+    },
+    "ModelProfileId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ModelProfileId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "ProjectId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "string",
+      "description": "Validated Ironloom ProjectId value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Validated": {
+      "description": "A validated immutable model; no mutable dereference or unchecked constructor.",
+      "$ref": "#/$defs/EngineIdentityData"
+    }
+  }
+}
