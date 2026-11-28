@@ -166,6 +166,10 @@ class _ModelsPageState extends State<ModelsPage> {
       Section(
         'Discover weights',
         children: [
+          if (host == 'modelscope')
+            const Text(
+              'ModelScope exposes up to 3,000 search results. Refine the query for larger catalogs.',
+            ),
           TextField(
             controller: query,
             decoration: const InputDecoration(labelText: 'Search models'),

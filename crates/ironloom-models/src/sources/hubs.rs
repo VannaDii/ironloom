@@ -11,6 +11,8 @@ use serde_json::{Value, json};
 use std::{sync::Arc, time::Duration};
 
 const MAX_METADATA_BYTES: usize = 4 * 1024 * 1024;
+const MODELSCOPE_PAGE_SIZE: u64 = 50;
+const MODELSCOPE_WINDOW: u64 = 3000;
 /// Official catalog transports; publishers remain separate provenance.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Hub {
@@ -220,7 +222,8 @@ impl HubHttp {
                     .unwrap_or("1")
                     .parse::<u64>()
                     .map_err(|_| AdapterError::Unsupported)?;
-                if page == 0 || page.saturating_mul(query.limit.get()) > 3000 {
+                let size = query.limit.get().min(MODELSCOPE_PAGE_SIZE);
+                if page == 0 || page.saturating_mul(size) > MODELSCOPE_WINDOW {
                     return Err(AdapterError::Unsupported);
                 }
                 let mut url = self.url("openapi/v1/models")?;
@@ -229,7 +232,7 @@ impl HubHttp {
                     pairs
                         .append_pair("search", &query.query)
                         .append_pair("page_number", &page.to_string())
-                        .append_pair("page_size", &query.limit.get().to_string());
+                        .append_pair("page_size", &size.to_string());
                     if let Some(owner) = &query.publisher {
                         pairs.append_pair("owner", owner.as_str());
                     }
@@ -241,16 +244,19 @@ impl HubHttp {
                     .ok_or(AdapterError::Unavailable)?;
                 let mut cards = Vec::new();
                 for model in list.iter().take(query.limit.get() as usize) {
-                    let owner = string(&model["owner"]);
-                    let name = string(&model["name"]);
-                    let repo = format!("{owner}/{name}");
-                    let revision = self.git_head(&repo).await?;
-                    cards.push(self.ms_card(model, &repo, &revision)?);
+                    // Current OpenAPI Model exposes the canonical repository in id, not separate
+                    // owner/name fields. Retain the publisher from that validated repository.
+                    let repo = model["id"].as_str().ok_or(AdapterError::Unavailable)?;
+                    repository(repo, 2)?;
+                    let revision = self.git_head(repo).await?;
+                    cards.push(self.ms_card(model, repo, &revision)?);
                 }
                 let total = value["total_count"].as_u64().unwrap_or(0);
                 (
                     cards,
-                    if page.saturating_mul(query.limit.get()) < total {
+                    if page.saturating_mul(size) < total
+                        && (page + 1).saturating_mul(size) <= MODELSCOPE_WINDOW
+                    {
                         Some((page + 1).to_string())
                     } else {
                         None
@@ -375,6 +381,9 @@ impl HubHttp {
         revision: &str,
     ) -> Result<ModelCard, AdapterError> {
         repository(repo, 2)?;
+        if value["id"].as_str() != Some(repo) {
+            return Err(AdapterError::Unavailable);
+        }
         let source = self.source(
             repo,
             revision,
@@ -386,7 +395,12 @@ impl HubHttp {
             format!("modelscope:{repo}"),
             repo.into(),
             source,
-            value["model_type"].as_str(),
+            value["tags"].as_array().and_then(|tags| {
+                tags.iter().filter_map(Value::as_str).find_map(|tag| {
+                    tag.strip_prefix("model_type:")
+                        .filter(|name| !name.is_empty())
+                })
+            }),
             None,
             None,
             value["file_size"].as_u64(),
@@ -468,7 +482,14 @@ impl HubHttp {
                     )
                     .await?;
                 let revision = self.git_head(repo).await?;
-                Ok(self.ms_card(&value, repo, &revision)?.source.clone())
+                let mut source = (*self.ms_card(&value, repo, &revision)?.source).clone();
+                if source.access != SourceAccess::Accessible {
+                    let files = self.ms_files(repo, &revision).await?;
+                    source.access = self
+                        .ms_access(&files, repo, &revision, source.access)
+                        .await?;
+                }
+                ModelSource::new(source).map_err(|_| AdapterError::Unavailable)
             }
             Hub::Kaggle => {
                 let parts = repository(repo, 4)?;
@@ -561,6 +582,61 @@ impl HubHttp {
         repository(repo, if self.hub == Hub::Kaggle { 4 } else { 2 })?;
         Ok(repo)
     }
+    async fn ms_files(&self, repo: &str, revision: &str) -> Result<Value, AdapterError> {
+        let mut metadata = self.url(&format!("api/v1/models/{repo}/repo/files"))?;
+        metadata
+            .query_pairs_mut()
+            .append_pair("Revision", revision)
+            .append_pair("Recursive", "true");
+        self.json(self.client.get(metadata))
+            .await
+            .map(|(value, _)| value)
+    }
+    async fn ms_access(
+        &self,
+        files: &Value,
+        repo: &str,
+        revision: &str,
+        declared: SourceAccess,
+    ) -> Result<SourceAccess, AdapterError> {
+        let Some(file) = files["Files"].as_array().and_then(|files| {
+            files
+                .iter()
+                .filter(|file| file["Type"] != "tree")
+                .filter_map(|file| file["Path"].as_str())
+                .find(|name| {
+                    name.ends_with(".safetensors")
+                        || name.ends_with(".gguf")
+                        || name.ends_with(".bin")
+                })
+        }) else {
+            return Ok(declared);
+        };
+        let mut url = self.url(&format!("api/v1/models/{repo}/repo"))?;
+        url.query_pairs_mut()
+            .append_pair("Revision", revision)
+            .append_pair("FilePath", file);
+        let response = self
+            .credentials
+            .authorize(self.hub, self.client.head(url))
+            .await?
+            .send()
+            .await
+            .map_err(|_| AdapterError::Unavailable)?;
+        match response.status().as_u16() {
+            200 => Ok(SourceAccess::Accessible),
+            401 => Ok(SourceAccess::AuthenticationRequired),
+            403 if matches!(
+                declared,
+                SourceAccess::TermsRequired | SourceAccess::AwaitingApproval
+            ) =>
+            {
+                Ok(SourceAccess::TermsRequired)
+            }
+            403 => Ok(SourceAccess::Denied),
+            _ => Err(AdapterError::Unavailable),
+        }
+    }
     async fn git_head(&self, repo: &str) -> Result<String, AdapterError> {
         repository(repo, 2)?;
         let mut url = self.url(&format!("{repo}.git/info/refs"))?;
@@ -630,9 +706,7 @@ struct Cursor {
 fn id(value: &str) -> Result<ActorId, AdapterError> {
     ActorId::new(value).map_err(|_| AdapterError::Unavailable)
 }
-fn string(value: &Value) -> String {
-    value.as_str().unwrap_or_default().into()
-}
+
 fn repository(value: &str, segments: usize) -> Result<Vec<&str>, AdapterError> {
     let parts = value.split('/').collect::<Vec<_>>();
     if parts.len() != segments
@@ -656,9 +730,16 @@ fn next_link(link: &str) -> Option<String> {
         .map(|(url, _)| url.to_owned())
 }
 fn access(value: &Value) -> SourceAccess {
-    if value["gated"] == true || value["gated"] == "manual" || value["gated"] == "auto" {
+    if value["gated"] == true
+        || value["gated"] == "manual"
+        || value["gated"] == "auto"
+        || value["visibility"] == "gated"
+    {
         SourceAccess::TermsRequired
-    } else if value["private"] == true || value["login_required"] == true {
+    } else if value["private"] == true
+        || value["login_required"] == true
+        || value["visibility"] == "private"
+    {
         SourceAccess::AuthenticationRequired
     } else {
         SourceAccess::Accessible
@@ -804,12 +885,14 @@ impl FileCatalog for HubHttp {
                 }
                 Hub::ModelScope => {
                     repository(repo, 2)?;
-                    let mut metadata = self.url(&format!("api/v1/models/{repo}/repo/files"))?;
-                    metadata
-                        .query_pairs_mut()
-                        .append_pair("Revision", revision)
-                        .append_pair("Recursive", "true");
-                    let (value, _) = self.json(self.client.get(metadata)).await?;
+                    let value = self.ms_files(repo, revision).await?;
+                    if self
+                        .ms_access(&value, repo, revision, source.access.clone())
+                        .await?
+                        != SourceAccess::Accessible
+                    {
+                        return Err(AdapterError::Unsupported);
+                    }
                     let mut files = Vec::new();
                     for file in value["Files"].as_array().ok_or(AdapterError::Unavailable)? {
                         if file["Type"] == "tree" {
