@@ -97,26 +97,26 @@ impl Authority for LiveAuthority {
     }
     fn bootstrap(&self, operator: OperatorId) -> BoxFuture<'_, Result<(), AuthorizationError>> {
         Box::pin(async move {
-            let (_, administrator, initialized) = self
+            let initialization = self
                 .database
-                .installation()
+                .bootstrap_initialization(&operator)
                 .await
                 .map_err(|_| AuthorizationError::Unavailable)?;
-            if administrator.as_ref() != Some(&operator) {
-                return Err(AuthorizationError::InvalidRelationship);
+            if !initialization.initialized() {
+                self.write(
+                    vec![Relationship::new(
+                        format!("operator:{}", operator.as_str()),
+                        "administrator",
+                        format!("installation:{}", self.installation),
+                    )?],
+                    vec![],
+                )
+                .await?;
             }
-            if initialized {
-                return Ok(());
-            }
-            self.write(
-                vec![Relationship::new(
-                    format!("operator:{}", operator.as_str()),
-                    "administrator",
-                    format!("installation:{}", self.installation),
-                )?],
-                vec![],
-            )
-            .await
+            initialization
+                .complete()
+                .await
+                .map_err(|_| AuthorizationError::Unavailable)
         })
     }
 }
