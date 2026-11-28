@@ -1,6 +1,5 @@
 //! Conversation state and history use the same durable authority for web and native callers.
 use super::*;
-use ironloom_policy::live::Relationship;
 use ironloom_storage::postgres::{HistoryWindow, SessionWindow};
 
 const CONVERSATION_KIND: &str = "conversation";
@@ -231,25 +230,8 @@ impl FactoryBackend {
                 snapshot
             }
         };
-        // This adds only the immutable parent relationship, never a private-project self-grant.
-        self.authority
-            .write(
-                vec![
-                    Relationship::new(
-                        format!("project:{}", snapshot.session.project_id.as_str()),
-                        "project",
-                        format!("conversation:{}", snapshot.session.conversation_id.as_str()),
-                    )
-                    .map_err(|_| ServiceError::Unavailable)?,
-                ],
-                vec![],
-            )
-            .await
-            .map_err(|_| ServiceError::Unavailable)?;
-        self.store
-            .grant_applied(&actor(snapshot.session.conversation_id.as_str())?)
-            .await
-            .map_err(database)?;
+        // The same cross-node resource guard serializes direct retries and outbox recovery.
+        self.recover_conversation_grant(&actor(snapshot.session.conversation_id.as_str())?,serde_json::json!({"kind":"conversation_parent","project":snapshot.session.project_id,"conversation":snapshot.session.conversation_id})).await?;
         Ok(snapshot)
     }
     /// Returns a consistent persisted snapshot after current resource authorization.

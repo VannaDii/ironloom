@@ -18,6 +18,8 @@ pub mod paths;
 pub mod projects;
 /// Persisted inference identities and confirmed/uncertain execution observations.
 pub mod requests;
+/// Historical turn outcomes and exact item lookup at durable service watermarks.
+pub mod turns;
 
 /// Redacted durable storage failures; callers never receive SQL or connection secrets.
 #[derive(Debug, Error)]
@@ -73,6 +75,21 @@ pub struct HistoryWindow<'a> {
     /// True pages toward newer items; false pages toward older items.
     pub forward: bool,
     /// Bounded desired rows, including an optional service continuation sentinel.
+    pub limit: u32,
+}
+/// Persisted turn traversal at one authorized conversation watermark, in requested rollout order.
+pub struct TurnWindow<'a> {
+    /// Existing authorized conversation.
+    pub conversation: &'a ConversationId,
+    /// Inclusive service event watermark; zero is valid for an empty conversation.
+    pub as_of: u64,
+    /// Optional exact persisted turn anchor; foreign or future anchors are rejected.
+    pub anchor: Option<&'a TurnId>,
+    /// True for ascending stored positions, false for descending positions.
+    pub forward: bool,
+    /// Includes the anchor when refreshing a reverse traversal.
+    pub inclusive: bool,
+    /// Bounded result size, including an optional continuation sentinel.
     pub limit: u32,
 }
 /// Durable conversation catalog traversal. Current grants are checked by the service
@@ -724,7 +741,7 @@ impl ResourceGrants {
     }
     /// Marks this resource's coalesced grant intents applied only while its current state is locked.
     pub async fn complete(mut self) -> Result<(), DatabaseError> {
-        sqlx::query("UPDATE ironloom.authorization_outbox SET completed_at=clock_timestamp() WHERE completed_at IS NULL AND body->>'resource_kind'=$1 AND body->>'resource_id'=$2")
+        sqlx::query("UPDATE ironloom.authorization_outbox SET completed_at=clock_timestamp() WHERE completed_at IS NULL AND ((body->>'resource_kind'=$1 AND body->>'resource_id'=$2) OR (operation_id=$2 AND body->>'kind'=$1||'_parent' AND body->>$1=$2))")
             .bind(&self.kind).bind(self.id.as_str()).execute(&mut *self.tx).await?;
         self.tx.commit().await?;
         Ok(())

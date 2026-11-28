@@ -114,6 +114,24 @@ CREATE TABLE ironloom.history_versions (
     FOREIGN KEY (conversation_id,item_id) REFERENCES ironloom.history_items,
     FOREIGN KEY (conversation_id,sequence) REFERENCES ironloom.events DEFERRABLE INITIALLY DEFERRED
 );
+-- Native turn paging uses recorded rollout positions/outcomes at the same durable watermark.
+CREATE TABLE ironloom.turns (
+    conversation_id text NOT NULL REFERENCES ironloom.conversations,
+    turn_id text NOT NULL,
+    assignment_id text NOT NULL,
+    position bigint GENERATED ALWAYS AS IDENTITY,
+    PRIMARY KEY (conversation_id,turn_id),
+    UNIQUE (conversation_id,position)
+);
+CREATE TABLE ironloom.turn_versions (
+    conversation_id text NOT NULL,
+    turn_id text NOT NULL,
+    sequence numeric(20,0) NOT NULL,
+    body jsonb NOT NULL CHECK (jsonb_typeof(body)='object'),
+    PRIMARY KEY (conversation_id,turn_id,sequence),
+    FOREIGN KEY (conversation_id,turn_id) REFERENCES ironloom.turns,
+    FOREIGN KEY (conversation_id,sequence) REFERENCES ironloom.events DEFERRABLE INITIALLY DEFERRED
+);
 -- Transactional dispatch/notification outbox; delivery does not prove execution termination.
 CREATE TABLE ironloom.outbox (
     conversation_id text NOT NULL,

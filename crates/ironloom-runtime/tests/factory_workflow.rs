@@ -422,7 +422,6 @@ async fn human_input_atomically_creates_owned_queue_history_and_instruction_copi
     assert_eq!(copy.assignment_id, assignment);
     assert_eq!(copy.acknowledged_revision.get(), 0);
     assert!(copy.content.contains("Refine the human's idea"));
-    backend.recover_grants().await.unwrap();
     let original_copies = backend
         .instruction_copies(alice.session.clone(), assignment.clone())
         .await
@@ -787,6 +786,182 @@ async fn human_input_atomically_creates_owned_queue_history_and_instruction_copi
         CommandDisposition::Replayed,
         "replay must precede mutable active-turn checks"
     );
+    // Native history uses persisted outcomes at the consumed watermark, never current idle state.
+    let window =
+        |as_of, anchor, forward, inclusive, limit| ironloom_storage::postgres::TurnWindow {
+            conversation: &snapshot.session.conversation_id,
+            as_of,
+            anchor,
+            forward,
+            inclusive,
+            limit,
+        };
+    assert!(
+        store
+            .turns(window(0, None, true, false, 100))
+            .await
+            .unwrap()
+            .is_empty()
+    );
+    for (sequence, state) in [(1, "queued"), (2, "paused"), (12, "terminated")] {
+        let rows = store
+            .turns(window(sequence, None, true, false, 100))
+            .await
+            .unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].0, turn);
+        assert_eq!(rows[0].1["state"], state);
+    }
+    let history = backend
+        .history(
+            alice.session.clone(),
+            HistoryQuery::new(HistoryQueryData {
+                as_of: terminated.cursor.clone(),
+                direction: HistoryDirection::Forward,
+                before: None,
+                after: None,
+                turn_id: Some(turn.clone()),
+                limit: Counter::new(100),
+            })
+            .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(history.items.len(), 2);
+    let requested_ids = vec![
+        history.items[1].item_id.clone(),
+        history.items[0].item_id.clone(),
+    ];
+    let exact = store
+        .history_items(&snapshot.session.conversation_id, 12, &turn, &requested_ids)
+        .await
+        .unwrap();
+    assert_eq!(exact[0]["item_id"], json!(history.items[0].item_id));
+    assert_eq!(exact[1]["item_id"], json!(history.items[1].item_id));
+    assert!(matches!(
+        store
+            .history_items(&snapshot.session.conversation_id, 1, &turn, &requested_ids)
+            .await,
+        Err(ironloom_storage::postgres::DatabaseError::NotFound)
+    ));
+    assert!(matches!(
+        store
+            .history_items(
+                &snapshot.session.conversation_id,
+                12,
+                &TurnId::new("foreign-turn").unwrap(),
+                &requested_ids
+            )
+            .await,
+        Err(ironloom_storage::postgres::DatabaseError::NotFound)
+    ));
+    assert!(matches!(
+        store
+            .history_items(
+                &snapshot.session.conversation_id,
+                12,
+                &turn,
+                &[requested_ids[0].clone(), requested_ids[0].clone()]
+            )
+            .await,
+        Err(ironloom_storage::postgres::DatabaseError::Conflict)
+    ));
+    let second:Command=serde_json::from_value(json!({"command_id":"second-explicit-turn","project_id":project,"expected_revision":terminated.revision,"action":{"type":"input","data":{"conversation_id":snapshot.session.conversation_id,"text":"Second explicit turn; no provider call."}}})).unwrap();
+    backend
+        .command(alice.session.clone(), second)
+        .await
+        .unwrap();
+    let second = backend
+        .snapshot(
+            alice.session.clone(),
+            snapshot.session.conversation_id.clone(),
+        )
+        .await
+        .unwrap();
+    let second_turn = second.session.active_turn_id.clone().unwrap();
+    let second_assignment = second.active_assignment_id.clone().unwrap();
+    assert_ne!(second_turn, turn);
+    assert!(matches!(
+        store
+            .turns(window(12, Some(&second_turn), true, false, 100))
+            .await,
+        Err(ironloom_storage::postgres::DatabaseError::Conflict)
+    ));
+    assert_eq!(
+        store.turns(window(13, None, true, false, 1)).await.unwrap()[0].0,
+        turn
+    );
+    assert_eq!(
+        store
+            .turns(window(13, None, false, false, 1))
+            .await
+            .unwrap()[0]
+            .0,
+        second_turn
+    );
+    assert_eq!(
+        store
+            .turns(window(13, Some(&turn), true, false, 100))
+            .await
+            .unwrap()[0]
+            .0,
+        second_turn
+    );
+    assert_eq!(
+        store
+            .turns(window(13, Some(&second_turn), false, false, 100))
+            .await
+            .unwrap()[0]
+            .0,
+        turn
+    );
+    assert_eq!(
+        store
+            .turns(window(13, Some(&second_turn), false, true, 1))
+            .await
+            .unwrap()[0]
+            .0,
+        second_turn
+    );
+    assert!(
+        store
+            .turns(window(13, Some(&second_turn), true, false, 100))
+            .await
+            .unwrap()
+            .is_empty()
+    );
+    assert!(matches!(
+        store.turns(window(u64::MAX, None, true, false, 100)).await,
+        Err(ironloom_storage::postgres::DatabaseError::Conflict)
+    ));
+    backend
+        .command(
+            alice.session.clone(),
+            control(
+                "cancel-second-turn",
+                &project,
+                &second_assignment,
+                second.revision.get(),
+                "cancel",
+            ),
+        )
+        .await
+        .unwrap();
+    let second_lease = store
+        .claim_next(
+            &node,
+            &id("second-turn-owner"),
+            std::time::Duration::from_secs(30),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(second_lease.assignment_id, second_assignment);
+    backend
+        .reconcile_control_boundary(&second_lease)
+        .await
+        .unwrap()
+        .unwrap();
     // Accepted command replay is independent from later editable model/team configuration.
     backend.configure(alice.session.clone(),serde_json::from_value(json!({"command_id":"disable-team","project_id":null,"expected_revision":"4","changes":{"roles":[],"models":[]}})).unwrap()).await.unwrap();
     let replay = backend
@@ -800,7 +975,7 @@ async fn human_input_atomically_creates_owned_queue_history_and_instruction_copi
             .await
             .unwrap()
             .len(),
-        12
+        15
     );
     assert!(
         store

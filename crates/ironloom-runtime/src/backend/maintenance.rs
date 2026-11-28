@@ -73,7 +73,7 @@ impl FactoryBackend {
         }
         first_error.map_or(Ok(completed), Err)
     }
-    async fn recover_conversation_grant(
+    pub(super) async fn recover_conversation_grant(
         &self,
         intent: &ActorId,
         body: Value,
@@ -85,13 +85,13 @@ impl FactoryBackend {
         {
             return Err(ServiceError::Unavailable);
         }
-        let record = self
+        let guard = self
             .store
-            .get("conversation", &actor(intent_body.conversation.as_str())?)
+            .resource_grants("conversation", intent)
             .await
-            .map_err(database)?
-            .ok_or(ServiceError::Unavailable)?;
-        let snapshot: ConversationSnapshot = read(record.body)?;
+            .map_err(database)?;
+        let record = guard.current().ok_or(ServiceError::Unavailable)?;
+        let snapshot: ConversationSnapshot = read(record.body.clone())?;
         if snapshot.session.conversation_id != intent_body.conversation
             || snapshot.session.project_id != intent_body.project
             || record.project.as_ref() != Some(&intent_body.project)
@@ -114,9 +114,9 @@ impl FactoryBackend {
             )
             .await
             .map_err(|_| ServiceError::Unavailable)?;
-        self.store.grant_applied(intent).await.map_err(database)
+        guard.complete().await.map_err(database)
     }
-    async fn recover_assignment_grant(
+    pub(super) async fn recover_assignment_grant(
         &self,
         intent: &ActorId,
         body: Value,
@@ -126,12 +126,13 @@ impl FactoryBackend {
         if body.kind != "assignment_parent" || intent.as_str() != body.assignment.as_str() {
             return Err(ServiceError::Unavailable);
         }
+        let guard = self
+            .store
+            .resource_grants("assignment", intent)
+            .await
+            .map_err(database)?;
         let run = assignments::stored_run(
-            self.store
-                .get("assignment", intent)
-                .await
-                .map_err(database)?
-                .ok_or(ServiceError::Unavailable)?,
+            guard.current().cloned().ok_or(ServiceError::Unavailable)?,
             &body.assignment,
         )?;
         if run.project_id != body.project {
@@ -151,7 +152,7 @@ impl FactoryBackend {
             )
             .await
             .map_err(|_| ServiceError::Unavailable)?;
-        self.store.grant_applied(intent).await.map_err(database)
+        guard.complete().await.map_err(database)
     }
     /// Starts bounded asynchronous resource recovery independently from viewers and telemetry.
     /// The service owns this task and closes it with the same transport shutdown signal.

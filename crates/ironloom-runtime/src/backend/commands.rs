@@ -61,6 +61,33 @@ impl FactoryBackend {
         {
             return Err(ServiceError::Unavailable);
         }
+        // Recover the original input's immutable parent mapping, even after a later turn starts.
+        // A committed receipt with a failed grant write must not create a second assignment.
+        let cursor = receipt.cursor.as_ref().ok_or(ServiceError::Unavailable)?;
+        let after = cursor
+            .sequence
+            .get()
+            .checked_sub(1)
+            .ok_or(ServiceError::Unavailable)?;
+        let events = self
+            .store
+            .events(conversation, after, 1)
+            .await
+            .map_err(database)?;
+        let event: ServiceEvent =
+            read(events.into_iter().next().ok_or(ServiceError::Unavailable)?)?;
+        if event.cursor != *cursor
+            || event.command_id != command.command_id
+            || event.project_id != command.project_id
+        {
+            return Err(ServiceError::Unavailable);
+        }
+        let original = event.snapshot.as_ref().ok_or(ServiceError::Unavailable)?;
+        let assignment = original
+            .active_assignment_id
+            .as_ref()
+            .ok_or(ServiceError::Unavailable)?;
+        self.recover_assignment_grant(&actor(assignment.as_str())?,serde_json::json!({"kind":"assignment_parent","project":command.project_id,"assignment":assignment})).await?;
         receipt.disposition = CommandDisposition::Replayed;
         CommandReceipt::new(receipt).map_err(ServiceError::Validation)
     }
@@ -152,6 +179,33 @@ impl FactoryBackend {
             .append_event(conversation, next.cursor.sequence.get(), &value(&event)?)
             .await
             .map_err(database)?;
+        let turns = previous
+            .session
+            .active_turn_id
+            .iter()
+            .chain(next.session.active_turn_id.iter())
+            .collect::<BTreeSet<_>>();
+        for turn_id in turns {
+            let record = batch
+                .get("turn", &actor(turn_id.as_str())?)
+                .await
+                .map_err(database)?
+                .ok_or(ServiceError::Unavailable)?;
+            let turn = super::assignments::stored_turn(record, turn_id)?;
+            if turn.conversation_id != *conversation || turn.project_id != change.project_id {
+                return Err(ServiceError::Unavailable);
+            }
+            batch
+                .turn_version(
+                    conversation,
+                    turn_id,
+                    &turn.assignment_id,
+                    next.cursor.sequence.get(),
+                    &value(&turn)?,
+                )
+                .await
+                .map_err(database)?;
+        }
         if let Some(item) = item {
             if &item.conversation_id != conversation {
                 return Err(ServiceError::Unavailable);

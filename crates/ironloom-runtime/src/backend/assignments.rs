@@ -352,6 +352,7 @@ impl FactoryBackend {
                 ),
             )
             .await?;
+        self.recover_assignment_grant(&assignment_key,serde_json::json!({"kind":"assignment_parent","project":command.project_id,"assignment":assignment})).await?;
         Ok(receipt)
     }
     /// Records lifecycle facts at controllable boundaries, retaining stable terminal timestamps.
